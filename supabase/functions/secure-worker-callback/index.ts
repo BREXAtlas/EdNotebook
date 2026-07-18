@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     const sizeMismatch = Number.isFinite(input.actualSizeBytes)
       && Number(input.actualSizeBytes) !== Number(file.expected_size_bytes);
     const checksumMismatch = Boolean(expectedHash && actualHash && expectedHash !== actualHash);
-    const archiveStatus = input.archive?.status || "not_archive";
+    const archiveStatus: string = input.archive?.status || "not_archive";
     const finalVerdict = sizeMismatch || checksumMismatch ? "suspicious" : input.verdict;
 
     if (finalVerdict !== "clean" || ["suspicious", "blocked", "error"].includes(archiveStatus)) {
