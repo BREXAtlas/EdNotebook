@@ -10,7 +10,7 @@ import {
   validateFile,
 } from "./storageService.js";
 
-const SOURCE_ACCEPT = ".txt,.md,.pdf,.doc,.docx,.epub,.zip";
+const SOURCE_ACCEPT = ".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.epub,.zip";
 
 function inferSourceFormat(file) {
   const name = file?.name?.toLowerCase() || "";
@@ -19,9 +19,18 @@ function inferSourceFormat(file) {
   if (name.endsWith(".pdf")) return "application/pdf";
   if (name.endsWith(".doc")) return "application/msword";
   if (name.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (name.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+  if (name.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
   if (name.endsWith(".epub")) return "application/epub+zip";
   if (name.endsWith(".zip")) return "application/zip";
   return file?.type || "application/octet-stream";
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 }
 
 export function BookImporter({ onSaved }) {
@@ -39,47 +48,33 @@ export function BookImporter({ onSaved }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadController, setUploadController] = useState(null);
 
-  const instantManifest = useMemo(() => textToEduBook({ title, author, sourceText, description }), [title, author, sourceText, description]);
+  const instantManifest = useMemo(
+    () => textToEduBook({ title, author, sourceText, description }),
+    [title, author, sourceText, description]
+  );
 
   async function importBook(event) {
     event.preventDefault();
     setBusy(true);
     setNotice("");
     setError("");
+    setUploadProgress(null);
+    setUploadStatus("");
+    let publicationId = null;
     try {
       if (!rightsConfirmed) throw new Error("Confirm your ownership or distribution rights before uploading publication material.");
+      if (!sourceFile && !sourceText.trim()) throw new Error("Paste original or licensed text, or select a publication source file.");
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
-      const publicationId = crypto.randomUUID();
-      let target = null;
-      let manifest = sourceText.trim() ? instantManifest : {};
-      let conversionStatus = sourceText.trim() ? "ready" : "queued";
-      let sourceFormat = sourceText.trim() ? "text/plain" : null;
-
-      if (sourceFile) {
-        validateFile(sourceFile);
-        sourceFormat = inferSourceFormat(sourceFile);
-        const safeName = buildDigitalLiteracyName({
-          file: sourceFile,
-          courseCode: course.code || "publisher",
-          category: "book-source",
-          title: title || sourceFile.name,
-          version: 1,
-        });
-        const checksumSha256 = await checksumFile(sourceFile);
-        target = await uploadCloudFile(sourceFile, {
-          userId: userData.user.id,
-          scope: "publication",
-          publicationId,
-          safeName,
-          checksumSha256,
-          title,
-          category: "book-source",
-          courseCode: course.code || "publisher",
-        });
-        if (!["text/plain", "text/markdown"].includes(sourceFormat)) {
-          manifest = {
+      publicationId = crypto.randomUUID();
+      const sourceFormat = sourceFile ? inferSourceFormat(sourceFile) : "text/plain";
+      const conversionStatus = sourceFile ? "queued" : "ready";
+      const manifest = sourceFile
+        ? {
             format: "EduBook/1.0",
             title,
             author,
@@ -87,22 +82,21 @@ export function BookImporter({ onSaved }) {
             source: {
               type: sourceFormat,
               originalName: sourceFile.name,
-              safeName,
-              checksumSha256,
               importedAt: new Date().toISOString(),
             },
             chapters: [],
             conversion: {
               status: "queued",
-              pipeline: ["extract", "structure", "rights-check", "learning-design", "quality-review"],
+              pipeline: ["malware-scan", "archive-inspection", "extract", "structure", "preview", "quality-review"],
             },
+            rights: { confirmed: true, statement: rightsStatement.trim() },
+          }
+        : {
+            ...instantManifest,
+            rights: { confirmed: true, statement: rightsStatement.trim() },
           };
-          conversionStatus = "queued";
-        }
-      }
-
-      manifest.rights = { confirmed: true, statement: rightsStatement.trim() };
       const priceCents = price === "" ? null : Math.max(0, Math.round(Number(price) * 100));
+
       const { error: publicationError } = await supabase.from("publications").insert({
         id: publicationId,
         owner_id: userData.user.id,
@@ -111,11 +105,13 @@ export function BookImporter({ onSaved }) {
         author_name: author.trim(),
         description: description.trim(),
         source_format: sourceFormat,
-        bucket_id: target?.bucket || null,
-        storage_path: target?.path || null,
+        bucket_id: null,
+        storage_path: null,
+        secure_file_id: null,
         rights_confirmed: true,
         rights_statement: rightsStatement.trim(),
         conversion_status: conversionStatus,
+        preview_status: sourceFile ? "pending" : "not_requested",
         edubook_manifest: manifest,
         access_model: accessModel,
         price_cents: ["purchase", "rental"].includes(accessModel) ? priceCents : null,
@@ -123,12 +119,67 @@ export function BookImporter({ onSaved }) {
         status: "draft",
       });
       if (publicationError) throw publicationError;
-      setNotice(conversionStatus === "ready" ? "Interactive book created and opened in the reader library." : "Source file secured. The server-side conversion job is queued in the publication record.");
+
+      if (sourceFile) {
+        validateFile(sourceFile);
+        const safeName = buildDigitalLiteracyName({
+          file: sourceFile,
+          courseCode: course.code || "publisher",
+          category: "book-source",
+          title: title || sourceFile.name,
+          version: 1,
+        });
+        const checksumSha256 = await checksumFile(sourceFile);
+        const target = await uploadCloudFile(sourceFile, {
+          scope: "publication",
+          publicationId,
+          safeName,
+          checksumSha256,
+          title,
+          category: "book-source",
+          courseCode: course.code || "publisher",
+          metadata: {
+            author,
+            description,
+            rightsConfirmed: true,
+            accessModel,
+          },
+          onProgress: setUploadProgress,
+          onStatus: setUploadStatus,
+          onController: setUploadController,
+        });
+        const { error: updateError } = await supabase.from("publications").update({
+          secure_file_id: target.secureFileId,
+          conversion_status: "queued",
+          preview_status: "pending",
+          edubook_manifest: {
+            ...manifest,
+            source: {
+              ...manifest.source,
+              safeName,
+              checksumSha256,
+              secureFileId: target.secureFileId,
+            },
+          },
+        }).eq("id", publicationId);
+        if (updateError) throw updateError;
+        setNotice("Publication source uploaded to quarantine. Malware, archive, preview, and EduBook conversion must complete before release.");
+      } else {
+        setNotice("Interactive text book created immediately. The original text and teaching layer remain separately identifiable in EduBook/1.0.");
+      }
+
       setSourceFile(null);
+      setUploadController(null);
       const input = document.getElementById("book-source-input");
       if (input) input.value = "";
       onSaved?.();
     } catch (saveError) {
+      if (publicationId) {
+        await supabase.from("publications").update({
+          conversion_status: "failed",
+          preview_status: "error",
+        }).eq("id", publicationId).catch(() => {});
+      }
       setError(saveError.message || "The publication could not be created.");
     } finally {
       setBusy(false);
@@ -146,14 +197,23 @@ export function BookImporter({ onSaved }) {
           <label>Description<textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
           <label>
             Original or licensed text
-            <textarea rows={12} value={sourceText} onChange={(event) => setSourceText(event.target.value)} placeholder="Paste text or Markdown for immediate conversion. Clear this field when the uploaded file should be the sole source." />
+            <textarea rows={12} value={sourceText} onChange={(event) => setSourceText(event.target.value)} placeholder="Paste text or Markdown for immediate conversion. A selected source file takes precedence and enters the secure worker pipeline." />
           </label>
           <label className="studio-file-drop" htmlFor="book-source-input">
             <span aria-hidden="true">📖</span>
             <strong>{sourceFile ? sourceFile.name : "Or upload a publication source"}</strong>
-            <small>Text and Markdown convert now. PDF, Word, EPUB, and publisher packages enter the secure conversion queue.</small>
+            <small>PDF, Word, PowerPoint, EPUB, text, Markdown, and publisher ZIP packages upload resumably to quarantine.</small>
             <input id="book-source-input" type="file" accept={SOURCE_ACCEPT} onChange={(event) => setSourceFile(event.target.files?.[0] || null)} />
           </label>
+
+          {uploadProgress && (
+            <div className="studio-upload-progress">
+              <div><strong>{uploadStatus || "uploading"}</strong><span>{uploadProgress.percentage.toFixed(1)}%</span></div>
+              <div><span style={{ width: `${uploadProgress.percentage}%` }} /></div>
+              <small>{formatBytes(uploadProgress.bytesUploaded)} of {formatBytes(uploadProgress.bytesTotal)}</small>
+              {busy && uploadController && <div><button type="button" onClick={() => uploadController.pause()}>Pause</button><button type="button" onClick={() => uploadController.resume()}>Resume</button></div>}
+            </div>
+          )}
         </div>
 
         <aside className="studio-conversion-preview">
@@ -165,7 +225,7 @@ export function BookImporter({ onSaved }) {
               <div key={chapter.id}><span>{index + 1}</span><div><strong>{chapter.title}</strong><small>{chapter.blocks.length} reading blocks</small></div></div>
             ))}
           </div>
-          <p className="studio-conversion-note">The manifest is the portable teaching layer: chapters, reading progress, annotations, knowledge checks, discussion prompts, rights, and access rules.</p>
+          <p className="studio-conversion-note">For uploaded files, the same format is generated server-side only after malware and archive checks. Source text is preserved; teaching prompts remain a separate layer.</p>
         </aside>
       </div>
 
