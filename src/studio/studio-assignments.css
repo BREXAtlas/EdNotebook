@@ -1,0 +1,55 @@
+.studio-assignment-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,.72fr); align-items:start; gap:22px; }
+.studio-assignment-form { padding:22px; background:#fff; border:1px solid #dce2ee; border-radius:20px; box-shadow:0 16px 42px rgba(16,27,51,.065); }
+.studio-syllabus-preview { padding:24px; position:sticky; top:96px; color:#2a3350; background:#fffdf8; border:1px solid #e6d9bf; border-radius:20px; box-shadow:0 16px 42px rgba(16,27,51,.065); }
+.studio-syllabus-preview > small { color:#9a6a13; font-family:"IBM Plex Mono",monospace; font-size:8px; letter-spacing:.11em; }
+.studio-syllabus-preview h3 { margin:8px 0 18px; color:#101b33; font-family:"Zilla Slab",Georgia,serif; font-size:26px; }
+.studio-syllabus-preview dl { margin:0; }
+.studio-syllabus-preview dl > div { padding:11px 0; border-top:1px solid #e7dfd1; }
+.studio-syllabus-preview dt { color:#9a6a13; font-family:"IBM Plex Mono",monospace; font-size:7.5px; font-weight:700; text-transform:uppercase; }
+.studio-syllabus-preview dd { margin:4px 0 0; color:#4d5567; font-size:10px; line-height:1.55; }
+
+.studio-rubric-editor { margin-top:24px; padding:22px; }
+.studio-rubric-editor .studio-panel-heading > strong { color:#1d4ed8; font-family:"Zilla Slab",Georgia,serif; font-size:24px; }
+.studio-rubric-rows { margin:16px 0; border-top:1px solid #e0e4ed; }
+.studio-rubric-row { padding:14px 0; display:grid; grid-template-columns:28px minmax(130px,.55fr) 78px minmax(230px,1.25fr) 30px; align-items:start; gap:10px; border-bottom:1px solid #e4e8f0; }
+.studio-rubric-row > span { width:27px; height:27px; display:grid; place-items:center; color:#1d4ed8; background:#eaf0ff; border-radius:8px; font-family:"Zilla Slab",serif; font-weight:700; }
+.studio-rubric-row label { color:#101b33; font-size:8.5px; font-weight:800; }
+.studio-rubric-row input,.studio-rubric-row textarea { width:100%; min-height:38px; margin-top:5px; padding:8px 9px; color:#101b33; background:#f8fafd; border:1px solid #cfd7e5; border-radius:9px; font-size:9.5px; resize:vertical; }
+.studio-rubric-row > button { width:28px; height:28px; margin-top:18px; color:#ae3838; background:#fff4f4; border:1px solid #edcccc; border-radius:8px; cursor:pointer; }
+
+.studio-learner-sandbox,.studio-review-preview { padding:24px; }
+.studio-preview-switch { justify-content:center; }
+.studio-assignment-brief { padding:22px; display:grid; grid-template-columns:1fr minmax(220px,.45fr); gap:24px; color:#fff; background:linear-gradient(135deg,#101b33,#173ba3); border-radius:16px; }
+.studio-assignment-brief small,.studio-review-header small { color:#f2b33d; font-family:"IBM Plex Mono",monospace; font-size:8px; letter-spacing:.1em; }
+.studio-assignment-brief h3,.studio-review-header h3 { margin:6px 0 7px; color:#fff; font-family:"Zilla Slab",Georgia,serif; font-size:27px; }
+.studio-assignment-brief p { margin:0; color:rgba(255,255,255,.75); font-size:10.5px; line-height:1.6; }
+.studio-assignment-brief dl { margin:0; }
+.studio-assignment-brief dl > div { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.13); }
+.studio-assignment-brief dt { color:rgba(255,255,255,.52); font-family:"IBM Plex Mono",monospace; font-size:7px; text-transform:uppercase; }
+.studio-assignment-brief dd { margin:3px 0 0; color:#fff; font-size:9px; line-height:1.4; }
+
+.studio-draft-toolbar { margin:18px 0 8px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.studio-draft-toolbar > span { color:#747e91; font-family:"IBM Plex Mono",monospace; font-size:8px; }
+.studio-draft-toolbar > div { display:flex; gap:5px; }
+.studio-draft-toolbar button { padding:6px 8px; color:#5b6478; background:#fff; border:1px solid #d3dbea; border-radius:8px; cursor:pointer; font-size:8px; font-weight:700; }
+.studio-draft-toolbar button.is-active { color:#fff; background:#101b33; border-color:#101b33; }
+.studio-draft-editor { width:100%; min-height:360px; padding:28px; color:#252d40; background:#fffdf8; border:1px solid #d9d2c6; border-radius:12px; font-family:Georgia,serif; font-size:14px; line-height:1.75; resize:vertical; box-shadow:inset 0 0 30px rgba(98,82,51,.03); }
+.studio-draft-actions { margin-top:10px; display:flex; justify-content:flex-end; gap:8px; }
+.studio-draft-actions > button:first-child { padding:10px 13px; color:#1d4ed8; background:#fff; border:1px solid #ccd6e8; border-radius:10px; cursor:pointer; font-size:9.5px; font-weight:800; }
+
+.studio-review-header { padding:21px; display:flex; align-items:center; justify-content:space-between; gap:16px; background:#101b33; border-radius:15px; }
+.studio-review-header h3 { font-size:24px; }
+.studio-review-header p { margin:0; color:rgba(255,255,255,.62); font-size:9px; }
+.studio-review-header > span { padding:6px 10px; color:#101b33; background:#f2b33d; border-radius:999px; font-family:"IBM Plex Mono",monospace; font-size:8px; font-weight:700; }
+.studio-review-document { min-height:260px; margin-top:16px; padding:26px; background:#fffdf8; border:1px solid #ddd4c6; border-radius:12px; }
+.studio-review-document p { color:#363d4d; font-family:Georgia,serif; font-size:12px; line-height:1.75; }
+.studio-review-document p.is-empty { color:#8a91a0; font-family:Inter,sans-serif; font-style:italic; }
+.studio-review-rubric { margin-top:16px; padding:18px; background:#f7f9fd; border:1px solid #d8dfeb; border-radius:13px; }
+.studio-review-rubric h4 { margin:0 0 10px; color:#101b33; font-family:"Zilla Slab",serif; font-size:18px; }
+.studio-review-rubric > div { padding:10px 0; display:grid; grid-template-columns:1fr auto; gap:6px 12px; border-top:1px solid #dde3ed; }
+.studio-review-rubric strong,.studio-review-rubric span { font-size:9.5px; }
+.studio-review-rubric span { color:#1d4ed8; font-weight:800; }
+.studio-review-rubric p { grid-column:1/-1; margin:0; color:#6c7587; font-size:8.5px; line-height:1.45; }
+
+@media(max-width:980px){.studio-assignment-grid{grid-template-columns:1fr}.studio-syllabus-preview{position:static}.studio-rubric-row{grid-template-columns:28px 1fr 75px 30px}.studio-rubric-row .is-wide{grid-column:2/4}}
+@media(max-width:680px){.studio-assignment-form,.studio-rubric-editor,.studio-learner-sandbox,.studio-review-preview{padding:17px}.studio-assignment-brief{grid-template-columns:1fr}.studio-rubric-row{grid-template-columns:28px 1fr 30px}.studio-rubric-row label:nth-of-type(2){grid-column:2/3}.studio-rubric-row .is-wide{grid-column:2/3}.studio-draft-toolbar{align-items:flex-start;flex-direction:column}.studio-draft-editor{padding:18px;min-height:300px}}
