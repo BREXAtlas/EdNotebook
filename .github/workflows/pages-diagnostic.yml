@@ -1,0 +1,98 @@
+name: Diagnose EdNotebook Pages deployment
+
+on:
+  push:
+    branches:
+      - agent/pages-diagnostic
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and package Pages artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy diagnostic artifact
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  report:
+    name: Record diagnostic result
+    if: always()
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/pages-diagnostic
+          fetch-depth: 0
+
+      - name: Write result
+        shell: bash
+        run: |
+          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
+            status="success"
+          else
+            status="failure"
+          fi
+
+          cat > pages-diagnostic.json <<EOF
+          {
+            "status": "$status",
+            "build": "${{ needs.build.result }}",
+            "deploy": "${{ needs.deploy.result }}",
+            "page_url": "${{ needs.deploy.outputs.page_url }}",
+            "run_url": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+            "commit": "${GITHUB_SHA}"
+          }
+          EOF
+
+      - name: Commit diagnostic result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pages-diagnostic.json
+          git commit -m "[skip ci] Record Pages diagnostic result"
+          git push origin HEAD:agent/pages-diagnostic
