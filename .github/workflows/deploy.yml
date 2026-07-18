@@ -78,7 +78,7 @@ jobs:
           deno-version: v2.x
 
       - name: Type-check Supabase Edge Functions
-        run: deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
 
   deploy:
     name: Deploy to GitHub Pages
