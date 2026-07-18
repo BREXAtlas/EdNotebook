@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabaseClient.js";
 import {
   buildDigitalLiteracyName,
   checksumFile,
   currentCourseId,
   deleteResourceRecord,
-  downloadCloudFile,
+  downloadResource as downloadStoredResource,
+  getCurrentStorageUsage,
+  getLinkPreview,
   listCloudResources,
   readCourseDraft,
   saveResourceRecord,
@@ -51,7 +52,24 @@ function formatBytes(value) {
   const bytes = Number(value);
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+}
+
+function resourceStatus(resource) {
+  if (resource.storage_mode === "device") return { label: "Device only", tone: "device" };
+  if (resource.storage_mode !== "cloud") return { label: resource.resource_type === "youtube" ? "Embedded YouTube" : "External / metadata", tone: "external" };
+  const value = resource.security_status || "quarantined";
+  if (value === "clean") return { label: `Security cleared · ${formatBytes(resource.size_bytes)}`, tone: "clean" };
+  if (value === "blocked") return { label: "Blocked by security review", tone: "blocked" };
+  if (value === "deleted") return { label: "Deleted", tone: "blocked" };
+  return { label: value === "quarantined" ? "Quarantined · scan pending" : value, tone: "scanning" };
+}
+
+function learnerAvailable(resource) {
+  if (resource.storage_mode === "device") return false;
+  if (resource.storage_mode === "cloud") return resource.security_status === "clean";
+  return true;
 }
 
 function ResourceIcon({ resource }) {
@@ -62,7 +80,28 @@ function ResourceIcon({ resource }) {
   return <span className="studio-resource-icon" aria-hidden="true">{map[resource.resource_type] || "📎"}</span>;
 }
 
-function ExternalPreview({ preview, description }) {
+function mapServerPreview(preview, fallback) {
+  if (!preview) return fallback;
+  const url = preview.canonical_url || preview.normalized_url;
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { host = fallback?.host || "web"; }
+  return {
+    href: preview.normalized_url,
+    host,
+    provider: preview.site_name || host,
+    icon: "↗",
+    tone: "web",
+    title: preview.title || fallback?.title || host,
+    description: preview.description || fallback?.description || "External learning resource.",
+    imageUrl: preview.image_url || null,
+    faviconUrl: preview.favicon_url || null,
+    isYouTube: false,
+    serverId: preview.id,
+  };
+}
+
+function ExternalPreview({ preview, description, loading }) {
+  if (loading) return <div className="studio-empty-preview">Inspecting the public page safely on the server…</div>;
   if (!preview) return <div className="studio-empty-preview">Paste a URL to see where the resource will appear.</div>;
   return (
     <article className={`studio-link-preview is-${preview.tone}`}>
@@ -78,8 +117,15 @@ function ExternalPreview({ preview, description }) {
           />
         </div>
       )}
+      {!preview.isYouTube && preview.imageUrl && (
+        <img className="studio-og-image" src={preview.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
+      )}
       <div className="studio-link-body">
-        <span className="studio-provider-icon" aria-hidden="true">{preview.icon}</span>
+        {preview.faviconUrl ? (
+          <img className="studio-provider-favicon" src={preview.faviconUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="studio-provider-icon" aria-hidden="true">{preview.icon}</span>
+        )}
         <div>
           <small>{preview.provider} · {preview.host}</small>
           <strong>{preview.title}</strong>
@@ -91,7 +137,8 @@ function ExternalPreview({ preview, description }) {
 }
 
 function PlacementPreview({ resources, selectedPlacement }) {
-  const visible = resources.filter((resource) => resource.placement === selectedPlacement);
+  const visible = resources.filter((resource) => resource.placement === selectedPlacement && learnerAvailable(resource));
+  const withheld = resources.filter((resource) => resource.placement === selectedPlacement && !learnerAvailable(resource));
   const label = PLACEMENTS.find(([value]) => value === selectedPlacement)?.[1] || "Page panel";
   return (
     <div className="studio-page-preview">
@@ -100,7 +147,7 @@ function PlacementPreview({ resources, selectedPlacement }) {
           <small>LIVE PAGE PLACEMENT</small>
           <h3>{label}</h3>
         </div>
-        <span>{visible.length} item{visible.length === 1 ? "" : "s"}</span>
+        <span>{visible.length} available</span>
       </div>
       <div className="studio-page-copy">
         <div className="studio-copy-line is-wide" />
@@ -110,13 +157,14 @@ function PlacementPreview({ resources, selectedPlacement }) {
       <aside className="studio-attached-panel" aria-label={`${label} attachments`}>
         <div className="studio-panel-title"><span aria-hidden="true">📎</span> Materials & links</div>
         {visible.length === 0 ? (
-          <p className="studio-panel-empty">Nothing appears without a destination. Add an item and choose this placement.</p>
+          <p className="studio-panel-empty">Nothing learner-visible is attached here yet. Quarantined and device-only files remain withheld.</p>
         ) : visible.map((resource) => (
           <div className="studio-attached-row" key={`${resource.storage_mode}-${resource.id}`}>
             <ResourceIcon resource={resource} />
             <div><strong>{resource.title}</strong><small>{resource.description || resource.safe_name || resource.external_url}</small></div>
           </div>
         ))}
+        {withheld.length > 0 && <p className="studio-panel-withheld">{withheld.length} item{withheld.length === 1 ? " is" : "s are"} withheld from learners until security or storage requirements are satisfied.</p>}
       </aside>
     </div>
   );
@@ -128,10 +176,14 @@ export default function MaterialsWorkspace() {
   const [addMode, setAddMode] = useState("file");
   const [cloudResources, setCloudResources] = useState([]);
   const [deviceResources, setDeviceResources] = useState([]);
+  const [storageUsage, setStorageUsage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadController, setUploadController] = useState(null);
 
   const [file, setFile] = useState(null);
   const [fileTitle, setFileTitle] = useState("");
@@ -147,6 +199,9 @@ export default function MaterialsWorkspace() {
   const [linkTitle, setLinkTitle] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
   const [linkPlacement, setLinkPlacement] = useState("lesson");
+  const [serverPreview, setServerPreview] = useState(null);
+  const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
+  const [linkPreviewError, setLinkPreviewError] = useState("");
 
   const [quoteText, setQuoteText] = useState("");
   const [quoteAttribution, setQuoteAttribution] = useState("");
@@ -154,7 +209,11 @@ export default function MaterialsWorkspace() {
   const [quotePlacement, setQuotePlacement] = useState("lesson");
 
   const activePlacement = addMode === "file" ? filePlacement : addMode === "link" ? linkPlacement : quotePlacement;
-  const preview = useMemo(() => linkPreview(linkValue, linkTitle), [linkValue, linkTitle]);
+  const localPreview = useMemo(() => linkPreview(linkValue, linkTitle), [linkValue, linkTitle]);
+  const preview = useMemo(
+    () => localPreview?.isYouTube ? localPreview : mapServerPreview(serverPreview, localPreview),
+    [serverPreview, localPreview]
+  );
   const safeName = useMemo(() => {
     if (!file) return "";
     return buildDigitalLiteracyName({
@@ -184,12 +243,14 @@ export default function MaterialsWorkspace() {
     setLoading(true);
     setError("");
     try {
-      const [cloud, device] = await Promise.all([
+      const [cloud, device, usage] = await Promise.all([
         listCloudResources(courseId),
         listDeviceFiles(courseId),
+        getCurrentStorageUsage().catch(() => null),
       ]);
       setCloudResources(cloud);
       setDeviceResources(device);
+      setStorageUsage(usage);
     } catch (loadError) {
       setError(loadError.message || "Unable to load the resource library.");
     } finally {
@@ -201,6 +262,24 @@ export default function MaterialsWorkspace() {
     refresh();
   }, [courseId]);
 
+  useEffect(() => {
+    setServerPreview(null);
+    setLinkPreviewError("");
+    if (!linkValue.trim() || localPreview?.isYouTube || !localPreview?.href) return undefined;
+    const timeout = window.setTimeout(async () => {
+      setLinkPreviewLoading(true);
+      try {
+        const result = await getLinkPreview(localPreview.href);
+        setServerPreview(result);
+      } catch (previewError) {
+        setLinkPreviewError(previewError.message || "The server could not preview this page.");
+      } finally {
+        setLinkPreviewLoading(false);
+      }
+    }, 650);
+    return () => window.clearTimeout(timeout);
+  }, [linkValue, localPreview?.href, localPreview?.isYouTube]);
+
   function clearMessages() {
     setNotice("");
     setError("");
@@ -210,6 +289,8 @@ export default function MaterialsWorkspace() {
     event.preventDefault();
     clearMessages();
     setBusy(true);
+    setUploadProgress(null);
+    setUploadStatus("");
     try {
       validateFile(file);
       const checksumSha256 = await checksumFile(file);
@@ -237,34 +318,34 @@ export default function MaterialsWorkspace() {
         if (filePlacement !== "private-vault" && !courseId) {
           throw new Error("Save the course shell again before adding shared course materials.");
         }
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
         const target = await uploadCloudFile(file, {
           ...metadata,
-          userId: userData.user.id,
           scope: filePlacement === "private-vault" ? "private" : "course",
+          onProgress: setUploadProgress,
+          onStatus: (status) => setUploadStatus(status),
+          onController: setUploadController,
         });
         await saveResourceRecord({
           course_id: filePlacement === "private-vault" ? null : courseId,
+          secure_file_id: target.secureFileId,
           resource_type: inferResourceType(file),
           title,
           description,
           placement: filePlacement,
           storage_mode: "cloud",
-          bucket_id: target.bucket,
-          storage_path: target.path,
           mime_type: file.type || "application/octet-stream",
           size_bytes: file.size,
           original_name: file.name,
           safe_name: target.safeName,
           checksum_sha256: target.checksumSha256,
+          security_status: "quarantined",
           alt_text: altText.trim() || null,
           source_label: sourceLabel.trim() || null,
           license_label: licenseLabel.trim() || null,
           visibility: filePlacement === "private-vault" ? "private" : "course",
           metadata: { version: fileVersion, namingConvention: "digital-literacy-v1" },
         });
-        setNotice("Uploaded privately and attached to the selected page panel.");
+        setNotice("Upload finished and entered quarantine. It will appear to learners only after malware and archive checks return clean.");
       }
 
       setFile(null);
@@ -273,6 +354,7 @@ export default function MaterialsWorkspace() {
       setAltText("");
       setSourceLabel("");
       setLicenseLabel("");
+      setUploadController(null);
       const input = document.getElementById("studio-file-input");
       if (input) input.value = "";
       await refresh();
@@ -287,13 +369,14 @@ export default function MaterialsWorkspace() {
     event.preventDefault();
     clearMessages();
     if (!preview) {
-      setError("Enter a complete web address.");
+      setError("Enter a complete public web address.");
       return;
     }
     setBusy(true);
     try {
       await saveResourceRecord({
         course_id: courseId,
+        link_preview_id: serverPreview?.id || null,
         resource_type: detectResourceKind(preview.href),
         title: linkTitle.trim() || preview.title,
         description: linkDescription.trim() || preview.description,
@@ -306,12 +389,14 @@ export default function MaterialsWorkspace() {
           host: preview.host,
           youtubeId: preview.youtubeId,
           embedUrl: preview.embedUrl,
-          thumbnailUrl: preview.thumbnailUrl,
+          thumbnailUrl: preview.thumbnailUrl || preview.imageUrl,
+          serverPreviewId: serverPreview?.id || null,
         },
       });
       setLinkValue("");
       setLinkTitle("");
       setLinkDescription("");
+      setServerPreview(null);
       setNotice(`${preview.provider} resource added to ${PLACEMENTS.find(([value]) => value === linkPlacement)?.[1]}.`);
       await refresh();
     } catch (linkError) {
@@ -357,9 +442,21 @@ export default function MaterialsWorkspace() {
   async function removeResource(resource) {
     clearMessages();
     try {
-      if (resource.storage_mode === "device") await deleteDeviceFile(resource.id);
-      else await deleteResourceRecord(resource);
-      setNotice("Resource removed.");
+      if (resource.storage_mode === "device") {
+        await deleteDeviceFile(resource.id);
+        setNotice("Device-only resource removed.");
+      } else {
+        const result = await deleteResourceRecord(resource);
+        if (result?.deleted || result?.status === "completed" || result?.status === "metadata_removed") {
+          setNotice("Resource removed and audited.");
+        } else if (result?.status === "blocked_legal_hold") {
+          setNotice("Deletion was recorded but blocked by an active legal hold.");
+        } else if (result?.status === "deferred_retention") {
+          setNotice(`Deletion was recorded and deferred until ${new Date(result.eligibleAt).toLocaleString()}.`);
+        } else {
+          setNotice("Deletion request recorded.");
+        }
+      }
       await refresh();
     } catch (removeError) {
       setError(removeError.message || "The resource could not be removed.");
@@ -370,12 +467,15 @@ export default function MaterialsWorkspace() {
     clearMessages();
     try {
       if (resource.storage_mode === "device") await downloadDeviceFile(resource.id);
-      else if (resource.storage_mode === "cloud") await downloadCloudFile(resource.bucket_id, resource.storage_path, resource.safe_name || resource.original_name);
-      else window.open(resource.external_url, "_blank", "noopener,noreferrer");
+      else await downloadStoredResource(resource);
     } catch (downloadError) {
       setError(downloadError.message || "The resource could not be opened.");
     }
   }
+
+  const quotaPercent = storageUsage?.quota_bytes
+    ? Math.min(100, ((Number(storageUsage.used_bytes) + Number(storageUsage.reserved_bytes)) / Number(storageUsage.quota_bytes)) * 100)
+    : 0;
 
   return (
     <section className="studio-workspace" aria-labelledby="materials-title">
@@ -383,10 +483,18 @@ export default function MaterialsWorkspace() {
         <div>
           <span className="studio-kicker">MATERIALS STUDIO</span>
           <h2 id="materials-title">Attach it to a real place—not a floating upload tray.</h2>
-          <p>Files, images, quotations, YouTube videos, and links are placed in a named course panel and previewed before learners see them.</p>
+          <p>Files enter quarantine first. Links are inspected server-side. Only clean, released materials appear to learners.</p>
         </div>
-        <div className="studio-storage-badge"><span>●</span> Private Supabase buckets + device-only vault</div>
+        <div className="studio-storage-badge"><span>●</span> Quarantine + private delivery + device-only vault</div>
       </div>
+
+      {storageUsage && (
+        <div className="studio-quota-panel">
+          <div><strong>{storageUsage.plan_key} storage</strong><span>{formatBytes(Number(storageUsage.used_bytes) + Number(storageUsage.reserved_bytes))} of {formatBytes(storageUsage.quota_bytes)}</span></div>
+          <div className="studio-quota-track"><span style={{ width: `${quotaPercent}%` }} /></div>
+          <small>Maximum file: {formatBytes(storageUsage.max_file_bytes)} · reservations count until an upload completes or expires.</small>
+        </div>
+      )}
 
       {!courseId && (
         <div className="studio-warning">This browser has an older local course shell. Open <strong>Course setup</strong> and save it once to create its secure database record.</div>
@@ -407,7 +515,7 @@ export default function MaterialsWorkspace() {
               <label className="studio-file-drop" htmlFor="studio-file-input">
                 <span aria-hidden="true">📎</span>
                 <strong>{file ? file.name : "Choose a document, image, book, slide deck, or media file"}</strong>
-                <small>{file ? `${formatBytes(file.size)} · ${file.type || "unknown type"}` : "PDF, Word, PowerPoint, EPUB, image, audio, video, spreadsheet, text, or ZIP · 25 MB launch limit"}</small>
+                <small>{file ? `${formatBytes(file.size)} · ${file.type || "unknown type"}` : "PDF, Word, PowerPoint, EPUB, image, audio, video, spreadsheet, text, or ZIP · plan quota enforced server-side"}</small>
                 <input id="studio-file-input" type="file" accept={ACCEPT} onChange={(event) => {
                   const next = event.target.files?.[0] || null;
                   setFile(next);
@@ -423,7 +531,7 @@ export default function MaterialsWorkspace() {
 
               <div className="studio-storage-choice" role="group" aria-label="File storage choice">
                 <button type="button" className={storageMode === "cloud" ? "is-active" : ""} onClick={() => setStorageMode("cloud")}>
-                  <strong>Cloud vault</strong><small>Private, signed-in access across devices</small>
+                  <strong>Secure cloud</strong><small>Resumable upload → quarantine → scan → private release</small>
                 </button>
                 <button type="button" className={storageMode === "device" ? "is-active" : ""} onClick={() => setStorageMode("device")}>
                   <strong>This device only</strong><small>Never uploads; browser-local IndexedDB</small>
@@ -438,23 +546,33 @@ export default function MaterialsWorkspace() {
                   <label>Source / creator<input value={sourceLabel} onChange={(event) => setSourceLabel(event.target.value)} placeholder="Author, organization, photographer" /></label>
                   <label>License / permission<input value={licenseLabel} onChange={(event) => setLicenseLabel(event.target.value)} placeholder="Owned, CC BY, public domain…" /></label>
                 </div>
-                <div className="studio-name-preview"><small>SAFE FILE NAME</small><code>{safeName || "Select a file to generate the name."}</code><p>Date · course code · material type · subject · version. A SHA-256 checksum is also recorded for cloud files.</p></div>
+                <div className="studio-name-preview"><small>SAFE FILE NAME</small><code>{safeName || "Select a file to generate the name."}</code><p>Date · course code · material type · subject · version. A SHA-256 checksum is verified after upload.</p></div>
               </details>
 
-              <button className="studio-primary-button" type="submit" disabled={busy || !file}>{busy ? "Saving…" : storageMode === "device" ? "Save to this device" : "Upload privately and attach"}</button>
+              {uploadProgress && (
+                <div className="studio-upload-progress">
+                  <div><strong>{uploadStatus || "uploading"}</strong><span>{uploadProgress.percentage.toFixed(1)}%</span></div>
+                  <div><span style={{ width: `${uploadProgress.percentage}%` }} /></div>
+                  <small>{formatBytes(uploadProgress.bytesUploaded)} of {formatBytes(uploadProgress.bytesTotal)}</small>
+                  {busy && uploadController && <div><button type="button" onClick={() => uploadController.pause()}>Pause</button><button type="button" onClick={() => uploadController.resume()}>Resume</button></div>}
+                </div>
+              )}
+
+              <button className="studio-primary-button" type="submit" disabled={busy || !file}>{busy ? (storageMode === "cloud" ? "Uploading securely…" : "Saving…") : storageMode === "device" ? "Save to this device" : "Upload to quarantine"}</button>
             </form>
           )}
 
           {addMode === "link" && (
             <form className="studio-form" onSubmit={addLink}>
-              <label>URL<input value={linkValue} onChange={(event) => setLinkValue(event.target.value)} placeholder="Paste a YouTube, Canva, Word, Cengage, article, or other link" /></label>
+              <label>URL<input value={linkValue} onChange={(event) => setLinkValue(event.target.value)} placeholder="Paste a YouTube, Canva, Word, Cengage, article, or other public link" /></label>
               <div className="studio-field-grid">
                 <label>Link title<input value={linkTitle} onChange={(event) => setLinkTitle(event.target.value)} placeholder="Learner-facing label" /></label>
                 <label>Panel placement<select value={linkPlacement} onChange={(event) => setLinkPlacement(event.target.value)}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
               <label>Description<textarea value={linkDescription} onChange={(event) => setLinkDescription(event.target.value)} placeholder="Explain why this link is here instead of making students guess." rows={3} /></label>
-              <ExternalPreview preview={preview} description={linkDescription} />
-              <button className="studio-primary-button" type="submit" disabled={busy || !preview}>{busy ? "Saving…" : preview?.isYouTube ? "Embed video in this panel" : "Add link to this panel"}</button>
+              {linkPreviewError && <div className="studio-alert is-error">{linkPreviewError}</div>}
+              <ExternalPreview preview={preview} description={linkDescription} loading={linkPreviewLoading} />
+              <button className="studio-primary-button" type="submit" disabled={busy || !preview}>{busy ? "Saving…" : preview?.isYouTube ? "Embed video in this panel" : "Add inspected link to this panel"}</button>
             </form>
           )}
 
@@ -476,19 +594,23 @@ export default function MaterialsWorkspace() {
       </div>
 
       <section className="studio-library" aria-labelledby="resource-library-title">
-        <div className="studio-library-heading"><div><span className="studio-kicker">COURSE RESOURCE LIBRARY</span><h3 id="resource-library-title">Everything has an owner, location, and storage mode.</h3></div><button type="button" onClick={refresh}>Refresh</button></div>
+        <div className="studio-library-heading"><div><span className="studio-kicker">COURSE RESOURCE LIBRARY</span><h3 id="resource-library-title">Everything has an owner, location, security state, and storage mode.</h3></div><button type="button" onClick={refresh}>Refresh</button></div>
         {loading ? <div className="studio-library-empty">Loading secure materials…</div> : combinedResources.length === 0 ? <div className="studio-library-empty">No materials yet. Use the panel above to attach the first resource.</div> : (
           <div className="studio-resource-table">
-            {combinedResources.map((resource) => (
-              <article key={`${resource.storage_mode}-${resource.id}`}>
-                <ResourceIcon resource={resource} />
-                <div className="studio-resource-main"><strong>{resource.title}</strong><p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p><small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement} · {resource.storage_mode === "device" ? "Device only" : resource.storage_mode === "cloud" ? `Private cloud · ${formatBytes(resource.size_bytes || resource.sizeBytes)}` : resource.resource_type === "youtube" ? "Embedded YouTube" : "External / metadata"}</small></div>
-                <div className="studio-resource-actions">
-                  {(resource.storage_mode === "cloud" || resource.storage_mode === "device" || resource.external_url) && <button type="button" onClick={() => downloadResource(resource)}>{resource.storage_mode === "external" ? "Open" : "Download"}</button>}
-                  <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Remove</button>
-                </div>
-              </article>
-            ))}
+            {combinedResources.map((resource) => {
+              const status = resourceStatus(resource);
+              const canOpen = resource.storage_mode === "device" || resource.storage_mode === "external" || (resource.storage_mode === "cloud" && resource.security_status === "clean");
+              return (
+                <article key={`${resource.storage_mode}-${resource.id}`}>
+                  <ResourceIcon resource={resource} />
+                  <div className="studio-resource-main"><strong>{resource.title}</strong><p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p><small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement} · <em className={`security-${status.tone}`}>{status.label}</em></small></div>
+                  <div className="studio-resource-actions">
+                    {canOpen && <button type="button" onClick={() => downloadResource(resource)}>{resource.storage_mode === "external" ? "Open" : "Download"}</button>}
+                    <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Remove</button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
