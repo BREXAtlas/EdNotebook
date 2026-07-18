@@ -1,0 +1,12 @@
+{
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "lib": [
+      "deno.ns",
+      "dom",
+      "dom.iterable",
+      "es2023"
+    ],
+    "strict": true
+  }
+}
