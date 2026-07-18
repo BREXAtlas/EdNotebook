@@ -1,0 +1,202 @@
+.studio-submission-panel {
+  margin-top: 24px;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #dce2ee;
+  border-radius: 20px;
+  box-shadow: 0 16px 42px rgba(16, 27, 51, 0.065);
+}
+
+.studio-submission-panel .studio-panel-heading {
+  align-items: flex-end;
+  margin-bottom: 18px;
+}
+
+.studio-submission-panel .studio-panel-heading > div:first-child {
+  max-width: 720px;
+}
+
+.studio-submission-panel .studio-panel-heading h3 {
+  max-width: 720px;
+  font-size: 26px;
+}
+
+.studio-submission-panel .studio-panel-heading p {
+  margin: 5px 0 0;
+  color: #697386;
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+.studio-submission-panel .studio-preview-switch {
+  margin: 0;
+}
+
+.studio-submission-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(330px, 0.68fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.studio-submission-form {
+  padding: 18px;
+  background: #f8fafd;
+  border: 1px solid #dce3ef;
+  border-radius: 15px;
+}
+
+.studio-submission-list {
+  padding: 18px;
+  background: #fffdf8;
+  border: 1px solid #e3dacb;
+  border-radius: 15px;
+}
+
+.studio-submission-list h4 {
+  margin: 6px 0 14px;
+  color: #101b33;
+  font-family: "Zilla Slab", Georgia, serif;
+  font-size: 22px;
+}
+
+.studio-submission-row {
+  min-height: 78px;
+  padding: 12px 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #e3e7ee;
+}
+
+.studio-submission-row.is-device {
+  opacity: 0.78;
+}
+
+.studio-submission-icon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  color: #1d4ed8;
+  background: #e9efff;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.studio-submission-row strong,
+.studio-submission-row small {
+  display: block;
+}
+
+.studio-submission-row strong {
+  color: #101b33;
+  font-size: 10px;
+}
+
+.studio-submission-row p {
+  margin: 3px 0;
+  overflow: hidden;
+  color: #687286;
+  font-size: 8.5px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-submission-row small {
+  color: #858e9f;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 7px;
+}
+
+.studio-submission-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.studio-submission-actions button {
+  padding: 6px 8px;
+  color: #1d4ed8;
+  background: #fff;
+  border: 1px solid #cdd6e6;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 7.5px;
+  font-weight: 800;
+}
+
+.studio-submission-actions button.is-danger {
+  color: #ae3939;
+  border-color: #edc8c8;
+}
+
+.studio-professor-file-review {
+  padding: 18px;
+  background: #f7f9fd;
+  border: 1px solid #dce3ef;
+  border-radius: 15px;
+}
+
+.studio-review-file-note {
+  margin-bottom: 12px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 9px;
+  color: #24533e;
+  background: #eaf8f1;
+  border: 1px solid #c9ead9;
+  border-radius: 11px;
+}
+
+.studio-review-file-note > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #1e9e6a;
+  border-radius: 9px;
+  font-weight: 900;
+}
+
+.studio-review-file-note strong {
+  color: #24533e;
+  font-size: 9.5px;
+}
+
+.studio-review-file-note p {
+  margin: 3px 0 0;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .studio-submission-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .studio-submission-panel {
+    padding: 17px;
+    border-radius: 16px;
+  }
+
+  .studio-submission-panel .studio-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .studio-submission-row {
+    grid-template-columns: 35px 1fr;
+  }
+
+  .studio-submission-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
