@@ -19,6 +19,8 @@ const FUNCTIONS = {
   pow: (base, exponent) => Math.pow(base, exponent),
 };
 
+const ANGLE_FUNCTIONS = new Set(["sin", "cos", "tan", "asin", "acos", "atan"]);
+
 const CONSTANTS = {
   pi: Math.PI,
   π: Math.PI,
@@ -114,11 +116,11 @@ class Parser {
   }
 
   multiplicative() {
-    let value = this.exponent();
+    let value = this.unary();
     while (["*", "/", "%"].includes(this.current().type)) {
       const operator = this.current().type;
       this.index += 1;
-      const right = this.exponent();
+      const right = this.unary();
       if ((operator === "/" || operator === "%") && right === 0) throw new Error("Division by zero is undefined.");
       if (operator === "*") value *= right;
       if (operator === "/") value /= right;
@@ -127,16 +129,16 @@ class Parser {
     return value;
   }
 
-  exponent() {
-    const left = this.unary();
-    if (this.take("^")) return Math.pow(left, this.exponent());
-    return left;
-  }
-
   unary() {
     if (this.take("+")) return this.unary();
     if (this.take("-")) return -this.unary();
-    return this.primary();
+    return this.exponent();
+  }
+
+  exponent() {
+    const left = this.primary();
+    if (this.take("^")) return Math.pow(left, this.unary());
+    return left;
   }
 
   primary() {
@@ -162,7 +164,9 @@ class Parser {
     }
     this.expect(")");
     if (!args.length) throw new Error(`${identifier.value} needs at least one value.`);
-    return fn(...args, this.angleMode);
+    return ANGLE_FUNCTIONS.has(identifier.value)
+      ? fn(...args, this.angleMode)
+      : fn(...args);
   }
 }
 
