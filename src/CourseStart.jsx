@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import BrandLogo from "./Brand.jsx";
+import { supabase } from "./supabaseClient.js";
 
 const JOURNEY = [
   {
@@ -47,30 +48,82 @@ export default function CourseStart({ onContinue, onHome }) {
   const prior = useMemo(readDraft, []);
   const [name, setName] = useState(prior?.name || "");
   const [code, setCode] = useState(prior?.code || "");
+  const [subject, setSubject] = useState(prior?.subject || "Interdisciplinary");
   const [audience, setAudience] = useState(prior?.audience || "Undergraduate learners");
   const [length, setLength] = useState(prior?.length || "16 weeks");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const begin = (event) => {
+  const begin = async (event) => {
     event.preventDefault();
     if (!name.trim()) {
       setError("Give the course a working title before continuing.");
       return;
     }
 
-    const draft = {
-      name: name.trim(),
-      code: code.trim(),
-      audience: audience.trim(),
-      length,
-      createdAt: prior?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    window.localStorage.setItem("ednotebook-course-draft", JSON.stringify(draft));
-    window.localStorage.setItem("ednotebook-course-step", "2");
+    setBusy(true);
     setError("");
-    onContinue?.();
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!userData.user) throw new Error("Sign in before creating a course.");
+
+      const payload = {
+        owner_id: userData.user.id,
+        title: name.trim(),
+        course_code: code.trim() || null,
+        subject: subject.trim() || null,
+        audience: audience.trim() || null,
+        teaching_window: length,
+        status: "draft",
+        settings: {
+          creationJourney: "six-step-v1",
+          materialsStudio: true,
+          updatedFrom: "course-start",
+        },
+      };
+
+      let savedCourse;
+      if (prior?.id) {
+        const { data, error: updateError } = await supabase
+          .from("courses")
+          .update(payload)
+          .eq("id", prior.id)
+          .select()
+          .single();
+        if (updateError) throw updateError;
+        savedCourse = data;
+      } else {
+        const { data, error: insertError } = await supabase
+          .from("courses")
+          .insert(payload)
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        savedCourse = data;
+      }
+
+      const draft = {
+        id: savedCourse.id,
+        name: savedCourse.title,
+        code: savedCourse.course_code || "",
+        subject: savedCourse.subject || "",
+        audience: savedCourse.audience || "",
+        length: savedCourse.teaching_window || length,
+        status: savedCourse.status,
+        createdAt: savedCourse.created_at,
+        updatedAt: savedCourse.updated_at,
+      };
+
+      window.localStorage.setItem("ednotebook-course-draft", JSON.stringify(draft));
+      window.localStorage.setItem("ednotebook-course-id", savedCourse.id);
+      window.localStorage.setItem("ednotebook-course-step", "2");
+      onContinue?.();
+    } catch (saveError) {
+      setError(saveError.message || "The secure course record could not be created.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -101,7 +154,7 @@ export default function CourseStart({ onContinue, onHome }) {
             <span className="card-step-number">1</span>
             <div>
               <strong>Create course</strong>
-              <small>Required before Course Forge</small>
+              <small>Required before Course Forge and secure material storage</small>
             </div>
           </div>
 
@@ -127,6 +180,27 @@ export default function CourseStart({ onContinue, onHome }) {
               />
             </label>
             <label>
+              Subject
+              <input
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="Digital literacy, mathematics, biology…"
+                autoComplete="off"
+              />
+            </label>
+          </div>
+
+          <div className="course-field-grid">
+            <label>
+              Learner audience
+              <input
+                value={audience}
+                onChange={(event) => setAudience(event.target.value)}
+                placeholder="First-year non-majors"
+                autoComplete="off"
+              />
+            </label>
+            <label>
               Teaching window
               <select value={length} onChange={(event) => setLength(event.target.value)}>
                 <option>4 weeks</option>
@@ -138,23 +212,13 @@ export default function CourseStart({ onContinue, onHome }) {
             </label>
           </div>
 
-          <label>
-            Learner audience
-            <input
-              value={audience}
-              onChange={(event) => setAudience(event.target.value)}
-              placeholder="First-year non-majors"
-              autoComplete="off"
-            />
-          </label>
-
           {error && <div className="course-form-error" role="alert">{error}</div>}
 
-          <button className="primary-course-button" type="submit" data-motion="true">
-            Save course and continue to Step 2
+          <button className="primary-course-button" type="submit" data-motion="true" disabled={busy}>
+            {busy ? "Creating secure course record…" : "Save course and continue to Step 2"}
             <span aria-hidden="true">→</span>
           </button>
-          <p className="course-create-note">Saved privately to this browser while the full database course model is connected.</p>
+          <p className="course-create-note">Saved to your authenticated Supabase course tenancy so materials, assignments, books, and messages have a secure owner.</p>
         </form>
       </section>
 
