@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
       filename = data.safe_name || data.original_name || "download";
     }
 
+    if (!file) throw new HttpError(404, "File was not found.");
     if (file.availability_status === "deleted" || file.availability_status === "pending_delete") {
       throw new HttpError(410, "The file is pending deletion or has been deleted.");
     }
