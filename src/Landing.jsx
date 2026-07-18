@@ -1,339 +1,368 @@
-import { useState } from "react";
+import { useEffect, useRef } from "react";
+import BrandLogo, { BrandMark } from "./Brand.jsx";
 
-/* ============================================================
-   EDNOTEBOOK — landing page
-   Brand: Ram Ready theme, matching the app
-   ============================================================ */
-
-const FONT_LINK = `@import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Newsreader:wght@400;500;600&display=swap');`;
-
-const T = {
-  ink: "#101B33", body: "#2A3350", slate: "#5B6478",
-  paper: "#F6F7FB", card: "#FFFFFF", line: "#DDE2EE",
-  primary: "#1D4ED8", primaryDark: "#173BA3", accent: "#F2B33D", accentDark: "#C98A12",
-  good: "#1E9E6A", bad: "#D14343",
-  display: "'Zilla Slab', serif", bodyFont: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace",
-};
-
-const PLANS = [
-  { key: "free", name: "Free", price: "$0", cadence: "forever", tag: "Start here",
-    features: ["1 class", "Up to 50 students", "Ram Ready template", "Community support"] },
-  { key: "perCourse", name: "Per-Course", price: "$59–99", cadence: "per 8 or 16-week course", tag: null,
-    features: ["1 class per purchase", "All 5 lesson templates", "AI paper grader", "Pay only when you're teaching"] },
-  { key: "semester", name: "Semester", price: "$179", cadence: "per semester", tag: "Most popular",
-    features: ["Up to 5 classes", "Writing coach for students", "Priority support"] },
-  { key: "annual", name: "Annual", price: "$549", cadence: "per year", tag: "Best value",
-    features: ["Up to 10 classes", "Save ~35% vs. semester", "Priority support", "Early access features"] },
+const COURSE_STEPS = [
+  {
+    number: "1 / 6",
+    title: "Create the course",
+    text: "Name the class, identify the learners, and choose the teaching window before opening the builder.",
+  },
+  {
+    number: "2 / 6",
+    title: "Add source content",
+    text: "Bring a syllabus, lecture notes, learning outcomes, readings, or an existing outline.",
+  },
+  {
+    number: "3 / 6",
+    title: "Choose the learning design",
+    text: "Use Ram Ready, Story, Lab, Drill, or Seminar and set the lesson and assessment counts.",
+  },
+  {
+    number: "4 / 6",
+    title: "Generate and review",
+    text: "Build the course map, open every lesson, edit sections, and approve the academic structure.",
+  },
+  {
+    number: "5 / 6",
+    title: "Preview as a learner",
+    text: "Experience the pacing, checks, quiz reasoning, XP, badges, and completion flow yourself.",
+  },
+  {
+    number: "6 / 6",
+    title: "Publish and invite",
+    text: "Move the course from sandbox to live and bring learners in only when it is ready.",
+  },
 ];
 
-const STEPS = [
-  { n: "01", title: "Paste your content", text: "A syllabus, lecture notes, a chapter outline — anything you already have." },
-  { n: "02", title: "Pick a template", text: "Story, Lab, Drill, Seminar, or Ram Ready — the six-question spine from Digital Literacy." },
-  { n: "03", title: "AI builds the course", text: "Acts, episodes, knowledge checks, and a quiz — structured, not just summarized." },
-  { n: "04", title: "Students play it", text: "XP, streaks, and badges wrap material that stays exactly as rigorous as you wrote it." },
+const FEATURES = [
+  {
+    icon: "✦",
+    title: "Structured course creation",
+    text: "Turn source material into acts, lessons, knowledge checks, quizzes, timing, and an editable content map.",
+  },
+  {
+    icon: "◫",
+    title: "Professor-controlled AI",
+    text: "AI can suggest a course, a lesson, or a grade, but the professor reviews, edits, and approves the result.",
+  },
+  {
+    icon: "↗",
+    title: "A learner experience that moves",
+    text: "Quest maps, progress, streaks, badges, and focus mode give rigorous material a clear path forward.",
+  },
+  {
+    icon: "✓",
+    title: "Governance made visible",
+    text: "Roles, ownership, budget controls, audit-minded workflows, and FERPA-aware product language live in one admin view.",
+  },
+  {
+    icon: "¶",
+    title: "Writing without ghostwriting",
+    text: "The coach diagnoses weak paragraphs, missing citations, and formatting issues, then gives an exercise instead of rewriting the student’s work.",
+  },
+  {
+    icon: "◎",
+    title: "One design across every role",
+    text: "Professor, learner, administrator, and owner views share themes, navigation patterns, and the same course model.",
+  },
 ];
 
-const DEMO_EPISODES = [
-  { id: "d1", title: "Your First File System", done: true },
-  { id: "d2", title: "Email a Professor Without Fear", current: true },
-  { id: "d3", title: "AI: Tool, Tutor, or Trap?", locked: true },
-];
-const DEMO_LESSON = {
-  sections: [
-    { heading: "What it is", body: "A professional email has a subject that says what you need, a greeting with your professor's actual title, two or three sentences of context, one clear ask, and your name and course section at the bottom." },
-    { heading: "Why it exists", body: "Your professor reads dozens of emails a day between three or four different classes. A vague subject line like 'question' gets read last, if at all. A specific one gets answered first." },
+const FAQS = [
+  [
+    "What should I add first?",
+    "Start by creating the course shell. EdNotebook then labels every remaining stage from 2 of 6 through 6 of 6, so source content is never mistaken for the first step.",
   ],
-  quiz: { q: "Which subject line gets answered fastest?", options: ["question", "hey", "PHIL 201 — makeup exam request for Thu 10/2", "URGENT!!"], answer: 2, why: "It names the course, the situation, and the date in one glance — your professor doesn't have to open it to triage it." },
-};
+  [
+    "Does AI publish directly to students?",
+    "No. Course generation and grading are review workflows. The professor edits and approves the work before a course goes live or a grade is posted.",
+  ],
+  [
+    "Can I use my existing syllabus?",
+    "Yes. Paste the syllabus, outcomes, lecture notes, readings, or a compact outline. The clearer the learner level, destination, and constraints, the more useful the generated structure becomes.",
+  ],
+  [
+    "Is EdNotebook an LMS replacement?",
+    "The prototype is focused on course creation, interactive delivery, writing support, grading review, and governance. SIS, SSO, and deep LMS integrations belong to the institutional deployment layer.",
+  ],
+];
 
-const TEMPLATE_OPTIONS = ["Ram Ready", "Story", "Lab", "Drill", "Seminar"];
+function Reveal({ children, className = "" }) {
+  const ref = useRef(null);
 
-/* ---------- primitives ---------- */
-function Btn({ children, onClick, variant = "solid", size = "md", full, style }) {
-  const pads = { sm: "8px 16px", md: "11px 22px", lg: "15px 30px" };
-  const fonts = { sm: 13, md: 15, lg: 17 };
-  const variants = {
-    solid: { background: T.accent, color: T.ink },
-    ghost: { background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,.5)" },
-    outline: { background: "transparent", color: T.primary, border: `1px solid ${T.primary}` },
-    quiet: { background: "transparent", color: T.slate, border: `1px solid ${T.line}` },
-  };
-  return (
-    <button onClick={onClick} style={{ fontFamily: T.bodyFont, fontWeight: 700, fontSize: fonts[size], padding: pads[size], borderRadius: 999,
-      cursor: "pointer", border: "1px solid transparent", width: full ? "100%" : "auto", ...variants[variant], ...style }}>
-      {children}
-    </button>
-  );
-}
-function Section({ children, style, id }) {
-  return <section id={id} style={{ maxWidth: 640, margin: "0 auto", padding: "0 18px", ...style }}>{children}</section>;
-}
-function Eyebrow({ children }) {
-  return <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: T.accentDark }}>{children}</div>;
-}
-
-/* ---------- mini interactive demo ---------- */
-function LiveDemo() {
-  const [open, setOpen] = useState(null);
-  const [answered, setAnswered] = useState(false);
-  const [pick, setPick] = useState(null);
-
-  if (open) {
-    const l = DEMO_LESSON;
-    return (
-      <div className="cc-rise" style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: 18 }}>
-        <button onClick={() => { setOpen(null); setAnswered(false); setPick(null); }} style={{ background: "none", border: "none", color: T.slate, fontFamily: T.mono, fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 12 }}>← Back to quest map</button>
-        {l.sections.map((s, i) => (
-          <div key={i} style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentDark, letterSpacing: ".08em" }}>{s.heading.toUpperCase()}</div>
-            <div style={{ fontSize: 14.5, color: T.body, lineHeight: 1.6, marginTop: 4 }}>{s.body}</div>
-          </div>
-        ))}
-        <div style={{ background: T.paper, borderRadius: 12, padding: 13, border: `1px solid ${T.accent}55` }}>
-          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentDark, marginBottom: 6 }}>KNOWLEDGE CHECK</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 9 }}>{l.quiz.q}</div>
-          {l.quiz.options.map((o, i) => {
-            const picked = pick === i, right = i === l.quiz.answer;
-            return (
-              <button key={i} onClick={() => { if (answered) return; setPick(i); setAnswered(true); }}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 11px", marginBottom: 6, borderRadius: 10, fontSize: 13.5, cursor: "pointer",
-                  fontFamily: T.bodyFont, color: T.ink, border: `1px solid ${picked ? (right ? T.good : T.bad) : T.line}`, background: picked ? (right ? T.good + "18" : T.bad + "18") : "#fff" }}>
-                {o}
-              </button>
-            );
-          })}
-          {answered && <div style={{ fontSize: 13, color: T.body, lineHeight: 1.5, marginTop: 6 }}>{pick === l.quiz.answer ? "✓ " : ""}{l.quiz.why}</div>}
-        </div>
-      </div>
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          node.classList.add("is-visible");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px" }
     );
-  }
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: 18 }}>
-      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.slate, marginBottom: 4 }}>RAM READY · DIGITAL LITERACY</div>
-      <div style={{ fontFamily: T.display, fontSize: 19, fontWeight: 700, color: T.ink, marginBottom: 12 }}>Act II · Communication</div>
-      {DEMO_EPISODES.map((ep) => (
-        <button key={ep.id} disabled={ep.locked} onClick={() => ep.current && setOpen(ep.id)}
-          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, marginBottom: 8, cursor: ep.current ? "pointer" : "default", opacity: ep.locked ? 0.4 : 1 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 99, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            background: ep.done ? T.good : ep.current ? T.accent : T.line, color: ep.done ? "#fff" : ep.current ? T.ink : T.slate, fontSize: 12 }}>{ep.done ? "✓" : ep.current ? "▶" : "🔒"}</div>
-          <div style={{ flex: 1, border: `1px solid ${ep.current ? T.accent : T.line}`, borderRadius: 12, padding: "9px 12px" }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{ep.title}</div>
-            {ep.current && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentDark, marginTop: 2 }}>tap to try this lesson</div>}
-          </div>
-        </button>
-      ))}
-      <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.slate, marginTop: 4 }}>Independent pilot demo — not official university policy.</div>
+    <div ref={ref} className={`reveal-block ${className}`.trim()}>
+      {children}
     </div>
   );
 }
 
-/* ---------- onboarding stepper ---------- */
-function Onboarding({ onClose, onFinish }) {
-  const [step, setStep] = useState(0);
-  const [data, setData] = useState({ name: "", email: "", institution: "", subject: "", length: "16", template: "Ram Ready" });
-  const set = (k, v) => setData({ ...data, [k]: v });
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,14,22,.72)", zIndex: 90, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div className="cc-pop" style={{ background: T.paper, borderRadius: "20px 20px 0 0", maxWidth: 460, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 22 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accentDark, letterSpacing: ".1em" }}>TEACHER SETUP · STEP {Math.min(step + 1, 4)} OF 4</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: T.slate, cursor: "pointer" }}>×</button>
-        </div>
-        <div style={{ height: 4, background: T.line, borderRadius: 999, marginBottom: 18 }}>
-          <div style={{ height: 4, width: `${Math.min(step + 1, 4) * 25}%`, background: T.accent, borderRadius: 999, transition: "width .3s ease" }} />
-        </div>
-
-        {step === 0 && (
-          <div className="cc-rise">
-            <div style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 12 }}>Your info</div>
-            {[["name", "Full name"], ["email", "Email"], ["institution", "Institution"]].map(([k, label]) => (
-              <input key={k} value={data[k]} onChange={(e) => set(k, e.target.value)} placeholder={label}
-                style={{ width: "100%", padding: 12, fontSize: 14, fontFamily: T.bodyFont, color: T.ink, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 12, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
-            ))}
-            <Btn full onClick={() => setStep(1)} style={{ marginTop: 6 }} disabled={!data.name}>Continue</Btn>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="cc-rise">
-            <div style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 12 }}>What are you teaching?</div>
-            <input value={data.subject} onChange={(e) => set("subject", e.target.value)} placeholder="e.g. SCI 101 — Introduction to Biology"
-              style={{ width: "100%", padding: 12, fontSize: 14, fontFamily: T.bodyFont, color: T.ink, background: "#fff", border: `1px solid ${T.line}`, borderRadius: 12, outline: "none", marginBottom: 14, boxSizing: "border-box" }} />
-            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.slate, marginBottom: 6 }}>COURSE LENGTH</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              {["8", "16"].map((w) => (
-                <button key={w} onClick={() => set("length", w)} style={{ flex: 1, padding: "10px", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                  fontFamily: T.bodyFont, border: `1px solid ${data.length === w ? T.primary : T.line}`, background: data.length === w ? T.primary : "#fff", color: data.length === w ? "#fff" : T.slate }}>{w} weeks</button>
-              ))}
-            </div>
-            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.slate, marginBottom: 6 }}>TEMPLATE</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {TEMPLATE_OPTIONS.map((tp) => (
-                <button key={tp} onClick={() => set("template", tp)} style={{ padding: "6px 13px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-                  fontFamily: T.bodyFont, border: `1px solid ${data.template === tp ? T.primary : T.line}`, background: data.template === tp ? T.primary : "#fff", color: data.template === tp ? "#fff" : T.slate }}>{tp}</button>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <Btn variant="quiet" onClick={() => setStep(0)}>Back</Btn>
-              <Btn full onClick={() => setStep(2)} disabled={!data.subject}>Continue</Btn>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="cc-rise">
-            <div style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 4 }}>Building your free class…</div>
-            <div style={{ fontSize: 14, color: T.body, marginBottom: 16 }}>{data.subject} · {data.length}-week · {data.template} template</div>
-            {["Creating your class shell", "Loading the " + data.template + " template", "Setting your free-plan seat cap (50 students)", "Opening Course Forge"].map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0" }}>
-                <span style={{ width: 7, height: 7, borderRadius: 99, background: T.good }} />
-                <span style={{ fontSize: 13.5, color: T.ink }}>{s}</span>
-              </div>
-            ))}
-            <Btn full style={{ marginTop: 16 }} onClick={() => setStep(3)}>Continue</Btn>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="cc-pop" style={{ textAlign: "center", padding: "10px 0" }}>
-            <div style={{ fontSize: 44 }}>🎉</div>
-            <div style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, color: T.ink, margin: "8px 0 6px" }}>Your free class is ready</div>
-            <div style={{ fontSize: 14, color: T.body, lineHeight: 1.55, marginBottom: 18 }}>
-              {data.subject || "Your class"} is live on the Free plan — 1 class, up to 50 students. Course Forge is exactly what you tried above: paste your syllabus and generate.
-            </div>
-            <Btn full onClick={onFinish}>Continue to your builder →</Btn>
-            <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.slate, marginTop: 10 }}>Opening Course Forge, signed in as {data.email || "you"}.</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   PAGE
-   ============================================================ */
 export default function Landing({ onEnter }) {
-  const [onboard, setOnboard] = useState(false);
-  const [courseLength, setCourseLength] = useState("16");
+  const goTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
-    <div style={{ background: T.paper, minHeight: "100vh", fontFamily: T.bodyFont }}>
-      <style>{FONT_LINK + `
-        @keyframes ccRise { from { opacity:0; transform: translateY(14px) } to { opacity:1; transform:none } }
-        .cc-rise { animation: ccRise .5s cubic-bezier(.2,.8,.3,1) both; }
-        @keyframes ccPop { 0% { opacity:0; transform: scale(.95) } 100% { opacity:1; transform: scale(1) } }
-        .cc-pop { animation: ccPop .35s ease both; }
-        @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
-      `}</style>
+    <div className="landing-page">
+      <header className="landing-nav">
+        <a className="landing-brand" href="#/" aria-label="EdNotebook home">
+          <BrandLogo size={42} tagline="Build courses learners can finish" />
+        </a>
+        <nav aria-label="Primary navigation">
+          <button type="button" onClick={() => goTo("course-path")}>How it works</button>
+          <button type="button" onClick={() => goTo("features")}>Features</button>
+          <button type="button" onClick={() => goTo("faq")}>FAQ</button>
+        </nav>
+        <button className="nav-cta" type="button" onClick={onEnter} data-motion="true">
+          Create course
+        </button>
+      </header>
 
-      {onboard && <Onboarding onClose={() => setOnboard(false)} onFinish={() => { setOnboard(false); onEnter && onEnter(); }} />}
-
-      {/* Nav */}
-      <div style={{ position: "sticky", top: 0, zIndex: 15, background: T.ink, padding: "12px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 18, color: "#fff" }}>Ed<span style={{ color: T.accent }}>Notebook</span></div>
-        <div style={{ marginLeft: "auto" }}>
-          <Btn variant="solid" size="sm" onClick={() => setOnboard(true)}>Get started free</Btn>
-        </div>
-      </div>
-
-      {/* Hero */}
-      <div style={{ background: "linear-gradient(180deg,#101B33,#173BA3)", padding: "40px 0 46px", color: "#fff" }}>
-        <Section>
-          <Eyebrow>FOR PROFESSORS & UNIVERSITIES</Eyebrow>
-          <h1 style={{ fontFamily: T.display, fontSize: 34, fontWeight: 700, lineHeight: 1.12, margin: "10px 0 12px" }}>
-            Paste your content.<br />We build a course students actually finish.
-          </h1>
-          <p style={{ fontSize: 15.5, opacity: 0.85, lineHeight: 1.6, marginBottom: 20 }}>
-            EdNotebook turns a syllabus into an interactive, gamified course in minutes — built on the same template behind Ram Ready Digital Literacy, shown live below.
-          </p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Btn size="lg" onClick={() => setOnboard(true)}>Get started free</Btn>
-            <Btn variant="ghost" size="lg" onClick={() => document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" })}>Try the live demo ↓</Btn>
-          </div>
-        </Section>
-      </div>
-
-      {/* How it works */}
-      <Section style={{ padding: "44px 18px 8px" }}>
-        <Eyebrow>HOW IT WORKS</Eyebrow>
-        <h2 style={{ fontFamily: T.display, fontSize: 24, fontWeight: 700, color: T.ink, margin: "8px 0 20px" }}>Four steps, no LMS training required</h2>
-        {STEPS.map((s, i) => (
-          <div key={i} style={{ display: "flex", gap: 14, marginBottom: 18 }}>
-            <div style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, color: T.accentDark, width: 34, flexShrink: 0 }}>{s.n}</div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 3 }}>{s.title}</div>
-              <div style={{ fontSize: 14, color: T.body, lineHeight: 1.55 }}>{s.text}</div>
+      <main>
+        <section className="landing-hero">
+          <div className="hero-orb hero-orb-one" aria-hidden="true" />
+          <div className="hero-orb hero-orb-two" aria-hidden="true" />
+          <div className="landing-shell hero-grid">
+            <div className="hero-copy">
+              <div className="hero-eyebrow"><span>AI COURSE BUILDER</span> FOR PROFESSORS & UNIVERSITIES</div>
+              <h1>Create the course first. Then build it step by step.</h1>
+              <p className="hero-lead">
+                EdNotebook turns source material into an interactive university course while keeping the professor in control.
+                A numbered six-step path takes you from a course shell to learner preview and publication.
+              </p>
+              <div className="hero-actions">
+                <button className="landing-primary" type="button" onClick={onEnter} data-motion="true">
+                  Start Step 1 — create a course
+                  <span aria-hidden="true">→</span>
+                </button>
+                <button className="landing-secondary" type="button" onClick={() => goTo("course-path")}>
+                  See all six steps
+                </button>
+              </div>
+              <div className="hero-proof" aria-label="Product principles">
+                <span>✓ Free course shell</span>
+                <span>✓ Professor approval</span>
+                <span>✓ Learner preview</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </Section>
 
-      {/* Live demo */}
-      <Section id="demo" style={{ padding: "20px 18px 48px" }}>
-        <Eyebrow>TRY IT NOW</Eyebrow>
-        <h2 style={{ fontFamily: T.display, fontSize: 24, fontWeight: 700, color: T.ink, margin: "8px 0 6px" }}>Ram Ready Digital Literacy</h2>
-        <p style={{ fontSize: 14, color: T.slate, marginBottom: 16, lineHeight: 1.55 }}>
-          This is a real EdNotebook course, playable right here. It's the same Ram Ready template every new class starts from.
-        </p>
-        <LiveDemo />
-      </Section>
-
-      {/* Pricing */}
-      <div style={{ background: T.card, borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}`, padding: "44px 0" }}>
-        <Section>
-          <Eyebrow>PRICING</Eyebrow>
-          <h2 style={{ fontFamily: T.display, fontSize: 24, fontWeight: 700, color: T.ink, margin: "8px 0 4px" }}>Free to start. Pay as you teach.</h2>
-          <p style={{ fontSize: 14, color: T.slate, marginBottom: 18 }}>Every class holds up to 50 students, on every plan.</p>
-          {PLANS.map((p) => (
-            <div key={p.key} style={{ border: `1px solid ${T.line}`, borderRadius: 16, padding: 16, marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ fontFamily: T.display, fontSize: 18, fontWeight: 700, color: T.ink }}>{p.name}</div>
-                {p.tag && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentDark, background: T.accent + "1F", padding: "2px 9px", borderRadius: 999 }}>{p.tag.toUpperCase()}</span>}
-              </div>
-              <div style={{ margin: "6px 0 10px" }}>
-                <span style={{ fontFamily: T.display, fontSize: 26, fontWeight: 700, color: T.ink }}>{p.price}</span>
-                <span style={{ fontFamily: T.mono, fontSize: 12, color: T.slate }}> {p.cadence}</span>
-              </div>
-              {p.key === "perCourse" && (
-                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                  {["8", "16"].map((w) => (
-                    <button key={w} onClick={() => setCourseLength(w)} style={{ padding: "4px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                      fontFamily: T.bodyFont, border: `1px solid ${courseLength === w ? T.primary : T.line}`, background: courseLength === w ? T.primary : "transparent", color: courseLength === w ? "#fff" : T.slate }}>
-                      {w}-week · ${w === "8" ? "59" : "99"}
-                    </button>
-                  ))}
+            <div className="hero-visual" aria-label="EdNotebook course creation preview">
+              <div className="hero-image-card">
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Virtual_Learning_Student_Illustration.jpg/1280px-Virtual_Learning_Student_Illustration.jpg"
+                  alt="Illustration of a learner attending a virtual class from a laptop"
+                  width="1280"
+                  height="853"
+                  fetchPriority="high"
+                />
+                <div className="hero-image-overlay">
+                  <BrandMark size={34} />
+                  <div>
+                    <small>COURSE JOURNEY</small>
+                    <strong>Step 1 of 6</strong>
+                  </div>
+                  <span>Create course</span>
                 </div>
-              )}
-              <div style={{ marginBottom: 12 }}>{p.features.map((f, i) => <div key={i} style={{ fontSize: 13, color: T.body, padding: "2px 0" }}>✓ {f}</div>)}</div>
-              <Btn variant={p.key === "free" ? "solid" : "outline"} full onClick={() => setOnboard(true)}>{p.key === "free" ? "Get started free" : "Start with " + p.name}</Btn>
+              </div>
+              <div className="floating-course-card floating-card-one">
+                <span>1</span>
+                <div><small>FIRST STEP</small><strong>Name the course</strong></div>
+              </div>
+              <div className="floating-course-card floating-card-two">
+                <span>6</span>
+                <div><small>FINAL STEP</small><strong>Publish & invite</strong></div>
+              </div>
             </div>
-          ))}
-
-          <div style={{ border: `1px solid ${T.primary}`, borderRadius: 16, padding: 16, background: T.primary + "08", marginTop: 14 }}>
-            <div style={{ fontFamily: T.display, fontSize: 18, fontWeight: 700, color: T.ink }}>University Enterprise</div>
-            <div style={{ fontSize: 13.5, color: T.body, lineHeight: 1.55, margin: "6px 0 12px" }}>
-              Seat-based licensing for your whole institution. SIS/SSO sync, FERPA data residency, unlimited classes and seats, dedicated onboarding — the same setup piloted with Angelo State.
-            </div>
-            <Btn variant="outline" full>Talk to us about your campus</Btn>
           </div>
-        </Section>
-      </div>
+        </section>
 
-      {/* Footer */}
-      <Section style={{ padding: "36px 18px 44px" }}>
-        <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 17, color: T.ink, marginBottom: 8 }}>Ed<span style={{ color: T.accentDark }}>Notebook</span></div>
-        <div style={{ fontSize: 13, color: T.slate, lineHeight: 1.6, marginBottom: 10 }}>
-          Ram Ready Digital Literacy, shown above as a live demo, is an independent pilot and not official policy of any university — verify current course requirements with your own instructor.
+        <section className="landing-trust-row" aria-label="EdNotebook workflow highlights">
+          <div className="landing-shell trust-grid">
+            <div><strong>6</strong><span>clear creation steps</span></div>
+            <div><strong>5</strong><span>learning templates</span></div>
+            <div><strong>4</strong><span>role-based views</span></div>
+            <div><strong>1</strong><span>professor approval layer</span></div>
+          </div>
+        </section>
+
+        <section id="course-path" className="landing-section course-path-section">
+          <div className="landing-shell">
+            <Reveal className="section-intro">
+              <div className="section-kicker">HOW EDNOTEBOOK WORKS</div>
+              <h2>No guessing. The product tells you the next step.</h2>
+              <p>
+                Course creation starts with the class itself—not a blank prompt. Each stage is numbered from 1 of 6 until the course is published.
+              </p>
+            </Reveal>
+
+            <div className="course-path-grid">
+              {COURSE_STEPS.map((step, index) => (
+                <Reveal key={step.number} className={`path-card reveal-delay-${(index % 3) + 1}`}>
+                  <div className="path-card-top">
+                    <span>{step.number}</span>
+                    <i aria-hidden="true">{index === COURSE_STEPS.length - 1 ? "✓" : "→"}</i>
+                  </div>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </Reveal>
+              ))}
+            </div>
+
+            <div className="path-cta-row">
+              <button className="landing-primary" type="button" onClick={onEnter} data-motion="true">
+                Begin with Step 1
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-section story-section">
+          <div className="landing-shell story-grid">
+            <Reveal className="story-image-wrap">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Instructor_speaking_to_students_in_classroom.jpg/1280px-Instructor_speaking_to_students_in_classroom.jpg"
+                alt="Instructor speaking with students in a classroom"
+                width="1280"
+                height="862"
+                loading="lazy"
+              />
+              <div className="story-image-note">
+                <strong>Teach first.</strong>
+                <span>Technology supports the instructional decision; it does not replace it.</span>
+              </div>
+            </Reveal>
+
+            <Reveal className="story-copy">
+              <div className="section-kicker">RIGOROUS CONTENT · CLEAR WRAPPER</div>
+              <h2>Built around the work professors already do.</h2>
+              <p>
+                EdNotebook starts with your subject matter, outcomes, readings, assessments, and constraints. It then helps organize that work into a course students can navigate.
+              </p>
+              <ul className="check-list">
+                <li><span>01</span><div><strong>Source-aware structure</strong><p>Keep the syllabus and learning outcomes at the center of the build.</p></div></li>
+                <li><span>02</span><div><strong>Editable before deploy</strong><p>Read the whole map, revise individual lessons, and preview the learner experience.</p></div></li>
+                <li><span>03</span><div><strong>Approval before action</strong><p>Generated courses and suggested grades remain drafts until a professor decides otherwise.</p></div></li>
+              </ul>
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="features" className="landing-section features-section">
+          <div className="landing-shell">
+            <Reveal className="section-intro centered-intro">
+              <div className="section-kicker">ONE PLATFORM · EVERY ROLE</div>
+              <h2>Course building, learning, grading, and governance stay connected.</h2>
+            </Reveal>
+            <div className="feature-grid">
+              {FEATURES.map((feature, index) => (
+                <Reveal key={feature.title} className={`feature-card reveal-delay-${(index % 3) + 1}`}>
+                  <div className="feature-icon" aria-hidden="true">{feature.icon}</div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.text}</p>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-section governance-section">
+          <div className="landing-shell governance-card">
+            <Reveal className="governance-copy">
+              <div className="section-kicker light-kicker">THE OWNERSHIP LAYER</div>
+              <h2>Designed for the questions institutions ask before they buy.</h2>
+              <p>
+                Who owns the course? Which model is allowed? What can AI suggest? Who approves a grade? How is learner data separated from public content?
+                EdNotebook makes those decisions visible instead of burying them inside a prompt.
+              </p>
+              <div className="governance-tags">
+                <span>Role controls</span><span>AI budget</span><span>Professor approval</span><span>FERPA-aware workflows</span>
+              </div>
+            </Reveal>
+            <Reveal className="governance-panel">
+              <div className="policy-row"><span>Course owner</span><strong>Professor</strong></div>
+              <div className="policy-row"><span>AI grade status</span><strong>Suggested · not posted</strong></div>
+              <div className="policy-row"><span>Learner records</span><strong>Authenticated access</strong></div>
+              <div className="policy-row"><span>Publish authority</span><strong>Professor / Admin</strong></div>
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="faq" className="landing-section faq-section">
+          <div className="landing-shell faq-grid">
+            <Reveal className="faq-heading">
+              <div className="section-kicker">QUESTIONS BEFORE STEP 1</div>
+              <h2>Start with a clear course shell, not a blank canvas.</h2>
+              <p>Open the builder free, create the class, and follow the numbered path.</p>
+              <button className="landing-primary" type="button" onClick={onEnter} data-motion="true">
+                Create a course
+                <span aria-hidden="true">→</span>
+              </button>
+            </Reveal>
+            <div className="faq-list">
+              {FAQS.map(([question, answer], index) => (
+                <Reveal key={question} className={`reveal-delay-${(index % 2) + 1}`}>
+                  <details>
+                    <summary>{question}<span aria-hidden="true">+</span></summary>
+                    <p>{answer}</p>
+                  </details>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="final-cta-section">
+          <div className="landing-shell final-cta-card">
+            <BrandMark size={58} inverse />
+            <div>
+              <div className="section-kicker light-kicker">READY TO BEGIN?</div>
+              <h2>Step 1 of 6: create your course.</h2>
+              <p>Name the class now. Add content and choose the learning design next.</p>
+            </div>
+            <button className="gold-cta" type="button" onClick={onEnter} data-motion="true">
+              Create course <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <footer className="landing-footer">
+        <div className="landing-shell footer-grid">
+          <div>
+            <BrandLogo inverse size={40} tagline="Course creation with professor control" />
+            <p>Transform source material into an interactive course through a clear, reviewable workflow.</p>
+          </div>
+          <div>
+            <strong>Product</strong>
+            <button type="button" onClick={() => goTo("course-path")}>Course journey</button>
+            <button type="button" onClick={() => goTo("features")}>Features</button>
+            <button type="button" onClick={onEnter}>Sign in</button>
+          </div>
+          <div>
+            <strong>Open image credits</strong>
+            <a href="https://commons.wikimedia.org/wiki/File:Virtual_Learning_Student_Illustration.jpg" target="_blank" rel="noreferrer">Virtual learning illustration · Digits.co.uk Images · CC BY 2.0</a>
+            <a href="https://commons.wikimedia.org/wiki/File:Instructor_speaking_to_students_in_classroom.jpg" target="_blank" rel="noreferrer">Classroom photo · Ryan Hagerty / USFWS · Public domain</a>
+          </div>
         </div>
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.slate, lineHeight: 1.8 }}>
-          github.com/BREXAtlas/EdNotebook · not yet published<br />
-          github.com/Brexatlas/Digital-Literacy-Course · flagship demo<br />
-          github.com/Brexatlas/Financial-Literacy-Course · next in the Ram Ready sequence
+        <div className="landing-shell footer-bottom">
+          <span>© {new Date().getFullYear()} EdNotebook</span>
+          <span>Built by Transform Ontology Systems</span>
         </div>
-      </Section>
+      </footer>
     </div>
   );
 }
