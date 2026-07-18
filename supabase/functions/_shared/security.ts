@@ -7,8 +7,10 @@ export function bytesToHex(bytes: Uint8Array): string {
 }
 
 export async function sha256(value: string | Uint8Array): Promise<string> {
-  const bytes = typeof value === "string" ? encoder.encode(value) : value;
-  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+  const source = typeof value === "string" ? encoder.encode(value) : value;
+  const bytes = new Uint8Array(source.byteLength);
+  bytes.set(source);
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes.buffer)));
 }
 
 export function randomToken(bytes = 32): string {
