@@ -3,7 +3,7 @@
   "build": "success",
   "deploy": "success",
   "page_url": "https://brexatlas.github.io/EdNotebook/",
-  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29637352797",
-  "source_commit": "c6da47572e0398c8cf90ef272759c422894540ea",
-  "deployed_at": "2026-07-18T08:23:34Z"
+  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29637660702",
+  "source_commit": "06c3359151a06e0b2fd5857c5b09617665ecca1c",
+  "deployed_at": "2026-07-18T08:34:09Z"
 }
