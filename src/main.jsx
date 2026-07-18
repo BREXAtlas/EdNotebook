@@ -6,6 +6,7 @@ import AuthGate from "./AuthGate.jsx";
 import CourseStart from "./CourseStart.jsx";
 import CourseJourneyShell from "./CourseJourneyShell.jsx";
 import MotionFrame from "./MotionFrame.jsx";
+import LearningStudio from "./studio/LearningStudio.jsx";
 import "./index.css";
 
 function Router() {
@@ -21,11 +22,27 @@ function Router() {
     window.location.hash = next;
   };
 
+  if (route.startsWith("#/app/studio")) {
+    return (
+      <AuthGate>
+        <MotionFrame routeKey={route}>
+          <LearningStudio
+            onBack={() => navigate("#/app/builder")}
+            onCourseSetup={() => navigate("#/app")}
+          />
+        </MotionFrame>
+      </AuthGate>
+    );
+  }
+
   if (route.startsWith("#/app/builder")) {
     return (
       <AuthGate>
         <MotionFrame routeKey="builder">
-          <CourseJourneyShell onBack={() => navigate("#/app")}>
+          <CourseJourneyShell
+            onBack={() => navigate("#/app")}
+            onStudio={() => navigate("#/app/studio?tab=materials")}
+          >
             <Builder />
           </CourseJourneyShell>
         </MotionFrame>
