@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
+  adminClient,
   errorResponse,
   HttpError,
   jsonResponse,
@@ -72,11 +73,28 @@ Deno.serve(async (req) => {
     const reservation = Array.isArray(data) ? data[0] : data;
     if (!reservation) throw new HttpError(500, "Upload reservation was not created.");
 
+    const admin = adminClient();
+    const { data: signedUpload, error: signedUploadError } = await admin.storage
+      .from(reservation.quarantine_bucket)
+      .createSignedUploadUrl(reservation.quarantine_path, { upsert: false });
+
+    if (signedUploadError || !signedUpload?.token) {
+      await admin.from("upload_quota_reservations").update({ status: "released" })
+        .eq("secure_file_id", reservation.secure_file_id);
+      await admin.from("secure_file_objects").update({
+        upload_status: "failed",
+        availability_status: "deleted",
+        deleted_at: new Date().toISOString(),
+      }).eq("id", reservation.secure_file_id);
+      throw signedUploadError || new HttpError(500, "Signed resumable upload token was not created.");
+    }
+
     return jsonResponse(req, {
       upload: {
         id: reservation.secure_file_id,
         bucket: reservation.quarantine_bucket,
         path: reservation.quarantine_path,
+        signature: signedUpload.token,
         expiresAt: reservation.upload_expires_at,
       },
       destination: {
