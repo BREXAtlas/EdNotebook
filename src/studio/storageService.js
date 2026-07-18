@@ -38,7 +38,11 @@ function extensionFor(file) {
   const source = file?.name || "";
   const finalDot = source.lastIndexOf(".");
   if (finalDot > -1 && finalDot < source.length - 1) {
-    return source.slice(finalDot + 1).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+    return source
+      .slice(finalDot + 1)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 8);
   }
   return EXTENSION_MAP[file?.type] || "bin";
 }
@@ -54,13 +58,18 @@ export function buildDigitalLiteracyName({ file, courseCode, category, title, ve
 
 export async function checksumFile(file) {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return Array.from(
+    new Uint8Array(digest),
+    (byte) => byte.toString(16).padStart(2, "0")
+  ).join("");
 }
 
 export function validateFile(file) {
   if (!file) throw new Error("Choose a file first.");
   if (file.size > STORAGE_LIMIT_BYTES) {
-    throw new Error("For the free-tier launch, files are limited to 25 MB. Compress or split this file before uploading.");
+    throw new Error(
+      "For the free-tier launch, files are limited to 25 MB. Compress or split this file before uploading."
+    );
   }
 }
 
@@ -79,18 +88,34 @@ export function currentCourseId() {
 function cloudTarget({ scope, userId, courseId, assignmentId, publicationId, safeName }) {
   const objectId = crypto.randomUUID();
   if (scope === "course") {
-    if (!courseId) throw new Error("Create or select a course before adding shared course material.");
-    return { bucket: "ed-course-materials", path: `${courseId}/${userId}/${objectId}/${safeName}` };
+    if (!courseId) {
+      throw new Error("Create or select a course before adding shared course material.");
+    }
+    return {
+      bucket: "ed-course-materials",
+      path: `${courseId}/${userId}/${objectId}/${safeName}`,
+    };
   }
   if (scope === "submission") {
-    if (!courseId || !assignmentId) throw new Error("An assignment is required for submission uploads.");
-    return { bucket: "ed-submissions", path: `${courseId}/${assignmentId}/${userId}/${objectId}/${safeName}` };
+    if (!courseId || !assignmentId) {
+      throw new Error("An assignment is required for submission uploads.");
+    }
+    return {
+      bucket: "ed-submissions",
+      path: `${courseId}/${assignmentId}/${userId}/${objectId}/${safeName}`,
+    };
   }
   if (scope === "publication") {
     const publicationFolder = publicationId || crypto.randomUUID();
-    return { bucket: "ed-publications", path: `${userId}/${publicationFolder}/${objectId}/${safeName}` };
+    return {
+      bucket: "ed-publications",
+      path: `${userId}/${publicationFolder}/${objectId}/${safeName}`,
+    };
   }
-  return { bucket: "ed-private-vault", path: `${userId}/${objectId}/${safeName}` };
+  return {
+    bucket: "ed-private-vault",
+    path: `${userId}/${objectId}/${safeName}`,
+  };
 }
 
 export async function uploadCloudFile(file, options) {
@@ -98,16 +123,14 @@ export async function uploadCloudFile(file, options) {
   const safeName = options.safeName || buildDigitalLiteracyName({ file, ...options });
   const checksumSha256 = options.checksumSha256 || (await checksumFile(file));
   const target = cloudTarget({ ...options, safeName });
+
+  // Durable descriptive metadata lives in public.learning_resources. Keep the
+  // object upload limited to the supported Storage upload options so a client
+  // library change cannot silently discard or reject the educational metadata.
   const { error } = await supabase.storage.from(target.bucket).upload(target.path, file, {
     cacheControl: "3600",
     contentType: file.type || "application/octet-stream",
     upsert: false,
-    metadata: {
-      originalName: file.name,
-      safeName,
-      checksumSha256,
-      title: options.title || file.name,
-    },
   });
   if (error) throw error;
   return { ...target, safeName, checksumSha256 };
@@ -166,14 +189,27 @@ export async function saveResourceRecord(record) {
     metadata: record.metadata || {},
   };
 
-  const { data, error } = await supabase.from("learning_resources").insert(payload).select().single();
+  const { data, error } = await supabase
+    .from("learning_resources")
+    .insert(payload)
+    .select()
+    .single();
   if (error) throw error;
   return data;
 }
 
 export async function listCloudResources(courseId) {
-  let query = supabase.from("learning_resources").select("*").order("created_at", { ascending: false });
-  query = courseId ? query.eq("course_id", courseId) : query.is("course_id", null);
+  let query = supabase
+    .from("learning_resources")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // The Materials Studio is both the current course library and the signed-in
+  // user's private vault. RLS still controls which null-course rows can return.
+  query = courseId
+    ? query.or(`course_id.eq.${courseId},course_id.is.null`)
+    : query.is("course_id", null);
+
   const { data, error } = await query;
   if (error) throw error;
   return data || [];
