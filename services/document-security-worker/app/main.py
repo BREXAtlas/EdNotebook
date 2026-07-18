@@ -66,19 +66,40 @@ def _callback_host_allowed(url: str) -> bool:
     return bool(configured and host in configured and urlparse(url).scheme == "https")
 
 
+BLOCKED_TOP_LEVEL_SUFFIXES = {
+    ".ade", ".adp", ".apk", ".app", ".bat", ".bin", ".cab", ".chm", ".cmd",
+    ".com", ".cpl", ".dll", ".dmg", ".exe", ".gadget", ".hta", ".img", ".inf",
+    ".ins", ".iso", ".jar", ".js", ".jse", ".lnk", ".msc", ".msi", ".msp",
+    ".mst", ".pif", ".pkg", ".ps1", ".psm1", ".reg", ".scr", ".sct", ".sh",
+    ".sys", ".vb", ".vbe", ".vbs", ".vxd", ".ws", ".wsc", ".wsf", ".wsh",
+}
+BLOCKED_DETECTED_MIMES = {
+    "application/java-archive",
+    "application/vnd.microsoft.portable-executable",
+    "application/x-apple-diskimage",
+    "application/x-dosexec",
+    "application/x-executable",
+    "application/x-iso9660-image",
+    "application/x-mach-binary",
+    "application/x-msdownload",
+    "application/x-sharedlib",
+    "text/x-shellscript",
+}
+UNSUPPORTED_ARCHIVE_SUFFIXES = {".7z", ".rar", ".gz", ".bz2", ".xz"}
+
+
 def _specific_mime(path: Path, original_name: str, detected: str) -> str:
     suffix = Path(original_name).suffix.lower()
-    if suffix == ".docx":
+    zip_like = {"application/zip", "application/octet-stream"}
+    if suffix == ".docx" and detected in zip_like:
         return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    if suffix == ".pptx":
+    if suffix == ".pptx" and detected in zip_like:
         return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    if suffix == ".xlsx":
+    if suffix == ".xlsx" and detected in zip_like:
         return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    if suffix == ".epub":
+    if suffix == ".epub" and detected in zip_like:
         return "application/epub+zip"
-    if suffix == ".pdf":
-        return "application/pdf"
-    if suffix == ".md":
+    if suffix == ".md" and detected.startswith("text/"):
         return "text/markdown"
     return detected
 
@@ -142,6 +163,37 @@ async def _process(request: ProcessRequest) -> WorkerCallback:
             detect_mime(downloaded.path),
         )
 
+        suffix = Path(request.original_name).suffix.lower()
+        if suffix in BLOCKED_TOP_LEVEL_SUFFIXES or detected in BLOCKED_DETECTED_MIMES:
+            return WorkerCallback(
+                fileId=request.file_id,
+                verdict="suspicious",
+                actualSizeBytes=downloaded.size_bytes,
+                sha256=downloaded.sha256,
+                detectedMimeType=detected,
+                scan={"provider": "file-type-policy", "details": {
+                    "suffix": suffix,
+                    "detectedMimeType": detected,
+                }},
+                archive={"status": "not_archive", "details": {}},
+                error="Executable, script, disk-image, or binary payloads are not accepted as educational materials.",
+            )
+
+        max_scannable = int(os.getenv("MAX_SCANNABLE_BYTES", str(512 * 1024 * 1024)))
+        if downloaded.size_bytes > max_scannable:
+            return WorkerCallback(
+                fileId=request.file_id,
+                verdict="error",
+                actualSizeBytes=downloaded.size_bytes,
+                sha256=downloaded.sha256,
+                detectedMimeType=detected,
+                scan={"provider": "file-size-policy", "details": {
+                    "maxScannableBytes": max_scannable,
+                }},
+                archive={"status": "pending", "details": {}},
+                error="The file exceeds the configured malware-scanning limit and remains quarantined.",
+            )
+
         size_mismatch = downloaded.size_bytes != request.expected_size_bytes
         checksum_mismatch = bool(
             request.expected_sha256
@@ -180,6 +232,10 @@ async def _process(request: ProcessRequest) -> WorkerCallback:
             request.limits,
             workspace,
         )
+        if archive_result.status == "not_archive" and suffix in UNSUPPORTED_ARCHIVE_SUFFIXES:
+            archive_result.status = "suspicious"
+            archive_result.add_issue("unsupported_archive_format", request.original_name)
+
         extracted_scan = None
         if archive_result.extracted_directory and archive_result.status == "clean":
             extracted_scan = await clamav_scan(Path(archive_result.extracted_directory), recursive=True)
@@ -227,7 +283,9 @@ async def _process(request: ProcessRequest) -> WorkerCallback:
                 manifest = build_edubook(
                     downloaded.path,
                     detected,
-                    title=Path(request.original_name).stem,
+                    title=str(request.metadata.get("title") or Path(request.original_name).stem),
+                    author=str(request.metadata.get("author") or ""),
+                    description=str(request.metadata.get("description") or ""),
                     checksum_sha256=downloaded.sha256,
                     original_name=request.original_name,
                 )

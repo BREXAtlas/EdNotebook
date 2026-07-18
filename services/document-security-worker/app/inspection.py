@@ -22,7 +22,7 @@ from .models import ProcessingLimits
 
 
 BLOCKED_SUFFIXES = {
-    ".ade", ".adp", ".apk", ".app", ".bat", ".bin", ".cab", ".chm", ".cmd",
+    ".ade", ".adp", ".apk", ".app", ".bat", ".cab", ".chm", ".cmd",
     ".com", ".cpl", ".dll", ".dmg", ".exe", ".gadget", ".hta", ".img", ".inf",
     ".ins", ".iso", ".jar", ".js", ".jse", ".lnk", ".msc", ".msi", ".msp",
     ".mst", ".pif", ".pkg", ".ps1", ".psm1", ".reg", ".scr", ".sct", ".sh",

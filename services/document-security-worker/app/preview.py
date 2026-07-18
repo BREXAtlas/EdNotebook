@@ -215,6 +215,6 @@ def make_previews(path: Path, mime_type: str, workspace: Path, max_preview_bytes
             text = path.read_text("utf-8", errors="replace")[:120_000]
             if len(text.encode("utf-8")) <= max_preview_bytes:
                 return [_encode_text(text, metadata={"source": mime_type})]
-    except (OSError, PreviewError, ValueError, epub.EpubException) as error:
+    except Exception as error:  # conversion libraries expose different error classes by version
         raise PreviewError(str(error)) from error
     return []
