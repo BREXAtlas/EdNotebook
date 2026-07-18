@@ -1,0 +1,39 @@
+name: Capture Edge Function type-check diagnostics
+
+on:
+  push:
+    branches:
+      - agent/production-security-1-10
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: ${{ !contains(github.event.head_commit.message, '[skip security diagnostic]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/production-security-1-10
+          fetch-depth: 0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Capture type-check output
+        shell: bash
+        run: |
+          mkdir -p security-diagnostics
+          set +e
+          deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts > security-diagnostics/deno-check.log 2>&1
+          status=$?
+          set -e
+          printf '\nEXIT_STATUS=%s\n' "$status" >> security-diagnostics/deno-check.log
+      - name: Commit diagnostic output
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add security-diagnostics/deno-check.log
+          git commit -m "Capture Edge Function diagnostics [skip security diagnostic]"
+          git push origin HEAD:agent/production-security-1-10
