@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import Landing from "./Landing.jsx";
 import Builder from "./Builder.jsx";
+import AuthGate from "./AuthGate.jsx";
 import "./index.css";
 
 function Router() {
@@ -17,7 +18,14 @@ function Router() {
     window.location.hash = "#/app";
   };
 
-  if (route.startsWith("#/app")) return <Builder />;
+  if (route.startsWith("#/app")) {
+    return (
+      <AuthGate>
+        <Builder />
+      </AuthGate>
+    );
+  }
+
   return <Landing onEnter={goApp} />;
 }
 
