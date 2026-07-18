@@ -1,0 +1,74 @@
+name: Apply document worker hardening patch
+
+on:
+  push:
+    branches:
+      - agent/production-security-1-10
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip worker hardening]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/production-security-1-10
+          fetch-depth: 0
+      - name: Apply targeted worker corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          inspection = Path('services/document-security-worker/app/inspection.py')
+          text = inspection.read_text()
+          text = text.replace(
+              '".ade", ".adp", ".apk", ".app", ".bat", ".bin", ".cab", ".chm", ".cmd",',
+              '".ade", ".adp", ".apk", ".app", ".bat", ".cab", ".chm", ".cmd",',
+          )
+          inspection.write_text(text)
+
+          preview = Path('services/document-security-worker/app/preview.py')
+          text = preview.read_text()
+          text = text.replace(
+              'except (OSError, PreviewError, ValueError, epub.EpubException) as error:',
+              'except Exception as error:  # conversion libraries expose different error classes by version',
+          )
+          preview.write_text(text)
+
+          main = Path('services/document-security-worker/app/main.py')
+          text = main.read_text()
+          old = '''def _specific_mime(path: Path, original_name: str, detected: str) -> str:\n    suffix = Path(original_name).suffix.lower()\n    if suffix == ".docx":\n        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"\n    if suffix == ".pptx":\n        return "application/vnd.openxmlformats-officedocument.presentationml.presentation"\n    if suffix == ".xlsx":\n        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"\n    if suffix == ".epub":\n        return "application/epub+zip"\n    if suffix == ".pdf":\n        return "application/pdf"\n    if suffix == ".md":\n        return "text/markdown"\n    return detected\n'''
+          new = '''BLOCKED_TOP_LEVEL_SUFFIXES = {\n    ".ade", ".adp", ".apk", ".app", ".bat", ".bin", ".cab", ".chm", ".cmd",\n    ".com", ".cpl", ".dll", ".dmg", ".exe", ".gadget", ".hta", ".img", ".inf",\n    ".ins", ".iso", ".jar", ".js", ".jse", ".lnk", ".msc", ".msi", ".msp",\n    ".mst", ".pif", ".pkg", ".ps1", ".psm1", ".reg", ".scr", ".sct", ".sh",\n    ".sys", ".vb", ".vbe", ".vbs", ".vxd", ".ws", ".wsc", ".wsf", ".wsh",\n}\nBLOCKED_DETECTED_MIMES = {\n    "application/java-archive",\n    "application/vnd.microsoft.portable-executable",\n    "application/x-apple-diskimage",\n    "application/x-dosexec",\n    "application/x-executable",\n    "application/x-iso9660-image",\n    "application/x-mach-binary",\n    "application/x-msdownload",\n    "application/x-sharedlib",\n    "text/x-shellscript",\n}\nUNSUPPORTED_ARCHIVE_SUFFIXES = {".7z", ".rar", ".gz", ".bz2", ".xz"}\n\n\ndef _specific_mime(path: Path, original_name: str, detected: str) -> str:\n    suffix = Path(original_name).suffix.lower()\n    zip_like = {"application/zip", "application/octet-stream"}\n    if suffix == ".docx" and detected in zip_like:\n        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"\n    if suffix == ".pptx" and detected in zip_like:\n        return "application/vnd.openxmlformats-officedocument.presentationml.presentation"\n    if suffix == ".xlsx" and detected in zip_like:\n        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"\n    if suffix == ".epub" and detected in zip_like:\n        return "application/epub+zip"\n    if suffix == ".md" and detected.startswith("text/"):\n        return "text/markdown"\n    return detected\n'''
+          if old not in text:
+              raise SystemExit('specific MIME block not found')
+          text = text.replace(old, new)
+
+          marker = '''        size_mismatch = downloaded.size_bytes != request.expected_size_bytes\n'''
+          insert = '''        suffix = Path(request.original_name).suffix.lower()\n        if suffix in BLOCKED_TOP_LEVEL_SUFFIXES or detected in BLOCKED_DETECTED_MIMES:\n            return WorkerCallback(\n                fileId=request.file_id,\n                verdict="suspicious",\n                actualSizeBytes=downloaded.size_bytes,\n                sha256=downloaded.sha256,\n                detectedMimeType=detected,\n                scan={"provider": "file-type-policy", "details": {\n                    "suffix": suffix,\n                    "detectedMimeType": detected,\n                }},\n                archive={"status": "not_archive", "details": {}},\n                error="Executable, script, disk-image, or binary payloads are not accepted as educational materials.",\n            )\n\n        max_scannable = int(os.getenv("MAX_SCANNABLE_BYTES", str(512 * 1024 * 1024)))\n        if downloaded.size_bytes > max_scannable:\n            return WorkerCallback(\n                fileId=request.file_id,\n                verdict="error",\n                actualSizeBytes=downloaded.size_bytes,\n                sha256=downloaded.sha256,\n                detectedMimeType=detected,\n                scan={"provider": "file-size-policy", "details": {\n                    "maxScannableBytes": max_scannable,\n                }},\n                archive={"status": "pending", "details": {}},\n                error="The file exceeds the configured malware-scanning limit and remains quarantined.",\n            )\n\n        size_mismatch = downloaded.size_bytes != request.expected_size_bytes\n'''
+          if marker not in text:
+              raise SystemExit('size marker not found')
+          text = text.replace(marker, insert, 1)
+
+          marker = '''        extracted_scan = None\n'''
+          insert = '''        if archive_result.status == "not_archive" and suffix in UNSUPPORTED_ARCHIVE_SUFFIXES:\n            archive_result.status = "suspicious"\n            archive_result.add_issue("unsupported_archive_format", request.original_name)\n\n        extracted_scan = None\n'''
+          if marker not in text:
+              raise SystemExit('archive marker not found')
+          text = text.replace(marker, insert, 1)
+
+          old = '''                    title=Path(request.original_name).stem,\n                    checksum_sha256=downloaded.sha256,\n                    original_name=request.original_name,\n'''
+          new = '''                    title=str(request.metadata.get("title") or Path(request.original_name).stem),\n                    author=str(request.metadata.get("author") or ""),\n                    description=str(request.metadata.get("description") or ""),\n                    checksum_sha256=downloaded.sha256,\n                    original_name=request.original_name,\n'''
+          if old not in text:
+              raise SystemExit('EduBook metadata block not found')
+          text = text.replace(old, new, 1)
+          main.write_text(text)
+          PY
+      - name: Commit corrections
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/document-security-worker/app/inspection.py services/document-security-worker/app/preview.py services/document-security-worker/app/main.py
+          git commit -m "Harden document type and archive inspection [skip worker hardening]"
+          git push origin HEAD:agent/production-security-1-10
