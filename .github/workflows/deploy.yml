@@ -46,10 +46,44 @@ jobs:
         with:
           path: dist
 
+  security-tests:
+    name: Test security services
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/document-security-worker/requirements.txt
+
+      - name: Install worker test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmagic1
+          python -m pip install --upgrade pip
+          python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
+
+      - name: Test archive inspection and EduBook conversion
+        env:
+          PYTHONPATH: services/document-security-worker
+        run: pytest -q services/document-security-worker/tests
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Supabase Edge Functions
+        run: deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, security-tests]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -64,7 +98,7 @@ jobs:
   report:
     name: Record production deployment status
     if: ${{ always() && github.event_name != 'pull_request' }}
-    needs: [build, deploy]
+    needs: [build, security-tests, deploy]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -78,7 +112,7 @@ jobs:
       - name: Write deployment result
         shell: bash
         run: |
-          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
+          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
             status="success"
           else
             status="failure"
@@ -89,6 +123,7 @@ jobs:
           {
             "status": "$status",
             "build": "${{ needs.build.result }}",
+            "security_tests": "${{ needs.security-tests.result }}",
             "deploy": "${{ needs.deploy.result }}",
             "page_url": "${{ needs.deploy.outputs.page_url }}",
             "run_url": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
