@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" role="img" aria-labelledby="title desc">
+  <title id="title">EdNotebook logo</title>
+  <desc id="desc">An open notebook with a course progress checkmark beside the EdNotebook wordmark.</desc>
+  <rect x="4" y="4" width="72" height="72" rx="20" fill="#101B33"/>
+  <path d="M19 22C19 18.7 21.7 16 25 16H39V59H25C21.7 59 19 61.7 19 65V22Z" fill="#fff"/>
+  <path d="M61 22C61 18.7 58.3 16 55 16H41V59H55C58.3 59 61 61.7 61 65V22Z" fill="#fff"/>
+  <path d="M25 29H35M25 36H35M25 43H32" stroke="#1D4ED8" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M47 29L50.5 32.5L57.5 24.5" fill="none" stroke="#F2B33D" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="52" cy="45" r="6.5" fill="#F2B33D"/>
+  <path d="M52 40.8V49.2M47.8 45H56.2" stroke="#101B33" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M19 65C23.2 60.8 28.5 59 39 59M61 65C56.8 60.8 51.5 59 41 59" fill="none" stroke="#1D4ED8" stroke-width="2.7" stroke-linecap="round"/>
+  <text x="94" y="48" fill="#101B33" font-family="Georgia, 'Times New Roman', serif" font-size="40" font-weight="700" letter-spacing="-1.6">Ed</text>
+  <text x="139" y="48" fill="#C98A12" font-family="Georgia, 'Times New Roman', serif" font-size="40" font-weight="700" letter-spacing="-1.6">Notebook</text>
+  <text x="96" y="66" fill="#5B6478" font-family="Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="1.1">COURSE CREATION WITH PROFESSOR CONTROL</text>
+</svg>
