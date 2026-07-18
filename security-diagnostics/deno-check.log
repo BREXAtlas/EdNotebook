@@ -1,0 +1,7 @@
+[0m[32mDownload[0m https://jsr.io/@supabase/functions-js/meta.json
+[0m[32mDownload[0m https://jsr.io/@supabase/functions-js/2.110.7_meta.json
+[0m[32mDownload[0m https://jsr.io/@supabase/functions-js/2.110.7/src/edge-runtime.d.ts
+[0m[1m[31merror[0m: Could not find "@supabase/supabase-js" in a node_modules folder. Deno expects the node_modules/ directory to be up to date. Did you forget to run `deno install`?
+    at [0m[36mfile:///home/runner/work/EdNotebook/EdNotebook/supabase/functions/_shared/runtime.ts[0m:[0m[33m1[0m:[0m[33m46[0m
+
+EXIT_STATUS=1
