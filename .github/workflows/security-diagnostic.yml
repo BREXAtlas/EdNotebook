@@ -25,7 +25,7 @@ jobs:
         run: |
           mkdir -p security-diagnostics
           set +e
-          deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts > security-diagnostics/deno-check.log 2>&1
+          deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts > security-diagnostics/deno-check.log 2>&1
           status=$?
           set -e
           printf '\nEXIT_STATUS=%s\n' "$status" >> security-diagnostics/deno-check.log
