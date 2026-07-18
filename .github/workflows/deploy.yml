@@ -54,7 +54,54 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy Pages artifact
         id: deployment
         uses: actions/deploy-pages@v4
+
+  report:
+    name: Record production deployment status
+    if: ${{ always() && github.event_name != 'pull_request' }}
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout status branch
+        uses: actions/checkout@v6
+        with:
+          ref: automation/pages-status
+          fetch-depth: 0
+
+      - name: Write deployment result
+        shell: bash
+        run: |
+          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
+            status="success"
+          else
+            status="failure"
+          fi
+
+          deployed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          cat > pages-status.json <<EOF
+          {
+            "status": "$status",
+            "build": "${{ needs.build.result }}",
+            "deploy": "${{ needs.deploy.result }}",
+            "page_url": "${{ needs.deploy.outputs.page_url }}",
+            "run_url": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+            "source_commit": "${GITHUB_SHA}",
+            "deployed_at": "$deployed_at"
+          }
+          EOF
+
+      - name: Commit deployment result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pages-status.json
+          git commit -m "Record Pages deployment ${GITHUB_RUN_ID} [skip ci]"
+          git push origin HEAD:automation/pages-status
