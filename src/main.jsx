@@ -1,32 +1,56 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Landing from "./Landing.jsx";
 import Builder from "./Builder.jsx";
 import AuthGate from "./AuthGate.jsx";
+import CourseStart from "./CourseStart.jsx";
+import CourseJourneyShell from "./CourseJourneyShell.jsx";
+import MotionFrame from "./MotionFrame.jsx";
 import "./index.css";
 
 function Router() {
-  const [route, setRoute] = useState(window.location.hash);
+  const [route, setRoute] = useState(window.location.hash || "#/");
 
   useEffect(() => {
-    const onHash = () => setRoute(window.location.hash);
+    const onHash = () => setRoute(window.location.hash || "#/");
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const goApp = () => {
-    window.location.hash = "#/app";
+  const navigate = (next) => {
+    window.location.hash = next;
   };
 
-  if (route.startsWith("#/app")) {
+  if (route.startsWith("#/app/builder")) {
     return (
       <AuthGate>
-        <Builder />
+        <MotionFrame routeKey="builder">
+          <CourseJourneyShell onBack={() => navigate("#/app")}>
+            <Builder />
+          </CourseJourneyShell>
+        </MotionFrame>
       </AuthGate>
     );
   }
 
-  return <Landing onEnter={goApp} />;
+  if (route.startsWith("#/app")) {
+    return (
+      <AuthGate>
+        <MotionFrame routeKey="course-start">
+          <CourseStart
+            onContinue={() => navigate("#/app/builder")}
+            onHome={() => navigate("#/")}
+          />
+        </MotionFrame>
+      </AuthGate>
+    );
+  }
+
+  return (
+    <MotionFrame routeKey="landing">
+      <Landing onEnter={() => navigate("#/app")} />
+    </MotionFrame>
+  );
 }
 
 createRoot(document.getElementById("root")).render(<Router />);
