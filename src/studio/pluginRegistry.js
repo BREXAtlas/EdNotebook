@@ -1,0 +1,75 @@
+export const PLUGIN_REGISTRY = [
+  {
+    id: "supabase-storage",
+    name: "Supabase Storage",
+    category: "Storage",
+    status: "live",
+    description: "Private course materials, submissions, publications, signed-in downloads, and row-level access policies.",
+    capabilities: ["files:read", "files:write", "files:delete", "metadata:write"],
+    configuration: "Built into the current EdNotebook project.",
+  },
+  {
+    id: "youtube",
+    name: "YouTube",
+    category: "Video",
+    status: "live",
+    description: "Automatic URL detection and privacy-enhanced lesson embeds using youtube-nocookie.com.",
+    capabilities: ["links:detect", "video:embed", "video:preview"],
+    configuration: "No API key is needed for basic embeds. A future Data API key can enrich titles and channels server-side.",
+  },
+  {
+    id: "microsoft-word",
+    name: "Microsoft Word / EduSync",
+    category: "Documents",
+    status: "prepared",
+    description: "Planned Office Add-in that maps Word paragraphs, comments, headings, citations, and versions to the proprietary EduSync document model.",
+    capabilities: ["document:import", "document:export", "comments:sync", "versions:sync"],
+    configuration: "Requires a Microsoft 365 add-in registration, Entra configuration, and an EdNotebook sync API.",
+  },
+  {
+    id: "canva",
+    name: "Canva",
+    category: "Design",
+    status: "prepared",
+    description: "Prepared for Canva Apps SDK export/import so a learner or professor can move slide designs into EdNotebook decks and back.",
+    capabilities: ["slides:import", "slides:export", "images:import", "design:launch"],
+    configuration: "Requires a Canva developer app, OAuth/SDK approval, and backend retrieval of short-lived export files.",
+  },
+  {
+    id: "cengage-lti",
+    name: "Cengage LTI 1.3",
+    category: "Publisher / LMS",
+    status: "partner",
+    description: "Integration contract prepared for deep links, course association, launch context, and grade return through LTI Advantage.",
+    capabilities: ["lti:launch", "content:deep-link", "grades:return", "roster:context"],
+    configuration: "Requires Cengage/institutional partner onboarding and LTI platform credentials.",
+  },
+  {
+    id: "cloudflare-r2",
+    name: "Cloudflare R2",
+    category: "Storage",
+    status: "adapter",
+    description: "Future overflow or publication-asset storage using the same EdNotebook storage adapter and private metadata model.",
+    capabilities: ["files:read", "files:write", "signed-url:create"],
+    configuration: "Add an authenticated server-side S3-compatible adapter; never expose R2 write credentials in the browser.",
+  },
+  {
+    id: "google-drive",
+    name: "Google Drive",
+    category: "Documents",
+    status: "planned",
+    description: "Optional import/export source for institution-managed documents while EdNotebook keeps placement, rights, and course metadata.",
+    capabilities: ["document:import", "document:export", "permissions:map"],
+    configuration: "Requires Google OAuth consent, Drive scopes, and administrator policy review.",
+  },
+];
+
+export function statusLabel(status) {
+  return {
+    live: "Live now",
+    prepared: "Connector prepared",
+    partner: "Partner setup",
+    adapter: "Adapter ready",
+    planned: "Planned",
+  }[status] || status;
+}
