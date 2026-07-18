@@ -1,0 +1,78 @@
+.studio-reader-empty { padding:70px 24px; color:#667185; background:#fff; border:1px dashed #cdd6e5; border-radius:20px; text-align:center; }
+.studio-reader-empty > span { font-size:46px; }
+.studio-reader-empty h3 { margin:12px 0 6px; color:#101b33; font-family:"Zilla Slab",serif; font-size:25px; }
+.studio-reader-empty p { max-width:520px; margin:0 auto 15px; font-size:10px; line-height:1.55; }
+.studio-reader-empty button { padding:9px 13px; color:#1d4ed8; background:#fff; border:1px solid #cad4e5; border-radius:10px; cursor:pointer; font-weight:800; }
+
+.studio-reader-layout { display:grid; grid-template-columns:220px minmax(0,1fr) 250px; align-items:start; gap:14px; }
+.studio-reader-library,.studio-book-reader,.studio-annotation-panel { background:#fff; border:1px solid #dce2ee; border-radius:18px; box-shadow:0 14px 38px rgba(16,27,51,.055); }
+.studio-reader-library { padding:16px; position:sticky; top:96px; }
+.studio-reader-library .studio-panel-heading { margin-bottom:10px; }
+.studio-reader-library .studio-panel-heading h3 { font-size:18px; }
+.studio-reader-library > button { width:100%; padding:10px; display:grid; grid-template-columns:28px 1fr; gap:8px; color:#5b6478; background:transparent; border:1px solid transparent; border-radius:11px; cursor:pointer; text-align:left; }
+.studio-reader-library > button:hover { background:#f5f7fb; }
+.studio-reader-library > button.is-active { color:#173ba3; background:#edf2ff; border-color:#c7d5f6; }
+.studio-reader-library > button > span { font-size:17px; }
+.studio-reader-library strong,.studio-reader-library small,.studio-reader-library em { display:block; }
+.studio-reader-library strong { overflow:hidden; color:#101b33; font-size:9.5px; text-overflow:ellipsis; white-space:nowrap; }
+.studio-reader-library small { margin-top:2px; color:#737d91; font-size:7.5px; }
+.studio-reader-library em { margin-top:4px; color:#1d4ed8; font-family:"IBM Plex Mono",monospace; font-size:6.8px; font-style:normal; }
+
+.studio-book-reader { overflow:hidden; }
+.studio-book-reader > header { padding:20px; display:flex; align-items:flex-start; justify-content:space-between; gap:15px; color:#fff; background:linear-gradient(135deg,#101b33,#173ba3); }
+.studio-book-reader header small { color:#f2b33d; font-family:"IBM Plex Mono",monospace; font-size:7.5px; letter-spacing:.09em; }
+.studio-book-reader header h2 { margin:5px 0 4px; color:#fff; font-family:"Zilla Slab",serif; font-size:27px; }
+.studio-book-reader header p { margin:0; color:rgba(255,255,255,.65); font-size:9px; }
+.studio-reader-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
+.studio-reader-actions button { color:#101b33; background:#f2b33d; border-color:#f2b33d; }
+.studio-reader-actions span { color:rgba(255,255,255,.78); font-family:"IBM Plex Mono",monospace; font-size:8px; }
+.studio-reader-progress { height:4px; background:#d9e0ec; }
+.studio-reader-progress span { height:4px; display:block; background:#f2b33d; transition:width .3s ease; }
+.studio-reader-page { min-height:610px; padding:42px clamp(28px,6vw,70px); background:#fffdf8; }
+.studio-reader-chapter-label { color:#9d6c14; font-family:"IBM Plex Mono",monospace; font-size:8px; letter-spacing:.1em; }
+.studio-reader-page h3 { margin:9px 0 24px; color:#232a39; font-family:"Zilla Slab",Georgia,serif; font-size:35px; line-height:1.08; }
+.studio-reader-page h4 { margin:28px 0 8px; color:#232a39; font-family:"Zilla Slab",Georgia,serif; font-size:20px; }
+.studio-reader-page p { color:#3f4654; font-family:Georgia,serif; font-size:13.5px; line-height:1.8; }
+.studio-reader-navigation { margin-top:38px; padding-top:18px; display:flex; justify-content:space-between; gap:12px; border-top:1px solid #e2dbce; }
+.studio-reader-navigation button { padding:9px 12px; color:#1d4ed8; background:#fff; border:1px solid #d2d9e5; border-radius:9px; cursor:pointer; font-size:9px; font-weight:800; }
+.studio-reader-navigation button:disabled { opacity:.35; cursor:not-allowed; }
+.studio-conversion-pending { min-height:560px; padding:60px 32px; display:flex; align-items:center; justify-content:center; flex-direction:column; color:#697386; background:#f8f9fc; text-align:center; }
+.studio-conversion-pending > span { width:56px; height:56px; display:grid; place-items:center; color:#1d4ed8; background:#e8efff; border-radius:18px; font-size:26px; }
+.studio-conversion-pending h3 { margin:15px 0 7px; color:#101b33; font-family:"Zilla Slab",serif; font-size:25px; }
+.studio-conversion-pending p { max-width:520px; margin:0; font-size:10px; line-height:1.65; }
+
+.studio-annotation-panel { padding:17px; position:sticky; top:96px; }
+.studio-annotation-panel h3 { margin:5px 0 12px; color:#101b33; font-family:"Zilla Slab",serif; font-size:21px; }
+.studio-annotation-types { gap:4px; margin-bottom:10px; }
+.studio-annotation-types button { min-height:29px; padding:5px 8px; font-size:7.5px; }
+.studio-annotation-panel textarea { min-height:100px; }
+.studio-annotation-panel .studio-primary-button { width:100%; margin-top:8px; }
+.studio-annotation-list { margin-top:14px; border-top:1px solid #e0e5ed; }
+.studio-annotation-list > p { color:#8a92a1; font-size:9px; }
+.studio-annotation-list article { padding:11px 0; border-bottom:1px solid #e5e9f0; }
+.studio-annotation-list article > div { display:flex; align-items:center; justify-content:space-between; }
+.studio-annotation-list strong { color:#1d4ed8; font-family:"IBM Plex Mono",monospace; font-size:7px; text-transform:uppercase; }
+.studio-annotation-list button { color:#a63b3b; background:transparent; border:0; cursor:pointer; }
+.studio-annotation-list p { margin:5px 0; color:#424b5e; font-size:9px; line-height:1.45; }
+.studio-annotation-list small { color:#8992a3; font-size:7px; }
+
+.studio-book-importer { padding:22px; }
+.studio-import-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,.65fr); align-items:start; gap:20px; }
+.studio-conversion-preview { padding:22px; position:sticky; top:96px; color:#fff; background:linear-gradient(145deg,#101b33,#1b3876); border-radius:17px; }
+.studio-conversion-preview .studio-kicker { color:#f2b33d; }
+.studio-conversion-preview h3 { margin:8px 0 4px; color:#fff; font-family:"Zilla Slab",serif; font-size:25px; }
+.studio-conversion-preview > p { margin:0; color:rgba(255,255,255,.63); font-size:8.5px; }
+.studio-chapter-preview-list { margin-top:17px; }
+.studio-chapter-preview-list > div { padding:9px 0; display:grid; grid-template-columns:28px 1fr; gap:8px; border-top:1px solid rgba(255,255,255,.12); }
+.studio-chapter-preview-list > div > span { width:26px; height:26px; display:grid; place-items:center; color:#101b33; background:#f2b33d; border-radius:8px; font-size:9px; font-weight:800; }
+.studio-chapter-preview-list strong,.studio-chapter-preview-list small { display:block; }
+.studio-chapter-preview-list strong { color:#fff; font-size:9px; }
+.studio-chapter-preview-list small { margin-top:2px; color:rgba(255,255,255,.55); font-size:7px; }
+.studio-conversion-note { margin-top:16px !important; padding-top:14px; border-top:1px solid rgba(255,255,255,.12); line-height:1.55; }
+.studio-rights-panel { margin:20px 0; padding:20px; background:#fff8e5; border:1px solid #edd594; border-radius:15px; }
+.studio-rights-panel h3 { margin:5px 0 15px; color:#101b33; font-family:"Zilla Slab",serif; font-size:23px; }
+.studio-publisher-application { padding:25px; }
+
+@media(max-width:1100px){.studio-reader-layout{grid-template-columns:190px minmax(0,1fr)}.studio-annotation-panel{grid-column:1/-1;position:static}.studio-annotation-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.studio-annotation-list article{padding:10px;border:1px solid #e0e5ed;border-radius:10px}}
+@media(max-width:820px){.studio-reader-layout,.studio-import-grid{grid-template-columns:1fr}.studio-reader-library,.studio-conversion-preview{position:static}.studio-reader-library{display:flex;overflow-x:auto;gap:6px}.studio-reader-library .studio-panel-heading{min-width:160px}.studio-reader-library>button{min-width:180px}.studio-annotation-list{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.studio-book-importer,.studio-publisher-application{padding:17px}.studio-reader-page{padding:28px 20px}.studio-book-reader>header{flex-direction:column}.studio-annotation-list{grid-template-columns:1fr}}
