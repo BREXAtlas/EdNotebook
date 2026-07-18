@@ -1,7 +1,8 @@
 {
-  "status": "pending",
-  "build": "pending",
-  "deploy": "pending",
+  "status": "failure",
+  "build": "success",
+  "deploy": "failure",
   "page_url": "",
-  "note": "Temporary GitHub Pages deployment diagnostic."
+  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29635213776",
+  "commit": "05c35381d0785680cbf6e6724ddf9ebebcf6e886"
 }
