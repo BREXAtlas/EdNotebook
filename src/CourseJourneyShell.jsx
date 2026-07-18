@@ -25,7 +25,7 @@ function readCourseName() {
   }
 }
 
-export default function CourseJourneyShell({ children, onBack }) {
+export default function CourseJourneyShell({ children, onBack, onStudio }) {
   const [currentStep, setCurrentStep] = useState(readStep);
   const [visible, setVisible] = useState(true);
   const courseName = useMemo(readCourseName, []);
@@ -65,7 +65,10 @@ export default function CourseJourneyShell({ children, onBack }) {
               <strong>{courseName}</strong>
               <span>{STEPS[currentStep - 1]}</span>
             </div>
-            <button type="button" onClick={onBack} data-motion="true">Course setup</button>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button type="button" onClick={onStudio} data-motion="true">📎 Materials & tools</button>
+              <button type="button" onClick={onBack} data-motion="true">Course setup</button>
+            </div>
           </div>
           <ol className="builder-step-track">
             {STEPS.map((label, index) => {
