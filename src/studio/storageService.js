@@ -1,6 +1,14 @@
 import { supabase } from "../supabaseClient.js";
+import {
+  fetchServerLinkPreview,
+  getSecureDownload,
+  getSecurePreview,
+  getStorageUsage,
+  requestSecureDeletion,
+  uploadToSecureQuarantine,
+} from "./resumableUpload.js";
 
-export const STORAGE_LIMIT_BYTES = 25 * 1024 * 1024;
+export const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024 * 1024;
 
 const EXTENSION_MAP = {
   "application/pdf": "pdf",
@@ -64,12 +72,11 @@ export async function checksumFile(file) {
   ).join("");
 }
 
-export function validateFile(file) {
+export function validateFile(file, maxBytes = STORAGE_LIMIT_BYTES) {
   if (!file) throw new Error("Choose a file first.");
-  if (file.size > STORAGE_LIMIT_BYTES) {
-    throw new Error(
-      "For the free-tier launch, files are limited to 25 MB. Compress or split this file before uploading."
-    );
+  if (!Number.isFinite(file.size) || file.size <= 0) throw new Error("The selected file is empty or unreadable.");
+  if (file.size > maxBytes) {
+    throw new Error(`This file exceeds the current ${Math.round(maxBytes / 1024 / 1024)} MB browser limit.`);
   }
 }
 
@@ -85,79 +92,87 @@ export function currentCourseId() {
   return readCourseDraft()?.id || window.localStorage.getItem("ednotebook-course-id") || null;
 }
 
-function cloudTarget({ scope, userId, courseId, assignmentId, publicationId, safeName }) {
-  const objectId = crypto.randomUUID();
-  if (scope === "course") {
-    if (!courseId) {
-      throw new Error("Create or select a course before adding shared course material.");
-    }
-    return {
-      bucket: "ed-course-materials",
-      path: `${courseId}/${userId}/${objectId}/${safeName}`,
-    };
-  }
-  if (scope === "submission") {
-    if (!courseId || !assignmentId) {
-      throw new Error("An assignment is required for submission uploads.");
-    }
-    return {
-      bucket: "ed-submissions",
-      path: `${courseId}/${assignmentId}/${userId}/${objectId}/${safeName}`,
-    };
-  }
-  if (scope === "publication") {
-    const publicationFolder = publicationId || crypto.randomUUID();
-    return {
-      bucket: "ed-publications",
-      path: `${userId}/${publicationFolder}/${objectId}/${safeName}`,
-    };
-  }
-  return {
-    bucket: "ed-private-vault",
-    path: `${userId}/${objectId}/${safeName}`,
-  };
+function purposeForScope(scope) {
+  if (scope === "course") return "course";
+  if (scope === "submission") return "submission";
+  if (scope === "publication") return "publication";
+  return "private";
 }
 
 export async function uploadCloudFile(file, options) {
   validateFile(file);
   const safeName = options.safeName || buildDigitalLiteracyName({ file, ...options });
   const checksumSha256 = options.checksumSha256 || (await checksumFile(file));
-  const target = cloudTarget({ ...options, safeName });
-
-  // Durable descriptive metadata lives in public.learning_resources. Keep the
-  // object upload limited to the supported Storage upload options so a client
-  // library change cannot silently discard or reject the educational metadata.
-  const { error } = await supabase.storage.from(target.bucket).upload(target.path, file, {
-    cacheControl: "3600",
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
+  const result = await uploadToSecureQuarantine(file, {
+    purpose: purposeForScope(options.scope),
+    safeName,
+    checksumSha256,
+    courseId: options.courseId || null,
+    assignmentId: options.assignmentId || null,
+    publicationId: options.publicationId || null,
+    metadata: {
+      title: options.title || file.name,
+      category: options.category || "resource",
+      courseCode: options.courseCode || null,
+      originalName: file.name,
+      ...options.metadata,
+    },
+    onProgress: options.onProgress,
+    onStatus: options.onStatus,
+    onController: options.onController,
   });
-  if (error) throw error;
-  return { ...target, safeName, checksumSha256 };
+  return {
+    secureFileId: result.secureFileId,
+    safeName,
+    checksumSha256,
+    securityStatus: result.completion?.status || "scanning",
+    reservation: result.reservation,
+    completion: result.completion,
+  };
 }
 
-export async function downloadCloudFile(bucket, path, filename) {
-  const { data, error } = await supabase.storage.from(bucket).download(path);
-  if (error) throw error;
-  const url = URL.createObjectURL(data);
+function triggerBrowserDownload(url, filename) {
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = filename || path.split("/").pop() || "download";
+  anchor.download = filename || "download";
+  anchor.rel = "noopener noreferrer";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export async function cloudPreviewUrl(bucket, path) {
-  const { data, error } = await supabase.storage.from(bucket).download(path);
-  if (error) throw error;
-  return URL.createObjectURL(data);
+export async function downloadResource(resource, options = {}) {
+  if (resource.secure_file_id) {
+    const signed = await getSecureDownload(resource.secure_file_id, {
+      disposition: options.inline ? "inline" : "download",
+    });
+    if (options.inline) return signed.url;
+    triggerBrowserDownload(signed.url, signed.filename || resource.safe_name || resource.original_name);
+    return signed;
+  }
+  if (resource.storage_mode === "external" && resource.external_url) {
+    window.open(resource.external_url, "_blank", "noopener,noreferrer");
+    return { external: true };
+  }
+  throw new Error("This legacy file has no secure delivery record.");
 }
 
-export async function removeCloudFile(bucket, path) {
-  const { error } = await supabase.storage.from(bucket).remove([path]);
-  if (error) throw error;
+export async function openPreview(previewId) {
+  const signed = await getSecurePreview(previewId);
+  return signed.url;
+}
+
+// Retained only so older imports fail clearly instead of bypassing audited delivery.
+export async function downloadCloudFile() {
+  throw new Error("Direct bucket downloads are disabled. Use downloadResource with a secure file record.");
+}
+
+export async function cloudPreviewUrl() {
+  throw new Error("Direct preview downloads are disabled. Use openPreview with a preview record.");
+}
+
+export async function removeCloudFile() {
+  throw new Error("Direct object deletion is disabled. Use the retention-aware deletion service.");
 }
 
 export async function saveResourceRecord(record) {
@@ -169,6 +184,8 @@ export async function saveResourceRecord(record) {
     owner_id: authData.user.id,
     course_id: record.course_id || null,
     assignment_id: record.assignment_id || null,
+    secure_file_id: record.secure_file_id || null,
+    link_preview_id: record.link_preview_id || null,
     resource_type: record.resource_type,
     title: record.title,
     description: record.description || "",
@@ -185,6 +202,7 @@ export async function saveResourceRecord(record) {
     alt_text: record.alt_text || null,
     source_label: record.source_label || null,
     license_label: record.license_label || null,
+    security_status: record.secure_file_id ? (record.security_status || "quarantined") : "not_applicable",
     visibility: record.visibility || (record.course_id ? "course" : "private"),
     metadata: record.metadata || {},
   };
@@ -202,10 +220,9 @@ export async function listCloudResources(courseId) {
   let query = supabase
     .from("learning_resources")
     .select("*")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
-  // The Materials Studio is both the current course library and the signed-in
-  // user's private vault. RLS still controls which null-course rows can return.
   query = courseId
     ? query.or(`course_id.eq.${courseId},course_id.is.null`)
     : query.is("course_id", null);
@@ -215,10 +232,30 @@ export async function listCloudResources(courseId) {
   return data || [];
 }
 
-export async function deleteResourceRecord(resource) {
-  if (resource.storage_mode === "cloud" && resource.bucket_id && resource.storage_path) {
-    await removeCloudFile(resource.bucket_id, resource.storage_path);
+export async function listSecurePreviews(secureFileId) {
+  const { data, error } = await supabase
+    .from("file_previews")
+    .select("*")
+    .eq("secure_file_id", secureFileId)
+    .order("page_number", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function deleteResourceRecord(resource, reason = "Removed from the learning materials studio") {
+  if (resource.secure_file_id) {
+    return requestSecureDeletion(resource.secure_file_id, reason);
   }
   const { error } = await supabase.from("learning_resources").delete().eq("id", resource.id);
   if (error) throw error;
+  return { deleted: true, status: "metadata_removed" };
+}
+
+export async function getCurrentStorageUsage() {
+  return getStorageUsage();
+}
+
+export async function getLinkPreview(url, refresh = false) {
+  const response = await fetchServerLinkPreview(url, refresh);
+  return response.preview;
 }
