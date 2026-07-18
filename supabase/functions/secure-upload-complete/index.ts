@@ -17,6 +17,10 @@ interface CompleteRequest {
   checksumSha256?: string | null;
 }
 
+interface EdgeRuntimeGlobal {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
 async function findObject(admin: ReturnType<typeof adminClient>, bucket: string, path: string) {
   const parts = path.split("/");
   const filename = parts.pop() || "";
@@ -79,6 +83,7 @@ async function dispatchWorker(
       purpose: file.purpose,
       previewRequested: file.preview_status === "pending",
       eduBookRequested: file.conversion_status === "queued",
+      metadata: file.metadata || {},
       callbackUrl: `${projectUrl()}/functions/v1/secure-worker-callback`,
       callbackToken,
       limits: {
@@ -192,31 +197,33 @@ Deno.serve(async (req) => {
       details: { sizeBytes: objectSize, processingJobId: job.id },
     });
 
-    EdgeRuntime.waitUntil(
-      dispatchWorker(admin, updated, job.id, callbackToken).catch(async (error) => {
-        console.error("worker dispatch failed", error);
-        await admin.from("secure_file_objects").update({
-          security_status: "error",
-          scan_result: { message: error instanceof Error ? error.message : String(error) },
-        }).eq("id", file.id);
-        await admin.from("processing_jobs").update({
-          status: "failed",
-          attempts: 1,
-          last_error: error instanceof Error ? error.message : String(error),
-          completed_at: new Date().toISOString(),
-        }).eq("id", job.id);
-        await recordAudit(admin, null, {
-          actorId: user.id,
-          secureFileId: file.id,
-          courseId: file.course_id,
-          assignmentId: file.assignment_id,
-          eventType: "security.dispatch_failed",
-          targetType: "processing_job",
-          targetId: job.id,
-          details: { error: error instanceof Error ? error.message : String(error) },
-        });
-      }),
-    );
+    const dispatchPromise = dispatchWorker(admin, updated, job.id, callbackToken).catch(async (error) => {
+      console.error("worker dispatch failed", error);
+      await admin.from("secure_file_objects").update({
+        security_status: "error",
+        scan_result: { message: error instanceof Error ? error.message : String(error) },
+      }).eq("id", file.id);
+      await admin.from("processing_jobs").update({
+        status: "failed",
+        attempts: 1,
+        last_error: error instanceof Error ? error.message : String(error),
+        completed_at: new Date().toISOString(),
+      }).eq("id", job.id);
+      await recordAudit(admin, null, {
+        actorId: user.id,
+        secureFileId: file.id,
+        courseId: file.course_id,
+        assignmentId: file.assignment_id,
+        eventType: "security.dispatch_failed",
+        targetType: "processing_job",
+        targetId: job.id,
+        details: { error: error instanceof Error ? error.message : String(error) },
+      });
+    });
+
+    const edgeRuntime = (globalThis as typeof globalThis & { EdgeRuntime?: EdgeRuntimeGlobal }).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(dispatchPromise);
+    else await dispatchPromise;
 
     return jsonResponse(req, {
       secureFileId: file.id,
