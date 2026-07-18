@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import BrandLogo from "../Brand.jsx";
 import MaterialsWorkspace from "./MaterialsWorkspace.jsx";
 import AssignmentWorkspace from "./AssignmentWorkspace.jsx";
+import AssignmentFilesPanel from "./AssignmentFilesPanel.jsx";
 import SubjectTools from "./SubjectTools.jsx";
 import ReaderPublisher from "./ReaderPublisher.jsx";
 import SlidesIntegrations from "./SlidesIntegrations.jsx";
@@ -11,7 +12,7 @@ import "./studio.css";
 
 const TABS = [
   ["materials", "Materials", "📎", "Files, links, videos, quotes"],
-  ["assignments", "Assignments", "✓", "Sandbox, rubric, syllabus"],
+  ["assignments", "Assignments", "✓", "Sandbox, rubric, files, syllabus"],
   ["tools", "Subject tools", "∑", "Calculators, tables, maps"],
   ["reader", "Reader & publisher", "📖", "EduBook and partner catalog"],
   ["slides", "Slides & plug-ins", "▤", "Presentations and connectors"],
@@ -88,7 +89,12 @@ export default function LearningStudio({ onBack, onCourseSetup }) {
 
         <main className="studio-main" key={tab}>
           {tab === "materials" && <MaterialsWorkspace />}
-          {tab === "assignments" && <AssignmentWorkspace />}
+          {tab === "assignments" && (
+            <>
+              <AssignmentWorkspace />
+              <AssignmentFilesPanel />
+            </>
+          )}
           {tab === "tools" && <SubjectTools />}
           {tab === "reader" && <ReaderPublisher />}
           {tab === "slides" && <SlidesIntegrations />}
