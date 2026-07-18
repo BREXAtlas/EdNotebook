@@ -28,6 +28,7 @@ class ProcessRequest(BaseModel):
     edubook_requested: bool = Field(default=False, alias="eduBookRequested")
     callback_url: HttpUrl = Field(alias="callbackUrl")
     callback_token: str = Field(alias="callbackToken", min_length=24, max_length=512)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     limits: ProcessingLimits = Field(default_factory=ProcessingLimits)
 
     model_config = {"populate_by_name": True}
