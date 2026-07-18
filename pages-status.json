@@ -1,7 +1,9 @@
 {
-  "status": "pending",
-  "build": "pending",
-  "deploy": "pending",
-  "page_url": "",
-  "note": "Updated automatically by the production Pages workflow."
+  "status": "success",
+  "build": "success",
+  "deploy": "success",
+  "page_url": "https://brexatlas.github.io/EdNotebook/",
+  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29635314967",
+  "source_commit": "401ee28f47efa6599ee43bc43deea50b3a6cb172",
+  "deployed_at": "2026-07-18T07:12:13Z"
 }
