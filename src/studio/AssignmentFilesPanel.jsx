@@ -5,9 +5,8 @@ import {
   checksumFile,
   currentCourseId,
   deleteResourceRecord,
-  downloadCloudFile,
+  downloadResource,
   readCourseDraft,
-  removeCloudFile,
   saveResourceRecord,
   uploadCloudFile,
   validateFile,
@@ -36,23 +35,32 @@ function formatBytes(value) {
   const bytes = Number(value) || 0;
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+}
+
+function securityLabel(resource) {
+  if (resource.storage_mode === "device") return "This device only · not submitted";
+  if (resource.security_status === "clean") return `Security cleared · private submission · ${formatBytes(resource.size_bytes)}`;
+  if (resource.security_status === "blocked") return "Blocked by malware or archive inspection";
+  return "Quarantined · professor access withheld until clean";
 }
 
 function SubmissionRow({ resource, onDownload, onDelete, review }) {
   const device = resource.storage_mode === "device";
+  const available = device || resource.security_status === "clean";
   return (
     <article className={`studio-submission-row${device ? " is-device" : ""}`}>
       <span className="studio-submission-icon" aria-hidden="true">📎</span>
       <div>
         <strong>{resource.title || resource.originalName || resource.original_name}</strong>
         <p>{resource.description || resource.safeName || resource.safe_name || "Assignment attachment"}</p>
-        <small>
-          {device ? "This device only · not submitted" : `Private submission · ${formatBytes(resource.sizeBytes || resource.size_bytes)}`}
+        <small className={`security-${resource.security_status || (device ? "device" : "scanning")}`}>
+          {securityLabel(resource)}
         </small>
       </div>
       <div className="studio-submission-actions">
-        <button type="button" onClick={() => onDownload(resource)}>Download</button>
+        {available && <button type="button" onClick={() => onDownload(resource)}>Download</button>}
         {!review && <button className="is-danger" type="button" onClick={() => onDelete(resource)}>Remove</button>}
       </div>
     </article>
@@ -74,6 +82,9 @@ export default function AssignmentFilesPanel() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadController, setUploadController] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -108,6 +119,7 @@ export default function AssignmentFilesPanel() {
           .select("*")
           .eq("assignment_id", assignmentData.id)
           .eq("placement", "submission")
+          .is("deleted_at", null)
           .order("created_at", { ascending: false }),
         listDeviceFiles(courseId),
       ]);
@@ -132,7 +144,8 @@ export default function AssignmentFilesPanel() {
     setBusy(true);
     setNotice("");
     setError("");
-    let uploadedTarget = null;
+    setUploadProgress(null);
+    setUploadStatus("");
     try {
       if (!assignment?.id) throw new Error("Save the assignment before attaching submission files.");
       validateFile(file);
@@ -159,10 +172,7 @@ export default function AssignmentFilesPanel() {
         });
         setNotice("Saved to this device only. It is not submitted and will not appear to the professor.");
       } else {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        uploadedTarget = await uploadCloudFile(file, {
-          userId: userData.user.id,
+        const uploadedTarget = await uploadCloudFile(file, {
           scope: "submission",
           courseId,
           assignmentId: assignment.id,
@@ -171,41 +181,40 @@ export default function AssignmentFilesPanel() {
           title: displayTitle,
           category: "submission",
           courseCode: course.code || "course",
+          onProgress: setUploadProgress,
+          onStatus: setUploadStatus,
+          onController: setUploadController,
         });
 
-        try {
-          await saveResourceRecord({
-            course_id: courseId,
-            assignment_id: assignment.id,
-            resource_type: inferType(file),
-            title: displayTitle,
-            description: description.trim(),
-            placement: "submission",
-            storage_mode: "cloud",
-            bucket_id: uploadedTarget.bucket,
-            storage_path: uploadedTarget.path,
-            mime_type: file.type || "application/octet-stream",
-            size_bytes: file.size,
-            original_name: file.name,
-            safe_name: uploadedTarget.safeName,
-            checksum_sha256: uploadedTarget.checksumSha256,
-            visibility: "private",
-            metadata: {
-              format: "EdSubmissionAttachment/1.0",
-              assignmentTitle: assignment.title,
-              namingConvention: "digital-literacy-v1",
-            },
-          });
-        } catch (recordError) {
-          await removeCloudFile(uploadedTarget.bucket, uploadedTarget.path).catch(() => {});
-          throw recordError;
-        }
-        setNotice("Attachment uploaded privately. It now appears in professor review for this assignment.");
+        await saveResourceRecord({
+          course_id: courseId,
+          assignment_id: assignment.id,
+          secure_file_id: uploadedTarget.secureFileId,
+          resource_type: inferType(file),
+          title: displayTitle,
+          description: description.trim(),
+          placement: "submission",
+          storage_mode: "cloud",
+          mime_type: file.type || "application/octet-stream",
+          size_bytes: file.size,
+          original_name: file.name,
+          safe_name: uploadedTarget.safeName,
+          checksum_sha256: uploadedTarget.checksumSha256,
+          security_status: "quarantined",
+          visibility: "private",
+          metadata: {
+            format: "EdSubmissionAttachment/1.0",
+            assignmentTitle: assignment.title,
+            namingConvention: "digital-literacy-v1",
+          },
+        });
+        setNotice("Attachment uploaded to quarantine. Professor download remains disabled until scanning and archive inspection return clean.");
       }
 
       setFile(null);
       setTitle("");
       setDescription("");
+      setUploadController(null);
       const input = document.getElementById("assignment-attachment-input");
       if (input) input.value = "";
       await refresh();
@@ -219,11 +228,7 @@ export default function AssignmentFilesPanel() {
   async function download(resource) {
     try {
       if (resource.storage_mode === "device") await downloadDeviceFile(resource.id);
-      else await downloadCloudFile(
-        resource.bucket_id,
-        resource.storage_path,
-        resource.safe_name || resource.original_name
-      );
+      else await downloadResource(resource);
     } catch (downloadError) {
       setError(downloadError.message || "The attachment could not be downloaded.");
     }
@@ -231,9 +236,19 @@ export default function AssignmentFilesPanel() {
 
   async function remove(resource) {
     try {
-      if (resource.storage_mode === "device") await deleteDeviceFile(resource.id);
-      else await deleteResourceRecord(resource);
-      setNotice("Attachment removed.");
+      if (resource.storage_mode === "device") {
+        await deleteDeviceFile(resource.id);
+        setNotice("Device-only attachment removed.");
+      } else {
+        const result = await deleteResourceRecord(resource, "Learner removed an assignment attachment");
+        if (result?.status === "blocked_legal_hold") {
+          setNotice("Removal was recorded but blocked by an active legal hold.");
+        } else if (result?.status === "deferred_retention") {
+          setNotice(`Removal is deferred by retention policy until ${new Date(result.eligibleAt).toLocaleString()}.`);
+        } else {
+          setNotice("Attachment removal was completed or queued and added to the audit trail.");
+        }
+      }
       await refresh();
     } catch (removeError) {
       setError(removeError.message || "The attachment could not be removed.");
@@ -247,14 +262,14 @@ export default function AssignmentFilesPanel() {
     description: record.description,
   }));
   const learnerRows = [...cloudFiles, ...localRows];
-  const reviewRows = cloudFiles;
+  const reviewRows = cloudFiles.filter((resource) => resource.security_status === "clean");
 
   return (
     <section className="studio-submission-panel" aria-labelledby="submission-attachment-title">
       <div className="studio-panel-heading">
         <div>
           <span className="studio-kicker">📎 SUBMISSION ATTACHMENTS</span>
-          <h3 id="submission-attachment-title">The assignment uses the same secure file path as the writing sandbox.</h3>
+          <h3 id="submission-attachment-title">Assignment files follow the same quarantine and retention rules as course materials.</h3>
           <p>
             {assignment
               ? `${assignment.title} · ${assignment.status}`
@@ -276,7 +291,7 @@ export default function AssignmentFilesPanel() {
             <label className="studio-file-drop" htmlFor="assignment-attachment-input">
               <span aria-hidden="true">📎</span>
               <strong>{file ? file.name : "Attach a paper, image, slide deck, spreadsheet, audio, or video"}</strong>
-              <small>Cloud files are private to the learner and assignment reviewers. Device-only files are never submitted.</small>
+              <small>Cloud files use resumable upload and remain quarantined until clean. Device-only files are never submitted.</small>
               <input
                 id="assignment-attachment-input"
                 type="file"
@@ -290,10 +305,20 @@ export default function AssignmentFilesPanel() {
             </label>
             <div className="studio-field-grid">
               <label>Attachment title<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Learner-facing file label" /></label>
-              <label>Storage<select value={storageMode} onChange={(event) => setStorageMode(event.target.value)}><option value="cloud">Private cloud submission</option><option value="device">This device only</option></select></label>
+              <label>Storage<select value={storageMode} onChange={(event) => setStorageMode(event.target.value)}><option value="cloud">Quarantined cloud submission</option><option value="device">This device only</option></select></label>
             </div>
             <label>Description<textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain what this file contains or how it supports the submission." /></label>
-            <button className="studio-primary-button" type="submit" disabled={busy || !file || !assignment}>{busy ? "Saving attachment…" : storageMode === "cloud" ? "Upload and attach to assignment" : "Save on this device"}</button>
+
+            {uploadProgress && (
+              <div className="studio-upload-progress">
+                <div><strong>{uploadStatus || "uploading"}</strong><span>{uploadProgress.percentage.toFixed(1)}%</span></div>
+                <div><span style={{ width: `${uploadProgress.percentage}%` }} /></div>
+                <small>{formatBytes(uploadProgress.bytesUploaded)} of {formatBytes(uploadProgress.bytesTotal)}</small>
+                {busy && uploadController && <div><button type="button" onClick={() => uploadController.pause()}>Pause</button><button type="button" onClick={() => uploadController.resume()}>Resume</button></div>}
+              </div>
+            )}
+
+            <button className="studio-primary-button" type="submit" disabled={busy || !file || !assignment}>{busy ? "Uploading securely…" : storageMode === "cloud" ? "Upload to submission quarantine" : "Save on this device"}</button>
           </form>
 
           <div className="studio-submission-list">
@@ -304,8 +329,8 @@ export default function AssignmentFilesPanel() {
         </div>
       ) : (
         <div className="studio-professor-file-review">
-          <div className="studio-review-file-note"><span aria-hidden="true">✓</span><div><strong>Only cloud-submitted files appear here.</strong><p>Device-only work remains private and is deliberately excluded from professor review.</p></div></div>
-          {loading ? <div className="studio-tool-empty">Loading professor-visible files…</div> : reviewRows.length === 0 ? <div className="studio-tool-empty">No cloud attachments have been submitted for this assignment.</div> : reviewRows.map((resource) => <SubmissionRow key={resource.id} resource={resource} onDownload={download} onDelete={remove} review />)}
+          <div className="studio-review-file-note"><span aria-hidden="true">✓</span><div><strong>Only security-cleared cloud files appear here.</strong><p>Quarantined, blocked, and device-only work is deliberately excluded from professor download.</p></div></div>
+          {loading ? <div className="studio-tool-empty">Loading professor-visible files…</div> : reviewRows.length === 0 ? <div className="studio-tool-empty">No security-cleared cloud attachments are available for this assignment.</div> : reviewRows.map((resource) => <SubmissionRow key={resource.id} resource={resource} onDownload={download} onDelete={remove} review />)}
         </div>
       )}
     </section>

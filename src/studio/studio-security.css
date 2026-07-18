@@ -1,0 +1,151 @@
+.studio-quota-panel {
+  margin: 0 0 18px;
+  padding: 13px 15px;
+  color: #2a3350;
+  background: #fff;
+  border: 1px solid #d8e0ec;
+  border-radius: 13px;
+  box-shadow: 0 8px 22px rgba(16, 27, 51, 0.04);
+}
+
+.studio-quota-panel > div:first-child,
+.studio-upload-progress > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.studio-quota-panel strong,
+.studio-upload-progress strong {
+  color: #101b33;
+  font-size: 9.5px;
+  text-transform: capitalize;
+}
+
+.studio-quota-panel span,
+.studio-upload-progress span {
+  color: #1d4ed8;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 8px;
+}
+
+.studio-quota-track,
+.studio-upload-progress > div:nth-child(2) {
+  height: 7px;
+  margin: 9px 0 6px;
+  overflow: hidden;
+  background: #e7ebf2;
+  border-radius: 999px;
+}
+
+.studio-quota-track > span,
+.studio-upload-progress > div:nth-child(2) > span {
+  height: 100%;
+  display: block;
+  background: linear-gradient(90deg, #1d4ed8, #557be1);
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+
+.studio-quota-panel small,
+.studio-upload-progress small {
+  color: #737d90;
+  font-size: 7.8px;
+  line-height: 1.4;
+}
+
+.studio-upload-progress {
+  padding: 12px;
+  color: #2a3350;
+  background: #f5f8ff;
+  border: 1px solid #ccd8f4;
+  border-radius: 12px;
+}
+
+.studio-upload-progress > div:last-child {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.studio-upload-progress button {
+  padding: 5px 8px;
+  color: #1d4ed8;
+  background: #fff;
+  border: 1px solid #c8d3e7;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 7.5px;
+  font-weight: 800;
+}
+
+.studio-og-image {
+  width: 100%;
+  max-height: 240px;
+  display: block;
+  object-fit: cover;
+  background: #eef1f6;
+  border-bottom: 1px solid #d6ddea;
+}
+
+.studio-provider-favicon {
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  display: block;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #d5dce9;
+  border-radius: 10px;
+}
+
+.studio-panel-withheld {
+  margin: 10px 0 0;
+  padding: 8px 9px;
+  color: #76500c;
+  background: #fff8e5;
+  border: 1px solid #eed899;
+  border-radius: 9px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.studio-resource-main small em,
+.studio-submission-row small {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.security-clean {
+  color: #1d7b56 !important;
+}
+
+.security-scanning,
+.security-quarantined,
+.security-pending,
+.security-manual_review {
+  color: #9a6a13 !important;
+}
+
+.security-blocked,
+.security-infected,
+.security-suspicious,
+.security-error,
+.security-deleted {
+  color: #b03939 !important;
+}
+
+.security-device {
+  color: #6a7283 !important;
+}
+
+@media (max-width: 620px) {
+  .studio-quota-panel > div:first-child,
+  .studio-upload-progress > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+}

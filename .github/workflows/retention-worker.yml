@@ -1,0 +1,57 @@
+name: Run EdNotebook retention worker
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Maximum deletion or expiry records to process
+        required: false
+        default: "25"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ednotebook-retention-worker
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    name: Process retention, legal holds, and expired uploads
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FUNCTION_URL: https://didwxihufueqbpfnfdmm.supabase.co/functions/v1/retention-worker
+      RETENTION_CRON_SECRET: ${{ secrets.RETENTION_CRON_SECRET }}
+      REQUEST_LIMIT: ${{ inputs.limit || '25' }}
+    steps:
+      - name: Verify retention secret is configured
+        shell: bash
+        run: |
+          test -n "$RETENTION_CRON_SECRET" || {
+            echo "Missing GitHub Actions secret RETENTION_CRON_SECRET"
+            exit 1
+          }
+
+      - name: Invoke protected retention worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$RUNNER_TEMP/retention-response.json"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 3 \
+            --retry-all-errors \
+            --max-time 120 \
+            --request POST \
+            --header "content-type: application/json" \
+            --header "x-cron-secret: $RETENTION_CRON_SECRET" \
+            --data "{\"limit\":$REQUEST_LIMIT}" \
+            --output "$response" \
+            "$FUNCTION_URL"
+
+          python -m json.tool "$response"
