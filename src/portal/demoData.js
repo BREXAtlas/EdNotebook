@@ -214,27 +214,27 @@ export const COMMUNITY_POSTS = [
 
 export const STUDENT_PRICING = [
   {
-    name: "Student Basic",
-    price: "Free",
-    description: "Everything needed to find classes and do course work.",
+    name: "Learn",
+    price: "Free account",
+    description: "Find classes and complete everyday course work.",
     features: ["Class discovery and enrollment matching", "Grades, report card, notes, and calculator", "Class groups and basic student page", "Device-only messages"],
   },
   {
-    name: "Pocket add-ons",
-    price: "$0.99 each",
-    description: "Small optional upgrades without changing course access.",
-    features: ["Profile color or layout packs", "Extra media or social-link block", "One custom page section", "Special badge display"],
+    name: "Connect",
+    price: "Free account",
+    description: "Find classmates, use learning groups, and control profile discovery.",
+    features: ["Name-based friend search", "Class and campus groups", "Shareable student page", "Profile visibility controls"],
   },
   {
-    name: "Student Plus",
-    price: "$2.99 / month",
-    description: "For students who want a larger portfolio and synced personal tools.",
-    features: ["Cloud message and note sync", "Advanced page builder and custom styling", "Extended portfolio history", "Additional private groups"],
+    name: "Create",
+    price: "Free account",
+    description: "Write assignments, keep notes, and build a simple learning portfolio.",
+    features: ["Assignment writing workspace", "PDF and Word-compatible export", "Student page and project links", "Spelling and formatting tools"],
   },
 ];
 
 export const PROFESSOR_PRICING = [
-  { name: "Professor Basic", price: "Free", description: "Create, publish, roster, grade, and communicate for one active class." },
-  { name: "Professor Plus", price: "$8 / month", description: "More active classes, personal professor page, reusable gradebooks, and expanded reporting." },
-  { name: "Founding educator", price: "Free forever", description: "Reserved for approved early educators who help test and shape the platform." },
+  { name: "Professor Basic", price: "Free", description: "Create, publish, roster, grade, and communicate while EdNotebook is in early access." },
+  { name: "Professor Expanded", price: "Free for now", description: "Additional class, page, gradebook, and reporting services are being tested before paid services launch." },
+  { name: "Founding educator", price: "Free", description: "Early educators can help test and shape the platform. Paid services are coming later." },
 ];

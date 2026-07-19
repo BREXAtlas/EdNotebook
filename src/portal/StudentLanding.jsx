@@ -2,6 +2,7 @@ import { useState } from "react";
 import ClassDirectory from "./ClassDirectory.jsx";
 import InterestForm from "./InterestForm.jsx";
 import PortalNav from "./PortalNav.jsx";
+import ShareEdNotebook from "./ShareEdNotebook.jsx";
 import { STUDENT_PRICING } from "./demoData.js";
 import { educationTrack } from "./educationTracks.js";
 import UniversityFinder from "./UniversityFinder.jsx";
@@ -26,6 +27,7 @@ const K12_FEATURES = [
 
 export default function StudentLanding({ onEnter, track = "university" }) {
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [pricingWaitlistOpen, setPricingWaitlistOpen] = useState(false);
   const k12 = track === "k12";
   const copy = educationTrack(track);
   const features = k12 ? K12_FEATURES : STUDENT_FEATURES;
@@ -36,7 +38,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
 
   return (
     <div className={`portal-page student-landing-page ${k12 ? "is-k12" : "is-university"}`}>
-      <PortalNav active="student" action={onEnter} actionLabel={`${copy.shortLabel} student sign in`} />
+      <PortalNav active="student" action={() => onEnter?.()} actionLabel={`${copy.shortLabel} student sign in`} />
       <main>
         <section className="student-hero">
           <div className="student-hero-copy">
@@ -47,7 +49,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
                 ? "Find your school, teacher, and class before creating an account. When you join, your student ID is matched to the teacher’s class list and your private school dashboard opens."
                 : "Search your university and professor before creating an account. When you are ready to join a course, your university ID is matched to the professor’s approved roster and your private dashboard opens."}
             </p>
-            <div className="student-hero-actions"><a href="#class-search">Find a class</a><button type="button" onClick={onEnter}>Open student dashboard</button></div>
+            <div className="student-hero-actions"><a href="#class-search">Find a class</a><button type="button" onClick={() => onEnter?.()}>Open student dashboard</button><ShareEdNotebook buttonLabel="Share with friends" /></div>
             <div className="student-hero-points"><span>No account to browse</span><span>Free school tools</span><span>{k12 ? "School-only social spaces" : "Private grades by default"}</span></div>
           </div>
           <div className={`student-dashboard-preview ${k12 ? "k12-dashboard-preview" : ""}`} aria-label={`${copy.shortLabel} student dashboard preview`}>
@@ -60,7 +62,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
           </div>
         </section>
 
-        {!k12 && <div className="student-directory-shell"><UniversityFinder /></div>}
+        {!k12 && <div className="student-directory-shell"><UniversityFinder onOpenCourse={openCourse} /></div>}
         <div id="class-search" className="student-directory-shell"><ClassDirectory track={track} onOpen={openCourse} /></div>
 
         <section className="student-how-section">
@@ -74,7 +76,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         </section>
 
         <section className="student-feature-section">
-          <div className="student-section-heading"><span className="portal-kicker">WHAT STUDENTS GET</span><h2>Less hunting. Fewer surprises. More ways to stay connected.</h2><p>{k12 ? "School work stays at the center. Points, profiles, clubs, and communities support learning without mixing students into university feeds." : "Course work remains the center; community, profiles, points, and paid extras support it instead of getting in its way."}</p></div>
+          <div className="student-section-heading"><span className="portal-kicker">WHAT STUDENTS GET</span><h2>Less hunting. Fewer surprises. More ways to stay connected.</h2><p>{k12 ? "School work stays at the center. Points, profiles, clubs, and communities support learning without mixing students into university feeds." : "Course work remains the center; community, profiles, points, and optional future services support it instead of getting in its way."}</p></div>
           <div className="student-feature-grid">{features.map(([title, featureCopy], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{featureCopy}</p></article>)}</div>
         </section>
 
@@ -84,13 +86,16 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         </section>
 
         <section className="student-pricing-section">
-          <div className="student-section-heading"><span className="portal-kicker">FREE FIRST, SMALL EXTRAS LATER</span><h2>Course access and core learning tools stay free.</h2><p>Optional personalization and cloud conveniences pay for themselves in small steps. Founding students keep the features they test free under the legacy program.</p></div>
-          <div className="student-pricing-grid">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p><ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><button type="button">Join pricing waitlist</button></article>)}</div>
+          <div className="student-section-heading"><span className="portal-kicker">FREE STUDENT ACCOUNTS</span><h2>Every current student plan opens the same free account.</h2><p>Choose any tab below to create a free account. Optional paid services are still being designed and are not for sale.</p></div>
+          <div className="student-pricing-grid">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p><ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><button type="button" onClick={() => onEnter?.()}>Open free account</button></article>)}</div>
+          <div className="paid-services-coming"><div><span className="portal-kicker">PAID SERVICES</span><h3>Coming soon—not required.</h3><p>Join the waitlist if you want updates about future sync, customization, and expanded storage options.</p></div><button type="button" onClick={() => setPricingWaitlistOpen(true)}>Join paid-services waitlist</button></div>
         </section>
 
+        <section id="share-ednotebook" className="student-share-section"><img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" /><div><span className="portal-kicker">BRING YOUR PEOPLE</span><h2>EdNotebook works better when your class can find each other.</h2><p>Share a direct link on social media, send it to a professor, or download the invitation graphic for a group chat or campus post.</p><ShareEdNotebook buttonLabel="Share or download the invite" /></div></section>
+
         <section className="student-opportunity-section">
-          <InterestForm kind="feature_feedback" title="Tell us what students need" description={`Suggest a feature or describe what should be easier during the ${k12 ? "school day" : "semester"}.`} submitLabel="Save feature suggestion" />
-          <InterestForm kind="student_opportunities" title={k12 ? "Explore student opportunities" : "Work with EdNotebook"} description={k12 ? "Join the waitlist for future student testing, digital literacy, peer mentoring, clubs, and age-appropriate learning opportunities." : "Join the waitlist for future internships, student research support, course testing, design, community, and entry-level roles."} submitLabel="Join opportunity waitlist" emailRequired />
+          <InterestForm kind="feature_feedback" title="Tell us what students need" description={`Suggest a feature or describe what should be easier during the ${k12 ? "school day" : "semester"}.`} submitLabel="Save feature suggestion" educationDivision={track} />
+          <InterestForm kind="student_opportunities" title={k12 ? "Explore student opportunities" : "Work with EdNotebook"} description={k12 ? "Join the waitlist for future student testing, digital literacy, peer mentoring, clubs, and age-appropriate learning opportunities." : "Join the waitlist for future internships, student research support, course testing, design, community, and entry-level roles."} submitLabel="Join opportunity waitlist" emailRequired educationDivision={track} />
         </section>
       </main>
 
@@ -107,6 +112,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
           </div>
         </div>
       )}
+      {pricingWaitlistOpen && <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-waitlist-title"><div className="portal-modal-card waitlist-modal-card"><button className="modal-close" type="button" onClick={() => setPricingWaitlistOpen(false)} aria-label="Close paid services waitlist">×</button><div id="pricing-waitlist-title"><InterestForm kind="pricing_waitlist" title="Paid services waitlist" description="Tell us which optional future service you want to hear about. Your student account and current tools remain free." submitLabel="Join waitlist" emailRequired educationDivision={track} /></div></div></div>}
       <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search">Find classes</a><a href="#/professors">Educator portal</a></footer>
     </div>
   );

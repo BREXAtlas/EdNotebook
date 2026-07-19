@@ -49,8 +49,9 @@ async function hashInstitutionIdentifier(institution, identifier) {
   return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-function AuthForm({ accountType = "student", educationTrack = "university", returnTo = "#/student/app", allowSignup = true }) {
+function AuthForm({ accountType = "student", educationTrack = "university", returnTo = "#/student/app", allowSignup = true, initialVerified = false, onVerifiedContinue }) {
   const [mode, setMode] = useState("login");
+  const [signupState, setSignupState] = useState(initialVerified ? "verified" : null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -96,15 +97,16 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
               institution_identifier_hash: identifierHash,
               institution_identifier_last4: accountType === "student" ? universityId.trim().slice(-4) : null,
             },
-            emailRedirectTo: `${window.location.origin}${window.location.pathname}${returnTo}`,
+            emailRedirectTo: `${window.location.origin}${window.location.pathname}${returnTo}${returnTo.includes("?") ? "&" : "?"}confirmed=1`,
           },
         });
         if (signUpError) throw signUpError;
-        setMessage(
-          data.session
-            ? "Account created. You are signed in."
-            : "Account created. Check your email to confirm your address."
-        );
+        if (data.session) {
+          await supabase.auth.signOut();
+          setSignupState("verified");
+        } else {
+          setSignupState("email");
+        }
       } else if (mode === "reset") {
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}${window.location.pathname}${returnTo}`,
@@ -123,6 +125,42 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
     } finally {
       setBusy(false);
     }
+  }
+
+  if (signupState) {
+    const verified = signupState === "verified";
+    return (
+      <main style={shell}>
+        <section style={card} aria-labelledby="signup-confirmation-title">
+          <div style={{ width: 50, height: 50, display: "grid", placeItems: "center", borderRadius: 16, color: verified ? "#226134" : "#245397", background: verified ? "#edf8ef" : "#eaf1ff", fontSize: 25, fontWeight: 900 }}>
+            {verified ? "✓" : "✉"}
+          </div>
+          <div style={{ marginTop: 18, fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>EDNOTEBOOK · ACCOUNT SECURITY</div>
+          <h1 id="signup-confirmation-title" style={{ margin: "8px 0 10px", fontSize: 30, lineHeight: 1.08 }}>
+            {verified ? "Email confirmed." : "Check your email."}
+          </h1>
+          <p style={{ color: "#59667a", lineHeight: 1.6 }}>
+            {verified
+              ? "Your address is verified. For security, EdNotebook signed out the verification session. Continue to a fresh login screen and enter your password."
+              : `We sent a confirmation link to ${email || "your email address"}. Open it to verify the account. The link returns to a separate confirmation screen before sign-in.`}
+          </p>
+          {verified ? (
+            <button style={primaryButton} type="button" onClick={() => { setSignupState(null); setMode("login"); setPassword(""); onVerifiedContinue?.(); }}>
+              Continue to fresh sign in
+            </button>
+          ) : (
+            <>
+              <button style={primaryButton} type="button" onClick={() => { setSignupState(null); setMode("login"); setPassword(""); }}>
+                Go to sign in
+              </button>
+              <button type="button" onClick={() => setSignupState(null)} style={{ width: "100%", marginTop: 10, border: 0, background: "transparent", color: "#245397", cursor: "pointer", fontWeight: 750 }}>
+                Use a different email
+              </button>
+            </>
+          )}
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -253,8 +291,8 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
 
 function AccountBar({ profile, user }) {
   return (
-    <div style={{ position: "fixed", zIndex: 10000, right: 14, bottom: 14, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "rgba(22,31,49,.94)", color: "white", boxShadow: "0 12px 35px rgba(0,0,0,.22)", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 220 }}>
+    <div className="account-bubble">
+      <div className="account-bubble-details">
         <div style={{ fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {profile?.full_name || user.email}
         </div>
@@ -278,7 +316,12 @@ export default function AuthGate({ children, accountType = "student", educationT
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [verificationConfirmed, setVerificationConfirmed] = useState(false);
   const profileUserId = useRef(null);
+  const confirmationRequested = useRef(
+    typeof window !== "undefined"
+      && new URLSearchParams(window.location.hash.split("?")[1] || "").get("confirmed") === "1",
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -288,9 +331,26 @@ export default function AuthGate({ children, accountType = "student", educationT
 
     let active = true;
 
+    function finishConfirmation() {
+      confirmationRequested.current = false;
+      setVerificationConfirmed(true);
+      setSession(null);
+      profileUserId.current = null;
+      const cleanHash = window.location.hash.split("?")[0] || returnTo;
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("code");
+      window.history.replaceState({}, "", `${cleanUrl.pathname}${cleanUrl.search}${cleanHash}`);
+    }
+
     async function loadSession() {
       const { data } = await supabase.auth.getSession();
       if (active) {
+        if (confirmationRequested.current) {
+          if (data.session) await supabase.auth.signOut();
+          finishConfirmation();
+          setLoading(false);
+          return;
+        }
         profileUserId.current = data.session?.user?.id || null;
         setSession(data.session ?? null);
         setProfileLoading(Boolean(data.session?.user));
@@ -300,6 +360,12 @@ export default function AuthGate({ children, accountType = "student", educationT
 
     loadSession();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (confirmationRequested.current) {
+        finishConfirmation();
+        if (nextSession) window.setTimeout(() => supabase.auth.signOut(), 0);
+        setLoading(false);
+        return;
+      }
       const nextUserId = nextSession?.user?.id || null;
       if (profileUserId.current !== nextUserId) {
         profileUserId.current = nextUserId;
@@ -313,7 +379,7 @@ export default function AuthGate({ children, accountType = "student", educationT
       active = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [returnTo]);
 
   useEffect(() => {
     let active = true;
@@ -364,7 +430,18 @@ export default function AuthGate({ children, accountType = "student", educationT
     return <main style={shell}><div style={card}>Loading your EdNotebook account…</div></main>;
   }
 
-  if (!session?.user) return <AuthForm accountType={accountType} educationTrack={educationTrack} returnTo={returnTo} allowSignup={allowSignup} />;
+  if (!session?.user) {
+    return (
+      <AuthForm
+        accountType={accountType}
+        educationTrack={educationTrack}
+        returnTo={returnTo}
+        allowSignup={allowSignup}
+        initialVerified={verificationConfirmed}
+        onVerifiedContinue={() => setVerificationConfirmed(false)}
+      />
+    );
+  }
 
   if (allowedRoles && !allowedRoles.includes(profile?.role)) {
     return (

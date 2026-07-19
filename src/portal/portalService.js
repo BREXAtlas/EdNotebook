@@ -39,6 +39,58 @@ export async function savePublicStudentPage(profile) {
   return supabase.from("student_public_profiles").upsert(profile, { onConflict: "user_id,education_division" });
 }
 
+export async function loadPublicStudentPage(userId, educationDivision) {
+  if (!isSupabaseConfigured || !userId) return { data: null, source: "device" };
+  const { data, error } = await supabase
+    .from("student_public_profiles")
+    .select("user_id,education_division,display_name,school_name,graduation_year,bio,youtube_url,social_links,theme_key,visibility,discoverable_by_name")
+    .eq("user_id", userId)
+    .eq("education_division", educationDivision)
+    .maybeSingle();
+  return { data, error, source: error ? "device" : "cloud" };
+}
+
+export async function searchStudentProfiles(query, educationDivision, currentUserId) {
+  if (!isSupabaseConfigured || query.trim().length < 2) return { data: [], source: "device" };
+  let request = supabase
+    .from("student_public_profiles")
+    .select("user_id,display_name,school_name,graduation_year,bio,theme_key,visibility")
+    .eq("education_division", educationDivision)
+    .eq("discoverable_by_name", true)
+    .neq("visibility", "private")
+    .ilike("display_name", `%${query.trim().replaceAll("%", "").replaceAll("_", "")}%`)
+    .order("display_name")
+    .limit(20);
+  if (currentUserId) request = request.neq("user_id", currentUserId);
+  const { data, error } = await request;
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
+export async function listCurrentStudentCourses() {
+  if (!isSupabaseConfigured) return { data: [], source: "device" };
+  const { data, error } = await supabase
+    .from("courses")
+    .select("id,course_code,title,subject,teaching_window,status,education_division")
+    .order("updated_at", { ascending: false });
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
+export async function submitPortalInterest(payload) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error("The signup service is not connected."), source: "device" };
+  const { error } = await supabase
+    .from("portal_interest_submissions")
+    .insert({
+      kind: payload.kind,
+      name: payload.name?.trim() || "",
+      email: payload.email?.trim().toLowerCase() || "",
+      school: payload.school?.trim() || "",
+      message: payload.message?.trim() || "",
+      education_division: payload.educationDivision === "k12" ? "k12" : "university",
+      source_path: `${window.location.pathname}${window.location.hash}`.slice(0, 500),
+    });
+  return { data: error ? null : { submitted: true }, error, source: error ? "device" : "cloud" };
+}
+
 export async function submitEducatorVerification(request) {
   return supabase.from("educator_verification_requests").upsert(request, { onConflict: "user_id" }).select().single();
 }

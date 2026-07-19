@@ -24,6 +24,7 @@ function createSection(type = "long") {
     helpText: definition.description,
     required: type !== "heading",
     wordTarget: type === "long" || type === "reflection" ? 150 : 0,
+    wordLimit: 0,
   };
 }
 
@@ -41,7 +42,7 @@ function createTemplate(track, courseId, status = "draft") {
       { ...createSection("long"), prompt: k12 ? "Which evidence supports your claim?" : "Summarize the strongest evidence from the source.", wordTarget: 120 },
       { ...createSection("reflection"), prompt: k12 ? "Explain how the evidence connects to your claim." : "Explain the limits, context, or competing interpretation.", wordTarget: 150 },
     ],
-    editor_config: { full_page_editor: true, spellcheck: true, allow_word_export: true, allow_pdf_export: true },
+    editor_config: { full_page_editor: true, spellcheck: true, allow_word_export: true, allow_pdf_export: true, word_limit: 0 },
     status,
     updated_at: new Date().toISOString(),
   };
@@ -71,13 +72,23 @@ function escapeHtml(value) {
 
 function sanitizeRichHtml(value) {
   const parsed = new DOMParser().parseFromString(String(value || ""), "text/html");
-  const allowed = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "H1", "H2", "H3", "UL", "OL", "LI", "BLOCKQUOTE", "DIV"]);
+  const allowed = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "H1", "H2", "H3", "UL", "OL", "LI", "BLOCKQUOTE", "DIV", "SPAN", "FONT", "A"]);
+  const safeStyleProperties = new Set(["color", "background-color", "font-family", "font-size", "text-align", "margin-left", "line-height"]);
   [...parsed.body.querySelectorAll("*")].forEach((node) => {
     if (!allowed.has(node.tagName)) {
       node.replaceWith(...node.childNodes);
       return;
     }
-    [...node.attributes].forEach((attribute) => node.removeAttribute(attribute.name));
+    [...node.attributes].forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      if (node.tagName === "A" && name === "href" && /^(https?:|mailto:)/i.test(attribute.value)) return;
+      if (node.tagName === "FONT" && ["color", "face", "size"].includes(name)) return;
+      if (name === "style") {
+        const safeStyle = attribute.value.split(";").map((declaration) => declaration.trim()).filter(Boolean).filter((declaration) => safeStyleProperties.has(declaration.split(":")[0]?.trim().toLowerCase())).join("; ");
+        if (safeStyle) { node.setAttribute("style", safeStyle); return; }
+      }
+      node.removeAttribute(attribute.name);
+    });
   });
   return parsed.body.innerHTML;
 }
@@ -127,7 +138,7 @@ function TemplateBuilder({ template, setTemplate, onSave, onPreview, busy }) {
     setTemplate({ ...template, sections: next });
   }
 
-  return <div className="assignment-template-builder"><section className="dashboard-card template-details-card"><span className="portal-kicker">TEMPLATE DETAILS</span><h2>Build the assignment once.</h2><p>Students answer inside EdNotebook instead of downloading a blank document.</p><label>Template title<input spellCheck value={template.title} onChange={(event) => setTemplate({ ...template, title: event.target.value })} /></label><label>Student instructions<textarea spellCheck rows={4} value={template.instructions} onChange={(event) => setTemplate({ ...template, instructions: event.target.value })} /></label><div className="template-option-grid"><label><input type="checkbox" checked={template.editor_config.full_page_editor} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, full_page_editor: event.target.checked } })} />Include full-page writing workspace</label><label><input type="checkbox" checked={template.editor_config.allow_word_export} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, allow_word_export: event.target.checked } })} />Allow Word export</label><label><input type="checkbox" checked={template.editor_config.allow_pdf_export} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, allow_pdf_export: event.target.checked } })} />Allow PDF export</label><label><input type="checkbox" checked={template.editor_config.spellcheck} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, spellcheck: event.target.checked } })} />Spelling check on</label></div></section><section className="dashboard-card template-section-builder"><div className="dashboard-card-heading"><div><span className="portal-kicker">CUSTOM SECTIONS</span><h2>Shape the response.</h2></div><div className="template-add-control"><select aria-label="New section type" value={newType} onChange={(event) => setNewType(event.target.value)}>{SECTION_TYPES.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}</select><button type="button" onClick={() => setTemplate({ ...template, sections: [...template.sections, createSection(newType)] })}>Add section</button></div></div><div className="template-section-list">{template.sections.map((section, index) => <article key={section.id} className="template-section-card"><header><span>{String(index + 1).padStart(2, "0")} · {SECTION_TYPES.find((type) => type.id === section.type)?.label}</span><div><button type="button" aria-label="Move section up" disabled={index === 0} onClick={() => moveSection(index, -1)}>↑</button><button type="button" aria-label="Move section down" disabled={index === template.sections.length - 1} onClick={() => moveSection(index, 1)}>↓</button><button type="button" onClick={() => setTemplate({ ...template, sections: template.sections.filter((item) => item.id !== section.id) })}>Remove</button></div></header><label>{section.type === "heading" ? "Heading" : "Prompt"}<input spellCheck value={section.prompt} onChange={(event) => updateSection(section.id, { prompt: event.target.value })} /></label><label>Student guidance<textarea spellCheck rows={2} value={section.helpText} onChange={(event) => updateSection(section.id, { helpText: event.target.value })} /></label>{section.type !== "heading" && <div className="template-section-options"><label><input type="checkbox" checked={section.required} onChange={(event) => updateSection(section.id, { required: event.target.checked })} />Required</label>{["long", "reflection"].includes(section.type) && <label>Word target<input type="number" min="0" max="5000" value={section.wordTarget} onChange={(event) => updateSection(section.id, { wordTarget: Number(event.target.value) })} /></label>}</div>}</article>)}</div><footer className="template-builder-actions"><button type="button" onClick={onPreview}>Preview as student</button><button type="button" disabled={busy} onClick={() => onSave("draft")}>Save draft</button><button className="primary" type="button" disabled={busy} onClick={() => onSave("published")}>Publish template</button></footer></section></div>;
+  return <div className="assignment-template-builder"><section className="dashboard-card template-details-card"><span className="portal-kicker">TEMPLATE DETAILS</span><h2>Build the assignment once.</h2><p>Students answer inside EdNotebook instead of downloading a blank document.</p><label>Template title<input spellCheck value={template.title} onChange={(event) => setTemplate({ ...template, title: event.target.value })} /></label><label>Student instructions<textarea spellCheck rows={4} value={template.instructions} onChange={(event) => setTemplate({ ...template, instructions: event.target.value })} /></label><label>Full response maximum words <small>Use 0 for no limit.</small><input type="number" min="0" max="50000" value={template.editor_config.word_limit || 0} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, word_limit: Number(event.target.value) } })} /></label><div className="template-option-grid"><label><input type="checkbox" checked={template.editor_config.full_page_editor} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, full_page_editor: event.target.checked } })} />Include full-page writing workspace</label><label><input type="checkbox" checked={template.editor_config.allow_word_export} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, allow_word_export: event.target.checked } })} />Allow Word export</label><label><input type="checkbox" checked={template.editor_config.allow_pdf_export} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, allow_pdf_export: event.target.checked } })} />Allow PDF export</label><label><input type="checkbox" checked={template.editor_config.spellcheck} onChange={(event) => setTemplate({ ...template, editor_config: { ...template.editor_config, spellcheck: event.target.checked } })} />Spelling check on</label></div></section><section className="dashboard-card template-section-builder"><div className="dashboard-card-heading"><div><span className="portal-kicker">CUSTOM SECTIONS</span><h2>Shape the response.</h2></div><div className="template-add-control"><select aria-label="New section type" value={newType} onChange={(event) => setNewType(event.target.value)}>{SECTION_TYPES.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}</select><button type="button" onClick={() => setTemplate({ ...template, sections: [...template.sections, createSection(newType)] })}>Add section</button></div></div><div className="template-section-list">{template.sections.map((section, index) => <article key={section.id} className="template-section-card"><header><span>{String(index + 1).padStart(2, "0")} · {SECTION_TYPES.find((type) => type.id === section.type)?.label}</span><div><button type="button" aria-label="Move section up" disabled={index === 0} onClick={() => moveSection(index, -1)}>↑</button><button type="button" aria-label="Move section down" disabled={index === template.sections.length - 1} onClick={() => moveSection(index, 1)}>↓</button><button type="button" onClick={() => setTemplate({ ...template, sections: template.sections.filter((item) => item.id !== section.id) })}>Remove</button></div></header><label>{section.type === "heading" ? "Heading" : "Prompt"}<input spellCheck value={section.prompt} onChange={(event) => updateSection(section.id, { prompt: event.target.value })} /></label><label>Student guidance<textarea spellCheck rows={2} value={section.helpText} onChange={(event) => updateSection(section.id, { helpText: event.target.value })} /></label>{section.type !== "heading" && <div className="template-section-options"><label><input type="checkbox" checked={section.required} onChange={(event) => updateSection(section.id, { required: event.target.checked })} />Required</label>{["long", "reflection"].includes(section.type) && <label>Word target<input type="number" min="0" max="5000" value={section.wordTarget || 0} onChange={(event) => updateSection(section.id, { wordTarget: Number(event.target.value) })} /></label>}<label>Maximum words<input type="number" min="0" max="5000" value={section.wordLimit || 0} onChange={(event) => updateSection(section.id, { wordLimit: Number(event.target.value) })} /></label></div>}</article>)}</div><footer className="template-builder-actions"><button type="button" onClick={onPreview}>Preview as student</button><button type="button" disabled={busy} onClick={() => onSave("draft")}>Save draft</button><button className="primary" type="button" disabled={busy} onClick={() => onSave("published")}>Publish template</button></footer></section></div>;
 }
 
 function GuidedAnswerFields({ template, answers, setAnswers }) {
@@ -135,7 +146,9 @@ function GuidedAnswerFields({ template, answers, setAnswers }) {
     if (section.type === "heading") return <h2 key={section.id}>{section.prompt}</h2>;
     const value = answers[section.id] || "";
     const isShort = section.type === "short";
-    return <section key={section.id}><div><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.prompt}{section.required && <sup>Required</sup>}</h3></div><p>{section.helpText}</p>{isShort ? <input spellCheck={template.editor_config.spellcheck} value={value} onChange={(event) => setAnswers({ ...answers, [section.id]: event.target.value })} /> : <textarea spellCheck={template.editor_config.spellcheck} rows={section.type === "checklist" ? 5 : 8} value={value} onChange={(event) => setAnswers({ ...answers, [section.id]: event.target.value })} />}<small>{countWords(value)} words{section.wordTarget ? ` · target ${section.wordTarget}` : ""}</small></section>;
+    const words = countWords(value);
+    const overLimit = section.wordLimit > 0 && words > section.wordLimit;
+    return <section key={section.id} className={overLimit ? "is-over-limit" : ""}><div><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.prompt}{section.required && <sup>Required</sup>}</h3></div><p>{section.helpText}</p>{isShort ? <input lang="en" spellCheck={template.editor_config.spellcheck} value={value} onChange={(event) => setAnswers({ ...answers, [section.id]: event.target.value })} /> : <textarea lang="en" spellCheck={template.editor_config.spellcheck} rows={section.type === "checklist" ? 5 : 8} value={value} onChange={(event) => setAnswers({ ...answers, [section.id]: event.target.value })} />}<small>{words} words{section.wordTarget ? ` · target ${section.wordTarget}` : ""}{section.wordLimit ? ` · maximum ${section.wordLimit}` : ""}{overLimit ? " · shorten before submitting" : ""}</small></section>;
   })}</div>;
 }
 
@@ -147,8 +160,11 @@ function TemplatePreview({ template, onClose }) {
 function FullPageEditor({ template, answers, content, setContent, onClose, onSave, status, saving }) {
   const editorRef = useRef(null);
   const workspaceRef = useRef(null);
+  const selectionRef = useRef(null);
   const initialContentRef = useRef(content);
   const [exportError, setExportError] = useState("");
+  const [saveConfirmation, setSaveConfirmation] = useState("");
+  const [showApaGuide, setShowApaGuide] = useState(false);
 
   useEffect(() => {
     const initialContent = sanitizeRichHtml(initialContentRef.current);
@@ -157,10 +173,43 @@ function FullPageEditor({ template, answers, content, setContent, onClose, onSav
     }
   }, []);
 
+  function rememberSelection() {
+    const selection = window.getSelection();
+    if (selection?.rangeCount && editorRef.current?.contains(selection.anchorNode)) selectionRef.current = selection.getRangeAt(0).cloneRange();
+  }
+
+  function restoreSelection() {
+    if (!selectionRef.current) return;
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(selectionRef.current);
+  }
+
   function format(command, value = null) {
     editorRef.current?.focus();
+    restoreSelection();
     document.execCommand(command, false, value);
     setContent(sanitizeRichHtml(editorRef.current?.innerHTML || ""));
+    rememberSelection();
+  }
+
+  function addLink() {
+    const url = window.prompt("Paste an https:// link");
+    if (url && /^https?:\/\//i.test(url)) format("createLink", url);
+  }
+
+  function applyApaPage() {
+    const body = sanitizeRichHtml(editorRef.current?.innerHTML || "") || "<p><br></p>";
+    const apa = `<div style="font-family: Times New Roman; font-size: 12pt; line-height: 2">${body}</div>`;
+    editorRef.current.innerHTML = apa;
+    setContent(sanitizeRichHtml(apa));
+    setShowApaGuide(true);
+  }
+
+  async function saveInsideEditor() {
+    setSaveConfirmation("");
+    const result = await onSave();
+    setSaveConfirmation(result?.message || `Saved at ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`);
   }
 
   async function toggleBrowserFullscreen() {
@@ -173,7 +222,12 @@ function FullPageEditor({ template, answers, content, setContent, onClose, onSav
     onClose();
   }
 
-  return <div className="assignment-editor-overlay" role="dialog" aria-modal="true" aria-labelledby="assignment-editor-title"><div className="assignment-full-editor" ref={workspaceRef}><header><div><span className="portal-kicker">EDNOTEBOOK WRITING WORKSPACE</span><h1 id="assignment-editor-title">{template.title}</h1></div><div className="assignment-editor-header-actions"><span className={`editor-save-state is-${status}`}>{saving ? "Saving…" : status === "submitted" ? "Submitted" : "Draft saved"}</span><button type="button" onClick={toggleBrowserFullscreen}>Full screen</button><button type="button" onClick={closeEditor}>Close</button></div></header><div className="assignment-editor-toolbar" role="toolbar" aria-label="Writing tools"><button type="button" onMouseDown={(event) => { event.preventDefault(); format("bold"); }}><strong>B</strong><span>Bold</span></button><button type="button" onMouseDown={(event) => { event.preventDefault(); format("italic"); }}><em>I</em><span>Italic</span></button><button type="button" onMouseDown={(event) => { event.preventDefault(); format("formatBlock", "h2"); }}>H2<span>Heading</span></button><button type="button" onMouseDown={(event) => { event.preventDefault(); format("insertUnorderedList"); }}>• List<span>Bullets</span></button><button type="button" onMouseDown={(event) => { event.preventDefault(); format("undo"); }}>↶<span>Undo</span></button><button type="button" onMouseDown={(event) => { event.preventDefault(); format("redo"); }}>↷<span>Redo</span></button><span className="spellcheck-indicator">✓ Spelling check {template.editor_config.spellcheck ? "on" : "off"}</span></div><main className="assignment-editor-page"><div ref={editorRef} className="assignment-content-editor" role="textbox" aria-label="Full assignment response" aria-multiline="true" contentEditable suppressContentEditableWarning spellCheck={template.editor_config.spellcheck} data-placeholder="Start writing your full response here…" onInput={(event) => setContent(sanitizeRichHtml(event.currentTarget.innerHTML))} /></main><footer><span>{countWords(content)} words</span><div>{exportError && <strong className="editor-export-error">{exportError}</strong>}<button type="button" disabled={!template.editor_config.allow_word_export} onClick={() => downloadWord(template, answers, content)}>Export Word</button><button type="button" disabled={!template.editor_config.allow_pdf_export} onClick={() => { try { setExportError(""); openPdfExport(template, answers, content); } catch (error) { setExportError(error.message); } }}>Export PDF</button><button className="primary" type="button" onClick={onSave}>Save to assignment</button></div></footer></div></div>;
+  const words = countWords(content);
+  const wordLimit = template.editor_config.word_limit || 0;
+  const overLimit = wordLimit > 0 && words > wordLimit;
+  const toolButton = (label, title, command, value = null) => <button type="button" title={title} onMouseDown={(event) => { event.preventDefault(); format(command, value); }}>{label}<span>{title}</span></button>;
+
+  return <div className="assignment-editor-overlay" role="dialog" aria-modal="true" aria-labelledby="assignment-editor-title"><div className="assignment-full-editor" ref={workspaceRef}><header><div><span className="portal-kicker">EDNOTEBOOK WRITING WORKSPACE</span><h1 id="assignment-editor-title">{template.title}</h1></div><div className="assignment-editor-header-actions"><span className={`editor-save-state is-${status}`}>{saving ? "Saving…" : status === "submitted" ? "Submitted" : "Draft"}</span><button type="button" onClick={toggleBrowserFullscreen}>Full screen</button><button type="button" onClick={closeEditor}>Close</button></div></header><div className="assignment-editor-toolbar" role="toolbar" aria-label="Writing tools"><label>Style<select aria-label="Paragraph style" defaultValue="p" onChange={(event) => format("formatBlock", event.target.value)}><option value="p">Paragraph</option><option value="h1">Title</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="blockquote">Quote</option></select></label><label>Font<select aria-label="Font family" defaultValue="Arial" onChange={(event) => format("fontName", event.target.value)}><option>Arial</option><option>Georgia</option><option>Times New Roman</option><option>Verdana</option></select></label><label>Size<select aria-label="Font size" defaultValue="3" onChange={(event) => format("fontSize", event.target.value)}><option value="2">Small</option><option value="3">Normal</option><option value="4">Large</option><option value="5">Extra large</option></select></label>{toolButton(<strong>B</strong>, "Bold", "bold")}{toolButton(<em>I</em>, "Italic", "italic")}{toolButton(<u>U</u>, "Underline", "underline")}{toolButton("•", "Bullets", "insertUnorderedList")}{toolButton("1.", "Numbered list", "insertOrderedList")}{toolButton("≡", "Align left", "justifyLeft")}{toolButton("≣", "Align center", "justifyCenter")}{toolButton("☷", "Align right", "justifyRight")}{toolButton("→", "Indent", "indent")}{toolButton("←", "Outdent", "outdent")}<button type="button" title="Add link" onMouseDown={(event) => { event.preventDefault(); addLink(); }}>🔗<span>Link</span></button><label className="editor-color-tool">Text<input type="color" defaultValue="#17233b" onFocus={rememberSelection} onChange={(event) => format("foreColor", event.target.value)} /></label><label className="editor-color-tool">Highlight<input type="color" defaultValue="#fff2a8" onFocus={rememberSelection} onChange={(event) => format("hiliteColor", event.target.value)} /></label>{toolButton("Tx", "Clear formatting", "removeFormat")}{toolButton("↶", "Undo", "undo")}{toolButton("↷", "Redo", "redo")}<button type="button" onClick={() => setShowApaGuide(!showApaGuide)}>APA<span>Format guide</span></button><span className="spellcheck-indicator">✓ Browser spelling check {template.editor_config.spellcheck ? "on" : "off"}</span></div>{showApaGuide && <aside className="apa-format-guide"><div><strong>APA writing setup</strong><p>Use a readable approved font, double spacing, 1-inch margins, page numbers, and the title information your educator requests. Confirm the assignment's edition and source rules.</p></div><button type="button" onClick={applyApaPage}>Apply 12 pt Times New Roman + double spacing</button></aside>}<main className="assignment-editor-page"><div ref={editorRef} className="assignment-content-editor" role="textbox" aria-label="Full assignment response" aria-multiline="true" contentEditable suppressContentEditableWarning lang="en" spellCheck={template.editor_config.spellcheck} data-placeholder="Start writing your full response here…" onMouseUp={rememberSelection} onKeyUp={rememberSelection} onInput={(event) => { setSaveConfirmation(""); setContent(sanitizeRichHtml(event.currentTarget.innerHTML)); }} /></main><footer><span className={overLimit ? "is-over-limit" : ""}>{words} words{wordLimit ? ` · maximum ${wordLimit}` : ""}{overLimit ? " · shorten before submitting" : ""}</span><div>{saveConfirmation && <strong className="editor-save-confirmation" role="status">✓ {saveConfirmation}</strong>}{exportError && <strong className="editor-export-error">{exportError}</strong>}<button type="button" disabled={!template.editor_config.allow_word_export} onClick={() => downloadWord(template, answers, content)}>Export Word</button><button type="button" disabled={!template.editor_config.allow_pdf_export} onClick={() => { try { setExportError(""); openPdfExport(template, answers, content); } catch (error) { setExportError(error.message); } }}>Export PDF</button><button className="primary" type="button" disabled={saving} onClick={saveInsideEditor}>{saving ? "Saving…" : "Save to assignment"}</button></div></footer></div></div>;
 }
 
 function StudentAssignment({ template, session, onClose }) {
@@ -209,18 +263,25 @@ function StudentAssignment({ template, session, onClose }) {
   }, [answers, documentContent, status, storageKey]);
 
   const missing = template.sections.filter((section) => section.required && !String(answers[section.id] || "").trim());
+  const overLimitSections = template.sections.filter((section) => section.wordLimit > 0 && countWords(answers[section.id]) > section.wordLimit);
+  const fullResponseOverLimit = template.editor_config.word_limit > 0 && countWords(documentContent) > template.editor_config.word_limit;
 
   async function persist(nextStatus = status) {
     setSaving(true); setNotice("");
     const submission = { template_id: template.id, course_id: template.course_id, answers, document_content: sanitizeRichHtml(documentContent), word_count: countWords(documentContent), status: nextStatus };
     const result = await saveAssignmentSubmission(submission, session?.user?.id);
-    if (result.error) setNotice(`Saved on this device. Cloud save will retry later: ${result.error.message}`);
-    else if (result.source === "device") setNotice(nextStatus === "submitted" ? "Assignment marked submitted on this device" : "Draft saved on this device");
-    else setNotice(nextStatus === "submitted" ? "Assignment submitted" : "Draft saved to your assignment");
+    let nextNotice;
+    if (result.error) nextNotice = `Saved on this device. Cloud save will retry later: ${result.error.message}`;
+    else if (result.source === "device") nextNotice = nextStatus === "submitted" ? "Assignment marked submitted on this device" : "Draft saved on this device";
+    else nextNotice = nextStatus === "submitted" ? "Assignment submitted" : "Draft saved to your assignment";
+    setNotice(nextNotice);
     setStatus(nextStatus); saveJson(storageKey, { ...submission, status: nextStatus, saved_at: new Date().toISOString() }); setSaving(false);
+    return { message: `${nextNotice} at ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` };
   }
 
-  return <section className="student-assignment-workspace"><header><button type="button" onClick={onClose}>← All assignments</button><div><span>{status}</span><strong>{notice || "Changes save as you work"}</strong></div></header><div className="assignment-student-heading"><span className="portal-kicker">TEMPLATE ASSIGNMENT</span><h1>{template.title}</h1><p>{template.instructions}</p><div><span>✓ Spelling check on</span><span>✓ Draft saves to this page</span><span>✓ No document upload needed</span></div></div><div className="assignment-response-layout"><main className="dashboard-card"><GuidedAnswerFields template={template} answers={answers} setAnswers={setAnswers} /></main><aside><section className="dashboard-card"><span className="portal-kicker">FULL RESPONSE</span><h2>Write without leaving EdNotebook.</h2><p>Open a clean, full-size page for the complete assignment. Your guided answers stay beside it when you return.</p><button className="primary" type="button" disabled={!template.editor_config.full_page_editor} onClick={() => setFullEditor(true)}>Open full writing workspace</button><small>{countWords(documentContent)} words saved</small></section><section className="dashboard-card"><span className="portal-kicker">EXPORT</span><h2>Use your work anywhere.</h2><button type="button" disabled={!template.editor_config.allow_word_export} onClick={() => downloadWord(template, answers, documentContent)}>Export Word</button><button type="button" disabled={!template.editor_config.allow_pdf_export} onClick={() => { try { openPdfExport(template, answers, documentContent); } catch (error) { setNotice(error.message); } }}>Export PDF</button></section></aside></div><footer className="student-assignment-actions"><button type="button" disabled={saving} onClick={() => persist("draft")}>Save draft</button><button className="primary" type="button" disabled={saving || missing.length > 0} onClick={() => persist("submitted")}>{missing.length ? `Complete ${missing.length} required section${missing.length === 1 ? "" : "s"}` : "Submit assignment"}</button></footer>{fullEditor && <FullPageEditor template={template} answers={answers} content={documentContent} setContent={setDocumentContent} onClose={() => setFullEditor(false)} onSave={() => { persist("draft"); setFullEditor(false); }} status={status} saving={saving} />}</section>;
+  const submitBlocked = missing.length > 0 || overLimitSections.length > 0 || fullResponseOverLimit;
+  const submitLabel = missing.length ? `Complete ${missing.length} required section${missing.length === 1 ? "" : "s"}` : overLimitSections.length || fullResponseOverLimit ? "Shorten responses to submit" : "Submit assignment";
+  return <section className="student-assignment-workspace"><header><button type="button" onClick={onClose}>← All assignments</button><div><span>{status}</span><strong>{notice || "Changes save as you work"}</strong></div></header><div className="assignment-student-heading"><span className="portal-kicker">TEMPLATE ASSIGNMENT</span><h1>{template.title}</h1><p>{template.instructions}</p><div><span>✓ Browser spelling check {template.editor_config.spellcheck ? "on" : "off"}</span><span>✓ Draft saves to this page</span><span>✓ No document upload needed</span></div></div><div className="assignment-response-layout"><main className="dashboard-card"><GuidedAnswerFields template={template} answers={answers} setAnswers={setAnswers} /></main><aside><section className="dashboard-card"><span className="portal-kicker">FULL RESPONSE</span><h2>Write without leaving EdNotebook.</h2><p>Open a clean, full-size page for the complete assignment. Your guided answers stay beside it when you return.</p><button className="primary" type="button" disabled={!template.editor_config.full_page_editor} onClick={() => setFullEditor(true)}>Open full writing workspace</button><small className={fullResponseOverLimit ? "is-over-limit" : ""}>{countWords(documentContent)} words saved{template.editor_config.word_limit ? ` · maximum ${template.editor_config.word_limit}` : ""}</small></section><section className="dashboard-card assignment-export-card"><span className="portal-kicker">EXPORT</span><h2>Use your work anywhere.</h2><button type="button" disabled={!template.editor_config.allow_word_export} onClick={() => downloadWord(template, answers, documentContent)}>Export Word</button><button type="button" disabled={!template.editor_config.allow_pdf_export} onClick={() => { try { openPdfExport(template, answers, documentContent); } catch (error) { setNotice(error.message); } }}>Export PDF</button></section></aside></div><footer className="student-assignment-actions"><button type="button" disabled={saving} onClick={() => persist("draft")}>Save draft</button><button className="primary" type="button" disabled={saving || submitBlocked} onClick={() => persist("submitted")}>{submitLabel}</button></footer>{fullEditor && <FullPageEditor template={template} answers={answers} content={documentContent} setContent={setDocumentContent} onClose={() => setFullEditor(false)} onSave={() => persist("draft")} status={status} saving={saving} />}</section>;
 }
 
 export default function AssignmentTemplateWorkspace({ mode, session, track = "university", classes = [] }) {
