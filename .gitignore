@@ -1,5 +1,11 @@
 node_modules/
 dist/
+.codex-build-check*/
+.scanner-build-check*/
+.codex-browser-check.mjs
+.codex-browser-output/
+__pycache__/
+.pytest_cache/
 supabase/.temp/
 .env
 .env.*

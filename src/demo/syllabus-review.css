@@ -10,6 +10,19 @@
 .syllabus-heading-actions button:last-child { color: #fff; background: var(--demo-blue); border-color: var(--demo-blue); }
 .syllabus-inline-actions { justify-content: flex-start; }
 .syllabus-inline-actions > button { justify-self: auto !important; }
+.syllabus-read-progress,
+.syllabus-read-error { margin: 13px 0 0; padding: 11px 13px; border-radius: 10px; font-size: 10px; }
+.syllabus-read-progress { display: grid; grid-template-columns: 16px 1fr auto; gap: 9px; align-items: center; color: #263f72; background: #edf1fb; border: 1px solid #c9d3ea; }
+.syllabus-read-progress > span { width: 14px; height: 14px; border: 2px solid #b8c4df; border-top-color: #3151a6; border-radius: 50%; animation: syllabus-read-spin .8s linear infinite; }
+.syllabus-read-progress button { padding: 6px 9px; color: #3151a6; background: #fff; border: 1px solid #c7d1e7; border-radius: 7px; font-size: 8px; font-weight: 850; }
+.syllabus-read-error { color: #7d3131; background: #fff0ef; border: 1px solid #e2b7b3; }
+.syllabus-upload-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.syllabus-upload-actions button { min-height: 44px; padding: 10px 13px; color: var(--demo-blue-dark); background: #f4f0e9; border: 1px solid #d6cebf; border-radius: 9px; font-size: 12px; font-weight: 850; }
+.syllabus-upload-actions .primary-paper-button { color: #fff; background: var(--demo-blue); border-color: var(--demo-blue); }
+.file-summary button { padding: 5px 8px; color: var(--demo-blue-dark); background: #eef1f8; border: 1px solid #ccd4e5; border-radius: 7px; font-size: 8px; font-weight: 850; }
+.syllabus-scanner-loading { position: fixed; z-index: 300; inset: 0; display: grid; place-items: center; padding: 24px; color: #fff; background: #101b33; font-weight: 850; }
+@keyframes syllabus-read-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .syllabus-read-progress > span { animation: none; border-color: #3151a6; } }
 .syllabus-detection-preview { min-width: 0; padding: 16px; background: #f7f3ec; border: 1px solid #ddd6ca; border-radius: 13px; }
 .syllabus-detection-preview > div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
 .syllabus-detection-preview > div > strong { color: var(--demo-ink); font-family: var(--demo-display); font-size: 18px; }

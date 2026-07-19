@@ -1,21 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import FullscreenSurface from "../FullscreenSurface.jsx";
 import { dateKey, formatDateTime, NotebookLabel } from "./demoShared.jsx";
+import { extractSyllabusFile, MAX_EXTRACTED_CHARACTERS } from "./syllabusFileExtractors.js";
 import "./syllabus-review.css";
 
-const MONTHS = {
-  january: 0,
-  february: 1,
-  march: 2,
-  april: 3,
+const SyllabusScanner = lazy(() => import("./SyllabusScanner.jsx"));
+
+const MONTH_TOKENS = {
+  jan: 0, january: 0,
+  feb: 1, february: 1,
+  mar: 2, march: 2,
+  apr: 3, april: 3,
   may: 4,
-  june: 5,
-  july: 6,
-  august: 7,
-  september: 8,
-  october: 9,
-  november: 10,
-  december: 11,
+  jun: 5, june: 5,
+  jul: 6, july: 6,
+  aug: 7, august: 7,
+  sep: 8, sept: 8, september: 8,
+  oct: 9, october: 9,
+  nov: 10, november: 10,
+  dec: 11, december: 11,
 };
 
 const LINE_LABELS = {
@@ -30,9 +33,6 @@ const REVIEW_PAGES = [
   { id: "source", label: "Source & highlights" },
   { id: "review", label: "Calendar review" },
 ];
-
-const MAX_SYLLABUS_FILE_BYTES = 1024 * 1024;
-const MAX_SYLLABUS_CHARACTERS = 250_000;
 
 function defaultParameters(persona) {
   return {
@@ -53,6 +53,29 @@ function defaultSyllabusText(persona) {
 
 function pad(value) {
   return String(value).padStart(2, "0");
+}
+
+function stableToken(value) {
+  let hash = 2_166_136_261;
+  for (const character of String(value || "")) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function syllabusSourceId(personaId, name, course) {
+  return `syllabus-${personaId}-${stableToken(`${String(course || "course").trim().toLowerCase()}\u0000${String(name || "sample").trim().toLowerCase()}`)}`;
+}
+
+function clockFromText(value, { beforeDate = false } = {}) {
+  const suffix = beforeDate ? String(value || "").slice(-48) : String(value || "");
+  const ending = beforeDate ? "(?:\\s+(?:on|for))?[\\s,;@-]*$" : "\\b";
+  const clock = suffix.match(new RegExp(`(?:\\bat\\b|@|\\bby\\b)?\\s*(\\d{1,2}):(\\d{2})\\s*(AM|PM)?${ending}`, "i"));
+  if (clock) return { hour: Number(clock[1]), minute: Number(clock[2]), meridiem: clock[3]?.toUpperCase() || "" };
+  const hourOnly = suffix.match(new RegExp(`(?:\\bat\\b|@|\\bby\\b)?\\s*(\\d{1,2})\\s*(AM|PM)${ending}`, "i"));
+  if (hourOnly) return { hour: Number(hourOnly[1]), minute: 0, meridiem: hourOnly[2].toUpperCase() };
+  return null;
 }
 
 function offsetMinutesAt(instant, timeZone) {
@@ -81,16 +104,41 @@ function timeZoneOffset({ year, month, day, hour, minute }, timeZone) {
 }
 
 function parseDateFromLine(line, parameters) {
-  const monthNames = Object.keys(MONTHS).join("|");
-  const match = line.match(new RegExp(`(${monthNames})\\s+(\\d{1,2})(?:,?\\s+(\\d{4}))?(?:\\s+(?:at|@|by)?\\s*(\\d{1,2})(?::(\\d{2}))?\\s*(AM|PM)?)?`, "i"));
-  if (!match) return null;
-  const month = MONTHS[match[1].toLowerCase()];
-  const day = Number(match[2]);
-  const year = Number(match[3] || parameters.defaultYear);
+  const value = String(line || "");
+  let match = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/u);
+  let year;
+  let month;
+  let day;
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]) - 1;
+    day = Number(match[3]);
+  } else {
+    match = value.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/u);
+    if (match) {
+      month = Number(match[1]) - 1;
+      day = Number(match[2]);
+      year = Number(match[3]);
+      if (year < 100) year += 2000;
+    } else {
+      const monthNames = Object.keys(MONTH_TOKENS).sort((first, second) => second.length - first.length).join("|");
+      match = value.match(new RegExp(`\\b(${monthNames})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{2,4}))?\\b`, "i"));
+      if (!match) return null;
+      month = MONTH_TOKENS[match[1].toLowerCase()];
+      day = Number(match[2]);
+      year = Number(match[3] || parameters.defaultYear);
+      if (year < 100) year += 2000;
+    }
+  }
+
   const fallbackTime = String(parameters.defaultTime || "23:59").split(":");
-  let hour = match[4] == null ? Number(fallbackTime[0]) : Number(match[4]);
-  const minute = match[5] == null ? Number(fallbackTime[1]) : Number(match[5]);
-  const meridiem = match[6]?.toUpperCase();
+  const trailingText = value.slice((match.index || 0) + match[0].length);
+  const leadingText = value.slice(0, match.index || 0);
+  const parsedClock = clockFromText(trailingText) || clockFromText(leadingText, { beforeDate: true });
+  let hour = parsedClock ? parsedClock.hour : Number(fallbackTime[0]);
+  const minute = parsedClock ? parsedClock.minute : Number(fallbackTime[1]);
+  const meridiem = parsedClock?.meridiem;
+  if (meridiem && (hour < 1 || hour > 12)) return null;
   if (meridiem === "PM" && hour < 12) hour += 12;
   if (meridiem === "AM" && hour === 12) hour = 0;
   if (day < 1 || day > 31 || hour > 23 || minute > 59) return null;
@@ -127,18 +175,25 @@ function analyzeSyllabusLines(text, parameters) {
   });
 }
 
-function extractSyllabus(text, persona, parameters) {
+function extractSyllabus(text, persona, parameters, sourceId) {
   const analysis = analyzeSyllabusLines(text, parameters);
   const detected = analysis.filter((line) => line.line);
   const title = detected.find((line) => line.type === "title")?.line || `${persona.classes[0].title} syllabus`;
   const bookLines = detected.filter((line) => line.type === "material");
   const objectiveLines = detected.filter((line) => line.type === "objective");
   const assignmentLines = detected.filter((line) => line.type === "assignment");
+  const itemOccurrences = new Map();
   const extractedAssignments = assignmentLines.map((line, index) => {
     const due = parseDateFromLine(line.line, parameters) || persona.assignments[index]?.due || `${parameters.defaultYear}-09-15T${parameters.defaultTime}:00-05:00`;
     const titlePart = line.line.split(/\s+(?:is\s+)?due\s+|\s+deadline\s*:?\s*|\s+submit(?:ted)?\s+by\s+/i)[0] || `Extracted assignment ${index + 1}`;
+    const identityText = titlePart.trim().toLowerCase().replace(/\s+/g, " ") || `item-${index + 1}`;
+    const occurrence = (itemOccurrences.get(identityText) || 0) + 1;
+    itemOccurrences.set(identityText, occurrence);
+    const importItemKey = `${stableToken(identityText)}-${occurrence}`;
     return {
-      id: `extract-${persona.id}-${line.index}`,
+      id: `extract-${stableToken(sourceId)}-${importItemKey}`,
+      importSourceId: sourceId,
+      importItemKey,
       course: parameters.course,
       title: titlePart.trim(),
       due,
@@ -293,11 +348,11 @@ function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
   return (
     <div className="syllabus-report-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <form className="syllabus-report-dialog" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="syllabus-report-title">
-        <header><div><NotebookLabel>REPORT EXTRACTION ISSUE</NotebookLabel><h2 id="syllabus-report-title">Tell the admin what needs attention.</h2></div><button type="button" onClick={onClose} aria-label="Close issue report">×</button></header>
-        <p>Reporter: <strong>{persona?.name || "Guest"}</strong> · Source: <strong>{fileName || "Pasted or sample text"}</strong></p>
+        <header><div><NotebookLabel>DEMO ISSUE REPORT</NotebookLabel><h2 id="syllabus-report-title">Save this issue to the demo admin inbox.</h2></div><button type="button" onClick={onClose} aria-label="Close issue report">×</button></header>
+        <p>This sample workspace saves the report only on this device. Reporter: <strong>{persona?.name || "Guest"}</strong> · Source: <strong>{fileName || "Pasted or sample text"}</strong></p>
         <label>Where did it happen?<select value={stage} onChange={(event) => setStage(event.target.value)}><option>Upload or file reading</option><option>Source detection</option><option>Assignment conversion</option><option>Calendar output</option><option>Something else</option></select></label>
         <label>What was missed or converted incorrectly?<textarea autoFocus required minLength={8} rows={6} value={issue} onChange={(event) => setIssue(event.target.value)} placeholder="Example: Line 14 was highlighted as an assignment, but it is an office-hours date." /></label>
-        <footer><button type="button" onClick={onClose}>Cancel</button><button className="primary-paper-button" type="submit">Send report</button></footer>
+        <footer><button type="button" onClick={onClose}>Cancel</button><button className="primary-paper-button" type="submit">Save demo report</button></footer>
       </form>
     </div>
   );
@@ -313,10 +368,20 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
   const [notice, setNotice] = useState("");
   const [surfacePage, setSurfacePage] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  const [readProgress, setReadProgress] = useState("");
+  const [readError, setReadError] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanArtifact, setScanArtifact] = useState(null);
+  const [sourceId, setSourceId] = useState(() => syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
   const inputRef = useRef(null);
+  const readControllerRef = useRef(null);
+  const readSequenceRef = useRef(0);
   const analysis = useMemo(() => analyzeSyllabusLines(text, parameters), [text, parameters]);
 
   useEffect(() => {
+    readControllerRef.current?.abort();
+    readSequenceRef.current += 1;
     setTextState(defaultSyllabusText(persona));
     setParameters(defaultParameters(persona));
     setExtraction(null);
@@ -326,40 +391,84 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     setSurfacePage(null);
     setReportOpen(false);
     setFileName("");
+    setIsReading(false);
+    setReadProgress("");
+    setReadError("");
+    setScannerOpen(false);
+    setScanArtifact(null);
+    setSourceId(syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
+    return () => {
+      readControllerRef.current?.abort();
+      readSequenceRef.current += 1;
+    };
   }, [persona.id]);
 
   function setText(value) {
-    const next = value.length > MAX_SYLLABUS_CHARACTERS ? value.slice(0, MAX_SYLLABUS_CHARACTERS) : value;
+    const next = value.length > MAX_EXTRACTED_CHARACTERS ? value.slice(0, MAX_EXTRACTED_CHARACTERS) : value;
     setTextState(next);
-    if (value.length > MAX_SYLLABUS_CHARACTERS) setNotice("The course text was limited to 250,000 characters so review stays responsive. Split a larger syllabus into sections.");
+    if (value.length > MAX_EXTRACTED_CHARACTERS) setNotice("The course text was limited to 250,000 characters so review stays responsive. Split a larger syllabus into sections.");
     if (extraction) setReviewStale(true);
   }
 
-  function handleFile(file) {
+  function commitSyllabusSource({ text: sourceText, name, detail, warnings = [], artifact = null }) {
+    setSourceId(syllabusSourceId(persona.id, name, parameters.course));
+    setFileName(name);
+    setTextState(sourceText);
+    setExtraction(null);
+    setApproved([]);
+    setReviewStale(false);
+    setReadError("");
+    setScanArtifact(artifact);
+    const warningNote = warnings.length ? ` Review the source carefully because ${warnings.length} reading warning${warnings.length === 1 ? " was" : "s were"} reported.` : "";
+    setNotice(`${name} is ready from ${detail}. Review the highlighted source before conversion.${warningNote}`);
+    setSurfacePage("source");
+  }
+
+  function downloadScanArtifact() {
+    if (!scanArtifact) return;
+    const url = URL.createObjectURL(scanArtifact);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = scanArtifact.name || "syllabus-scan.pdf";
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
+
+  async function handleFile(file) {
     if (!file) return;
-    if (file.size > MAX_SYLLABUS_FILE_BYTES) { setNotice("Upload a text syllabus smaller than 1 MB, or paste it in sections so review stays responsive."); return; }
-    setFileName(file.name);
-    if (file.type.startsWith("text/") || /\.(txt|md|csv)$/i.test(file.name)) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = String(reader.result || "");
-        if (result.length > MAX_SYLLABUS_CHARACTERS) { setNotice("The file contains more than 250,000 characters. Split it into sections before extraction."); return; }
-        setTextState(result);
-        setExtraction(null);
-        setApproved([]);
-        setReviewStale(false);
-        setNotice(`${file.name} is ready. Review the highlighted source before conversion.`);
-        setSurfacePage("source");
-      };
-      reader.onerror = () => setNotice("The file could not be read. Paste its text into the course text field and try again.");
-      reader.readAsText(file);
-    } else {
-      setNotice("This browser demo cannot read PDF or Word text yet. Paste the document text below to review every conversion before saving dates.");
+    readControllerRef.current?.abort();
+    const controller = new AbortController();
+    const sequence = readSequenceRef.current + 1;
+    readSequenceRef.current = sequence;
+    readControllerRef.current = controller;
+    setIsReading(true);
+    setReadError("");
+    setNotice("");
+    setReadProgress("Opening syllabus…");
+    try {
+      const result = await extractSyllabusFile(file, {
+        signal: controller.signal,
+        onProgress: (message) => {
+          if (readSequenceRef.current === sequence) setReadProgress(message);
+        },
+      });
+      if (readSequenceRef.current !== sequence || controller.signal.aborted) return;
+      commitSyllabusSource({ text: result.text, name: file.name, detail: result.detail, warnings: result.warnings });
+    } catch (error) {
+      if (readSequenceRef.current !== sequence) return;
+      if (error?.name === "AbortError") setNotice("Syllabus reading canceled. Your current course text was not changed.");
+      else setReadError(error?.message || "The syllabus could not be read. Try another copy or paste the text below.");
+    } finally {
+      if (readSequenceRef.current === sequence) {
+        setIsReading(false);
+        setReadProgress("");
+        readControllerRef.current = null;
+      }
     }
   }
 
   function runExtraction() {
-    const next = extractSyllabus(text, persona, parameters);
+    const next = extractSyllabus(text, persona, parameters, sourceId);
     setExtraction(next);
     setApproved(next.assignments.map((item) => item.id));
     setReviewStale(false);
@@ -370,7 +479,7 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
   function addMissingAssignment() {
     const id = `manual-${Date.now()}`;
     const due = withTimeZoneOffset(`${parameters.defaultYear}-09-01T${parameters.defaultTime}`, parameters.timeZone);
-    setExtraction((current) => ({ ...current, assignments: [...current.assignments, { id, course: parameters.course, title: "Untitled calendar item", due, hours: parameters.defaultHours, status: "not-started", priority: "medium", description: "Added during extraction review.", sourceLine: null }] }));
+    setExtraction((current) => ({ ...current, assignments: [...current.assignments, { id, importSourceId: sourceId, importItemKey: id, course: parameters.course, title: "Untitled calendar item", due, hours: parameters.defaultHours, status: "not-started", priority: "medium", description: "Added during extraction review.", sourceLine: null }] }));
     setApproved((current) => [...current, id]);
   }
 
@@ -381,20 +490,29 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
       return;
     }
     const selected = extraction.assignments.filter((item) => approved.includes(item.id) && item.title.trim() && item.due);
-    const selectedById = new Map(selected.map((item) => [item.id, item]));
+    const priorSourceItems = assignments.filter((item) => item.importSourceId === sourceId);
+    const priorByKey = new Map(priorSourceItems.map((item) => [item.importItemKey, item]));
+    const selectedKeys = new Set(selected.map((item) => item.importItemKey));
     let updated = 0;
-    const synchronized = assignments.map((item) => {
-      const replacement = selectedById.get(item.id);
-      if (!replacement) return item;
-      selectedById.delete(item.id);
-      const changed = ["course", "title", "due", "hours"].some((field) => item[field] !== replacement[field]);
-      if (changed) updated += 1;
-      return { ...item, ...replacement };
+    const synchronizedSource = selected.map((item) => {
+      const prior = priorByKey.get(item.importItemKey);
+      if (!prior) return item;
+      if (["course", "title", "due", "hours"].some((field) => prior[field] !== item[field])) updated += 1;
+      return { ...prior, ...item, id: prior.id };
     });
-    const existing = new Set(synchronized.map((item) => `${item.course}-${item.title}-${dateKey(item.due)}`));
-    const additions = [...selectedById.values()].filter((item) => !existing.has(`${item.course}-${item.title}-${dateKey(item.due)}`));
-    setAssignments([...synchronized, ...additions]);
-    setNotice(`${additions.length} reviewed date${additions.length === 1 ? "" : "s"} added and ${updated} existing calendar item${updated === 1 ? "" : "s"} updated. ${selectedById.size - additions.length ? "Exact duplicates were left unchanged." : ""}`.trim());
+    const preserved = assignments.filter((item) => item.importSourceId !== sourceId);
+    const existing = new Set(preserved.map((item) => `${item.course}-${item.title}-${dateKey(item.due)}`));
+    let duplicateCount = 0;
+    const reconciled = synchronizedSource.filter((item) => {
+      const key = `${item.course}-${item.title}-${dateKey(item.due)}`;
+      if (existing.has(key)) { duplicateCount += 1; return false; }
+      existing.add(key);
+      return true;
+    });
+    const additions = reconciled.filter((item) => !priorByKey.has(item.importItemKey)).length;
+    const removed = priorSourceItems.filter((item) => !selectedKeys.has(item.importItemKey)).length;
+    setAssignments([...preserved, ...reconciled]);
+    setNotice(`${additions} reviewed date${additions === 1 ? "" : "s"} added, ${updated} updated, and ${removed} removed from this syllabus sync.${duplicateCount ? ` ${duplicateCount} exact duplicate${duplicateCount === 1 ? " was" : "s were"} left unchanged.` : ""}`);
   }
 
   function renderReviewPage(page, navigate) {
@@ -418,11 +536,13 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
 
   return (
     <div className="workspace-panel-stack">
-      <section className="paper-card syllabus-upload-card">
-        <div className="dashboard-card-heading"><div><NotebookLabel>SYLLABUS REVIEW</NotebookLabel><h1>Upload the syllabus. Check every conversion.</h1><p>Edit the course text and highlighted lines before any date reaches the calendar.</p></div><button className="primary-paper-button" type="button" onClick={() => inputRef.current?.click()}>Upload syllabus</button></div>
-        <input ref={inputRef} className="sr-only" type="file" accept=".txt,.md,.csv,text/plain,text/markdown,text/csv" onChange={(event) => handleFile(event.target.files?.[0])} />
+      <section className="paper-card syllabus-upload-card" aria-busy={isReading}>
+        <div className="dashboard-card-heading"><div><NotebookLabel>SYLLABUS REVIEW</NotebookLabel><h1>Upload the syllabus. Check every conversion.</h1><p>Edit the course text and highlighted lines before any date reaches the calendar.</p></div><div className="syllabus-upload-actions"><button type="button" disabled={isReading} onClick={() => setScannerOpen(true)}>Scan paper syllabus</button><button className="primary-paper-button" type="button" disabled={isReading} onClick={() => inputRef.current?.click()}>{isReading ? "Reading syllabus…" : "Upload syllabus"}</button></div></div>
+        <input ref={inputRef} className="sr-only" type="file" tabIndex={-1} aria-label="Choose a PDF, Word DOCX, TXT, Markdown, or CSV syllabus" disabled={isReading} accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; handleFile(file); }} />
+        {isReading && <div className="syllabus-read-progress" role="status" aria-live="polite"><span aria-hidden="true" /><strong>{readProgress || "Reading syllabus…"}</strong><button type="button" onClick={() => readControllerRef.current?.abort()}>Cancel</button></div>}
+        {readError && <p className="syllabus-read-error" role="alert">{readError}</p>}
         <div className="syllabus-editor-grid">
-          <div><label>Course text<textarea spellCheck value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>TXT · MD · CSV · paste text from PDF or Word</small></div><div className="syllabus-inline-actions"><button type="button" onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button><button type="button" onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
+          <div><label>Course text<textarea spellCheck disabled={isReading} value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>PDF · Word DOCX · TXT · MD · CSV · read on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download scanned image copy (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button><button type="button" disabled={isReading} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
           <DetectedLinePreview analysis={analysis} />
         </div>
         {reviewStale && <div className="syllabus-stale-warning" role="status"><span>The course text or extraction settings changed. Refresh the review before saving dates.</span><button type="button" onClick={runExtraction}>Refresh review</button></div>}
@@ -431,6 +551,7 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
       {extraction && <section className="paper-card extraction-result-card"><div className="dashboard-card-heading"><div><NotebookLabel>EXTRACTION REVIEW</NotebookLabel><h2>{extraction.title}</h2><p>Detected source lines: {extraction.detectedLines.join(", ") || "none"}</p></div><div className="syllabus-heading-actions"><button type="button" onClick={() => setSurfacePage("review")}>Review full screen</button><button type="button" disabled={reviewStale} onClick={addApproved}>Add approved dates to calendar</button></div></div><ExtractionReview extraction={extraction} setExtraction={setExtraction} approved={approved} setApproved={setApproved} parameters={parameters} onAddAssignment={addMissingAssignment} /></section>}
       {surfacePage && <FullscreenSurface key={surfacePage} title="Syllabus review" pages={REVIEW_PAGES} initialPage={surfacePage} addressPrefix="ednotebook://syllabus" onClose={() => setSurfacePage(null)} renderPage={renderReviewPage} />}
       {reportOpen && <IssueReportDialog persona={persona} fileName={fileName} onClose={() => setReportOpen(false)} onSaved={setNotice} />}
+      {scannerOpen && <Suspense fallback={<div className="syllabus-scanner-loading" role="status">Opening the paper scanner…</div>}><SyllabusScanner onClose={() => setScannerOpen(false)} onComplete={(result) => { commitSyllabusSource(result); setScannerOpen(false); }} /></Suspense>}
     </div>
   );
 }
