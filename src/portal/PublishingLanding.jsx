@@ -10,6 +10,10 @@ export default function PublishingLanding({ onEnter }) {
           <h1>Prepare material that fits the course instead of sitting beside it.</h1>
           <p>Professors can turn their own material into readings and interactive books. Publishing partners can prepare catalogs for course placement, student access, and optional purchase.</p>
           <div><button type="button" onClick={onEnter}>Open publishing studio</button><a href="#publishing-path">See the publishing path</a></div>
+          <figure className="publishing-hero-image">
+            <img src="/landing/landing-publishing-materials.png" alt="Course books and manuscript pages being reviewed for publication" width="1536" height="1024" fetchPriority="high" />
+            <figcaption><strong>From source to course-ready.</strong><span>Review structure, access, and placement before material reaches students.</span></figcaption>
+          </figure>
         </section>
         <section id="publishing-path" className="publishing-path-grid">
           <article><span>01</span><h2>Bring the source</h2><p>Start with text, a document, a book file, or a structured catalog entry.</p></article>

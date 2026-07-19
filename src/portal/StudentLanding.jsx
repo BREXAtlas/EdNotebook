@@ -25,6 +25,37 @@ const K12_FEATURES = [
   ["Skills beyond one class", "Find digital literacy, tutoring, clubs, student leadership, and future career exploration connected to school."],
 ];
 
+const UNIVERSITY_STORIES = [
+  {
+    label: "CLASS COMMUNITY",
+    title: "Learn beside people working toward the same goal.",
+    description: "Move from the public course listing into an enrollment-only class space for study groups, announcements, and shared momentum.",
+    src: "/landing/landing-campus-community.png",
+    alt: "University students collaborating around a laptop at an outdoor campus table",
+  },
+  {
+    label: "WRITING WORKSPACE",
+    title: "Draft, format, save, and submit without app hopping.",
+    description: "Work in a focused full-page editor with spelling support, assignment templates, word limits, and export tools close by.",
+    src: "/landing/landing-writing-workspace.png",
+    alt: "University student writing beside a laptop and reference books",
+  },
+  {
+    label: "STUDENT LIFE",
+    title: "Build a learning network that still feels social.",
+    description: "Share projects, progress, clubs, interests, and the parts of your academic life you choose with the audience you choose.",
+    src: "/landing/landing-student-life.png",
+    alt: "College students sharing project ideas at a campus club table",
+  },
+  {
+    label: "WHAT COMES NEXT",
+    title: "Connect class work to internships and early-career opportunities.",
+    description: "Explore future mentoring, research, course testing, portfolio, and work opportunities as they become available.",
+    src: "/landing/landing-opportunities.png",
+    alt: "College student reviewing a portfolio with a professional mentor",
+  },
+];
+
 export default function StudentLanding({ onEnter, track = "university" }) {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [pricingWaitlistOpen, setPricingWaitlistOpen] = useState(false);
@@ -53,7 +84,14 @@ export default function StudentLanding({ onEnter, track = "university" }) {
             <div className="student-hero-points"><span>No account to browse</span><span>Free school tools</span><span>{k12 ? "School-only social spaces" : "Private grades by default"}</span></div>
           </div>
           <div className={`student-dashboard-preview ${k12 ? "k12-dashboard-preview" : ""}`} aria-label={`${copy.shortLabel} student dashboard preview`}>
-            {k12 && <img className="k12-student-hero-image" src="/k12-student-hero.png" alt="High school students learning together with notebooks and a laptop" />}
+            <img
+              className="student-hero-photo"
+              src={k12 ? "/landing/landing-k12-classroom.png" : "/landing/landing-university-study.png"}
+              alt={k12 ? "High school students collaborating on a class project" : "University student studying with a notebook and laptop in a campus library"}
+              width="1536"
+              height="1024"
+              fetchPriority="high"
+            />
             <div className="student-preview-top"><span>Good morning, Maya</span><strong>{k12 ? "1,705 points" : "1,645 points"}</strong></div>
             <div className="student-preview-grid"><div><small>Classes</small><strong>3</strong></div><div><small>Overall</small><strong>{k12 ? "89.1%" : "88.1%"}</strong></div><div><small>Streak</small><strong>11 days</strong></div></div>
             <div className="student-preview-class"><div><strong>{k12 ? "ENG 10" : "SCI 101"}</strong><span>{k12 ? "Stories and Evidence" : "What Is a Cell?"}</span></div><b>{k12 ? "71%" : "64%"}</b></div>
@@ -79,6 +117,24 @@ export default function StudentLanding({ onEnter, track = "university" }) {
           <div className="student-section-heading"><span className="portal-kicker">WHAT STUDENTS GET</span><h2>Less hunting. Fewer surprises. More ways to stay connected.</h2><p>{k12 ? "School work stays at the center. Points, profiles, clubs, and communities support learning without mixing students into university feeds." : "Course work remains the center; community, profiles, points, and optional future services support it instead of getting in its way."}</p></div>
           <div className="student-feature-grid">{features.map(([title, featureCopy], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{featureCopy}</p></article>)}</div>
         </section>
+
+        {!k12 && (
+          <section className="student-story-section" aria-labelledby="student-story-title">
+            <div className="student-section-heading">
+              <span className="portal-kicker">ONE CONNECTED STUDENT EXPERIENCE</span>
+              <h2 id="student-story-title">Study, write, connect, and plan what comes next.</h2>
+              <p>Each space stays tied to learning, with private course access and clear choices about what you share.</p>
+            </div>
+            <div className="student-story-grid">
+              {UNIVERSITY_STORIES.map((story) => (
+                <article key={story.label}>
+                  <img src={story.src} alt={story.alt} width="1536" height="1024" loading="lazy" />
+                  <div><span>{story.label}</span><h3>{story.title}</h3><p>{story.description}</p></div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="student-life-explainer">
           <div><span className="portal-kicker">STUDENT LIFE</span><h2>{k12 ? "Your school, your classes, and a K–12 learning network—with no university crossover." : "A campus feed, a class room, and a public learning network—with separate audiences."}</h2><p>{k12 ? "Share a study streak, project, club update, or milestone only when you choose. Class groups require enrollment, school groups require a linked school, and K–12 social profiles never appear in university feeds." : "Share a study streak, points, assignment progress, a finished project, or a grade only when you choose. Class groups require enrollment. Public groups focus on learning and networking."}</p></div>

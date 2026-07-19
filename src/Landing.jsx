@@ -164,10 +164,10 @@ export default function Landing({ onEnter, onDashboard, onStudentPortal, onPubli
             <div className="hero-visual" aria-label="EdNotebook course creation preview">
               <div className="hero-image-card">
                 <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Virtual_Learning_Student_Illustration.jpg/1280px-Virtual_Learning_Student_Illustration.jpg"
-                  alt="Illustration of a learner attending a virtual class from a laptop"
-                  width="1280"
-                  height="853"
+                  src="/landing/landing-professor-planning.png"
+                  alt="Professor planning a course with books, notes, and a laptop"
+                  width="1536"
+                  height="1024"
                   fetchPriority="high"
                 />
                 <div className="hero-image-overlay">
@@ -236,10 +236,10 @@ export default function Landing({ onEnter, onDashboard, onStudentPortal, onPubli
           <div className="landing-shell story-grid">
             <Reveal className="story-image-wrap">
               <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Instructor_speaking_to_students_in_classroom.jpg/1280px-Instructor_speaking_to_students_in_classroom.jpg"
-                alt="Instructor speaking with students in a classroom"
-                width="1280"
-                height="862"
+                src="/landing/landing-professor-seminar.png"
+                alt="Professor guiding an engaged small university seminar"
+                width="1536"
+                height="1024"
                 loading="lazy"
               />
               <div className="story-image-note">

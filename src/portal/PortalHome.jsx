@@ -11,6 +11,8 @@ const PORTAL_CARDS = [
     href: "#/students",
     action: "Open student portal",
     points: ["Search before signing in", "Course work stays locked until enrollment", "Free core learning tools"],
+    image: "/landing/landing-university-study.png",
+    imageAlt: "University student studying with a notebook and laptop in a campus library",
   },
   {
     id: "professor",
@@ -20,6 +22,8 @@ const PORTAL_CARDS = [
     href: "#/professors",
     action: "Open professor portal",
     points: ["Build and publish classes", "Roster and grade controls", "Sensitive areas re-lock automatically"],
+    image: "/landing/landing-professor-planning.png",
+    imageAlt: "Professor planning a course with books, notes, and a laptop",
   },
   {
     id: "publishing",
@@ -29,6 +33,8 @@ const PORTAL_CARDS = [
     href: "#/publishers",
     action: "Open publishing portal",
     points: ["Professor-authored material", "Partner catalog pathway", "Clear access and pricing choices"],
+    image: "/landing/landing-publishing-materials.png",
+    imageAlt: "Course books and manuscript pages being reviewed for publication",
   },
 ];
 
@@ -68,12 +74,17 @@ export default function PortalHome() {
               <a href="#/presentation" style={{ ...actionStyle, color: "#153b91", border: "1px solid #9eabd0", background: "#fff" }}>View the presentation</a>
             </div>
           </div>
-          <div className="portal-choice-mark"><BrandMark size={82} inverse /><span>One place for assignments, calendars, memory, learning, teaching, and academic identity.</span></div>
+          <div className="portal-choice-mark">
+            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchPriority="high" />
+            <BrandMark size={82} inverse />
+            <span>One place for assignments, calendars, memory, learning, teaching, and academic identity.</span>
+          </div>
         </section>
 
         <section className="portal-choice-grid" aria-label="Choose an EdNotebook portal">
           {PORTAL_CARDS.map((portal) => (
             <article className={`portal-choice-card is-${portal.id}`} key={portal.id}>
+              <img className="portal-choice-card-image" src={portal.image} alt={portal.imageAlt} width="1536" height="1024" loading="lazy" />
               <span className="portal-card-number">{portal.number}</span>
               <h2>{portal.title}</h2>
               <p>{portal.description}</p>
