@@ -1,10 +1,17 @@
 # EdNotebook
 
-Paste your content. EdNotebook turns it into an interactive University or K–12 learning experience.
+EdNotebook is a student-controlled learning workspace for school, class, and academic-life management. It brings syllabi, assignments, due dates, calendars, notes, sources, conversations, AI memory, verified academic identity, and professor organization into one accessible web application.
 
-## Live app
+## Live application
 
 - Portal chooser: https://ednotebook.com/
+- Interactive product tour: https://ednotebook.com/#/tour
+- Brooke university-student demo: https://ednotebook.com/#/tour/student
+- Jaylen K–12 student demo: https://ednotebook.com/#/tour/k12
+- Atlas professor demo: https://ednotebook.com/#/tour/professor
+- Demonstration presentation: https://ednotebook.com/#/presentation
+- About and values: https://ednotebook.com/#/about
+- Work with us: https://ednotebook.com/#/careers
 - Student path chooser: https://ednotebook.com/#/students
 - University student portal: https://ednotebook.com/#/students/university
 - K–12 student portal: https://ednotebook.com/#/students/k12
@@ -13,37 +20,106 @@ Paste your content. EdNotebook turns it into an interactive University or K–12
 - Educator builder: https://ednotebook.com/#/app
 - Master admin: https://ednotebook.com/#/admin
 
-The production build and GitHub Pages deployment were verified on July 18, 2026.
+## Interactive demonstration accounts
+
+The public tour uses three fictional accounts with realistic mock data:
+
+- **Brooke Mercer** — a verified university student and the tour-mode AI guide.
+- **Jaylen Carter** — a verified K–12 senior preparing for college, accounting, investing, and continued MMA training.
+- **Atlas Reed** — a verified professor, former high-school teacher, Ed.D. student, mentor, and AI-forward educator.
+
+The profiles, grades, relationships, schools, assignments, conversations, schedules, and posts are demonstration data. They are not official educational records.
+
+The existing generated Atlas and Jaylen portraits are committed as optimized data assets under `src/demo/portrait-data/` and assembled by `src/demo/portraits.js`. Brooke’s portrait remains in `public/mascots/brooke.svg`.
+
+## Student planning features
+
+The demonstration workspace includes:
+
+- Homework and assignment command center
+- Course-connected titles, descriptions, due dates, times, and estimated work hours
+- Cross-class due-date calendar
+- Overlapping-deadline and workload detection
+- Missed-assignment recovery queue that remains visible until action is recorded
+- Seven-day, 48-hour, two-hour, and recovery reminder settings
+- Personal to-do list
+- Calendar time-zone and 12/24-hour display settings
+- Downloadable `.ics` calendar export
+- Product demonstrations for future authenticated Google Calendar and Outlook sync
+
+## Syllabus intelligence
+
+Students can use the syllabus workspace without waiting for a teacher account. The current front-end demonstration can read pasted text and text-based files, then prepare a human-reviewed extraction containing:
+
+- Course title and code
+- Course themes
+- Key learning objectives
+- Required books, readings, and materials
+- Assignment titles and descriptions
+- Due dates and times
+- Estimated project effort
+- Reminder windows
+
+Extracted information stays in draft state until the student or professor approves it. Production PDF and DOCX parsing requires a protected document-processing service.
+
+## Notes, sources, and learning memory
+
+The demo provides:
+
+- Class-connected notes
+- Source cabinet and citation-status coaching
+- Searchable document previews
+- Prior-conversation memory
+- Role-separated university, K–12, and professor workspaces
+- A deterministic document-aware AI chat demonstration that searches only the seeded workspace data
+
+A production AI connection must use authenticated server-side retrieval, provider routing, privacy controls, evaluation, cost controls, and institutional access boundaries. Provider keys must never be included in browser bundles or `VITE_*` variables.
+
+## Open literacy courses
+
+Digital literacy and financial literacy learning paths are visible to all students, including independent students whose teachers have not joined EdNotebook.
+
+The public presentation links to official Texas Education Agency guidance covering technology applications, digital citizenship, accessibility, equitable access, safety, and personal financial literacy, along with research on Blackboard usability, course layout, accessibility, engagement, and the need for clearer learning interfaces.
+
+## Verification model
+
+Verification is manual and completed by a human.
+
+- A verified university student represents confirmed active enrollment.
+- A verified K–12 student may be confirmed through a teacher, counselor, or school contact.
+- A verified professor represents confirmed faculty identity.
+- Verified educators may help confirm active student enrollment.
+- Additional verification may require the EdNotebook liaison team to contact an educator, school, or institution.
+
+Verification does not automatically publish grades or private class records. Students control which social-profile cards are visible.
 
 ## Repository map
 
-- `src/portal/` — audience chooser, shared University/K–12 student experience, educator dashboard, admin verification queue, publishing landing, and live directory adapter
-- `src/Landing.jsx` — professor marketing page, playable mini-demo, pricing, and teacher onboarding
+- `src/demo/` — interactive tour, three demonstration accounts, presentation, About page, careers page, syllabus tools, calendar, alerts, notes, sources, chat, social pages, and responsive card design system
+- `src/demo/portrait-data/` — optimized Atlas and Jaylen portrait data modules
+- `src/portal/` — audience chooser, University/K–12 student experience, educator dashboard, admin verification queue, publishing landing, and directory adapter
+- `src/Landing.jsx` — professor marketing page, mini-demo, pricing, and teacher onboarding
 - `src/Builder.jsx` — Learner, Professor, Admin, and Mastermind product prototype
-- `src/main.jsx` — hash router for the public portals, student dashboard, professor dashboard, studio, and builder
-- `supabase/migrations/` — row-level data boundaries for directory, identity linking, rosters, grades, authorized grade sharing, profiles, groups, and announcements
+- `src/main.jsx` — hash router for public portals, interactive demonstrations, presentation, dashboards, studio, and builder
+- `services/document-security-worker/` — document-security and conversion service with Python tests
+- `supabase/functions/` — server-side edge functions checked with Deno
+- `supabase/migrations/` — row-level data boundaries for directory, identity linking, rosters, grades, profiles, groups, and announcements
 - `vite.config.js` — root base path for the `ednotebook.com` custom domain
-- `.github/workflows/deploy.yml` — pull-request builds and automatic production deployment
-
-## GitHub Pages deployment
-
-Every push to `main` runs the production workflow:
-
-1. Check out the repository.
-2. Install dependencies on Node.js 22.
-3. Run `vite build`.
-4. Configure GitHub Pages.
-5. Upload `dist/` as the Pages artifact.
-6. Deploy it to the `github-pages` environment.
-
-Pull requests run the install and build steps without publishing. Production results are also recorded in `pages-status.json` on the `automation/pages-status` branch, including the deployed URL, source commit, and Actions run.
-
-There is no `gh-pages` branch and no manual deploy script. The Vite base path is `/`, and `public/CNAME` routes the deployment through `ednotebook.com`.
+- `.github/workflows/deploy.yml` — pull-request build/security checks and production deployment
 
 ## Local development
 
+Requirements:
+
+- Node.js 22
+- npm
+- Python 3.12 and `libmagic1` for the document-security test suite
+- Deno 2 for Supabase function type checks
+
+Install and run:
+
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -54,24 +130,39 @@ npm run build
 npm run preview
 ```
 
-## AI connection status
+Security-service checks used by CI:
 
-The interface, course editor, student player, demo fallback, and role views are deployed. The current prototype still attempts to call Anthropic directly from the browser, so the live Claude path is **not yet production-connected** on GitHub Pages.
+```bash
+python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
+PYTHONPATH=services/document-security-worker pytest -q services/document-security-worker/tests
+deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+```
 
-GitHub Pages is static and cannot safely hold an Anthropic API key. Do not place a provider key in a `VITE_*` variable, frontend source, or any other value that is bundled for the browser.
+## GitHub Pages deployment and CI
 
-The production-safe next step is tracked in [issue #3](https://github.com/BREXAtlas/EdNotebook/issues/3): add a small authenticated server-side proxy that keeps the key secret, validates operations, enforces rate and cost limits, restricts CORS, and preserves the sample-course fallback when the provider is unavailable.
+Pull requests targeting `main` run two required jobs:
 
-## Digital Literacy template sync
+1. **Build Vite app**
+   - Install locked dependencies on Node.js 22 with `npm ci`
+   - Run `npm run build`
+2. **Test security services**
+   - Run the Python document-worker test suite
+   - Type-check Supabase Edge Functions with Deno
 
-The Ram Ready template in Course Forge currently copies the six-question structure from `Digital-Literacy-Course`; it is not yet a live dependency.
+Pushes to `main` run the same checks, upload `dist/`, and deploy to the `github-pages` environment. Production status is recorded in `pages-status.json` on the `automation/pages-status` branch.
 
-A clean sync path is to publish the section schema from that repository as versioned JSON or a small package, then import it into `TEMPLATES.ramready`. Its own GitHub Action can publish a new schema version whenever the source structure changes.
+There is no `gh-pages` source branch and no manual deploy script. The Vite base path is `/`, and `public/CNAME` routes the deployment through `ednotebook.com`.
 
-## Verified status
+## Product boundaries
 
-- React/Vite dependencies install successfully in GitHub Actions.
-- `npm run build` completes successfully.
-- The Pages artifact contains root-based `/assets/...` URLs for the custom domain.
-- The production Pages deployment completes successfully.
-- The built artifact was exercised headlessly for the landing page, first-run prompt, Professor fallback course generation, course map, Learner view, Admin view, and data-control copy without JavaScript errors.
+The interactive tour is a working product demonstration, but several integrations remain intentionally separated from the static browser build:
+
+- Secure generative-AI provider calls
+- Production PDF/DOCX extraction
+- Google Calendar and Microsoft Outlook OAuth sync
+- LMS/SIS/LTI institution connectors
+- Moderated persistent photo uploads
+- Production hiring and ambassador application processing
+- Institution-specific contracts, policy review, and accessibility validation
+
+Those capabilities require authenticated server-side services and should not be simulated with exposed credentials in a static deployment.
