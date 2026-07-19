@@ -17,6 +17,7 @@ const PublishingLanding = lazy(() => import("./portal/PublishingLanding.jsx"));
 const StudentDashboard = lazy(() => import("./portal/StudentDashboard.jsx"));
 const ProfessorDashboard = lazy(() => import("./portal/ProfessorDashboard.jsx"));
 const PlatformAdminDashboard = lazy(() => import("./portal/PlatformAdminDashboard.jsx"));
+const PasswordUpdate = lazy(() => import("./portal/PasswordUpdate.jsx"));
 const DemoExperience = lazy(() => import("./demo/DemoExperience.jsx"));
 
 function RouteLoading() { return <main className="portal-route-loading" aria-live="polite"><strong>EdNotebook</strong><span>Opening your portal…</span></main>; }
@@ -38,6 +39,8 @@ function Router() {
   if (route.startsWith("#/tour") || route.startsWith("#/presentation") || route.startsWith("#/about") || route.startsWith("#/careers")) {
     return <MotionFrame routeKey={route}><DemoExperience route={route} /></MotionFrame>;
   }
+
+  if (route.startsWith("#/account/update-password")) return <MotionFrame routeKey="password-update"><PasswordUpdate /></MotionFrame>;
 
   if (route.startsWith("#/student/k12/app")) return studentDashboard("k12");
   if (route.startsWith("#/student/university/app") || route.startsWith("#/student/app")) return studentDashboard("university");

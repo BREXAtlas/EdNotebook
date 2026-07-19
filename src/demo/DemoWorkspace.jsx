@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import FullscreenSurface from "../FullscreenSurface.jsx";
+import AccountSettings, { readAccountSettings } from "../AccountSettings.jsx";
 import { FEATURE_DEFAULTS, PERSONAS } from "./demoData.js";
 import { safeRead } from "./demoShared.jsx";
 import { TOUR_STEPS, WorkspaceHeader, WorkspaceSidebar, FeatureDrawer, TourCoach } from "./WorkspaceChrome.jsx";
@@ -28,6 +29,8 @@ function DemoWorkspace({ personaId }) {
   const [tourStep, setTourStep] = useState(0);
   const [surfacePage, setSurfacePage] = useState(null);
   const [reminders, setRemindersState] = useState(() => safeRead(`ed-demo-${persona.id}-reminders`, { week: true, twoDays: true, twoHours: true, rescue: true }));
+  const settingsScope = `demo-${persona.id}`;
+  const [accountSettings, setAccountSettings] = useState(() => readAccountSettings(settingsScope, { accountType: professor ? "professor" : "student", name: persona.name, email: `${persona.shortName.toLowerCase()}@example.com`, bio: persona.profile.bio }));
   useEffect(() => {
     setTab("today");
     setAssignments(persona.assignments);
@@ -37,6 +40,7 @@ function DemoWorkspace({ personaId }) {
     setTourStep(0);
     setTourOpen(persona.id === "student");
     setSurfacePage(null);
+    setAccountSettings(readAccountSettings(`demo-${persona.id}`, { accountType: professor ? "professor" : "student", name: persona.name, email: `${persona.shortName.toLowerCase()}@example.com`, bio: persona.profile.bio }));
   }, [persona.id, persona.assignments, persona.status, persona.statusLine]);
   useEffect(() => {
     if (!tourOpen) return undefined;
@@ -70,28 +74,29 @@ function DemoWorkspace({ personaId }) {
     window.localStorage.setItem(`ed-demo-${persona.id}-reminders`, JSON.stringify(next));
   }
   return (
-    <div className="demo-page workspace-page">
-      <WorkspaceHeader persona={persona} onlineStatus={onlineStatus} setOnlineStatus={setOnlineStatus} statusLine={statusLine} setStatusLine={setStatusLine} onTour={() => { setTourStep(0); setTourOpen(true); }} onCustomize={() => setDrawerOpen(true)} />
+    <div className={`demo-page workspace-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}>
+      <WorkspaceHeader persona={persona} accountSettings={accountSettings} onlineStatus={onlineStatus} setOnlineStatus={setOnlineStatus} statusLine={statusLine} setStatusLine={setStatusLine} onTour={() => { setTourStep(0); setTourOpen(true); }} onCustomize={() => setDrawerOpen(true)} />
       <div className="workspace-shell">
-        <WorkspaceSidebar persona={persona} tab={tab} setTab={setTab} features={features} professor={professor} onOpenSurface={setSurfacePage} />
+        <WorkspaceSidebar persona={persona} accountSettings={accountSettings} tab={tab} setTab={setTab} features={features} professor={professor} onOpenSurface={setSurfacePage} />
         <main className="workspace-main" data-tour-section={`panel-${tab}`}>
           {tab === "today" && <TodayPanel persona={persona} assignments={assignments} setAssignments={setAssignments} features={features} onlineStatus={onlineStatus} statusLine={statusLine} />}
           {tab === "homework" && <HomeworkPanel persona={persona} assignments={assignments} setAssignments={setAssignments} reminders={reminders} setReminders={setReminders} />}
           {tab === "calendar" && <CalendarPanel persona={persona} assignments={assignments} />}
           {tab === "syllabus" && <SyllabusPanel persona={persona} assignments={assignments} setAssignments={setAssignments} />}
           {tab === "library" && <SourcesPanel persona={persona} />}
-          {tab === "chat" && <ChatPanel persona={persona} assignments={assignments} />}
-          {tab === "social" && <SocialPanel persona={persona} statusLine={statusLine} setStatusLine={setStatusLine} />}
-          {tab === "profile" && <ProfilePanel persona={persona} features={features} onlineStatus={onlineStatus} statusLine={statusLine} />}
+          {tab === "chat" && <ChatPanel persona={persona} assignments={assignments} accountSettings={accountSettings} settingsScope={settingsScope} />}
+          {tab === "social" && <SocialPanel persona={persona} statusLine={statusLine} setStatusLine={setStatusLine} accountSettings={accountSettings} />}
+          {tab === "profile" && <ProfilePanel persona={persona} features={features} onlineStatus={onlineStatus} statusLine={statusLine} accountSettings={accountSettings} />}
+          {tab === "settings" && <AccountSettings scope={settingsScope} accountType={professor ? "professor" : "student"} settings={accountSettings} onSettingsChange={setAccountSettings} compact />}
         </main>
       </div>
-      <footer className="workspace-footer"><span>Fictional interactive demo · not an official academic record</span><nav><a href="#/presentation">Presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/tour">Switch demo</a></nav></footer>
+      <footer className="workspace-footer"><span>Interactive sample workspace</span><nav><a href="#/presentation">Presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/tour">Switch demo</a></nav></footer>
       <FeatureDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} features={features} setFeatures={setFeatures} />
       <TourCoach open={tourOpen} step={tourStep} setStep={setTourStep} onClose={() => setTourOpen(false)} persona={persona} />
       {surfacePage && <FullscreenSurface key={surfacePage} title={`${persona.shortName} · EdNotebook`} pages={SURFACE_PAGES} initialPage={surfacePage} onClose={() => setSurfacePage(null)} renderPage={(page) => {
-        if (page === "community") return <SocialPanel persona={persona} statusLine={statusLine} setStatusLine={setStatusLine} />;
+        if (page === "community") return <SocialPanel persona={persona} statusLine={statusLine} setStatusLine={setStatusLine} accountSettings={accountSettings} />;
         if (page === "story") return <StoryPanel persona={persona} />;
-        return <ProfilePanel persona={persona} features={features} onlineStatus={onlineStatus} statusLine={statusLine} />;
+        return <ProfilePanel persona={persona} features={features} onlineStatus={onlineStatus} statusLine={statusLine} accountSettings={accountSettings} />;
       }} />}
     </div>
   );

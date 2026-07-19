@@ -1032,3 +1032,76 @@
 .portal-demo-team strong { font: 800 21px/1 var(--portal-display); }
 .portal-demo-team small { color: var(--portal-muted); font-size: 11px; }
 @media (max-width: 700px) { .portal-demo-team { grid-template-columns: 1fr; } }
+.password-update-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at top left, #eef2ff, transparent 42%), #f8f5ee; }
+.password-update-card { width: min(100%, 460px); display: grid; gap: 15px; padding: 34px; background: #fff; border: 1px solid #ded8ce; border-radius: 22px; box-shadow: 0 24px 70px rgba(28, 45, 81, .14); }
+.password-update-card > span { color: #3151a6; font-size: 11px; font-weight: 900; letter-spacing: 1.4px; }
+.password-update-card h1 { margin: 0; font-size: 34px; }
+.password-update-card p { margin: 0; color: #667187; line-height: 1.55; }
+.password-update-card form, .password-update-card label { display: grid; gap: 8px; }
+.password-update-card form { gap: 14px; }
+.password-update-card label { color: #4f5c74; font-size: 12px; font-weight: 800; }
+.password-update-card input { padding: 12px; border: 1px solid #d7d1c6; border-radius: 10px; }
+.password-update-card form div { padding: 11px; background: #f1f4fb; border-radius: 9px; font-size: 11px; }
+.password-update-card button { padding: 12px 16px; color: #fff; background: #3151a6; border: 0; border-radius: 10px; font-weight: 850; }
+.password-update-card > a { color: #3151a6; font-size: 12px; font-weight: 800; }
+.student-feed-welcome { display: grid; grid-template-columns: 92px 1fr auto; gap: 18px; align-items: center; background: linear-gradient(135deg, #eef2ff, #fff7e5); }
+.student-feed-welcome img { width: 92px; height: 92px; object-fit: cover; border-radius: 18px; }
+.student-feed-welcome h1 { margin: 5px 0; }
+.student-feed-welcome p { margin: 0; color: var(--portal-muted); }
+.student-feed-welcome button, .portal-friend-profile > button, .portal-friend-profile form button { padding: 10px 13px; color: #fff; background: var(--portal-blue); border: 0; border-radius: 9px; font-weight: 850; }
+.student-social-post footer button { padding: 6px 8px; color: #536078; background: #f2eee7; border: 1px solid #ddd6cc; border-radius: 99px; font-size: 9px; }
+.student-social-post footer button.is-active { color: #fff; background: var(--portal-blue); border-color: var(--portal-blue); }
+.portal-story-snapshot { display: flex; flex-wrap: wrap; gap: 7px; margin: 9px 0; }
+.portal-story-snapshot span { padding: 5px 7px; color: #445478; background: #edf0fb; border-radius: 7px; font-size: 9px; }
+.portal-friends-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 14px; }
+.friends-online-toggle { display: flex; align-items: center; gap: 7px; margin: 10px 0; color: var(--portal-muted); font-size: 11px; }
+.friend-result-grid > button { display: grid; grid-template-columns: 56px 1fr; gap: 10px; width: 100%; padding: 11px; color: inherit; background: #fff; border: 1px solid var(--portal-line); border-radius: 11px; text-align: left; }
+.friend-result-grid > button.is-active { background: #eef2ff; border-color: var(--portal-blue); }
+.friend-result-grid > button > img, .friend-result-grid > button > span { display: grid; place-items: center; width: 56px; height: 56px; object-fit: cover; color: #fff; background: var(--portal-blue); border-radius: 50%; font-size: 20px; font-weight: 900; }
+.friend-result-grid > button > div { display: grid; gap: 3px; }
+.friend-result-grid > button p { margin: 0; color: var(--portal-muted); font-size: 10px; }
+.portal-friend-profile { align-self: start; position: sticky; top: 86px; }
+.portal-friend-profile-hero { display: grid; grid-template-columns: 88px 1fr; gap: 13px; align-items: center; }
+.portal-friend-profile-hero img, .portal-friend-profile-hero > span { display: grid; place-items: center; width: 88px; height: 88px; object-fit: cover; color: #fff; background: var(--portal-blue); border-radius: 16px; font-size: 28px; font-weight: 900; }
+.portal-friend-profile-hero h2 { margin: 5px 0; }
+.portal-friend-profile-hero p { color: var(--portal-muted); font-size: 10px; }
+.portal-friend-profile form, .portal-friend-profile label { display: grid; gap: 7px; }
+.portal-friend-profile form { margin-top: 14px; }
+.portal-friend-profile textarea { padding: 10px; border: 1px solid var(--portal-line); border-radius: 9px; }
+.faculty-feed-guide { display: grid; grid-template-columns: 96px 1fr auto; gap: 16px; align-items: center; background: linear-gradient(135deg, #eef2ff, #fff7e6); }
+.faculty-feed-guide img { width: 96px; height: 96px; object-fit: cover; border-radius: 18px; }
+.faculty-feed-guide h1 { margin: 5px 0; }
+.faculty-feed-guide p { margin: 0; color: var(--portal-muted); }
+.faculty-feed-guide button { padding: 10px 13px; color: #fff; background: var(--portal-blue); border: 0; border-radius: 9px; font-weight: 850; }
+.faculty-story-feed { display: grid; gap: 10px; margin-top: 14px; }
+.faculty-story-feed > article { padding: 16px; background: #fffdf8; border: 1px solid var(--portal-line); border-left: 5px solid #6f72c9; border-radius: 12px; }
+.faculty-story-feed header { display: grid; grid-template-columns: 44px 1fr; gap: 9px; align-items: center; }
+.faculty-story-feed header img { width: 44px; height: 44px; object-fit: cover; border-radius: 50%; }
+.faculty-story-feed header div { display: grid; gap: 2px; }
+.faculty-story-feed header span { color: var(--portal-muted); font-size: 9px; }
+.faculty-story-feed footer { display: flex; flex-wrap: wrap; gap: 7px; }
+.faculty-story-feed footer button { padding: 6px 8px; color: #536078; background: #f2eee7; border: 1px solid #ddd6cc; border-radius: 99px; font-size: 9px; }
+.faculty-story-feed footer button.is-active { color: #fff; background: var(--portal-blue); border-color: var(--portal-blue); }
+.admin-message-list { display: grid; gap: 10px; }
+.admin-message-list > article { padding: 16px; background: #faf8f3; border: 1px solid var(--portal-line); border-radius: 12px; }
+.admin-message-list > article.is-new { border-left: 5px solid #d39235; background: #fffaf0; }
+.admin-message-list article > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-message-list header > div { display: grid; gap: 3px; }
+.admin-message-list header span { color: var(--portal-muted); font-size: 10px; }
+.admin-message-list header b { padding: 5px 8px; color: #795225; background: #f4dfb8; border-radius: 99px; font-size: 9px; text-transform: uppercase; }
+.admin-message-list dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.admin-message-list dl div { padding: 9px; background: #fff; border-radius: 8px; }
+.admin-message-list dt { color: var(--portal-muted); font-size: 8px; font-weight: 850; text-transform: uppercase; }
+.admin-message-list dd { margin: 3px 0 0; font-size: 11px; }
+.admin-message-list footer button { padding: 8px 10px; color: #fff; background: var(--portal-blue); border: 0; border-radius: 8px; font-size: 10px; font-weight: 850; }
+
+@media (max-width: 850px) {
+  .student-feed-welcome { grid-template-columns: 70px 1fr; }
+  .student-feed-welcome img { width: 70px; height: 70px; }
+  .student-feed-welcome > button { grid-column: 1 / -1; }
+  .portal-friends-layout { grid-template-columns: 1fr; }
+  .portal-friend-profile { position: static; }
+  .faculty-feed-guide { grid-template-columns: 72px 1fr; }
+  .faculty-feed-guide img { width: 72px; height: 72px; }
+  .faculty-feed-guide button { grid-column: 1 / -1; }
+}

@@ -1,0 +1,59 @@
+.account-settings-shell { display: grid; gap: 16px; color: #1e2d4c; }
+.live-date-time { display: grid; min-width: 94px; gap: 2px; padding: 8px 10px; color: #33466e; background: rgba(255, 255, 255, .72); border: 1px solid #ded8cd; border-radius: 10px; text-align: center; }
+.live-date-time strong { font-size: 10px; }
+.live-date-time span { color: #69758b; font-size: 9px; }
+.account-settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; background: linear-gradient(135deg, #fffdf7, #f0f3ff); border: 1px solid #ddd8cd; border-radius: 18px; }
+.account-settings-heading > div:first-child > span { color: #4960a4; font-size: 10px; font-weight: 900; letter-spacing: 1.35px; }
+.account-settings-heading h1 { margin: 5px 0; font-size: clamp(26px, 3vw, 40px); }
+.account-settings-heading p { margin: 0; color: #667187; }
+.account-plan-chip { display: grid; min-width: 155px; gap: 3px; padding: 14px; color: #fff; background: #263f7a; border-radius: 14px; }
+.account-plan-chip strong { font-size: 20px; }
+.account-plan-chip span { color: #d7dff1; font-size: 11px; }
+.account-settings-heading-tools { display: flex; align-items: stretch; gap: 8px; }
+.account-settings-tabs { display: flex; flex-wrap: wrap; gap: 7px; padding: 6px; background: #ece8df; border-radius: 13px; }
+.account-settings-tabs button { padding: 10px 14px; color: #536077; background: transparent; border: 0; border-radius: 9px; font-size: 12px; font-weight: 850; }
+.account-settings-tabs button.is-active { color: #fff; background: #3151a6; box-shadow: 0 5px 13px rgba(49, 81, 166, .2); }
+.account-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.account-settings-card { display: grid; align-content: start; gap: 13px; padding: 22px; background: #fffefa; border: 1px solid #ddd8cd; border-radius: 16px; box-shadow: 0 12px 35px rgba(42, 52, 76, .06); }
+.account-settings-card h2 { margin: 0 0 3px; font-size: 22px; }
+.account-settings-card > label:not(.account-setting-switch) { display: grid; gap: 6px; color: #505d75; font-size: 11px; font-weight: 850; }
+.account-settings-card input:not([type="checkbox"]), .account-settings-card textarea, .account-settings-card select { width: 100%; box-sizing: border-box; padding: 11px 12px; color: #1e2d4c; background: #fff; border: 1px solid #d8d2c8; border-radius: 10px; font: inherit; }
+.account-settings-card textarea { resize: vertical; line-height: 1.45; }
+.account-settings-card label small, .account-settings-card > small { color: #707b90; font-size: 10px; font-weight: 500; line-height: 1.45; }
+.account-setting-switch { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 12px; background: #f7f4ee; border: 1px solid #e3ddd3; border-radius: 11px; }
+.account-setting-switch > span { display: grid; gap: 3px; }
+.account-setting-switch strong { font-size: 12px; }
+.account-setting-switch small { color: #69758a; font-size: 10px; line-height: 1.35; }
+.account-setting-switch input { width: 40px; height: 22px; accent-color: #3151a6; }
+.account-settings-save, .account-action-stack button { padding: 11px 14px; color: #fff; background: #3151a6; border: 0; border-radius: 10px; font-weight: 850; }
+.connector-status { display: grid; gap: 3px; padding: 12px; color: #7a4d34; background: #fff1d9; border: 1px solid #efd7ad; border-radius: 11px; }
+.connector-status.is-ready { color: #28604f; background: #eaf6f0; border-color: #c8e4d8; }
+.connector-status strong { font-size: 11px; }
+.connector-status span { font-size: 9px; }
+.storage-plan-card { display: grid; gap: 5px; padding: 16px; color: #fff; background: linear-gradient(135deg, #263f7a, #675fa9); border-radius: 14px; }
+.storage-plan-card span { color: #dbe2f4; font-size: 10px; font-weight: 850; text-transform: uppercase; }
+.storage-plan-card strong { font-size: 17px; }
+.storage-plan-card p { margin: 0; color: #eef1fb; font-size: 10px; line-height: 1.45; }
+.account-action-stack > div { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f1f5ed; border-radius: 10px; }
+.account-action-stack > div span { color: #657087; font-size: 11px; }
+.account-action-stack button { text-align: left; }
+.account-action-stack button.is-warning { background: #9d4c43; }
+.settings-version-list { display: grid; gap: 8px; max-height: 330px; overflow: auto; }
+.settings-version-list > div { display: grid; grid-template-columns: 42px 1fr auto; gap: 9px; align-items: center; padding: 10px; background: #f6f3ed; border-radius: 9px; }
+.settings-version-list strong { color: #3151a6; font-size: 11px; }
+.settings-version-list span { font-size: 10px; }
+.settings-version-list time { color: #758096; font-size: 8px; }
+.account-settings-notice { margin: 0; padding: 12px 14px; color: #28584b; background: #e9f4ef; border: 1px solid #cfe3d9; border-radius: 11px; font-size: 11px; font-weight: 750; }
+.account-settings-shell.is-compact .account-settings-heading { padding: 18px; }
+.is-description-light .dashboard-card > p,
+.is-description-light .student-welcome-card p,
+.is-description-light .student-class-list p,
+.is-description-light .professor-panel-stack .dashboard-card-heading p { display: none; }
+
+@media (max-width: 780px) {
+  .account-settings-heading { align-items: flex-start; flex-direction: column; }
+  .account-plan-chip { width: 100%; box-sizing: border-box; }
+  .account-settings-grid { grid-template-columns: 1fr; }
+  .settings-version-list > div { grid-template-columns: 36px 1fr; }
+  .settings-version-list time { grid-column: 2; }
+}

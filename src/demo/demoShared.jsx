@@ -1,5 +1,5 @@
 import BrandLogo from "../Brand.jsx";
-import { CORE_LEARNING, DEMO_NOW, PERSONAS } from "./demoData.js";
+import { CORE_LEARNING, PERSONAS } from "./demoData.js";
 
 function cx(...values) {
   return values.filter(Boolean).join(" ");
@@ -39,7 +39,7 @@ function formatDateTime(value, timeZone = "America/Chicago", hour12 = true) {
 }
 
 function dueLabel(value) {
-  const delta = new Date(value).getTime() - new Date(DEMO_NOW).getTime();
+  const delta = new Date(value).getTime() - Date.now();
   const hours = Math.round(delta / 36e5);
   if (hours < 0) return `${Math.abs(hours)}h overdue`;
   if (hours < 24) return `Due in ${hours}h`;

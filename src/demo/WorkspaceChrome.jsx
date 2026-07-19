@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BrandLogo from "../Brand.jsx";
+import { LiveDateTime } from "../AccountSettings.jsx";
 import { FEATURE_DEFAULTS, PERSONAS } from "./demoData.js";
 import { cx, NotebookLabel, VerifiedBadge } from "./demoShared.jsx";
 
@@ -18,7 +19,7 @@ const TOUR_STEPS = [
   { title: "Choose what belongs on your page", copy: "Visibility controls let you simplify the page without deleting the information behind it.", tryIt: "Toggle a card, restore everything, or close the drawer to finish.", tab: "today", target: "feature-drawer", drawer: true },
 ];
 
-function WorkspaceHeader({ persona, onlineStatus, setOnlineStatus, statusLine, setStatusLine, onTour, onCustomize }) {
+function WorkspaceHeader({ persona, accountSettings, onlineStatus, setOnlineStatus, statusLine, setStatusLine, onTour, onCustomize }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(statusLine);
   function saveStatus() {
@@ -30,7 +31,7 @@ function WorkspaceHeader({ persona, onlineStatus, setOnlineStatus, statusLine, s
       <a href="#/tour" className="workspace-brand"><BrandLogo size={36} tagline="Demo workspace" /></a>
       <div className="workspace-persona-mini">
         <img src={persona.image} alt="" />
-        <div><strong>{persona.name}</strong><span>{persona.roleLine}</span></div>
+        <div><strong>{accountSettings?.displayName || persona.name}</strong><span>{persona.roleLine}</span></div>
         <VerifiedBadge label={persona.verifiedTitle} small />
       </div>
       <div className="workspace-status-control">
@@ -46,6 +47,7 @@ function WorkspaceHeader({ persona, onlineStatus, setOnlineStatus, statusLine, s
         {editing ? <div className="status-editor"><input value={draft} onChange={(event) => setDraft(event.target.value)} aria-label="Status update" /><button type="button" onClick={saveStatus}>Save</button></div> : <button className="status-line-button" type="button" onClick={() => setEditing(true)}>{statusLine}</button>}
       </div>
       <div className="workspace-header-actions">
+        <LiveDateTime />
         <button type="button" onClick={onCustomize}>Customize cards</button>
         <button type="button" onClick={onTour}>Guided tour</button>
         <a href="#/presentation">Presentation</a>
@@ -54,14 +56,14 @@ function WorkspaceHeader({ persona, onlineStatus, setOnlineStatus, statusLine, s
   );
 }
 
-function WorkspaceSidebar({ persona, tab, setTab, features, professor, onOpenSurface }) {
+function WorkspaceSidebar({ persona, accountSettings, tab, setTab, features, professor, onOpenSurface }) {
   const tabs = professor ? PROFESSOR_TABS : WORKSPACE_TABS;
   const alertCount = persona.assignments.filter((item) => item.status === "needs-rescue").length;
   return (
     <aside className="workspace-sidebar">
       <div className="workspace-profile-chip">
         <div className="workspace-avatar"><img src={persona.image} alt="" /><i /></div>
-        <div><strong>{persona.shortName}</strong><span>{persona.institution}</span></div>
+        <div><strong>{accountSettings?.displayName || persona.shortName}</strong><span>{persona.institution}</span></div>
       </div>
       <nav aria-label={`${persona.shortName} demo sections`}>
         {tabs.map(([id, label]) => <button key={id} type="button" className={tab === id ? "is-active" : ""} onClick={() => ["social", "profile"].includes(id) ? onOpenSurface(id === "social" ? "community" : "profile") : setTab(id)}><span>{label}</span>{id === "homework" && alertCount > 0 && <i>{alertCount}</i>}</button>)}
@@ -70,6 +72,7 @@ function WorkspaceSidebar({ persona, tab, setTab, features, professor, onOpenSur
         <strong>Independent mode</strong>
         <span>{professor ? "Organize courses, research, advising, and saved material without requiring another account." : "Upload syllabi and use planning, notes, workspace search, digital literacy, and financial literacy without a teacher account."}</span>
       </div>
+      <button className={cx("sidebar-settings-button", tab === "settings" && "is-active")} type="button" onClick={() => setTab("settings")}><span>Settings</span><small>Profile, assistant, privacy, billing</small></button>
       <div className="sidebar-visible-count"><strong>{Object.values(features).filter(Boolean).length}</strong><span>profile cards visible</span></div>
     </aside>
   );

@@ -66,6 +66,26 @@ export async function searchStudentProfiles(query, educationDivision, currentUse
   return { data: data || [], error, source: error ? "device" : "cloud" };
 }
 
+export async function searchEducatorProfiles(query, educationDivision) {
+  if (!isSupabaseConfigured || query.trim().length < 2) return { data: [], source: "device" };
+  const clean = query.trim().replaceAll("%", "").replaceAll("_", "");
+  const { data, error } = await supabase
+    .from("published_course_directory")
+    .select("professor_id,professor_display_name,institution_name,educator_verification_status")
+    .eq("education_division", educationDivision)
+    .ilike("professor_display_name", `%${clean}%`)
+    .order("professor_display_name")
+    .limit(40);
+  const unique = [...new Map((data || []).map((person) => [person.professor_id, {
+    user_id: person.professor_id,
+    display_name: person.professor_display_name || "Educator",
+    school_name: person.institution_name || "Educator",
+    bio: person.educator_verification_status === "approved" ? "Verified school affiliation" : "Published educator",
+    role: "Educator",
+  }])).values()];
+  return { data: unique, error, source: error ? "device" : "cloud" };
+}
+
 export async function listCurrentStudentCourses() {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
   const { data, error } = await supabase

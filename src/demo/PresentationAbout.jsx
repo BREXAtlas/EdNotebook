@@ -39,7 +39,7 @@ function AboutCareers({ careersFirst = false }) {
   const [notice, setNotice] = useState("");
   function submitInterest(event) {
     event.preventDefault();
-    setNotice("Interest recorded in this demonstration. A production form would use a rate-limited endpoint, consent copy, and a deletion path.");
+    setNotice("Interest recorded in this demonstration. The connected form can send this to the team when the form endpoint is enabled.");
   }
   return (
     <div className="demo-page about-page">
