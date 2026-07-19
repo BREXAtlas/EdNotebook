@@ -1,0 +1,104 @@
+.calendar-agenda > div > i { padding: 3px 5px; color: #8a3c3c; background: #fae2e0; border-radius: 99px; font-size: 7px; font-style: normal; }
+
+.literacy-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.literacy-card-grid section { padding: 17px; background: #f2eff8; border: 1px solid #ddd8ef; border-radius: 12px; }
+.literacy-card-grid section > span { color: #725316; font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.literacy-card-grid h3 { margin: 9px 0 6px; }
+.literacy-card-grid p { min-height: 58px; margin: 0 0 12px; color: var(--demo-muted); font-size: 9px; }
+.literacy-card-grid button { padding: 8px 10px; color: #fff; background: var(--demo-blue); border: 0; border-radius: 8px; font-size: 8px; font-weight: 850; }
+
+/* Homework */
+.filter-control { display: grid; gap: 4px; color: var(--demo-muted); font-size: 9px; font-weight: 800; }
+.filter-control select { padding: 9px; background: #fff; border: 1px solid var(--demo-line); border-radius: 8px; }
+.homework-support-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 12px; }
+.rescue-card > p { margin-top: 0; }
+.rescue-card > div { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 13px; background: #f9e7e3; border: 1px solid #ecc6c2; border-radius: 11px; }
+.rescue-card > div strong { font-size: 11px; }
+.rescue-card > div span { grid-column: 1; color: #8b5a57; font-size: 8px; }
+.rescue-card > div button { grid-row: 1 / 3; grid-column: 2; padding: 8px; color: #fff; background: var(--demo-red); border: 0; border-radius: 8px; font-size: 8px; font-weight: 850; }
+.reminder-toggle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-top: 18px; }
+.reminder-toggle-grid label { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 14px; background: #f4f0e9; border: 1px solid #e1d9cc; border-radius: 11px; }
+.reminder-toggle-grid label > div { display: grid; gap: 4px; }
+.reminder-toggle-grid strong { font-size: 10px; }
+.reminder-toggle-grid span { color: var(--demo-muted); font-size: 8px; line-height: 1.4; }
+.reminder-toggle-grid input,
+.feature-toggle-list input { width: 35px; height: 20px; accent-color: var(--demo-blue); }
+.inline-notice { padding: 10px 12px; color: #315b42 !important; background: #e8f5ec; border: 1px solid #b8dcc5; border-radius: 9px; font-size: 9px !important; }
+
+/* Calendar */
+.calendar-control-grid { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 9px; align-items: end; }
+.calendar-control-grid label { display: grid; gap: 5px; color: var(--demo-muted); font-size: 9px; font-weight: 800; }
+.calendar-control-grid select { padding: 10px; background: #fff; border: 1px solid var(--demo-line); border-radius: 9px; }
+.calendar-control-grid button { padding: 10px 12px; color: var(--demo-blue-dark); background: #eeebf8; border: 1px solid #d8d4ee; border-radius: 9px; font-size: 9px; font-weight: 850; }
+.month-calendar { margin-top: 16px; overflow: hidden; border: 1px solid #ddd6cb; border-radius: 13px; }
+.month-calendar-weekdays,
+.month-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.month-calendar-weekdays span { padding: 9px; color: #7c8496; background: #efebe4; border-right: 1px solid #ddd6cb; font-size: 8px; font-weight: 850; text-align: center; text-transform: uppercase; }
+.month-calendar-grid article { min-height: 104px; padding: 8px; background: #fffdf8; border-top: 1px solid #e4ddd2; border-right: 1px solid #e4ddd2; }
+.month-calendar-grid article.is-muted { background: #f5f1eb; opacity: .66; }
+.month-calendar-grid article strong { display: grid; place-items: center; width: 24px; height: 24px; margin-bottom: 5px; font-family: var(--demo-display); font-size: 12px; }
+.month-calendar-grid article.has-events strong { color: #fff; background: var(--demo-blue); border-radius: 99px; }
+.month-calendar-grid article span { display: block; overflow: hidden; margin-top: 3px; padding: 4px 5px; color: #4d5670; background: #eeecf7; border-left: 3px solid #777bc3; border-radius: 4px; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.month-calendar-grid article span.is-assignment { color: #763c3c; background: #fae7e4; border-left-color: #ad615d; }
+.month-calendar-grid article span.is-college { color: #28594d; background: #e0f1eb; border-left-color: #2f7c76; }
+.month-calendar-grid article span.is-activity { color: #664174; background: #f0e5f4; border-left-color: #9a6caa; }
+.month-calendar-grid article small { color: var(--demo-muted); font-size: 7px; }
+.calendar-agenda-grid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 12px; }
+.calendar-agenda.is-full > div { grid-template-columns: 30px 1fr; }
+.calendar-legend-card ul { display: grid; gap: 10px; padding-left: 18px; color: var(--demo-muted); font-size: 10px; line-height: 1.45; }
+
+/* Syllabus */
+.syllabus-editor-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; }
+.syllabus-editor-grid > div { display: grid; gap: 9px; }
+.syllabus-editor-grid label,
+.library-form label,
+.career-form-section label { display: grid; gap: 5px; color: var(--demo-muted); font-size: 9px; font-weight: 800; }
+.syllabus-editor-grid textarea,
+.library-form input,
+.library-form textarea,
+.library-form select,
+.career-form-section input,
+.career-form-section textarea,
+.career-form-section select {
+  width: 100%;
+  padding: 11px;
+  color: var(--demo-ink);
+  background: #fff;
+  border: 1px solid #d6cebf;
+  border-radius: 9px;
+  outline: none;
+}
+.syllabus-editor-grid textarea { min-height: 255px; resize: vertical; font-family: ui-monospace, monospace; font-size: 10px; line-height: 1.5; }
+.syllabus-editor-grid > div > button,
+.library-form button,
+.career-form-section form > button { justify-self: start; padding: 10px 13px; color: #fff; background: var(--demo-blue); border: 0; border-radius: 9px; font-size: 9px; font-weight: 850; }
+.file-summary { display: flex; justify-content: space-between; padding: 9px 11px; background: #f2eee7; border-radius: 8px; }
+.file-summary span { font-size: 9px; font-weight: 750; }
+.file-summary small { color: var(--demo-muted); font-size: 8px; }
+.syllabus-editor-grid aside { padding: 18px; color: #fff; background: #1b2b4c; border-radius: 13px; }
+.syllabus-editor-grid aside strong { font-family: var(--demo-display); font-size: 20px; }
+.syllabus-editor-grid aside ul { display: grid; gap: 8px; padding-left: 17px; color: #d0d8e7; font-size: 9px; line-height: 1.45; }
+.syllabus-editor-grid aside p { margin-bottom: 0; color: #d3b974; font-size: 9px; }
+.extraction-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.extraction-summary-grid article { display: grid; gap: 6px; padding: 14px; background: #f4f0e9; border-radius: 10px; }
+.extraction-summary-grid strong { margin-bottom: 4px; font-size: 10px; }
+.extraction-summary-grid span { color: var(--demo-muted); font-size: 9px; line-height: 1.4; }
+.extracted-assignment-list { margin-top: 15px; overflow: hidden; border: 1px solid #ded6ca; border-radius: 11px; }
+.extracted-head,
+.extracted-assignment-list label { display: grid; grid-template-columns: 64px 1.4fr .8fr .3fr; gap: 10px; align-items: center; padding: 10px 12px; }
+.extracted-head { color: #667085; background: #efebe4; font-size: 8px; font-weight: 850; text-transform: uppercase; }
+.extracted-assignment-list label { border-top: 1px solid #e5ddd2; }
+.extracted-assignment-list label > span { color: #4e5a70; font-size: 9px; }
+.extracted-assignment-list label > span:nth-child(2) { display: grid; gap: 2px; }
+.extracted-assignment-list label strong { font-size: 10px; }
+.extracted-assignment-list label small { color: var(--demo-muted); font-size: 7px; }
+
+/* Notes, sources, documents */
+.library-header-card { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; }
+.library-header-card > div:first-child { max-width: 760px; }
+.library-header-card h1 { margin-bottom: 5px; }
+.library-header-card p { margin: 0; }
+.segmented-control { display: flex; padding: 4px; background: #ece8e0; border-radius: 10px; }
+.segmented-control button { padding: 8px 10px; color: #657087; background: transparent; border: 0; border-radius: 7px; font-size: 9px; font-weight: 800; }
+.segmented-control button.is-active { color: var(--demo-blue-dark); background: #fff; box-shadow: 0 4px 12px rgba(50,50,70,.08); }
+.library-two-column { display: grid; grid-template-columns: .75fr 1.25fr; gap: 12px; }

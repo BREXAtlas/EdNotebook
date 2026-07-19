@@ -31,6 +31,18 @@ const PORTAL_CARDS = [
   },
 ];
 
+const actionStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 44,
+  padding: "11px 16px",
+  borderRadius: 11,
+  fontSize: 13,
+  fontWeight: 850,
+  textDecoration: "none",
+};
+
 export default function PortalHome() {
   return (
     <div className="portal-page portal-home-page">
@@ -39,13 +51,17 @@ export default function PortalHome() {
         <section className="portal-choice-hero">
           <div className="portal-choice-copy">
             <span className="portal-kicker">WELCOME TO EDNOTEBOOK</span>
-            <h1>Start with the part of campus life that belongs to you.</h1>
+            <h1>Start with the part of learning life that belongs to you.</h1>
             <p>
-              Students can find classes and keep their learning life together. Professors can build and run courses.
-              Publishers can prepare material for those courses. Choose a portal to get the right starting point.
+              Students can turn syllabi into a shared calendar, manage due dates, keep notes and sources, and ask their own learning memory.
+              Professors can organize courses, research, advising, feedback, and verified student relationships.
             </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
+              <a href="#/tour" style={{ ...actionStyle, color: "#fff", background: "#1d4ed8" }}>Take the interactive tour</a>
+              <a href="#/presentation" style={{ ...actionStyle, color: "#153b91", border: "1px solid #9eabd0", background: "#fff" }}>View the presentation</a>
+            </div>
           </div>
-          <div className="portal-choice-mark"><BrandMark size={82} inverse /><span>One place for learning, teaching, and course material.</span></div>
+          <div className="portal-choice-mark"><BrandMark size={82} inverse /><span>One place for assignments, calendars, memory, learning, teaching, and academic identity.</span></div>
         </section>
 
         <section className="portal-choice-grid" aria-label="Choose an EdNotebook portal">
@@ -60,13 +76,26 @@ export default function PortalHome() {
           ))}
         </section>
 
+        <section style={{ maxWidth: 1180, margin: "0 auto 54px", padding: "0 28px" }} aria-label="Interactive demonstration accounts">
+          <div style={{ padding: 28, color: "#18284a", background: "#fffdf8", border: "1px solid #ded6c8", borderRadius: 22, boxShadow: "0 18px 50px rgba(16,27,51,.08)" }}>
+            <span className="portal-kicker">MEET THE DEMO TEAM</span>
+            <h2 style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>Brooke, Atlas, and Jaylen make every side of EdNotebook testable.</h2>
+            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Tour a university student, professor, or K–12 workspace with fictional grades, assignments, conversations, social history, syllabus extraction, overlapping deadlines, reminders, notes, sources, and document-aware AI chat.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 20 }}>
+              <a href="#/tour/student" style={{ ...actionStyle, color: "#fff", background: "#18284a" }}>Brooke · University student</a>
+              <a href="#/tour/professor" style={{ ...actionStyle, color: "#314174", background: "#eceafa", border: "1px solid #d4d0ec" }}>Atlas · Professor</a>
+              <a href="#/tour/k12" style={{ ...actionStyle, color: "#314174", background: "#eceafa", border: "1px solid #d4d0ec" }}>Jaylen · K–12 student</a>
+            </div>
+          </div>
+        </section>
+
         <section className="portal-home-principle">
-          <div><strong>Browse first</strong><span>Public school and class information does not require an account.</span></div>
-          <div><strong>Sign in when work begins</strong><span>Enrollment, grades, submissions, private groups, and saved work use an account.</span></div>
-          <div><strong>Your view stays yours</strong><span>Students see their full report card; professors see only students in the classes they manage.</span></div>
+          <div><strong>Browse first</strong><span>Public school, class, and demonstration information does not require an account.</span></div>
+          <div><strong>Start independently</strong><span>Students can upload syllabi and use planning, notes, sources, literacy courses, and AI search without waiting for a teacher account.</span></div>
+          <div><strong>Your view stays yours</strong><span>Students see their own cross-class learning record; professors see only students and classes they are authorized to manage.</span></div>
         </section>
       </main>
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
+      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
     </div>
   );
 }

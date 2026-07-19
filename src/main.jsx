@@ -17,6 +17,7 @@ const PublishingLanding = lazy(() => import("./portal/PublishingLanding.jsx"));
 const StudentDashboard = lazy(() => import("./portal/StudentDashboard.jsx"));
 const ProfessorDashboard = lazy(() => import("./portal/ProfessorDashboard.jsx"));
 const PlatformAdminDashboard = lazy(() => import("./portal/PlatformAdminDashboard.jsx"));
+const DemoExperience = lazy(() => import("./demo/DemoExperience.jsx"));
 
 function RouteLoading() { return <main className="portal-route-loading" aria-live="polite"><strong>EdNotebook</strong><span>Opening your portal…</span></main>; }
 
@@ -32,6 +33,10 @@ function Router() {
 
   function studentLanding(track) {
     return <MotionFrame routeKey={`student-${track}-landing`}><StudentLanding track={track} onEnter={(course) => { if (course) window.sessionStorage.setItem("ednotebook-requested-course", JSON.stringify({ id: course.id, schoolId: course.school.id, track })); navigate(`#/student/${track}/app`); }} /></MotionFrame>;
+  }
+
+  if (route.startsWith("#/tour") || route.startsWith("#/presentation") || route.startsWith("#/about") || route.startsWith("#/careers")) {
+    return <MotionFrame routeKey={route}><DemoExperience route={route} /></MotionFrame>;
   }
 
   if (route.startsWith("#/student/k12/app")) return studentDashboard("k12");
