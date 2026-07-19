@@ -1,0 +1,12 @@
+.todo-card form button { padding: 10px 14px; color: #fff; background: var(--demo-navy); border: 0; border-radius: 10px; font-weight: 800; }
+.todo-list { display: grid; gap: 8px; }
+.todo-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: center; padding: 10px; background: rgba(244,241,251,.74); border: 1px solid var(--demo-line); border-radius: 10px; }
+.todo-list label.is-complete span { color: var(--demo-muted); text-decoration: line-through; }
+.todo-list label > button { width: 26px; height: 26px; color: var(--demo-muted); background: transparent; border: 0; border-radius: 999px; font-size: 18px; }
+.todo-list label > button:hover { color: #fff; background: #ad4a55; }
+.todo-list p { margin: 0; color: var(--demo-muted); }
+.workspace-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding: 18px clamp(18px, 4vw, 54px); color: #b7bfd0; background: var(--demo-navy); font-size: 12px; }
+.workspace-footer nav { display: flex; flex-wrap: wrap; gap: 14px; }
+.workspace-footer a { color: #fff; font-weight: 750; text-decoration: none; }
+.workspace-footer a:hover { text-decoration: underline; }
+@media (max-width: 760px) { .todo-card form { grid-template-columns: 1fr; } .workspace-footer { align-items: flex-start; flex-direction: column; } }
