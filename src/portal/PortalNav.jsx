@@ -4,6 +4,7 @@ const PORTALS = [
   ["student", "Student portal", "#/students"],
   ["professor", "Professor portal", "#/professors"],
   ["publishing", "Publishing portal", "#/publishers"],
+  ["tour", "Take the tour", "#/tour"],
 ];
 
 export default function PortalNav({ active, action, actionLabel = "Sign in" }) {
