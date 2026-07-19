@@ -1,0 +1,103 @@
+.library-form { display: grid; gap: 10px; margin-top: 17px; }
+.note-stack,
+.source-stack,
+.document-list-card { display: grid; align-content: start; gap: 9px; }
+.note-stack section,
+.source-stack section,
+.document-list-card section { padding: 14px; background: #f5f1ea; border: 1px solid #e1d9cd; border-radius: 10px; }
+.note-stack section > div,
+.source-stack section > div { display: flex; justify-content: space-between; gap: 10px; }
+.note-stack section span,
+.source-stack section span,
+.document-list-card section > span { color: var(--demo-blue); font-size: 8px; font-weight: 850; text-transform: uppercase; }
+.note-stack section small { color: var(--demo-muted); font-size: 8px; }
+.note-stack section strong { display: block; margin-top: 7px; font-size: 11px; }
+.note-stack section p,
+.source-stack section p,
+.document-list-card section p { margin: 6px 0 0; color: var(--demo-muted); font-size: 9px; }
+.source-stack section a { display: block; margin-top: 8px; color: var(--demo-blue-dark); font-family: var(--demo-display); font-size: 17px; font-weight: 700; text-decoration: none; }
+.source-stack section > strong { color: #5a6477; font-size: 8px; }
+.source-stack section b { padding: 4px 6px; color: #2f6752; background: #e1f1e8; border-radius: 99px; font-size: 7px; }
+.document-list-card section > strong { display: block; margin-top: 6px; font-size: 11px; }
+.document-list-card section button { margin-top: 8px; padding: 7px 9px; color: var(--demo-blue); background: transparent; border: 1px solid #cfd4e6; border-radius: 7px; font-size: 8px; font-weight: 800; }
+.source-coach-card ol { display: grid; gap: 12px; padding-left: 21px; color: var(--demo-muted); font-size: 10px; line-height: 1.45; }
+
+/* Chat */
+.chat-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(250px, .65fr); gap: 12px; }
+.chat-card { display: grid; grid-template-rows: auto minmax(410px, 1fr) auto; min-height: calc(100vh - 130px); }
+.chat-thread { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 13px; background: #f3efe8; border: 1px solid #e0d8cc; border-radius: 12px; }
+.chat-thread article { max-width: min(82%, 680px); padding: 12px 14px; border-radius: 13px; }
+.chat-thread article.is-assistant { align-self: flex-start; background: #fff; border: 1px solid #ddd7cc; border-bottom-left-radius: 3px; }
+.chat-thread article.is-user { align-self: flex-end; color: #fff; background: #3151a6; border-bottom-right-radius: 3px; }
+.chat-thread strong { font-size: 9px; }
+.chat-thread p { margin: 5px 0 0; font-size: 10px; }
+.chat-thread article.is-user p { color: #fff; }
+.chat-thread article > div { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.chat-thread article > div span { padding: 4px 6px; color: #4e5870; background: #efebe5; border-radius: 99px; font-size: 7px; }
+.chat-card > form { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+.chat-card textarea { padding: 11px; border: 1px solid #d8d0c4; border-radius: 9px; resize: vertical; }
+.chat-card form button { align-self: stretch; padding: 0 16px; color: #fff; background: var(--demo-blue); border: 0; border-radius: 9px; font-size: 9px; font-weight: 850; }
+.chat-side-card { display: grid; align-content: start; gap: 8px; }
+.chat-side-card > button { padding: 11px; color: #344873; background: #efedf8; border: 1px solid #d9d5ee; border-radius: 9px; font-size: 9px; font-weight: 750; text-align: left; }
+.chat-side-card > div { margin-top: 15px; padding: 14px; color: #d7dfed; background: #1b2b4c; border-radius: 11px; }
+.chat-side-card > div strong { color: #fff; font-family: var(--demo-display); font-size: 18px; }
+.chat-side-card > div p { margin-bottom: 0; color: #c7d0e1; font-size: 9px; }
+
+/* Social */
+.social-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, .6fr); gap: 12px; }
+.status-compose { margin-top: 16px; padding: 16px; background: #f3efe8; border: 1px solid #ded6c9; border-radius: 13px; }
+.compose-person { display: flex; align-items: center; gap: 9px; }
+.compose-person img { width: 40px; height: 40px; object-fit: cover; border-radius: 99px; }
+.compose-person > div { display: grid; gap: 2px; }
+.compose-person strong { font-size: 11px; }
+.compose-person span { color: var(--demo-muted); font-size: 8px; }
+.status-compose textarea { width: 100%; margin-top: 10px; padding: 11px; background: #fff; border: 1px solid #d9d1c5; border-radius: 9px; resize: vertical; }
+.status-compose > footer { display: flex; gap: 7px; justify-content: flex-end; margin-top: 8px; }
+.status-compose select,
+.status-compose footer button,
+.upload-button { padding: 8px 10px; border: 1px solid #d5cec3; border-radius: 8px; font-size: 8px; font-weight: 800; }
+.status-compose footer button { color: #fff; background: var(--demo-blue); border-color: var(--demo-blue); }
+.upload-button { color: var(--demo-blue-dark); background: #fff; }
+.upload-button input { display: none; }
+.image-preview { position: relative; margin-top: 10px; overflow: hidden; max-height: 320px; border-radius: 10px; }
+.image-preview img { width: 100%; max-height: 320px; object-fit: cover; }
+.image-preview button { position: absolute; top: 9px; right: 9px; padding: 6px 8px; color: #fff; background: rgba(20,30,50,.82); border: 0; border-radius: 7px; font-size: 8px; }
+.social-post-list { display: grid; gap: 10px; margin-top: 12px; }
+.social-post-list > article { padding: 16px; background: #fff; border: 1px solid #dfd8cc; border-radius: 13px; }
+.social-post-list article > header { display: grid; grid-template-columns: 39px 1fr auto; gap: 9px; align-items: center; }
+.social-post-list header > img { width: 38px; height: 38px; object-fit: cover; border-radius: 99px; }
+.social-post-list header > div { display: grid; gap: 2px; }
+.social-post-list header strong { font-size: 10px; }
+.social-post-list header span { color: var(--demo-muted); font-size: 7px; }
+.social-post-list article > p { margin: 13px 0; font-size: 10px; }
+.social-post-list article > footer { display: flex; gap: 15px; color: #69748a; font-size: 8px; }
+.post-uploaded-image { width: 100%; max-height: 440px; margin-top: 12px; object-fit: cover; border-radius: 10px; }
+.social-side-stack { display: grid; align-content: start; gap: 12px; }
+.social-side-stack ul { display: grid; gap: 10px; padding-left: 18px; color: var(--demo-muted); font-size: 9px; line-height: 1.45; }
+
+/* Profile */
+.profile-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.detail-row { display: grid; grid-template-columns: .55fr 1fr; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid #e5ddd2; }
+.detail-row:first-of-type { margin-top: 14px; border-top: 0; }
+.detail-row span { color: var(--demo-muted); font-size: 9px; }
+.detail-row strong { font-size: 10px; }
+.pill-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 15px; }
+.brown-belt-note { margin-top: 16px; padding: 13px; color: #fff; background: #6d4427; border-radius: 10px; }
+.brown-belt-note strong { font-family: var(--demo-display); font-size: 18px; }
+.brown-belt-note p { margin-bottom: 0; color: #f3e4d8; font-size: 9px; }
+.support-heart { color: #aba4da; font-family: var(--demo-hand); font-size: 54px; line-height: 1; text-align: right; }
+.profile-detail-grid blockquote { margin: 15px 0 0; color: #3a4e7a; font-family: var(--demo-hand); font-size: 22px; line-height: 1; }
+.history-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.history-strip article { position: relative; overflow: hidden; min-height: 220px; padding: 15px; color: #fff; background: #1b2b4c; border-radius: 12px; }
+.history-strip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .22; }
+.history-strip span,
+.history-strip p,
+.history-strip small { position: relative; z-index: 1; }
+.history-strip span { color: #d8c98f; font-size: 8px; font-weight: 850; }
+.history-strip p { margin-top: 70px; color: #fff; font-family: var(--demo-display); font-size: 18px; line-height: 1.16; }
+.history-strip small { font-size: 8px; }
+
+/* Feature drawer + coach */
+.feature-drawer-backdrop { position: fixed; z-index: 130; inset: 0; display: flex; justify-content: flex-end; visibility: hidden; background: rgba(15,24,45,.38); opacity: 0; transition: opacity .2s ease, visibility .2s ease; }
+.feature-drawer-backdrop.is-open { visibility: visible; opacity: 1; }
+.feature-drawer { width: min(420px, 100%); height: 100%; overflow-y: auto; padding: 26px; background: var(--demo-card); box-shadow: -20px 0 60px rgba(20,25,45,.18); transform: translateX(100%); transition: transform .25s ease; }
