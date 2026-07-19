@@ -27,7 +27,7 @@ function Router() {
 
   function studentDashboard(track) {
     const returnTo = `#/student/${track}/app`;
-    return <AuthGate accountType="student" educationTrack={track} returnTo={returnTo}>{({ profile }) => <MotionFrame routeKey={`student-${track}-dashboard`}><StudentDashboard profile={profile} track={track} onHome={() => navigate(`#/students/${track}`)} onProfessorPortal={() => navigate("#/professors")} /></MotionFrame>}</AuthGate>;
+    return <AuthGate accountType="student" educationTrack={track} returnTo={returnTo}>{({ profile, session }) => <MotionFrame routeKey={`student-${track}-dashboard`}><StudentDashboard profile={profile} session={session} track={track} onHome={() => navigate(`#/students/${track}`)} onProfessorPortal={() => navigate("#/professors")} /></MotionFrame>}</AuthGate>;
   }
 
   function studentLanding(track) {
@@ -59,4 +59,5 @@ function Router() {
   return <MotionFrame routeKey="portal-home"><PortalHome /></MotionFrame>;
 }
 
+document.body.setAttribute("spellcheck", "true");
 createRoot(document.getElementById("root")).render(<Suspense fallback={<RouteLoading />}><Router /></Suspense>);
