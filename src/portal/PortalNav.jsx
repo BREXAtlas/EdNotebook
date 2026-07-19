@@ -1,5 +1,3 @@
-import BrandLogo from "../Brand.jsx";
-
 const PORTALS = [
   ["student", "Student portal", "#/students"],
   ["professor", "Professor portal", "#/professors"],
@@ -11,7 +9,7 @@ export default function PortalNav({ active, action, actionLabel = "Sign in" }) {
   return (
     <header className="portal-nav">
       <a className="portal-brand" href="#/" aria-label="EdNotebook portal home">
-        <BrandLogo size={40} tagline="Learning, teaching, and campus life" />
+        <img className="portal-nav-logo" src="/brand/ednotebook-logo-primary.svg" alt="EdNotebook — Learning, teaching, and campus life" />
       </a>
       <nav aria-label="EdNotebook portals">
         {PORTALS.map(([id, label, href]) => (

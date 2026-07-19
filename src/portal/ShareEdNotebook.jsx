@@ -4,10 +4,10 @@ import BrandLogo from "../Brand.jsx";
 const SHARE_TITLE = "Join me on EdNotebook";
 const SHARE_TEXT = "Find your classes. Find your people. Keep learning in one place. Join free at EdNotebook.";
 
-export default function ShareEdNotebook({ buttonLabel = "Share EdNotebook", className = "" }) {
+export default function ShareEdNotebook({ buttonLabel = "Share EdNotebook", className = "", targetPath = "#/students/university" }) {
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const pageUrl = typeof window === "undefined" ? "https://ednotebook.com" : `${window.location.origin}${window.location.pathname}#/students/university`;
+  const pageUrl = typeof window === "undefined" ? "https://ednotebook.com" : `${window.location.origin}${window.location.pathname}${targetPath}`;
   const encodedUrl = encodeURIComponent(pageUrl);
   const encodedText = encodeURIComponent(`${SHARE_TEXT} ${pageUrl}`);
 

@@ -1,7 +1,7 @@
 {
   "name": "EdNotebook",
   "short_name": "EdNotebook",
-  "description": "A guided AI course builder for professors, learners, and university teams.",
+  "description": "A shared workspace for students, professors, classes, assignments, writing, planning, and campus life.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#101B33",
   "icons": [
     {
-      "src": "favicon.svg",
+      "src": "brand/ednotebook-logo-mark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

@@ -1,5 +1,6 @@
 import { BrandMark } from "../Brand.jsx";
 import PortalNav from "./PortalNav.jsx";
+import ShareEdNotebook from "./ShareEdNotebook.jsx";
 
 const PORTAL_CARDS = [
   {
@@ -43,6 +44,12 @@ const actionStyle = {
   textDecoration: "none",
 };
 
+const LOGO_VARIANTS = [
+  { name: "Primary logo", use: "Headers, presentations, and partner materials", src: "/brand/ednotebook-logo-primary.svg", file: "ednotebook-logo-primary.svg" },
+  { name: "Compact mark", use: "App icons, avatars, and small spaces", src: "/brand/ednotebook-logo-mark.svg", file: "ednotebook-logo-mark.svg" },
+  { name: "One-color logo", use: "Print, embroidery, stamps, and simple backgrounds", src: "/brand/ednotebook-logo-monochrome.svg", file: "ednotebook-logo-monochrome.svg" },
+];
+
 export default function PortalHome() {
   return (
     <div className="portal-page portal-home-page">
@@ -80,7 +87,7 @@ export default function PortalHome() {
           <div style={{ padding: 28, color: "#18284a", background: "#fffdf8", border: "1px solid #ded6c8", borderRadius: 22, boxShadow: "0 18px 50px rgba(16,27,51,.08)" }}>
             <span className="portal-kicker">MEET THE DEMO TEAM</span>
             <h2 style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>Brooke, Atlas, and Jaylen make every side of EdNotebook testable.</h2>
-            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Tour a university student, professor, or K–12 workspace with fictional grades, assignments, conversations, social history, syllabus extraction, overlapping deadlines, reminders, notes, sources, and document-aware AI chat.</p>
+            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Tour a university student, professor, or K–12 workspace with fictional grades, assignments, conversations, social history, syllabus extraction, overlapping deadlines, reminders, notes, sources, and document-aware help.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 20 }}>
               <a href="#/tour/student" style={{ ...actionStyle, color: "#fff", background: "#18284a" }}>Brooke · University student</a>
               <a href="#/tour/professor" style={{ ...actionStyle, color: "#314174", background: "#eceafa", border: "1px solid #d4d0ec" }}>Atlas · Professor</a>
@@ -89,13 +96,28 @@ export default function PortalHome() {
           </div>
         </section>
 
+        <section className="portal-home-share" aria-labelledby="portal-home-share-title">
+          <div>
+            <span className="portal-kicker">SHARE EDNOTEBOOK</span>
+            <h2 id="portal-home-share-title">Invite students, friends, and professors.</h2>
+            <p>Send the website directly, post it to social media, or download the ready-to-share invitation graphic for a class group, campus page, or message.</p>
+            <ShareEdNotebook buttonLabel="Share or download the invitation" targetPath="#/" />
+          </div>
+          <img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" />
+        </section>
+
+        <section className="portal-brand-kit" aria-labelledby="portal-brand-kit-title">
+          <div className="portal-brand-kit-heading"><div><span className="portal-kicker">EDNOTEBOOK LOGO KIT</span><h2 id="portal-brand-kit-title">Three marks for every setting.</h2></div><p>Use the primary logo whenever space allows, the compact mark for small placements, and the one-color logo when full color is not practical.</p></div>
+          <div className="portal-brand-variant-grid">{LOGO_VARIANTS.map((logo) => <article key={logo.name}><div className={logo.name === "One-color logo" ? "is-monochrome" : ""}><img src={logo.src} alt={`${logo.name} for EdNotebook`} /></div><strong>{logo.name}</strong><span>{logo.use}</span><a href={logo.src} download={logo.file}>Download SVG</a></article>)}</div>
+        </section>
+
         <section className="portal-home-principle">
           <div><strong>Browse first</strong><span>Public school, class, and demonstration information does not require an account.</span></div>
-          <div><strong>Start independently</strong><span>Students can upload syllabi and use planning, notes, sources, literacy courses, and AI search without waiting for a teacher account.</span></div>
+          <div><strong>Start independently</strong><span>Students can upload syllabi and use planning, notes, sources, literacy courses, and learning search without waiting for a teacher account.</span></div>
           <div><strong>Your view stays yours</strong><span>Students see their own cross-class learning record; professors see only students and classes they are authorized to manage.</span></div>
         </section>
       </main>
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
+      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
     </div>
   );
 }
