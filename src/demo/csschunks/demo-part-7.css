@@ -1,0 +1,158 @@
+.team-card { overflow: hidden; background: var(--demo-card); border: 1px solid var(--demo-line); border-radius: 19px; }
+.team-card > img,
+.founder-avatar { width: 100%; height: 250px; object-fit: cover; }
+.founder-avatar { display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #172746, #586eb5); font-family: var(--demo-display); font-size: 58px; }
+.team-card > div:last-child { padding: 19px; }
+.team-card > div:last-child > span:first-child { color: var(--demo-blue); font-size: 8px; font-weight: 850; text-transform: uppercase; }
+.team-card h3 { margin: 8px 0; font-size: 25px; }
+.team-card p { color: var(--demo-muted); font-size: 10px; }
+.liaison-section { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.liaison-section article { padding: 30px; background: #172746; border-radius: 21px; }
+.liaison-section h2 { color: #fff; font-size: 32px; }
+.liaison-section p { color: #c5cede; }
+.jobs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.jobs-grid article { display: flex; flex-direction: column; min-height: 270px; padding: 22px; background: var(--demo-card); border: 1px solid var(--demo-line); border-radius: 17px; }
+.jobs-grid article > span { color: var(--demo-blue); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.jobs-grid h3 { margin: 20px 0 7px; font-size: 25px; }
+.jobs-grid article > strong { color: #7a6684; font-size: 9px; }
+.jobs-grid p { color: var(--demo-muted); font-size: 10px; }
+.jobs-grid button { align-self: flex-start; margin-top: auto; padding: 9px 11px; color: var(--demo-blue); background: #efedf8; border: 1px solid #d7d3ee; border-radius: 8px; font-size: 8px; font-weight: 850; }
+.career-form-section { display: grid; grid-template-columns: .8fr 1.2fr; gap: 42px; align-items: start; }
+.career-form-section h2 { margin: 12px 0; font-size: 42px; }
+.career-form-section form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 23px; background: var(--demo-card); border: 1px solid var(--demo-line); border-radius: 17px; }
+.career-form-section form label:nth-of-type(3),
+.career-form-section form label:nth-of-type(4),
+.career-form-section form > button,
+.career-form-section form > p { grid-column: 1 / -1; }
+
+@media (max-width: 1220px) {
+  .workspace-header { grid-template-columns: minmax(190px, .8fr) minmax(260px, 1.15fr) auto; }
+  .workspace-status-control { display: none; }
+  .workspace-top-grid { grid-template-columns: 1.5fr .8fr; }
+  .workspace-top-grid .stats-card { grid-column: 1 / -1; }
+  .stats-card .stat-list { grid-template-columns: repeat(4, 1fr); }
+  .today-lower-grid { grid-template-columns: 1fr 1fr; }
+  .today-lower-grid .conversation-card { grid-column: 1 / -1; }
+  .research-source-grid { grid-template-columns: repeat(2, 1fr); }
+  .team-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 980px) {
+  .demo-nav { grid-template-columns: 1fr auto; }
+  .demo-nav nav { order: 3; grid-column: 1 / -1; overflow-x: auto; justify-content: flex-start; }
+  .demo-hero { grid-template-columns: 1fr; }
+  .brooke-guide-card { min-height: 500px; }
+  .persona-grid,
+  .workflow-grid,
+  .values-grid,
+  .jobs-grid { grid-template-columns: repeat(2, 1fr); }
+  .persona-card.is-featured { transform: none; }
+  .literacy-band { grid-template-columns: 1fr; }
+  .workspace-header { grid-template-columns: 1fr auto; }
+  .workspace-persona-mini { display: none; }
+  .workspace-header-actions button:first-child { display: none; }
+  .workspace-shell { grid-template-columns: 88px minmax(0, 1fr); }
+  .workspace-sidebar { padding-inline: 8px; }
+  .workspace-profile-chip { justify-content: center; }
+  .workspace-profile-chip > div:last-child { display: none; }
+  .workspace-sidebar nav button { justify-content: center; padding: 10px 6px; text-align: center; }
+  .workspace-sidebar nav button > span { font-size: 0; }
+  .workspace-sidebar nav button > span::first-letter { font-size: 0; }
+  .workspace-sidebar nav button::before { content: "•"; font-size: 19px; }
+  .sidebar-availability-card,
+  .sidebar-visible-count { display: none; }
+  .workspace-top-grid,
+  .today-summary-grid,
+  .today-lower-grid,
+  .homework-support-grid,
+  .calendar-agenda-grid,
+  .library-two-column,
+  .chat-layout,
+  .social-layout { grid-template-columns: 1fr; }
+  .profile-detail-grid { grid-template-columns: repeat(2, 1fr); }
+  .calendar-control-grid { grid-template-columns: 1fr 1fr; }
+  .reminder-toggle-grid { grid-template-columns: 1fr 1fr; }
+  .presentation-shell { grid-template-columns: 220px minmax(0, 1fr); }
+  .presentation-slide > ul,
+  .tech-stack-grid { grid-template-columns: 1fr; }
+  .presentation-mascots { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .career-form-section { grid-template-columns: 1fr; }
+  .demo-footer { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 720px) {
+  .demo-hero { padding-top: 58px; }
+  .brooke-guide-card { grid-template-columns: 1fr; min-height: 0; }
+  .brooke-guide-card > img { height: 420px; }
+  .persona-grid,
+  .workflow-grid,
+  .trust-section,
+  .literacy-mini-grid,
+  .values-grid,
+  .team-grid,
+  .jobs-grid,
+  .liaison-section { grid-template-columns: 1fr; }
+  .workspace-header { min-height: 68px; padding: 8px 12px; }
+  .workspace-header-actions button:nth-child(2) { display: none; }
+  .workspace-shell { display: block; }
+  .workspace-sidebar { position: sticky; z-index: 70; top: 68px; display: flex; min-height: 0; overflow-x: auto; padding: 6px; border-right: 0; border-bottom: 1px solid var(--demo-line); }
+  .workspace-profile-chip { display: none; }
+  .workspace-sidebar nav { display: flex; gap: 4px; padding: 0; }
+  .workspace-sidebar nav button { width: auto; min-width: 46px; }
+  .workspace-sidebar nav button::before { font-size: 14px; }
+  .workspace-main { padding: 12px; }
+  .workspace-top-grid { grid-template-columns: 1fr; }
+  .workspace-top-grid .stats-card { grid-column: auto; }
+  .stats-card .stat-list { grid-template-columns: 1fr 1fr; }
+  .profile-hero-card { grid-template-columns: 1fr; }
+  .profile-photo-column { height: 420px; }
+  .profile-hero-copy { padding: 8px; }
+  .profile-name-line { display: grid; }
+  .assignment-row { grid-template-columns: 6px 1fr; }
+  .assignment-actions { grid-column: 2; grid-row: 2; display: flex; justify-content: space-between; justify-items: stretch; min-width: 0; }
+  .collision-groups section { grid-template-columns: 1fr; }
+  .reminder-toggle-grid,
+  .extraction-summary-grid,
+  .profile-detail-grid,
+  .history-strip { grid-template-columns: 1fr; }
+  .calendar-control-grid { grid-template-columns: 1fr; }
+  .month-calendar { overflow-x: auto; }
+  .month-calendar-weekdays,
+  .month-calendar-grid { min-width: 680px; }
+  .syllabus-editor-grid { grid-template-columns: 1fr; }
+  .extracted-head,
+  .extracted-assignment-list label { grid-template-columns: 46px 1fr; }
+  .extracted-head span:nth-child(n+3),
+  .extracted-assignment-list label > span:nth-child(n+3) { display: none; }
+  .library-header-card { display: grid; }
+  .segmented-control { overflow-x: auto; }
+  .chat-card { min-height: 650px; }
+  .chat-card > form { grid-template-columns: 1fr; }
+  .chat-card form button { padding: 11px; }
+  .status-compose > footer { flex-wrap: wrap; justify-content: flex-start; }
+  .tour-coach { right: 10px; bottom: 10px; grid-template-columns: 76px minmax(0,1fr); max-width: calc(100vw - 20px); }
+  .presentation-shell { display: block; }
+  .presentation-index { display: none; }
+  .presentation-stage { min-height: calc(100vh - 105px); padding: 30px 20px; }
+  .presentation-slide h2 { font-size: 48px; }
+  .presentation-slide > ul,
+  .slide-source-links,
+  .presentation-mascots { grid-template-columns: 1fr; }
+  .research-source-grid { grid-template-columns: 1fr; }
+  .about-hero { padding-top: 58px; }
+  .career-form-section form { grid-template-columns: 1fr; }
+  .career-form-section form label,
+  .career-form-section form > button,
+  .career-form-section form > p { grid-column: 1; }
+  .demo-footer { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presentation-slide,
+  .feature-drawer,
+  .feature-drawer-backdrop { animation: none !important; transition: none !important; }
+}
+
+/* Personal task list and workspace footer */
+.todo-card form { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 14px; }
+.todo-card form input { min-width: 0; padding: 11px 12px; color: var(--demo-ink); background: rgba(255,255,255,.78); border: 1px solid var(--demo-line); border-radius: 10px; }
