@@ -1,10 +1,10 @@
 {
-  "status": "failure",
-  "build": "failure",
+  "status": "success",
+  "build": "success",
   "security_tests": "success",
-  "deploy": "skipped",
-  "page_url": "",
-  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29703383372",
-  "source_commit": "9df5b09abee9e6f0c59934ac21a4ec954c076e08",
-  "deployed_at": "2026-07-19T20:55:02Z"
+  "deploy": "success",
+  "page_url": "https://ednotebook.com/",
+  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29703644411",
+  "source_commit": "9e5a006ba84929f9187c8f41515193ff42ae34fb",
+  "deployed_at": "2026-07-19T21:03:44Z"
 }
