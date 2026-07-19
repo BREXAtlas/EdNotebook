@@ -165,14 +165,14 @@ const PLANS = [
   { key: "annual", name: "Annual", price: 549, cadence: "per year", classCap: 10,
     features: ["Up to 10 classes", "Save ~35% vs. semester", "Priority support", "Early access features"] },
   { key: "enterprise", name: "University Enterprise", price: null, cadence: "seat-based, billed to institution", classCap: Infinity,
-    features: ["Unlimited classes & seats", "SIS / SSO sync", "FERPA data residency", "Dedicated onboarding"] },
+    features: ["Unlimited classes & seats", "SIS / SSO sync", "Institution-managed data controls", "Dedicated onboarding"] },
 ];
 const SEAT_CAP_PER_CLASS = 50;
 
 /* ---------- MASTERMIND PORTFOLIO ---------- */
 const PROJECTS = [
-  { name: "EdNotebook", role: "Platform · this build", status: "Prototype live", repo: "github.com/BREXAtlas/EdNotebook", repoNote: "Repo not yet created — this build is ready to push as the first commit.", metric: "3 pilot institutions in design", color: "primary" },
-  { name: "Angelo State University", role: "Institution running EdNotebook", status: "Pilot", repo: null, metric: "1,102 learners · 18 professors", color: "good" },
+  { name: "EdNotebook", role: "Platform · this build", status: "Prototype live", repo: "github.com/BREXAtlas/EdNotebook", repoNote: "Repo not yet created — this build is ready to push as the first commit.", metric: "Synthetic demonstration workspace", color: "primary" },
+  { name: "Example University", role: "Synthetic institution workspace", status: "Demo", repo: null, metric: "Demonstration records only", color: "good" },
   { name: "Ram Ready Digital Literacy", role: "Flagship demo · Ram Ready template source", status: "Live", repo: "github.com/Brexatlas/Digital-Literacy-Course", metric: "20 episodes across 4 acts", color: "good" },
   { name: "Ram Ready Financial Futures", role: "Sequel course, same template family", status: "Live", repo: "github.com/Brexatlas/Financial-Literacy-Course", metric: "Continues the Ram Ready sequence", color: "accentDark" },
 ];
@@ -1119,7 +1119,7 @@ Return ONLY JSON, no fences:
         <Label t={t}>{manuscript.style} title page · {cover.toLowerCase()}</Label>
         <div style={{ background: "#fff", border: `1px solid ${t.line}`, padding: "26px 16px", textAlign: "center", minHeight: 130 }}>
           <div style={{ fontFamily: "'Newsreader', serif", fontSize: 17, fontWeight: 700, color: "#111", marginBottom: 14 }}>{manuscript.title}</div>
-          {["Your Name", "Angelo State University", manuscript.course, manuscript.professor].map((c, i) => (
+          {["Your Name", "Example University", manuscript.course, manuscript.professor].map((c, i) => (
             <div key={i} style={{ fontFamily: "'Newsreader', serif", fontSize: 12.5, color: "#444", lineHeight: 1.7 }}>{c}</div>
           ))}
         </div>
@@ -1432,8 +1432,8 @@ function AdminView({ t }) {
     <div className="cc-rise">
       <div style={{ background: t.heroGrad, borderRadius: t.radius, padding: 20, marginBottom: 12, color: "#fff" }}>
         <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>INSTITUTION CONSOLE · POWERED BY EDNOTEBOOK</div>
-        <h1 style={{ fontFamily: t.display, fontSize: 24, fontWeight: 700, margin: "5px 0 3px" }}>Angelo State University</h1>
-        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Fall 2026 · University Enterprise · 3 departments piloting</div>
+        <h1 style={{ fontFamily: t.display, fontSize: 24, fontWeight: 700, margin: "5px 0 3px" }}>Example University</h1>
+        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Synthetic institution workspace · demonstration data only</div>
       </div>
       <div data-tour="t-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
         {[["24", "courses"], ["1,102", "learners"], ["87%", "weekly active"]].map(([n, l], i) => (
@@ -1457,7 +1457,7 @@ function AdminView({ t }) {
         {[["Course generation", 61], ["Grading suggestions", 27], ["Writing coach", 12]].map(([k, v], i) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14, color: t.ink }}><span>{k}</span><span style={{ fontFamily: t.mono, fontSize: 12, color: t.slate }}>{v}%</span></div>
         ))}
-        <div style={{ background: t.paper, padding: 11, borderRadius: t.radius === "0px" ? 0 : 12, marginTop: 10, fontFamily: t.mono, fontSize: 11, color: t.slate, lineHeight: 1.6 }}>Policy · instructors confirm every AI-suggested grade · the writing coach diagnoses but never drafts · FERPA data stays in campus tenancy</div>
+        <div style={{ background: t.paper, padding: 11, borderRadius: t.radius === "0px" ? 0 : 12, marginTop: 10, fontFamily: t.mono, fontSize: 11, color: t.slate, lineHeight: 1.6 }}>Product controls · instructors confirm every AI-suggested grade · the writing coach diagnoses but never drafts · institution-linked records stay inside their assigned workspace</div>
       </Card>
       <Label t={t}>Plug-ins</Label>
       <Card t={t} tour="t-plugins" style={{ marginBottom: 12 }}>
@@ -1492,10 +1492,10 @@ function MastermindView({ t }) {
       <div style={{ background: "linear-gradient(135deg,#0B0E14,#211A0A)", borderRadius: t.radius, padding: 20, marginBottom: 12, color: "#fff", border: `1px solid ${t.accent}55` }}>
         <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>MASTERMIND · OWNER ONLY</div>
         <h1 style={{ fontFamily: t.display, fontSize: 24, fontWeight: 700, margin: "5px 0 3px" }}>BrexAtlas Portfolio</h1>
-        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Every project, one dashboard. Angelo State runs on EdNotebook; the Ram Ready courses feed its templates.</div>
+        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Every project, one dashboard. The synthetic institution workspace demonstrates how Ram Ready courses can feed reusable templates.</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-        {[["4", "active projects"], ["1,102", "total learners"], ["1", "pilot institution"]].map(([n, l], i) => (
+        {[["4", "demo projects"], ["1,102", "synthetic learners"], ["1", "example institution"]].map(([n, l], i) => (
           <Card t={t} key={i} style={{ textAlign: "center" }}><div style={{ fontFamily: t.display, fontSize: 23, fontWeight: 700, color: t.primaryDark }}>{n}</div><div style={{ fontFamily: t.mono, fontSize: 10, color: t.slate }}>{l}</div></Card>
         ))}
       </div>
@@ -1615,7 +1615,7 @@ export default function Builder() {
         {view === "mastermind" && <MastermindView t={t} />}
       </div>
 
-      <div style={{ textAlign: "center", paddingBottom: 26, fontFamily: t.mono, fontSize: 10.5, color: t.slate }}>EdNotebook prototype · formerly Coursecraft · all data simulated except AI generation</div>
+      <div style={{ textAlign: "center", paddingBottom: 26, fontFamily: t.mono, fontSize: 10.5, color: t.slate }}>EdNotebook prototype · demonstration data only · external AI is not production-connected</div>
 
       {tourStep !== null && <Tutorial t={t} steps={TOURS[view] || TOURS.professor} step={tourStep} setStep={setTourStep} onClose={() => setTourStep(null)} />}
     </div>

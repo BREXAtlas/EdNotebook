@@ -42,8 +42,8 @@ const FEATURES = [
   },
   {
     icon: "◫",
-    title: "Professor-controlled AI",
-    text: "AI can suggest a course, a lesson, or a grade, but the professor reviews, edits, and approves the result.",
+    title: "Professor-controlled suggestions",
+    text: "Draft a course, lesson, or grade for review, then edit and approve it before anything reaches students.",
   },
   {
     icon: "↗",
@@ -53,7 +53,7 @@ const FEATURES = [
   {
     icon: "✓",
     title: "Governance made visible",
-    text: "Roles, ownership, budget controls, audit-minded workflows, and FERPA-aware product language live in one admin view.",
+    text: "Roles, ownership, budget controls, clear data boundaries, and reviewable workflows live in one admin view.",
   },
   {
     icon: "¶",
@@ -73,8 +73,8 @@ const FAQS = [
     "Start by creating the course shell. EdNotebook then labels every remaining stage from 2 of 6 through 6 of 6, so source content is never mistaken for the first step.",
   ],
   [
-    "Does AI publish directly to students?",
-    "No. Course generation and grading are review workflows. The professor edits and approves the work before a course goes live or a grade is posted.",
+    "Can suggested work publish directly to students?",
+    "No. Course creation and grading are review workflows. The professor edits and approves the work before a course goes live or a grade is posted.",
   ],
   [
     "Can I use my existing syllabus?",
@@ -112,7 +112,7 @@ function Reveal({ children, className = "" }) {
   );
 }
 
-export default function Landing({ onEnter }) {
+export default function Landing({ onEnter, onDashboard, onStudentPortal, onPublishingPortal }) {
   const goTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
@@ -125,9 +125,11 @@ export default function Landing({ onEnter }) {
           <button type="button" onClick={() => goTo("course-path")}>How it works</button>
           <button type="button" onClick={() => goTo("features")}>Features</button>
           <button type="button" onClick={() => goTo("faq")}>FAQ</button>
+          <button type="button" onClick={onStudentPortal}>Student portal</button>
+          <button type="button" onClick={onPublishingPortal}>Publishing portal</button>
         </nav>
-        <button className="nav-cta" type="button" onClick={onEnter} data-motion="true">
-          Create course
+        <button className="nav-cta" type="button" onClick={onDashboard} data-motion="true">
+          Professor sign in
         </button>
       </header>
 
@@ -137,7 +139,7 @@ export default function Landing({ onEnter }) {
           <div className="hero-orb hero-orb-two" aria-hidden="true" />
           <div className="landing-shell hero-grid">
             <div className="hero-copy">
-              <div className="hero-eyebrow"><span>AI COURSE BUILDER</span> FOR PROFESSORS & UNIVERSITIES</div>
+              <div className="hero-eyebrow"><span>COURSE BUILDER</span> FOR PROFESSORS & UNIVERSITIES</div>
               <h1>Create the course first. Then build it step by step.</h1>
               <p className="hero-lead">
                 EdNotebook turns source material into an interactive university course while keeping the professor in control.
@@ -285,16 +287,16 @@ export default function Landing({ onEnter }) {
               <div className="section-kicker light-kicker">THE OWNERSHIP LAYER</div>
               <h2>Designed for the questions institutions ask before they buy.</h2>
               <p>
-                Who owns the course? Which model is allowed? What can AI suggest? Who approves a grade? How is learner data separated from public content?
-                EdNotebook makes those decisions visible instead of burying them inside a prompt.
+                Who owns the course? Which tools are allowed? What can be suggested? Who approves a grade? How is learner data separated from public content?
+                EdNotebook makes those decisions visible instead of burying them inside a workflow.
               </p>
               <div className="governance-tags">
-                <span>Role controls</span><span>AI budget</span><span>Professor approval</span><span>FERPA-aware workflows</span>
+                <span>Role controls</span><span>Usage budget</span><span>Professor approval</span><span>Scoped data access</span>
               </div>
             </Reveal>
             <Reveal className="governance-panel">
               <div className="policy-row"><span>Course owner</span><strong>Professor</strong></div>
-              <div className="policy-row"><span>AI grade status</span><strong>Suggested · not posted</strong></div>
+              <div className="policy-row"><span>Grade status</span><strong>Suggested · not posted</strong></div>
               <div className="policy-row"><span>Learner records</span><strong>Authenticated access</strong></div>
               <div className="policy-row"><span>Publish authority</span><strong>Professor / Admin</strong></div>
             </Reveal>

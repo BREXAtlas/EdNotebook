@@ -97,7 +97,7 @@ Required capabilities:
 - Assignment and Grade Services for grade return
 - Names and Role Provisioning when contractually allowed
 - deployment and institution configuration
-- partner support and privacy review
+- partner onboarding and any data review required by the participating institution
 
 EdNotebook can operate as an LTI platform, an LTI tool, or both depending on the institutional architecture. Credentials and registration metadata must be stored server-side.
 

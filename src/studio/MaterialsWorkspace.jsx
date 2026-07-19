@@ -450,7 +450,7 @@ export default function MaterialsWorkspace() {
         if (result?.deleted || result?.status === "completed" || result?.status === "metadata_removed") {
           setNotice("Resource removed and audited.");
         } else if (result?.status === "blocked_legal_hold") {
-          setNotice("Deletion was recorded but blocked by an active legal hold.");
+          setNotice("Deletion was recorded but paused by an administrator deletion lock.");
         } else if (result?.status === "deferred_retention") {
           setNotice(`Deletion was recorded and deferred until ${new Date(result.eligibleAt).toLocaleString()}.`);
         } else {

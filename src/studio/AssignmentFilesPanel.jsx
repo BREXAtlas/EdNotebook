@@ -242,7 +242,7 @@ export default function AssignmentFilesPanel() {
       } else {
         const result = await deleteResourceRecord(resource, "Learner removed an assignment attachment");
         if (result?.status === "blocked_legal_hold") {
-          setNotice("Removal was recorded but blocked by an active legal hold.");
+          setNotice("Removal was recorded but paused by an administrator deletion lock.");
         } else if (result?.status === "deferred_retention") {
           setNotice(`Removal is deferred by retention policy until ${new Date(result.eligibleAt).toLocaleString()}.`);
         } else {

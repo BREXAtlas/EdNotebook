@@ -107,7 +107,7 @@ A production hardening worker should add:
 - image metadata stripping where appropriate
 - document preview conversion
 - audit events for upload, download, share, rename, and delete
-- institutional retention schedules and legal holds
+- institutional retention schedules and administrator deletion locks
 - resumable uploads for larger files
 
 ## What should not go into GitHub

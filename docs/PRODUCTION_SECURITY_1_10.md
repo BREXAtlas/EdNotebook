@@ -171,7 +171,7 @@ Application downloads must use `secure-file-download`; directly generating Stora
 
 ---
 
-## 6. Retention and legal holds
+## 6. Retention and administrator deletion locks
 
 Retention can be defined at institution and course scope through `retention_policies`.
 
@@ -179,16 +179,16 @@ Each secure file receives a calculated `retention_until` value at upload reserva
 
 - immediately eligible
 - deferred until retention expires
-- blocked by an active legal hold
+- paused by an administrator deletion lock
 - processed
 - completed
 - failed
 
-`legal_holds` can apply to an institution, course, or specific file through `legal_hold_files`.
+An administrator deletion lock can apply to an institution, course, or specific file. The existing database identifiers remain internal implementation details and are not shown in the product.
 
 The `retention-worker` Edge Function processes eligible deletions and expired upload reservations. It requires the `x-cron-secret` header and should be invoked daily by the GitHub Actions retention schedule.
 
-A legal hold always wins over an ordinary deletion or retention expiry.
+An administrator deletion lock pauses ordinary deletion and retention expiry until an authorized administrator removes it.
 
 ---
 
