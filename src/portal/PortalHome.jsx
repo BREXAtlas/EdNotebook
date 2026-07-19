@@ -64,10 +64,9 @@ export default function PortalHome() {
         <section className="portal-choice-hero">
           <div className="portal-choice-copy">
             <span className="portal-kicker">WELCOME TO EDNOTEBOOK</span>
-            <h1>Start with the part of learning life that belongs to you.</h1>
+            <h1>Choose where you want to start.</h1>
             <p>
-              Students can turn syllabi into a shared calendar, manage due dates, keep notes and sources, and ask their own learning memory.
-              Professors can organize courses, research, advising, feedback, and verified student relationships.
+              Students keep classes, dates, notes, and people together. Professors build courses, manage feedback, and stay connected with their classes.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
               <a href="#/tour" style={{ ...actionStyle, color: "#fff", background: "#1d4ed8" }}>Take the interactive tour</a>
@@ -75,9 +74,9 @@ export default function PortalHome() {
             </div>
           </div>
           <div className="portal-choice-mark">
-            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchPriority="high" />
+            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchpriority="high" />
             <BrandMark size={82} inverse />
-            <span>One place for assignments, calendars, memory, learning, teaching, and academic identity.</span>
+            <span>Making learning fun, connected, and high tech.</span>
           </div>
         </section>
 
@@ -97,12 +96,12 @@ export default function PortalHome() {
         <section style={{ maxWidth: 1180, margin: "0 auto 54px", padding: "0 28px" }} aria-label="Interactive demonstration accounts">
           <div style={{ padding: 28, color: "#18284a", background: "#fffdf8", border: "1px solid #ded6c8", borderRadius: 22, boxShadow: "0 18px 50px rgba(16,27,51,.08)" }}>
             <span className="portal-kicker">MEET THE DEMO TEAM</span>
-            <h2 style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>Brooke, Atlas, and Jaylen make every side of EdNotebook testable.</h2>
-            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Tour a university student, professor, or K–12 workspace with fictional grades, assignments, conversations, social history, syllabus extraction, overlapping deadlines, reminders, notes, sources, and document-aware help.</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 20 }}>
-              <a href="#/tour/student" style={{ ...actionStyle, color: "#fff", background: "#18284a" }}>Brooke · University student</a>
-              <a href="#/tour/professor" style={{ ...actionStyle, color: "#314174", background: "#eceafa", border: "1px solid #d4d0ec" }}>Atlas · Professor</a>
-              <a href="#/tour/k12" style={{ ...actionStyle, color: "#314174", background: "#eceafa", border: "1px solid #d4d0ec" }}>Jaylen · K–12 student</a>
+            <h2 style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>Meet Brooke, Atlas, and Jaylen.</h2>
+            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Open a ready-made student, professor, or K–12 workspace and try the features for yourself.</p>
+            <div className="portal-demo-team">
+              <a href="#/tour/student"><img src="/demo-media/brooke-portrait.png" alt="Brooke, student tour guide" /><span><strong>Brooke</strong><small>University student</small></span></a>
+              <a href="#/tour/professor"><img src="/demo-media/atlas-portrait.png" alt="Atlas, professor guide" /><span><strong>Atlas</strong><small>Professor</small></span></a>
+              <a href="#/tour/k12"><img src="/demo-media/jaylen-portrait.png" alt="Jaylen, K–12 student guide" /><span><strong>Jaylen</strong><small>K–12 student</small></span></a>
             </div>
           </div>
         </section>

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 128" role="img" aria-labelledby="title desc">
   <title id="title">EdNotebook primary logo</title>
-  <desc id="desc">An open notebook mark beside the EdNotebook wordmark and the phrase Learning, teaching, and campus life.</desc>
+  <desc id="desc">An open notebook mark beside the EdNotebook wordmark and the phrase Fun, connected learning.</desc>
   <g transform="translate(8 8)">
     <rect x="0" y="0" width="112" height="112" rx="28" fill="#101B33"/>
     <path d="M24 29C24 23 29 18 35 18H54V87H35C29 87 24 92 24 98V29Z" fill="#FFFFFF"/>
@@ -13,5 +13,5 @@
   </g>
   <text x="145" y="70" fill="#101B33" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" letter-spacing="-1.4">Ed</text>
   <text x="207" y="70" fill="#F2B33D" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" letter-spacing="-1.4">Notebook</text>
-  <text x="148" y="96" fill="#5B6478" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" letter-spacing="0.35">Learning, teaching, and campus life</text>
+  <text x="148" y="96" fill="#5B6478" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" letter-spacing="0.35">Fun, connected learning</text>
 </svg>

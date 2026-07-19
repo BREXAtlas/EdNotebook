@@ -43,7 +43,7 @@ export default function StudentAudienceChooser() {
         </section>
         <section className="student-continuity-card">
           <BrandLogo size={42} tagline="One account across school stages" />
-          <div><strong>Your learning memory can move forward.</strong><span>Classes, milestones, notes selected for sync, badges, and portfolio work can transfer from K–12 to university. K–12 and university social audiences never merge automatically.</span></div>
+          <div><strong>Your progress can move forward.</strong><span>Classes, milestones, selected notes, badges, and portfolio work can transfer from K–12 to university. K–12 and university social audiences never merge automatically.</span></div>
         </section>
       </main>
     </div>

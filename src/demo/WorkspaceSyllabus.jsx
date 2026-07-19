@@ -3,7 +3,7 @@ import { dateKey, formatDateTime, NotebookLabel } from "./demoShared.jsx";
 
 function defaultSyllabusText(persona) {
   if (persona.id === "k12") return `ACCOUNTING I\nRequired text: Introduction to Accounting course packet\nLearning objectives:\n- Explain the accounting cycle\n- Prepare journals, ledgers, and a trial balance\n- Discuss ethics and accounting careers\nAssignments:\nJournal entries case due September 22, 2026 at 3:30 PM\nCareer interview due October 6, 2026 at 8:00 AM`;
-  if (persona.id === "professor") return `TRANSFORMATIVE TEACHING — EDUC 5302\nRequired reading: Teaching for Transformation\nLearning objectives:\n- Design learner-centered experiences\n- Evaluate inclusive teaching strategies\n- Use AI responsibly in course preparation\nAssignments:\nTeaching philosophy statement due August 21, 2026 at 5:00 PM\nLearning design prototype due September 11, 2026 at 11:59 PM`;
+  if (persona.id === "professor") return `TRANSFORMATIVE TEACHING — EDUC 5302\nRequired reading: Teaching for Transformation\nLearning objectives:\n- Design learner-centered experiences\n- Evaluate inclusive teaching strategies\n- Use workspace assistants thoughtfully in course preparation\nAssignments:\nTeaching philosophy statement due August 21, 2026 at 5:00 PM\nLearning design prototype due September 11, 2026 at 11:59 PM`;
   return `PRINCIPLES OF MARKETING — MKTG 2301\nRequired book: Principles of Marketing, 19th edition\nLearning objectives:\n- Analyze customer value and market segments\n- Explain positioning and ethical promotion\n- Build a basic marketing plan\nAssignments:\nMarketing reflection draft due August 21, 2026 at 11:59 PM\nAudience analysis due September 4, 2026 at 5:00 PM`;
 }
 
@@ -26,7 +26,7 @@ function extractSyllabus(text, persona) {
   });
   return {
     title,
-    themes: persona.id === "professor" ? ["Transformative leadership", "Inclusive teaching", "Responsible AI"] : persona.id === "k12" ? ["Accounting cycle", "Financial statements", "Career readiness"] : ["Customer value", "Market segments", "Ethical promotion"],
+    themes: persona.id === "professor" ? ["Transformative leadership", "Inclusive teaching", "Thoughtful technology use"] : persona.id === "k12" ? ["Accounting cycle", "Financial statements", "Career readiness"] : ["Customer value", "Market segments", "Ethical promotion"],
     objectives: objectiveLines.length ? objectiveLines : ["Identify the course’s central concepts", "Apply learning to a realistic task", "Use evidence and source material responsibly"],
     books: [bookLine ? bookLine.replace(/^Required (book|text|reading):\s*/i, "") : "No required book confidently detected"],
     assignments: extractedAssignments.length ? extractedAssignments : persona.assignments.slice(0, 2).map((item) => ({ ...item, id: `extract-${item.id}` })),

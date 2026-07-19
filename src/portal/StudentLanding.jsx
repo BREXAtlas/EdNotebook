@@ -21,7 +21,7 @@ const K12_FEATURES = [
   ["Grades that make sense", "See finalized, pending, and missing work with the same categories and weights your teacher shares."],
   ["A clear next step", "Open any class to see what is due, what needs attention, and where to ask your teacher for help."],
   ["School life without strangers", "Join class and school groups that stay separate from university feeds and outside public social networks."],
-  ["A page that grows with you", "Save projects, badges, interests, and milestones now, then carry the learning memory into college later."],
+  ["A page that grows with you", "Save projects, badges, interests, and milestones now, then carry your progress into college later."],
   ["Skills beyond one class", "Find digital literacy, tutoring, clubs, student leadership, and future career exploration connected to school."],
 ];
 

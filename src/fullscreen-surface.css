@@ -1,0 +1,17 @@
+.fullscreen-surface-toolbar { display: grid; grid-template-columns: auto auto minmax(210px, 1fr) auto auto; align-items: center; gap: 12px; min-height: 68px; padding: 10px 14px; color: #eef3ff; background: #101b33; border-bottom: 1px solid rgba(255, 255, 255, .12); box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
+.fullscreen-window-mark { display: flex; gap: 6px; }
+.fullscreen-window-mark i { width: 10px; height: 10px; background: #f2b33d; border-radius: 50%; }
+.fullscreen-window-mark i:nth-child(2) { background: #6bb3a8; }
+.fullscreen-window-mark i:nth-child(3) { background: #8b86d6; }
+.fullscreen-history-controls { display: flex; gap: 5px; }
+.fullscreen-history-controls button, .fullscreen-surface-toolbar nav button, .fullscreen-surface-close { display: grid; place-items: center; min-width: 36px; min-height: 36px; padding: 0 10px; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .15); border-radius: 9px; font-weight: 850; cursor: pointer; }
+.fullscreen-history-controls button:disabled { opacity: .35; cursor: default; }
+.fullscreen-address { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; padding: 8px 12px; color: #bfc8db; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); border-radius: 10px; }
+.fullscreen-address span { font-size: 11px; font-weight: 850; }
+.fullscreen-address strong { overflow: hidden; color: #fff; font: 600 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.fullscreen-surface-toolbar nav { display: flex; gap: 6px; }
+.fullscreen-surface-toolbar nav button { white-space: nowrap; }
+.fullscreen-surface-toolbar nav button.is-active { color: #101b33; background: #f2b33d; border-color: #f2b33d; }
+.fullscreen-surface-close { min-width: 42px; color: #101b33; background: #fff; font-size: 24px; }
+@media (max-width: 1050px) { .fullscreen-surface-toolbar { grid-template-columns: auto auto 1fr auto; } .fullscreen-surface-toolbar nav { grid-column: 1 / -1; overflow-x: auto; } .fullscreen-surface-close { grid-column: 4; grid-row: 1; } }
+@media (max-width: 720px) { .fullscreen-surface-toolbar { grid-template-columns: auto 1fr auto; gap: 7px; } .fullscreen-window-mark, .fullscreen-address { display: none; } .fullscreen-history-controls { min-width: 0; } .fullscreen-history-controls button { min-width: 32px; padding: 0 7px; } .fullscreen-surface-toolbar nav { grid-column: 1 / -1; } }

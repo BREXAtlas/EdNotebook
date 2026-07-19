@@ -3,9 +3,20 @@ import BrandLogo from "../Brand.jsx";
 import { FEATURE_DEFAULTS, PERSONAS } from "./demoData.js";
 import { cx, NotebookLabel, VerifiedBadge } from "./demoShared.jsx";
 
-const WORKSPACE_TABS = [["today", "Today"], ["homework", "Homework & due dates"], ["calendar", "Calendar"], ["syllabus", "Syllabus upload"], ["library", "Notes & sources"], ["chat", "AI chat"], ["social", "Social page"], ["profile", "Full profile"]];
-const PROFESSOR_TABS = [["today", "Today"], ["homework", "Review queue"], ["calendar", "Calendar"], ["syllabus", "Course setup"], ["library", "Research & sources"], ["chat", "AI memory"], ["social", "Community"], ["profile", "Professor page"]];
-const TOUR_STEPS = [["One page, one semester", "The Today view combines classes, grades, points, deadlines, and anything that needs attention."], ["Dates extracted from syllabi", "Upload or paste a syllabus, review the extracted details, then add approved dates to the shared calendar."], ["Overlaps become visible", "Assignments due on the same day are grouped together with estimated work time and a collision warning."], ["Missed work stays actionable", "A missed item remains in the rescue queue until a new plan, message, or completion is recorded."], ["Ask your own learning memory", "The AI demo searches documents, notes, saved sources, assignments, and past conversations before answering."], ["You control the page", "Every social-profile module can be hidden without deleting the underlying learning record."]];
+const WORKSPACE_TABS = [["today", "Today"], ["homework", "Homework & due dates"], ["calendar", "Calendar"], ["syllabus", "Syllabus upload"], ["library", "Notes & sources"], ["chat", "Assistant"], ["social", "Social page"], ["profile", "Personal page"]];
+const PROFESSOR_TABS = [["today", "Today"], ["homework", "Review queue"], ["calendar", "Calendar"], ["syllabus", "Course setup"], ["library", "Research & sources"], ["chat", "Assistant"], ["social", "Community"], ["profile", "Professor page"]];
+const TOUR_STEPS = [
+  { title: "Start with today", copy: "This is the quick view: classes, deadlines, progress, and the next thing that needs attention.", tryIt: "Open a card or update the status line, then continue when you are ready.", tab: "today", target: "panel-today" },
+  { title: "Plan the work", copy: "Homework and review items stay together. Missed work remains visible until there is a new plan or it is finished.", tryIt: "Change an item’s status and watch the queue update.", tab: "homework", target: "panel-homework" },
+  { title: "See the whole week", copy: "The calendar shows class dates, activities, and busy days before they become surprises.", tryIt: "Use the calendar controls and look for days with more than one item.", tab: "calendar", target: "panel-calendar" },
+  { title: "Turn a syllabus into a plan", copy: "Paste or upload course information, check what was found, and approve the dates you want to keep.", tryIt: "Try the sample syllabus or change one of the details.", tab: "syllabus", target: "panel-syllabus" },
+  { title: "Keep notes and sources close", copy: "Books, links, notes, and course files live beside the work they support.", tryIt: "Open a saved source and explore its details.", tab: "library", target: "panel-library" },
+  { title: "Ask the workspace assistant", copy: "The assistant checks the material saved in this demo before it answers. It does not search the open internet here.", tryIt: "Choose a suggested question or ask about an assignment, person, or date.", tab: "chat", target: "panel-chat" },
+  { title: "Connect with your community", copy: "The social page keeps class and campus updates in one place with clear audience controls.", tryIt: "Write a practice update, choose who can see it, or add a picture.", surface: "community", target: "surface-community" },
+  { title: "Make the page yours", copy: "The personal page uses clean, colorful sections for school, people, interests, progress, and life outside class.", tryIt: "Open and close a section. Nothing disappears unless you choose to hide it.", surface: "profile", target: "surface-profile" },
+  { title: "Look back without losing your place", copy: "The story view turns posts and milestones into an easy timeline. Back, forward, refresh, and Close work like a small browser inside EdNotebook.", tryIt: "Use the arrows above or move between Community, Personal page, and Story.", surface: "story", target: "surface-story" },
+  { title: "Choose what belongs on your page", copy: "Visibility controls let you simplify the page without deleting the information behind it.", tryIt: "Toggle a card, restore everything, or close the drawer to finish.", tab: "today", target: "feature-drawer", drawer: true },
+];
 
 function WorkspaceHeader({ persona, onlineStatus, setOnlineStatus, statusLine, setStatusLine, onTour, onCustomize }) {
   const [editing, setEditing] = useState(false);
@@ -43,7 +54,7 @@ function WorkspaceHeader({ persona, onlineStatus, setOnlineStatus, statusLine, s
   );
 }
 
-function WorkspaceSidebar({ persona, tab, setTab, features, professor }) {
+function WorkspaceSidebar({ persona, tab, setTab, features, professor, onOpenSurface }) {
   const tabs = professor ? PROFESSOR_TABS : WORKSPACE_TABS;
   const alertCount = persona.assignments.filter((item) => item.status === "needs-rescue").length;
   return (
@@ -53,11 +64,11 @@ function WorkspaceSidebar({ persona, tab, setTab, features, professor }) {
         <div><strong>{persona.shortName}</strong><span>{persona.institution}</span></div>
       </div>
       <nav aria-label={`${persona.shortName} demo sections`}>
-        {tabs.map(([id, label]) => <button key={id} type="button" className={tab === id ? "is-active" : ""} onClick={() => setTab(id)}><span>{label}</span>{id === "homework" && alertCount > 0 && <i>{alertCount}</i>}</button>)}
+        {tabs.map(([id, label]) => <button key={id} type="button" className={tab === id ? "is-active" : ""} onClick={() => ["social", "profile"].includes(id) ? onOpenSurface(id === "social" ? "community" : "profile") : setTab(id)}><span>{label}</span>{id === "homework" && alertCount > 0 && <i>{alertCount}</i>}</button>)}
       </nav>
       <div className="sidebar-availability-card">
         <strong>Independent mode</strong>
-        <span>{professor ? "Organize courses, research, advising, and memory without requiring another account." : "Upload syllabi and use planning, notes, AI search, digital literacy, and financial literacy without a teacher account."}</span>
+        <span>{professor ? "Organize courses, research, advising, and saved material without requiring another account." : "Upload syllabi and use planning, notes, workspace search, digital literacy, and financial literacy without a teacher account."}</span>
       </div>
       <div className="sidebar-visible-count"><strong>{Object.values(features).filter(Boolean).length}</strong><span>profile cards visible</span></div>
     </aside>
@@ -87,7 +98,7 @@ function FeatureDrawer({ open, onClose, features, setFeatures }) {
   }
   return (
     <div className={cx("feature-drawer-backdrop", open && "is-open")} aria-hidden={!open} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <aside className="feature-drawer" aria-label="Customize profile cards">
+      <aside className="feature-drawer" aria-label="Customize profile cards" data-tour-section="feature-drawer">
         <div className="feature-drawer-heading"><div><NotebookLabel>VISIBILITY</NotebookLabel><h2>Choose what appears.</h2></div><button type="button" onClick={onClose} aria-label="Close feature settings">×</button></div>
         <p>Hiding a card removes it from the demo page. It does not delete the underlying learning record.</p>
         <div className="feature-toggle-list">
@@ -101,19 +112,20 @@ function FeatureDrawer({ open, onClose, features, setFeatures }) {
 
 function TourCoach({ open, step, setStep, onClose, persona }) {
   if (!open) return null;
-  const [title, copy] = TOUR_STEPS[step];
+  const current = TOUR_STEPS[step];
   return (
     <div className="tour-coach" role="dialog" aria-label="Brooke guided tour">
       <img src={PERSONAS.student.image} alt="Brooke" />
       <div>
         <span>Brooke’s tour · {step + 1}/{TOUR_STEPS.length}</span>
-        <h3>{title}</h3>
-        <p>{copy}</p>
+        <h3>{current.title}</h3>
+        <p>{current.copy}</p>
+        <div className="tour-try-it"><strong>Try it here</strong><span>{current.tryIt}</span></div>
         {persona.id !== "student" && <small>I’m showing you {persona.shortName}’s version of the same system.</small>}
-        <footer><button type="button" onClick={onClose}>Close</button><button type="button" onClick={() => step === TOUR_STEPS.length - 1 ? onClose() : setStep(step + 1)}>{step === TOUR_STEPS.length - 1 ? "Finish" : "Next"}</button></footer>
+        <footer><button type="button" onClick={onClose}>Close</button>{step > 0 && <button type="button" onClick={() => setStep(step - 1)}>Previous</button>}<button type="button" onClick={() => step === TOUR_STEPS.length - 1 ? onClose() : setStep(step + 1)}>{step === TOUR_STEPS.length - 1 ? "Finish" : "Next"}</button></footer>
       </div>
     </div>
   );
 }
 
-export { WorkspaceHeader, WorkspaceSidebar, FeatureDrawer, TourCoach };
+export { WORKSPACE_TABS, PROFESSOR_TABS, TOUR_STEPS, WorkspaceHeader, WorkspaceSidebar, FeatureDrawer, TourCoach };

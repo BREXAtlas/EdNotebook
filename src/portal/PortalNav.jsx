@@ -9,7 +9,7 @@ export default function PortalNav({ active, action, actionLabel = "Sign in" }) {
   return (
     <header className="portal-nav">
       <a className="portal-brand" href="#/" aria-label="EdNotebook portal home">
-        <img className="portal-nav-logo" src="/brand/ednotebook-logo-primary.svg" alt="EdNotebook — Learning, teaching, and campus life" />
+        <img className="portal-nav-logo" src="/brand/ednotebook-logo-primary.svg" alt="EdNotebook — fun, connected learning" />
       </a>
       <nav aria-label="EdNotebook portals">
         {PORTALS.map(([id, label, href]) => (

@@ -88,12 +88,11 @@ function DemoNav({ active = "tour", compact = false }) {
   return (
     <header className={cx("demo-nav", compact && "is-compact")}>
       <a className="demo-brand" href="#/" aria-label="EdNotebook home">
-        <BrandLogo size={38} tagline="Learning life, organized" />
+        <BrandLogo size={38} tagline="Fun, connected learning" />
       </a>
       <nav aria-label="EdNotebook demonstration navigation">
         <a className={active === "tour" ? "is-active" : ""} href="#/tour">Tour</a>
         <a className={active === "presentation" ? "is-active" : ""} href="#/presentation">Presentation</a>
-        <a className={active === "about" ? "is-active" : ""} href="#/about">About</a>
         <a className={active === "careers" ? "is-active" : ""} href="#/careers">Work with us</a>
       </nav>
       <a className="demo-nav-cta" href="#/students">Open live portals</a>
@@ -118,8 +117,8 @@ function DemoFooter() {
   return (
     <footer className="demo-footer">
       <div>
-        <BrandLogo size={42} tagline="A student-controlled learning command center" />
-        <p>EdNotebook brings course work, learning memory, academic identity, and practical literacy into one understandable workspace.</p>
+        <BrandLogo size={42} tagline="Fun, connected learning" />
+        <p>Classes, plans, people, and progress in one friendly place.</p>
       </div>
       <div>
         <strong>Explore</strong>
@@ -171,25 +170,25 @@ function DemoLanding() {
         <section className="demo-hero">
           <div className="demo-hero-copy">
             <NotebookLabel>INTERACTIVE PRODUCT TOUR</NotebookLabel>
-            <h1>Meet Brooke. She will show you how a semester stops feeling scattered.</h1>
-            <p>Choose a university student, K–12 student, or professor workspace. Every demo is interactive, populated with realistic mock data, and built in EdNotebook’s official social-academic card system.</p>
+            <h1>Meet Brooke. See your semester in one clear view.</h1>
+            <p>Choose a student or professor demo and click around. Brooke moves the tour to each feature so you can try it before continuing.</p>
             <div className="demo-hero-actions">
               <a className="demo-primary" href="#/tour/student">Start with Brooke</a>
               <a className="demo-secondary" href="#/presentation">Open the presentation</a>
             </div>
             <div className="demo-hero-points">
               <span>✓ Syllabus-to-calendar</span>
-              <span>✓ Assignment collision alerts</span>
-              <span>✓ Document-aware AI chat</span>
-              <span>✓ Student-controlled visibility</span>
+              <span>✓ Busy-day alerts</span>
+              <span>✓ Workspace assistant</span>
+              <span>✓ Private sharing controls</span>
             </div>
           </div>
           <div className="brooke-guide-card">
             <img src={PERSONAS.student.image} alt="Brooke, the EdNotebook tour guide" />
             <div>
-              <span className="hand-note">“Okay, I made a plan so neither of us has to pretend we remember every due date.”</span>
-              <strong>Brooke · Tour-mode AI assistant</strong>
-              <p>Warm, shy, artistic, emotionally honest, and just sassy enough to say the assignment collision is not “future-you’s problem.”</p>
+              <span className="hand-note">“Let’s see where everything is. You can try each part as we go.”</span>
+              <strong>Brooke · your tour guide</strong>
+              <p>Brooke keeps the tour friendly, clear, and practical.</p>
             </div>
           </div>
         </section>
@@ -197,8 +196,8 @@ function DemoLanding() {
         <section className="demo-section persona-section">
           <div className="demo-section-heading">
             <NotebookLabel>THREE DEMONSTRATION ACCOUNTS</NotebookLabel>
-            <h2>Try the same platform through three different learning lives.</h2>
-            <p>Each page includes verification, online presence, status updates, calendar tools, assignments, conversations, history, and role-specific organization.</p>
+            <h2>See EdNotebook from each point of view.</h2>
+            <p>Open a university student, K–12 student, or professor workspace. Each one is ready to explore.</p>
           </div>
           <div className="persona-grid">
             <PersonaCard persona={PERSONAS.student} featured />
@@ -209,17 +208,17 @@ function DemoLanding() {
 
         <section className="demo-section platform-preview-section">
           <div className="demo-section-heading">
-            <NotebookLabel>THE WORKFLOW</NotebookLabel>
-            <h2>From uploaded syllabus to an organized week.</h2>
+            <NotebookLabel>HOW THE TOUR WORKS</NotebookLabel>
+            <h2>Brooke takes you to the feature, then lets you try it.</h2>
           </div>
           <div className="workflow-grid">
             {[
-              ["01", "Upload", "Add a syllabus or paste course text. Independent students can do this without a teacher account."],
-              ["02", "Review extraction", "Confirm the course title, themes, learning objectives, books, assignments, dates, descriptions, and estimated hours."],
-              ["03", "Build the calendar", "Merge approved dates across classes, flag overlaps, choose a time zone, and export a calendar file."],
-              ["04", "Stay ahead", "Receive upcoming reminders, see collision days, and keep missed work visible until a recovery plan is recorded."],
-              ["05", "Keep the learning memory", "Store notes and sources, then ask the AI agent to search documents and prior conversations."],
-              ["06", "Share only what fits", "Use the social page, online status, photos, and progress cards while hiding any module you do not want visible."],
+              ["01", "Move", "Each tour slide opens the right section and brings it into view."],
+              ["02", "Highlight", "An outline and arrow show exactly what Brooke is describing."],
+              ["03", "Try it", "The page stays active, so you can click, type, and explore before moving on."],
+              ["04", "Continue", "Next and Previous let you move at your own pace."],
+              ["05", "Ask", "The workspace assistant can look through the material saved in the demo."],
+              ["06", "Explore", "Community, personal page, and story open in a full-screen space without leaving your dashboard."],
             ].map(([number, title, copy]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{copy}</p></article>)}
           </div>
         </section>

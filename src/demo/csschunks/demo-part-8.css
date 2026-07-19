@@ -10,3 +10,119 @@
 .workspace-footer a { color: #fff; font-weight: 750; text-decoration: none; }
 .workspace-footer a:hover { text-decoration: underline; }
 @media (max-width: 760px) { .todo-card form { grid-template-columns: 1fr; } .workspace-footer { align-items: flex-start; flex-direction: column; } }
+
+/* Full-screen internal pages use one shared window pattern. */
+.fullscreen-surface-overlay { position: fixed; z-index: 180; inset: 0; padding: 14px; background: rgba(10, 19, 38, .78); backdrop-filter: blur(12px); }
+.fullscreen-surface { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; height: 100%; overflow: hidden; background: #f7f3eb; border: 1px solid rgba(255, 255, 255, .38); border-radius: 20px; box-shadow: 0 34px 100px rgba(3, 10, 28, .45); }
+.fullscreen-surface-content { position: relative; min-height: 0; overflow: auto; padding: clamp(18px, 3vw, 38px); scroll-behavior: smooth; }
+.fullscreen-page-heading { display: flex; align-items: baseline; gap: 10px; max-width: 1440px; margin: 0 auto 16px; color: #5b6478; }
+.fullscreen-page-heading > span { color: #3155a5; font-size: 10px; font-weight: 950; letter-spacing: .13em; }
+.fullscreen-page-heading > strong { color: #18284a; font: 800 22px/1.1 var(--demo-display); }
+.fullscreen-page-heading > small { margin-left: auto; }
+.fullscreen-surface-content > .social-layout, .fullscreen-surface-content > .workspace-panel-stack, .fullscreen-surface-content > .story-page-layout { max-width: 1440px; margin-inline: auto; }
+
+/* The tour behaves like a presentation while leaving the page usable. */
+.tour-coach { z-index: 300; grid-template-columns: 132px minmax(0, 430px); max-width: min(650px, calc(100vw - 40px)); border-radius: 22px; box-shadow: 0 30px 90px rgba(16, 27, 51, .32); }
+.tour-coach > img { min-height: 290px; object-position: center 28%; }
+.tour-coach > div { padding: 24px; }
+.tour-coach span { font-size: 11px; letter-spacing: .08em; }
+.tour-coach h3 { margin: 8px 0; font-size: 28px; line-height: 1.02; }
+.tour-coach p { font-size: 14px; line-height: 1.55; }
+.tour-coach small { margin-top: 9px; font-size: 11px; line-height: 1.4; }
+.tour-coach footer { gap: 8px; margin-top: 16px; }
+.tour-coach button { padding: 10px 13px; font-size: 11px; cursor: pointer; }
+.tour-try-it { display: grid; gap: 3px; margin-top: 14px; padding: 11px 13px; color: #263b6b; background: #f1eff9; border: 1px dashed #9e98cf; border-radius: 10px; }
+.tour-try-it strong { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.tour-try-it span { color: #3b4b6b; font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.tour-focus { position: relative; z-index: 2; outline: 5px solid #f2b33d !important; outline-offset: 6px; border-radius: 16px; box-shadow: 0 0 0 12px rgba(242, 179, 61, .2), 0 24px 70px rgba(16, 27, 51, .2) !important; animation: tour-focus-pulse 1.35s ease-in-out infinite alternate; }
+.tour-focus::after { position: absolute; z-index: 25; top: 12px; left: 18px; padding: 9px 13px; color: #101b33; background: #f2b33d; border: 3px solid #fff; border-radius: 999px; box-shadow: 0 8px 24px rgba(16, 27, 51, .2); content: "↘  Explore this section"; font-size: 12px; font-weight: 950; pointer-events: none; }
+.feature-drawer.tour-focus::after { position: sticky; display: block; width: max-content; margin-bottom: 12px; }
+@keyframes tour-focus-pulse { from { outline-color: #f2b33d; } to { outline-color: #6f72c9; } }
+
+/* Colorful, collapsible personal pages inspired by the supplied page layouts. */
+.immersive-profile-page { gap: 18px; }
+.immersive-profile-page .profile-hero-card { background: linear-gradient(135deg, #fffdfa 0%, #f5f0ff 55%, #eef8f6 100%); }
+.immersive-profile-page .profile-photo-column img { min-height: 330px; object-position: center 25%; }
+.profile-bento-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+.profile-expandable { grid-column: span 4; align-self: start; padding: 0; overflow: hidden; background: #fffefa; }
+.profile-expandable:nth-child(3n + 1) { background: #f7f4ff; }
+.profile-expandable:nth-child(3n + 2) { background: #eff8f5; }
+.profile-expandable:nth-child(3n) { background: #fff7e7; }
+.profile-expandable[open] { grid-column: span 6; }
+.profile-bento-about { grid-column: span 7; }
+.profile-bento-stats { grid-column: span 5; }
+.profile-bento-stats > * { height: 100%; }
+.profile-expandable summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; cursor: pointer; list-style: none; }
+.profile-expandable summary::-webkit-details-marker { display: none; }
+.profile-expandable summary h2 { margin: 7px 0 0; font-size: 24px; }
+.profile-expandable summary > span { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; color: #fff; background: #314174; border-radius: 50%; font-size: 20px; transition: transform .2s ease; }
+.profile-expandable[open] summary > span { transform: rotate(45deg); }
+.profile-expandable-body { padding: 0 20px 20px; color: #57627a; line-height: 1.55; }
+.profile-detail-list, .profile-assignment-list, .profile-people-list { display: grid; gap: 8px; }
+.profile-assignment-list article { display: grid; grid-template-columns: minmax(78px, auto) 1fr auto; gap: 10px; align-items: center; padding: 10px; background: rgba(255, 255, 255, .75); border: 1px solid rgba(107, 114, 201, .16); border-radius: 10px; }
+.profile-assignment-list span, .profile-assignment-list small { color: #68738a; font-size: 10px; }
+.profile-people-list article { display: grid; grid-template-columns: 38px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(49, 65, 116, .12); }
+.profile-people-list article > span { display: grid; place-items: center; width: 36px; height: 36px; color: #fff; background: #6f72c9; border-radius: 50%; font-weight: 900; }
+.profile-people-list article div { display: grid; gap: 2px; }
+.profile-people-list small { overflow: hidden; color: #68738a; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Story is a real HTML page, not a flat screenshot. */
+.story-page-layout { display: grid; grid-template-columns: minmax(230px, .62fr) minmax(440px, 1.5fr) minmax(230px, .62fr); gap: 16px; align-items: start; }
+.story-person-card { position: sticky; top: 0; padding: 14px; }
+.story-person-card > img { width: 100%; aspect-ratio: 4 / 5; margin-bottom: 16px; object-fit: cover; object-position: center 25%; border-radius: 14px; }
+.story-person-card h1 { margin: 7px 0; font-size: 32px; }
+.story-person-card > p { color: #657086; line-height: 1.55; }
+.story-mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 16px; }
+.story-mini-stats span { display: grid; gap: 3px; padding: 9px 4px; color: #6b7486; background: #f2effa; border-radius: 9px; text-align: center; font-size: 9px; }
+.story-mini-stats strong { color: #263b6b; font-size: 18px; }
+.story-timeline-card { padding: 22px; }
+.story-timeline { display: grid; margin-top: 16px; }
+.story-timeline > article { display: grid; grid-template-columns: 90px 30px minmax(0, 1fr); gap: 10px; min-height: 120px; }
+.story-timeline time { padding-top: 14px; color: #66728b; font-size: 11px; font-weight: 800; }
+.story-timeline > article > div { position: relative; display: flex; justify-content: center; }
+.story-timeline > article > div::before { position: absolute; top: 0; bottom: 0; width: 2px; content: ""; background: #c8c3e7; }
+.story-timeline > article > div span { position: relative; z-index: 1; display: grid; place-items: center; width: 25px; height: 25px; margin-top: 10px; color: #fff; background: #6f72c9; border: 4px solid #f7f3eb; border-radius: 50%; font-size: 8px; }
+.story-timeline section { margin-bottom: 10px; padding: 14px; background: #fffdf9; border: 1px solid #ded8cc; border-radius: 12px; }
+.story-timeline section img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 9px; }
+.story-timeline section p { margin: 0 0 8px; color: #344159; line-height: 1.55; }
+.story-timeline section small { color: #6f72c9; }
+.story-side-stack { display: grid; gap: 14px; }
+.story-side-stack > article { padding: 20px; }
+.story-side-stack h2 { font-size: 24px; }
+.story-side-stack ul { display: grid; gap: 10px; padding-left: 18px; color: #5b6478; }
+.story-next-card { background: #eee9fb; }
+
+/* Community page receives the same clean, busy bento treatment. */
+.fullscreen-surface-content .social-layout { grid-template-columns: minmax(0, 1.55fr) minmax(250px, .55fr); gap: 16px; }
+.fullscreen-surface-content .social-feed-card { background: linear-gradient(180deg, #fffefa, #f8f5ee); }
+.fullscreen-surface-content .status-compose { background: linear-gradient(135deg, #f2effc, #eef8f5); border: 1px solid #d8d2ec; }
+.fullscreen-surface-content .social-post-list article:nth-child(3n + 1) { border-left: 5px solid #6f72c9; }
+.fullscreen-surface-content .social-post-list article:nth-child(3n + 2) { border-left: 5px solid #5f9c91; }
+.fullscreen-surface-content .social-post-list article:nth-child(3n) { border-left: 5px solid #f2b33d; }
+
+@media (max-width: 1050px) {
+  .story-page-layout { grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr); }
+  .story-side-stack { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
+  .profile-expandable, .profile-expandable[open] { grid-column: span 6; }
+}
+@media (max-width: 720px) {
+  .fullscreen-surface-overlay { padding: 0; }
+  .fullscreen-surface { border-radius: 0; }
+  .fullscreen-surface-content { padding: 14px; }
+  .fullscreen-page-heading { align-items: flex-start; flex-direction: column; }
+  .fullscreen-page-heading > small { margin-left: 0; }
+  .tour-coach { right: 8px; bottom: 8px; grid-template-columns: 82px minmax(0, 1fr); max-width: calc(100vw - 16px); }
+  .tour-coach > img { min-height: 100%; }
+  .tour-coach > div { padding: 15px; }
+  .tour-coach h3 { font-size: 21px; }
+  .tour-coach p { font-size: 12px; }
+  .tour-try-it { display: none; }
+  .profile-bento-grid { grid-template-columns: 1fr; }
+  .profile-expandable, .profile-expandable[open], .profile-bento-about, .profile-bento-stats { grid-column: 1; }
+  .story-page-layout { grid-template-columns: 1fr; }
+  .story-person-card { position: static; }
+  .story-side-stack { grid-column: auto; grid-template-columns: 1fr; }
+  .story-timeline > article { grid-template-columns: 64px 24px minmax(0, 1fr); }
+  .fullscreen-surface-content .social-layout { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .tour-focus { animation: none; } }

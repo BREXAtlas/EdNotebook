@@ -43,8 +43,8 @@ function ChatPanel({ persona, assignments }) {
   return (
     <div className="chat-layout">
       <section className="paper-card chat-card">
-        <div className="dashboard-card-heading"><div><NotebookLabel>{persona.id === "professor" ? "AI ORGANIZATION MEMORY" : "DOCUMENT-AWARE AI CHAT"}</NotebookLabel><h1>Ask the workspace—not the open internet.</h1><p>This front-end demonstration searches only seeded documents, assignments, notes, and prior conversation text.</p></div><button type="button" onClick={() => { setMessages([]); window.localStorage.removeItem(key); }}>Clear memory</button></div>
-        <div className="chat-thread">{messages.map((message, index) => <article key={`${message.role}-${index}`} className={`is-${message.role}`}><strong>{message.role === "assistant" ? "EdNotebook AI" : persona.shortName}</strong><p>{message.text}</p>{message.sources?.length > 0 && <div>{message.sources.map((source) => <span key={source}>{source}</span>)}</div>}</article>)}</div>
+        <div className="dashboard-card-heading"><div><NotebookLabel>{persona.id === "professor" ? "WORKSPACE MEMORY" : "DOCUMENT-AWARE ASSISTANT"}</NotebookLabel><h1>Ask your workspace.</h1><p>This demonstration searches only the documents, assignments, notes, and conversations saved here.</p></div><button type="button" onClick={() => { setMessages([]); window.localStorage.removeItem(key); }}>Clear memory</button></div>
+        <div className="chat-thread">{messages.map((message, index) => <article key={`${message.role}-${index}`} className={`is-${message.role}`}><strong>{message.role === "assistant" ? "EdNotebook assistant" : persona.shortName}</strong><p>{message.text}</p>{message.sources?.length > 0 && <div>{message.sources.map((source) => <span key={source}>{source}</span>)}</div>}</article>)}</div>
         <form onSubmit={send}><textarea rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about a document, date, assignment, source, or past conversation…" /><button type="submit">Search my workspace</button></form>
       </section>
       <aside className="paper-card chat-side-card"><NotebookLabel>TRY A GROUNDED QUESTION</NotebookLabel>{prompts.map((prompt) => <button type="button" key={prompt} onClick={() => setDraft(prompt)}>{prompt}</button>)}<div><strong>Memory boundary</strong><p>University student, K–12 student, and professor memories remain separate in the demo. Production access would also follow account, class, and institution permissions.</p></div></aside>
@@ -88,6 +88,10 @@ function SocialPanel({ persona, statusLine, setStatusLine }) {
   );
 }
 
+function ExpandableCard({ label, title, children, open = false, className = "" }) {
+  return <details className={`paper-card profile-expandable ${className}`} open={open}><summary><div><NotebookLabel>{label}</NotebookLabel><h2>{title}</h2></div><span aria-hidden="true">＋</span></summary><div className="profile-expandable-body">{children}</div></details>;
+}
+
 function ProfilePanel({ persona, features, onlineStatus, statusLine }) {
   const details = [
     ["Age", persona.profile.age],
@@ -95,20 +99,49 @@ function ProfilePanel({ persona, features, onlineStatus, statusLine }) {
     ["Hometown", persona.profile.hometown],
     ["Birthday", persona.profile.birthday],
   ];
+  const assignments = persona.assignments.slice(0, 4);
   return (
-    <div className="workspace-panel-stack">
+    <div className="workspace-panel-stack immersive-profile-page">
       {features.profile && <ProfileHeroCard persona={persona} onlineStatus={onlineStatus} statusLine={statusLine} />}
-      <section className="profile-detail-grid">
-        <article className="paper-card"><NotebookLabel>PROFILE</NotebookLabel>{details.map(([label, value]) => <div className="detail-row" key={label}><span>{label}</span><strong>{value}</strong></div>)}</article>
-        {features.activities && <article className="paper-card"><NotebookLabel>SPORTS, CLUBS & ACTIVITIES</NotebookLabel><div className="pill-list">{persona.profile.activities.map((item) => <span key={item}>{item}</span>)}</div>{persona.id === "k12" && <div className="brown-belt-note"><strong>MMA · Brown belt</strong><p>Trains four to five days a week. Discipline, control, respect, and school first.</p></div>}</article>}
-        {features.family && <article className="paper-card"><NotebookLabel>FAMILY & SUPPORT</NotebookLabel><h2>Support system</h2><p>{persona.profile.support}</p><div className="support-heart">♡</div></article>}
-        {features.relationships && <article className="paper-card"><NotebookLabel>{persona.id === "professor" ? "WORK-LIFE & GROWTH" : "DATING & PERSONAL GROWTH"}</NotebookLabel><p>{persona.profile.relationship}</p><blockquote>{persona.id === "student" ? "One chapter closed. A better one ahead." : persona.id === "k12" ? "Discipline today. Freedom tomorrow." : "Automate the repetitive. Protect the relational."}</blockquote></article>}
-        <article className="paper-card"><NotebookLabel>INTERESTS</NotebookLabel><div className="pill-list">{persona.profile.interests.map((item) => <span key={item}>{item}</span>)}</div></article>
-        {features.grades && <StatsCard persona={persona} />}
+      <section className="profile-bento-grid">
+        <ExpandableCard label="ABOUT" title={`Meet ${persona.shortName}`} open className="profile-bento-about">
+          <p>{persona.profile.bio}</p>
+          <div className="profile-detail-list">{details.map(([label, value]) => <div className="detail-row" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+        </ExpandableCard>
+        {features.grades && <div className="profile-bento-stats"><StatsCard persona={persona} /></div>}
+        <ExpandableCard label={persona.id === "professor" ? "COURSES" : "SEMESTER"} title={persona.id === "professor" ? "Teaching now" : "Classes and work"} open>
+          <div className="profile-assignment-list">{assignments.map((item) => <article key={item.id}><span>{item.course}</span><strong>{item.title}</strong><small>{statusLabel(item.status, persona.id === "professor")}</small></article>)}</div>
+        </ExpandableCard>
+        {features.conversations && <ExpandableCard label="PEOPLE" title="Conversations"><div className="profile-people-list">{persona.conversations.slice(0, 5).map((item) => <article key={item.name}><span>{item.name.slice(0, 1)}</span><div><strong>{item.name}</strong><small>{item.preview}</small></div></article>)}</div></ExpandableCard>}
+        {features.activities && <ExpandableCard label="LIFE" title={persona.id === "professor" ? "Communities and interests" : "Clubs, sports, and activities"} open><div className="pill-list">{persona.profile.activities.map((item) => <span key={item}>{item}</span>)}</div>{persona.id === "k12" && <div className="brown-belt-note"><strong>MMA · Brown belt</strong><p>Discipline, control, respect, and school first.</p></div>}</ExpandableCard>}
+        <ExpandableCard label="INTERESTS" title="Favorites and skills"><div className="pill-list">{persona.profile.interests.map((item) => <span key={item}>{item}</span>)}</div></ExpandableCard>
+        {features.family && <ExpandableCard label="SUPPORT" title="Family and people who help"><p>{persona.profile.support}</p><div className="support-heart">♡</div></ExpandableCard>}
+        {features.relationships && <ExpandableCard label="GROWTH" title={persona.id === "professor" ? "Work and life" : "Personal growth"}><p>{persona.profile.relationship}</p><blockquote>{persona.id === "student" ? "One chapter closed. A better one ahead." : persona.id === "k12" ? "Discipline today. Freedom tomorrow." : "Protect the time that belongs to people."}</blockquote></ExpandableCard>}
       </section>
-      <section className="paper-card profile-history-card"><div className="dashboard-card-heading"><div><NotebookLabel>{persona.shortName.toUpperCase()}’S STORY</NotebookLabel><h2>A lived-in account with fictional history.</h2></div><span>Demo data</span></div><div className="history-strip">{persona.posts.map((post, index) => <article key={`${post.date}-${index}`}><img src={persona.image} alt="" /><span>{post.date}</span><p>{post.body}</p><small>♡ {post.reactions}</small></article>)}</div></section>
     </div>
   );
 }
 
-export { ChatPanel, SocialPanel, ProfilePanel };
+function StoryPanel({ persona }) {
+  return (
+    <div className="story-page-layout">
+      <aside className="paper-card story-person-card">
+        <img src={persona.image} alt={`${persona.name} portrait`} />
+        <NotebookLabel>{persona.id === "professor" ? "TEACHING STORY" : "STORY SO FAR"}</NotebookLabel>
+        <h1>{persona.name}</h1>
+        <p>{persona.profile.bio}</p>
+        <div className="story-mini-stats"><span><strong>{persona.posts.length}</strong> updates</span><span><strong>{persona.profile.activities.length}</strong> groups</span><span><strong>{persona.assignments.length}</strong> work items</span></div>
+      </aside>
+      <main className="paper-card story-timeline-card">
+        <div className="dashboard-card-heading"><div><NotebookLabel>{persona.shortName.toUpperCase()}’S TIMELINE</NotebookLabel><h2>Moments, progress, and people.</h2></div><span>Demo story</span></div>
+        <div className="story-timeline">{persona.posts.map((post, index) => <article key={`${post.date}-${index}`}><time>{post.date}</time><div><span>{String(index + 1).padStart(2, "0")}</span></div><section>{post.image && <img src={post.image} alt="" />}<p>{post.body}</p><small>♡ {post.reactions} · {post.audience || "Connections"}</small></section></article>)}</div>
+      </main>
+      <aside className="story-side-stack">
+        <article className="paper-card"><NotebookLabel>HIGHLIGHTS</NotebookLabel><h2>What is moving forward</h2><ul>{persona.profile.traits.slice(0, 4).map((item) => <li key={item}>{item}</li>)}</ul></article>
+        <article className="paper-card story-next-card"><NotebookLabel>NEXT CHAPTER</NotebookLabel><h2>Keep going.</h2><ul><li>Finish the next priority</li><li>Check in with someone helpful</li><li>Save one moment worth remembering</li></ul></article>
+      </aside>
+    </div>
+  );
+}
+
+export { ChatPanel, SocialPanel, ProfilePanel, StoryPanel };
