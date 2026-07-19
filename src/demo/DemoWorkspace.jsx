@@ -3,7 +3,9 @@ import { FEATURE_DEFAULTS, PERSONAS } from "./demoData.js";
 import { safeRead } from "./demoShared.jsx";
 import { WorkspaceHeader, WorkspaceSidebar, FeatureDrawer, TourCoach } from "./WorkspaceChrome.jsx";
 import { TodayPanel, HomeworkPanel } from "./WorkspaceOverview.jsx";
-import { CalendarPanel, SyllabusPanel, SourcesPanel } from "./WorkspaceAcademicTools.jsx";
+import { CalendarPanel } from "./WorkspaceCalendar.jsx";
+import { SyllabusPanel } from "./WorkspaceSyllabus.jsx";
+import { SourcesPanel } from "./WorkspaceLibrary.jsx";
 import { ChatPanel, SocialPanel, ProfilePanel } from "./WorkspaceCommunityTools.jsx";
 
 function DemoWorkspace({ personaId }) {
@@ -26,7 +28,7 @@ function DemoWorkspace({ personaId }) {
     setFeaturesState(safeRead(`ed-demo-${persona.id}-features`, FEATURE_DEFAULTS));
     setTourStep(0);
     setTourOpen(persona.id === "student");
-  }, [persona.id]);
+  }, [persona.id, persona.assignments, persona.status, persona.statusLine]);
   function setFeatures(next) {
     setFeaturesState(next);
     window.localStorage.setItem(`ed-demo-${persona.id}-features`, JSON.stringify(next));
