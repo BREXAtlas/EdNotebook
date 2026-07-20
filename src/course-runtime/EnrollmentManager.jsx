@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { approveEnrollmentRequest, listEnrollmentRequests, rejectEnrollmentRequest } from "./courseService.js";
+import "./enrollment-manager.css";
 
 function learnerName(request) {
   const profile = Array.isArray(request.profiles) ? request.profiles[0] : request.profiles;
