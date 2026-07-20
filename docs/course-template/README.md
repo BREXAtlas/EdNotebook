@@ -1,72 +1,114 @@
-# EdNotebook Standalone Course Template Package
+# EdNotebook Ram Ready Course Template Package
 
-This folder defines the reference standalone-course output that EdNotebook's Course Creator should produce.
+## Purpose
 
-The source product is:
+This folder works backward from the maintained Ram Ready Digital Literacy course and defines the reusable course product that EdNotebook Course Creator must eventually produce.
 
-- Repository: `BREXAtlas/Digital-Literacy-Course`
-- Public example: `https://brexatlas.github.io/Digital-Literacy-Course/`
-- Maintained reference branch: `main`
+The reference course is:
 
-The Digital Literacy Course is treated as the **reference product output**, not merely as visual inspiration. EdNotebook works backward from that finished course so a professor can provide course inputs, select the Ram Ready template, preview the result, and export a standalone course with the same structure, behavior, accessibility, progress model, assessment rhythm, and theme rules.
+```text
+https://github.com/BREXAtlas/Digital-Literacy-Course
+```
 
-## Governing statement
+The package separates:
 
-> EdNotebook's Ram Ready Course Creator must be able to reproduce the Digital Literacy Course from structured course inputs without rewriting the standalone shell for each subject.
+- the fixed course shell;
+- replaceable curriculum content;
+- visual presets;
+- institution-specific branding rules;
+- optional course behavior;
+- EdNotebook platform services;
+- standalone export behavior;
+- in-platform student rendering;
+- progress, routing, assignments, and publication lifecycle.
 
-## What this package does
+## Important status distinction
 
-This package separates:
+These documents define the contract. They do not, by themselves, change the running Course Creator or student portal.
 
-1. **The locked shell** — the parts that make every exported course behave consistently.
-2. **The course content** — the subject matter supplied or approved by the professor.
-3. **The preset** — colors, naming, branding notices, guides, and presentation choices.
-4. **The export contract** — the files, data, validation, and acceptance criteria required for a standalone course.
-5. **The EdNotebook input map** — how Course Creator fields become the finished course.
+A functional implementation requires the sequence in:
 
-## Documents
+```text
+docs/course-template/FUNCTIONAL_IMPLEMENTATION_SEQUENCE.md
+```
 
-- [`RAM_READY_REFERENCE_OUTPUT.md`](RAM_READY_REFERENCE_OUTPUT.md) — complete audit of the Digital Literacy shell, fixed behavior, optional behavior, and customizable course fields.
-- [`EDNOTEBOOK_INPUT_OUTPUT_MAP.md`](EDNOTEBOOK_INPUT_OUTPUT_MAP.md) — backward map from the finished standalone course to EdNotebook Course Creator inputs and review steps.
-- [`ANGELO_STATE_INSPIRED_PRESET.md`](ANGELO_STATE_INSPIRED_PRESET.md) — exact preset rules used to reproduce Ram Ready Digital Literacy without claiming official university affiliation.
-- [`REFERENCE_MANIFEST_AND_ACCEPTANCE_TEST.md`](REFERENCE_MANIFEST_AND_ACCEPTANCE_TEST.md) — reference configuration, required export contents, validation rules, and the test for exact reproduction.
+The required in-platform course behavior is defined in:
 
-## Scope boundary
+```text
+docs/course-template/IN_PLATFORM_COURSE_RUNTIME.md
+```
 
-This documentation does not add a new product category and does not replace current course-building code.
+Do not describe the template as functionally complete until this journey works:
 
-It establishes a stable output contract for the course builder already present in EdNotebook. Future implementation should connect existing authoring inputs to this contract and reveal the standalone export only after it passes the acceptance test.
+```text
+Professor creates course
+→ Course Creator produces one valid shared package
+→ professor previews through the shared renderer
+→ professor publishes
+→ stable course destination is created
+→ enrolled student opens it inside the account shell
+→ progress autosaves and resumes
+→ assignments attach to the lesson frame
+→ the same package exports as a standalone course
+```
 
-## Core distinction
+## Core rule
 
-The current EdNotebook Ram Ready authoring preview and the Digital Literacy standalone course are related, but they are not yet identical.
+> One approved course package must power professor preview, signed-in student learning, and standalone export.
 
-The current EdNotebook preview already includes:
+The renderers may arrange the course differently, but they may not change the approved academic content, correct answers, sources, learning objectives, or course version.
 
-- course title and audience inputs
-- learning-design selection
-- groups and lessons
-- lesson sections
-- embedded knowledge checks
-- an optional end quiz
-- learner preview
-- theme selection
+## Reference output
 
-The Digital Literacy reference output adds a richer required course contract:
+The maintained Digital Literacy course is the reference standalone output for the `Ram Ready Standalone Course 1.0` template.
 
-- landing page and two-path overview
-- path maps and accessible list views
-- continuous narrative
-- original lesson visualization with text alternative
-- four grouped concept cards
-- scenario choices with benefits, costs, and risks
-- immediate, one-year, and long-term consequences
-- recovery path
-- source drawer
-- progress, stars, achievements, streak, and certificates
-- onboarding and bounded personalization
-- guest persistence and optional account sync
-- privacy, disclaimer, instructor, and source pages
-- mobile navigation, reduced motion, dark mode, print, and accessibility rules
+To reproduce it exactly:
 
-The standalone exporter should therefore compile approved EdNotebook course data into the Digital Literacy reference contract rather than export the current preview component directly.
+```text
+Digital Literacy reference manifest
++ Ram Ready Standalone Course 1.0
++ Angelo State Inspired 1.0
+= maintained Ram Ready Digital Literacy product
+```
+
+## Files
+
+### `RAM_READY_REFERENCE_OUTPUT.md`
+
+Defines the reusable shell, fixed lesson rhythm, course-wide pages, interaction behavior, progress, sources, achievements, accessibility, and the boundary between fixed and customizable behavior.
+
+### `EDNOTEBOOK_INPUT_OUTPUT_MAP.md`
+
+Maps current EdNotebook Course Creator inputs to the reference standalone output and identifies fields still needed for exact reproduction.
+
+### `ANGELO_STATE_INSPIRED_PRESET.md`
+
+Defines the exact preset values and the independent-use branding rules required to reproduce the reference course.
+
+### `REFERENCE_MANIFEST_AND_ACCEPTANCE_TEST.md`
+
+Defines the proposed portable course manifest and the tests EdNotebook must pass before standalone export can be considered complete.
+
+### `IN_PLATFORM_COURSE_RUNTIME.md`
+
+Defines the student-account-as-browser-shell model, full-course and embedded-module display modes, stable course destinations, access control, autosave, assignment connections, updates, unpublishing, deletion, restoration, and in-platform lesson layout.
+
+### `FUNCTIONAL_IMPLEMENTATION_SEQUENCE.md`
+
+Defines the additive implementation order required to turn the contract into working creator, student, progress, routing, assignment, and standalone-export behavior.
+
+## Governing principle
+
+EdNotebook is the authoring and platform layer. The course package is the shared academic source. The standalone renderer and in-platform renderer are two presentations of the same approved course.
+
+```text
+Professor inputs
+→ structured course package
+→ professor review
+→ shared renderer preview
+→ publish one approved version
+   ├── in-platform student course frame
+   └── standalone course export
+```
+
+No course should require a new hand-built website. No renderer should invent or silently alter approved instructional content.
