@@ -51,9 +51,12 @@ export async function loadPublishedCourse(publicationId) {
     .select("id,course_id,current_version,status,display_mode,theme_preset,grading_mode,grade_item_id,published_at,courses(id,title,course_code,subject,audience,teaching_window,education_division)")
     .eq("id", publicationId).eq("status", "published").maybeSingle();
   if (publicationError || !publication) return { data: null, error: publicationError || new Error("This course is not published or you do not have access."), source: "cloud" };
-  const { data: version, error: versionError } = await supabase.from("course_publication_versions").select("version_number,manifest,published_at").eq("publication_id", publicationId).eq("version_number", publication.current_version).single();
+  const [{ data: version, error: versionError }, { data: directory }] = await Promise.all([
+    supabase.from("course_publication_versions").select("version_number,manifest,published_at").eq("publication_id", publicationId).eq("version_number", publication.current_version).single(),
+    supabase.from("published_course_directory").select("professor_id,professor_display_name,institution_name,course_code,title,summary").eq("course_id", publication.course_id).maybeSingle(),
+  ]);
   if (versionError) return { data: null, error: versionError, source: "cloud" };
-  return { data: { publication, version, manifest: version.manifest }, source: "cloud" };
+  return { data: { publication, version, manifest: version.manifest, directory }, source: "cloud" };
 }
 
 export async function loadStudentCourseLinks(courseIds = []) {
@@ -104,5 +107,25 @@ export async function listProgressOverview(courseId) {
 
 export async function gradeCourseProgress(publicationId, studentId, score, feedback) {
   const { data, error } = await supabase.rpc("grade_course_progress", { p_publication_id: publicationId, p_student_id: studentId, p_score: Number(score), p_feedback: feedback || null });
+  return { data, error };
+}
+
+export async function listEnrollmentRequests(courseId) {
+  if (!isSupabaseConfigured || !isUuid(courseId)) return { data: [], source: "device" };
+  const { data, error } = await supabase
+    .from("student_enrollment_requests")
+    .select("id,course_id,student_id,status,requested_at,decided_at,profiles!student_enrollment_requests_student_id_fkey(full_name,email)")
+    .eq("course_id", courseId)
+    .order("requested_at", { ascending: true });
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
+export async function approveEnrollmentRequest(requestId) {
+  const { data, error } = await supabase.rpc("approve_student_enrollment", { p_request_id: requestId });
+  return { data, error };
+}
+
+export async function rejectEnrollmentRequest(requestId) {
+  const { data, error } = await supabase.from("student_enrollment_requests").update({ status: "rejected", decided_at: new Date().toISOString() }).eq("id", requestId).select().single();
   return { data, error };
 }
