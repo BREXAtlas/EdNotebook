@@ -4,7 +4,7 @@
   "security_tests": "success",
   "deploy": "success",
   "page_url": "https://ednotebook.com/",
-  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29760630573",
-  "source_commit": "310df9423159e38c645c9c366ff5d15361ef1338",
-  "deployed_at": "2026-07-20T16:41:56Z"
+  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/29769602281",
+  "source_commit": "6420063e796c2764bd5eae7f39ae00587cf1ac18",
+  "deployed_at": "2026-07-20T18:53:11Z"
 }
