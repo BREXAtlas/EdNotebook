@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import BrandLogo from "../Brand.jsx";
-import MaterialsWorkspace from "./MaterialsWorkspace.jsx";
-import AssignmentWorkspace from "./AssignmentWorkspace.jsx";
-import AssignmentFilesPanel from "./AssignmentFilesPanel.jsx";
-import SubjectTools from "./SubjectTools.jsx";
-import ReaderPublisher from "./ReaderPublisher.jsx";
-import SlidesIntegrations from "./SlidesIntegrations.jsx";
-import CommunicationRoom from "./CommunicationRoom.jsx";
 import { readCourseDraft } from "./storageService.js";
 import "./studio.css";
+
+const MaterialsWorkspace = lazy(() => import("./MaterialsWorkspace.jsx"));
+const AssignmentWorkspace = lazy(() => import("./AssignmentWorkspace.jsx"));
+const AssignmentFilesPanel = lazy(() => import("./AssignmentFilesPanel.jsx"));
+const SubjectTools = lazy(() => import("./SubjectTools.jsx"));
+const ReaderPublisher = lazy(() => import("./ReaderPublisher.jsx"));
+const SlidesIntegrations = lazy(() => import("./SlidesIntegrations.jsx"));
+const CommunicationRoom = lazy(() => import("./CommunicationRoom.jsx"));
 
 const TABS = [
   ["materials", "Materials", "📎", "Files, links, videos, quotes"],
@@ -23,6 +24,10 @@ function tabFromHash() {
   const query = window.location.hash.split("?")[1] || "";
   const requested = new URLSearchParams(query).get("tab");
   return TABS.some(([value]) => value === requested) ? requested : "materials";
+}
+
+function StudioFeatureLoading() {
+  return <section className="studio-feature-loading" aria-live="polite"><strong>Opening this workspace…</strong><span>Only the selected tool is being loaded.</span></section>;
 }
 
 export default function LearningStudio({ onBack, onCourseSetup }) {
@@ -88,17 +93,14 @@ export default function LearningStudio({ onBack, onCourseSetup }) {
         </aside>
 
         <main className="studio-main" key={tab}>
-          {tab === "materials" && <MaterialsWorkspace />}
-          {tab === "assignments" && (
-            <>
-              <AssignmentWorkspace />
-              <AssignmentFilesPanel />
-            </>
-          )}
-          {tab === "tools" && <SubjectTools />}
-          {tab === "reader" && <ReaderPublisher />}
-          {tab === "slides" && <SlidesIntegrations />}
-          {tab === "room" && <CommunicationRoom />}
+          <Suspense fallback={<StudioFeatureLoading />}>
+            {tab === "materials" && <MaterialsWorkspace />}
+            {tab === "assignments" && <><AssignmentWorkspace /><AssignmentFilesPanel /></>}
+            {tab === "tools" && <SubjectTools />}
+            {tab === "reader" && <ReaderPublisher />}
+            {tab === "slides" && <SlidesIntegrations />}
+            {tab === "room" && <CommunicationRoom />}
+          </Suspense>
         </main>
       </div>
     </div>
