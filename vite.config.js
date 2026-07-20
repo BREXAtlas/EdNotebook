@@ -7,11 +7,15 @@ function manualChunk(id) {
   if (id.includes("node_modules/@supabase/")) return "supabase-core";
   if (/node_modules\/(pdfjs-dist|mammoth|tesseract\.js|@tesseract\.js-data|@opencvjs|jspdf)\//.test(id)) return "document-tools";
   if (id.includes("node_modules/tus-js-client/")) return "upload-tools";
-  return "vendor";
+
+  // Let Rollup place every other dependency with the route or lazy feature that
+  // imports it. A catch-all vendor chunk would pull transitive OCR/PDF helpers
+  // back into the initial page even though the workspace itself is lazy.
+  return undefined;
 }
 
 function featureChunkFileName(chunkInfo) {
-  const coreNames = new Set(["index", "react-core", "supabase-core", "vendor"]);
+  const coreNames = new Set(["index", "react-core", "supabase-core"]);
   const folder = coreNames.has(chunkInfo.name) ? "core" : "features";
   return `assets/${folder}/[name]-[hash].js`;
 }
