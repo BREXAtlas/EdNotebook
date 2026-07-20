@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ClassDirectory from "./ClassDirectory.jsx";
 import InterestForm from "./InterestForm.jsx";
 import PortalNav from "./PortalNav.jsx";
 import ShareEdNotebook from "./ShareEdNotebook.jsx";
-import { STUDENT_PRICING } from "./demoData.js";
 import { educationTrack } from "./educationTracks.js";
 import UniversityFinder from "./UniversityFinder.jsx";
+import FeaturedProductExperience from "./FeaturedProductExperience.jsx";
 
 const STUDENT_FEATURES = [
   ["One school view", "Find campus news, useful links, published classes, professors, and student groups without jumping between five sites."],
   ["One grade picture", "See finalized, pending, and missing work with the same weights your professor publishes."],
   ["Notes that stay useful", "Keep class notes beside the class, calculate what you need on the next assignment, and carry your report card across terms."],
+  ["AI assistant controls with an honest status", "Use the working syllabus scanner and course-aware due-date helper now. Provider-based AI answers and writing refinements stay labeled Coming soon until a model connection is configured."],
   ["Class life without the noise", "Join enrolled-class groups, public learning groups, and campus conversations with clear audience controls."],
   ["A page you control", "Add a bio, graduation year, work samples, YouTube links, and the parts of your progress you choose to share."],
   ["A path beyond class", "Find future internships, paid student work, course-building opportunities, and entry-level roles as they open."],
@@ -20,6 +21,7 @@ const K12_FEATURES = [
   ["Your school day in one view", "See classes, assignments, teacher updates, attendance, grades, and school news without hunting through different systems."],
   ["Grades that make sense", "See finalized, pending, and missing work with the same categories and weights your teacher shares."],
   ["A clear next step", "Open any class to see what is due, what needs attention, and where to ask your teacher for help."],
+  ["AI helper controls that say what is connected", "Use the working handout scanner and course-aware due-date helper now. Model-based AI help stays labeled Coming soon until it is actually connected."],
   ["School life without strangers", "Join class and school groups that stay separate from university feeds and outside public social networks."],
   ["A page that grows with you", "Save projects, badges, interests, and milestones now, then carry your progress into college later."],
   ["Skills beyond one class", "Find digital literacy, tutoring, clubs, student leadership, and future career exploration connected to school."],
@@ -56,12 +58,22 @@ const UNIVERSITY_STORIES = [
   },
 ];
 
-export default function StudentLanding({ onEnter, track = "university" }) {
+export default function StudentLanding({ onEnter, onSignup, track = "university" }) {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [pricingWaitlistOpen, setPricingWaitlistOpen] = useState(false);
   const k12 = track === "k12";
   const copy = educationTrack(track);
   const features = k12 ? K12_FEATURES : STUDENT_FEATURES;
+
+  useEffect(() => {
+    function openRequestedSection() {
+      const section = new URLSearchParams(window.location.hash.split("?")[1] || "").get("section");
+      if (section) window.requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+    openRequestedSection();
+    window.addEventListener("hashchange", openRequestedSection);
+    return () => window.removeEventListener("hashchange", openRequestedSection);
+  }, []);
 
   function openCourse(course) {
     setSelectedCourse(course);
@@ -69,18 +81,19 @@ export default function StudentLanding({ onEnter, track = "university" }) {
 
   return (
     <div className={`portal-page student-landing-page ${k12 ? "is-k12" : "is-university"}`}>
-      <PortalNav active="student" action={() => onEnter?.()} actionLabel={`${copy.shortLabel} student sign in`} />
+      <PortalNav active="student" audience={track} action={() => onEnter?.()} actionLabel={`${copy.shortLabel} student sign in`} />
       <main>
+        <FeaturedProductExperience audience={track} onSignup={() => onSignup?.()} />
         <section className="student-hero">
           <div className="student-hero-copy">
-            <span className="portal-kicker">{k12 ? "YOUR SCHOOL DAY, ALL TOGETHER" : "THE UNIVERSITY STUDENT SIDE OF EDNOTEBOOK"}</span>
+            <span className="portal-kicker">{k12 ? "SCHOOL PLANNING NOW · CONNECTED AI HELPER COMING SOON" : "STUDENT PLANNING NOW · CONNECTED AI ASSISTANT COMING SOON"}</span>
             <h1>{k12 ? "Know what’s next. Keep school moving." : "Find your course. Keep the whole semester in view."}</h1>
             <p>
               {k12
                 ? "Find your school, teacher, and class before creating an account. When you join, your student ID is matched to the teacher’s class list and your private school dashboard opens."
                 : "Search your university and professor before creating an account. When you are ready to join a course, your university ID is matched to the professor’s approved roster and your private dashboard opens."}
             </p>
-            <div className="student-hero-actions"><a href="#class-search">Find a class</a><button type="button" onClick={() => onEnter?.()}>Open student dashboard</button><ShareEdNotebook buttonLabel="Share with friends" /></div>
+            <div className="student-hero-actions"><button className="student-primary-action" type="button" onClick={() => document.getElementById("class-search")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Find a class</button><button type="button" onClick={() => onEnter?.()}>Open student dashboard</button><ShareEdNotebook buttonLabel="Share with friends" /></div>
             <div className="student-hero-points"><span>No account to browse</span><span>Free school tools</span><span>{k12 ? "School-only social spaces" : "Private grades by default"}</span></div>
           </div>
           <div className={`student-dashboard-preview ${k12 ? "k12-dashboard-preview" : ""}`} aria-label={`${copy.shortLabel} student dashboard preview`}>
@@ -90,7 +103,6 @@ export default function StudentLanding({ onEnter, track = "university" }) {
               alt={k12 ? "High school students collaborating on a class project" : "University student studying with a notebook and laptop in a campus library"}
               width="1536"
               height="1024"
-              fetchPriority="high"
             />
             <div className="student-preview-top"><span>Good morning, Maya</span><strong>{k12 ? "1,705 points" : "1,645 points"}</strong></div>
             <div className="student-preview-grid"><div><small>Classes</small><strong>3</strong></div><div><small>Overall</small><strong>{k12 ? "89.1%" : "88.1%"}</strong></div><div><small>Streak</small><strong>11 days</strong></div></div>
@@ -100,11 +112,22 @@ export default function StudentLanding({ onEnter, track = "university" }) {
           </div>
         </section>
 
+        <section id="student-ai-tools" className="student-ai-status-strip" aria-label={`${copy.shortLabel} student smart tool status`}>
+          <div>
+            <span className="portal-kicker">AI-READY STUDENT WORKSPACE</span>
+            <h2>{k12 ? "Use the school tools now. See exactly when AI help is connected." : "Use the planning tools now. See exactly when connected AI help arrives."}</h2>
+          </div>
+          <ul>
+            <li><strong>Works now</strong><span>{k12 ? "Handout and syllabus extraction, editable date review, due-date help, and structured writing." : "Syllabus extraction, editable date review, course-aware due-date help, and structured writing."}</span></li>
+            <li><strong>Coming soon</strong><span>{k12 ? "Connected AI explanations and writing refinements after provider setup and review controls." : "Connected AI explanations, rewriting, and study support after provider setup and review controls."}</span></li>
+          </ul>
+        </section>
+
         {!k12 && <div className="student-directory-shell"><UniversityFinder onOpenCourse={openCourse} /></div>}
         <div id="class-search" className="student-directory-shell"><ClassDirectory track={track} onOpen={openCourse} /></div>
 
         <section className="student-how-section">
-          <div className="student-section-heading"><span className="portal-kicker">HOW IT WORKS</span><h2>Open browsing, then a confirmed handoff into the class.</h2></div>
+          <div className="student-section-heading"><span className="portal-kicker">HOW IT WORKS</span><h2>Browse first. Sign in when you join.</h2></div>
           <ol className="student-how-grid">
             <li><span>1</span><strong>Choose your {k12 ? "school" : "university"}</strong><p>See class listings, {k12 ? "teachers" : "professors"}, schedules, school news, and tips.</p></li>
             <li><span>2</span><strong>Find the {copy.classLabel}</strong><p>Search by code, title, subject, or {copy.teacherLabel}.</p></li>
@@ -114,7 +137,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         </section>
 
         <section className="student-feature-section">
-          <div className="student-section-heading"><span className="portal-kicker">WHAT STUDENTS GET</span><h2>Less hunting. Fewer surprises. More ways to stay connected.</h2><p>{k12 ? "School work stays at the center. Points, profiles, clubs, and communities support learning without mixing students into university feeds." : "Course work remains the center; community, profiles, points, and optional future services support it instead of getting in its way."}</p></div>
+          <div className="student-section-heading"><span className="portal-kicker">WHAT STUDENTS GET · CLEAR AI STATUS INCLUDED</span><h2>Less hunting. Fewer surprises. More ways to stay connected.</h2><p>{k12 ? "School work stays at the center. Points, profiles, clubs, and communities support learning without mixing students into university feeds." : "Course work remains the center; community, profiles, points, and optional future services support it instead of getting in its way."}</p></div>
           <div className="student-feature-grid">{features.map(([title, featureCopy], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{featureCopy}</p></article>)}</div>
         </section>
 
@@ -142,14 +165,14 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         </section>
 
         <section className="student-pricing-section">
-          <div className="student-section-heading"><span className="portal-kicker">FREE STUDENT ACCOUNTS</span><h2>Every current student plan opens the same free account.</h2><p>Choose any tab below to create a free account. Optional paid services are still being designed and are not for sale.</p></div>
-          <div className="student-pricing-grid">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p><ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><button type="button" onClick={() => onEnter?.()}>Open free account</button></article>)}</div>
+          <div className="student-section-heading"><span className="portal-kicker">ONE FREE STUDENT ACCOUNT</span><h2>Try the product, take the tour, then keep your work.</h2><p>The syllabus scanner and public tour work before signup. Create one free account when you want to save the calendar, join a class, or keep your workspace.</p></div>
+          <div className="single-account-cta"><div><strong>Everything students need to begin</strong><span>Classes, syllabus planning, grades, notes, writing, groups, profiles, tours, and invitation rewards stay connected to one account.</span></div><button type="button" onClick={() => onSignup?.()}>Create free student account</button></div>
           <div className="paid-services-coming"><div><span className="portal-kicker">PAID SERVICES</span><h3>Coming soon—not required.</h3><p>Join the waitlist if you want updates about future sync, customization, and expanded storage options.</p></div><button type="button" onClick={() => setPricingWaitlistOpen(true)}>Join paid-services waitlist</button></div>
         </section>
 
-        <section id="share-ednotebook" className="student-share-section"><img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" /><div><span className="portal-kicker">BRING YOUR PEOPLE</span><h2>EdNotebook works better when your class can find each other.</h2><p>Share a direct link on social media, send it to a professor, or download the invitation graphic for a group chat or campus post.</p><ShareEdNotebook buttonLabel="Share or download the invite" /></div></section>
+        <section id="share-ednotebook" className="student-share-section"><img src="/ednotebook-share-card-v2.png" alt="EdNotebook invitation to make learning fun, connected, and high tech" width="1729" height="910" loading="lazy" decoding="async" /><div><span className="portal-kicker">BRING YOUR PEOPLE</span><h2>EdNotebook works better when your class can find each other.</h2><p>Share a direct link on social media, send it to a professor, or download the invitation graphic for a group chat or campus post.</p><ShareEdNotebook buttonLabel="Share or download the invite" /></div></section>
 
-        <section className="student-opportunity-section">
+        <section id="opportunities" className="student-opportunity-section">
           <InterestForm kind="feature_feedback" title="Tell us what students need" description={`Suggest a feature or describe what should be easier during the ${k12 ? "school day" : "semester"}.`} submitLabel="Save feature suggestion" educationDivision={track} />
           <InterestForm kind="student_opportunities" title={k12 ? "Explore student opportunities" : "Work with EdNotebook"} description={k12 ? "Join the waitlist for future student testing, digital literacy, peer mentoring, clubs, and age-appropriate learning opportunities." : "Join the waitlist for future internships, student research support, course testing, design, community, and entry-level roles."} submitLabel="Join opportunity waitlist" emailRequired educationDivision={track} />
         </section>
@@ -169,7 +192,6 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         </div>
       )}
       {pricingWaitlistOpen && <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-waitlist-title"><div className="portal-modal-card waitlist-modal-card"><button className="modal-close" type="button" onClick={() => setPricingWaitlistOpen(false)} aria-label="Close paid services waitlist">×</button><div id="pricing-waitlist-title"><InterestForm kind="pricing_waitlist" title="Paid services waitlist" description="Tell us which optional future service you want to hear about. Your student account and current tools remain free." submitLabel="Join waitlist" emailRequired educationDivision={track} /></div></div></div>}
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search">Find classes</a><a href="#/professors">Educator portal</a></footer>
     </div>
   );
 }

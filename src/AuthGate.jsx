@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
+import { claimCourseJoinLink } from "./coursePublishingService.js";
 
 const shell = {
   minHeight: "100vh",
@@ -49,8 +50,13 @@ async function hashInstitutionIdentifier(institution, identifier) {
   return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+function currentAuthParams() {
+  return new URLSearchParams(window.location.hash.split("?")[1] || "");
+}
+
 function AuthForm({ accountType = "student", educationTrack = "university", returnTo = "#/student/app", allowSignup = true, initialVerified = false, onVerifiedContinue }) {
-  const [mode, setMode] = useState("login");
+  const initialInvite = currentAuthParams().get("ref") || window.sessionStorage.getItem("ednotebook-invite-code") || "";
+  const [mode, setMode] = useState(currentAuthParams().get("signup") === "1" ? "signup" : "login");
   const [signupState, setSignupState] = useState(initialVerified ? "verified" : null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -59,6 +65,8 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   const [universityId, setUniversityId] = useState("");
   const [department, setDepartment] = useState("");
   const [educationDivision, setEducationDivision] = useState(educationTrack === "k12" ? "k12" : "university");
+  const [wasInvited, setWasInvited] = useState(Boolean(initialInvite));
+  const [inviteCode, setInviteCode] = useState(initialInvite.toUpperCase());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -80,6 +88,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
         const schoolLabel = educationTrack === "k12" ? "school or district" : "college or university";
         if (!university.trim()) throw new Error(`Add your ${schoolLabel}.`);
         if (accountType === "student" && !universityId.trim()) throw new Error(`Add the ${educationTrack === "k12" ? "student ID" : "university ID"} your educator will use for roster matching.`);
+        if (wasInvited && !inviteCode.trim()) throw new Error("Add the invitation number from your friend.");
 
         const identifierHash = accountType === "student"
           ? await hashInstitutionIdentifier(university, universityId)
@@ -96,6 +105,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
               department: accountType === "professor" ? department.trim() : null,
               institution_identifier_hash: identifierHash,
               institution_identifier_last4: accountType === "student" ? universityId.trim().slice(-4) : null,
+              invite_code: wasInvited ? inviteCode.trim().toUpperCase() : null,
             },
             emailRedirectTo: `${window.location.origin}${window.location.pathname}${returnTo}${returnTo.includes("?") ? "&" : "?"}confirmed=1`,
           },
@@ -144,6 +154,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
               ? "Your address is verified. For security, EdNotebook signed out the verification session. Continue to a fresh login screen and enter your password."
               : `We sent a confirmation link to ${email || "your email address"}. Open it to verify the account. The link returns to a separate confirmation screen before sign-in.`}
           </p>
+          {!verified && <p style={{ color: "#68758a", fontSize: 13, lineHeight: 1.5 }}>If that address already has an account, EdNotebook will not create a second one. Return to sign in or use password reset instead.</p>}
           {verified ? (
             <button style={primaryButton} type="button" onClick={() => { setSignupState(null); setMode("login"); setPassword(""); onVerifiedContinue?.(); }}>
               Continue to fresh sign in
@@ -221,6 +232,18 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                   <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>You can use educator tools immediately. Upload a teacher ID later only if you want a verified school-affiliation badge.</small>
                 </label>
               )}
+              <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
+                Were you invited by someone?
+                <select style={field} value={wasInvited ? "yes" : "no"} onChange={(event) => setWasInvited(event.target.value === "yes")}>
+                  <option value="no">No</option>
+                  <option value="yes">Yes, I have their invitation number</option>
+                </select>
+              </label>
+              {wasInvited && <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
+                Invitation number
+                <input style={field} value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="EN-..." required />
+                <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>Your friend receives referral progress after this account is created.</small>
+              </label>}
             </>
           )}
 
@@ -318,6 +341,8 @@ export default function AuthGate({ children, accountType = "student", educationT
   const [profileLoading, setProfileLoading] = useState(false);
   const [verificationConfirmed, setVerificationConfirmed] = useState(false);
   const profileUserId = useRef(null);
+  const activityUserId = useRef(null);
+  const claimedJoinUserId = useRef(null);
   const confirmationRequested = useRef(
     typeof window !== "undefined"
       && new URLSearchParams(window.location.hash.split("?")[1] || "").get("confirmed") === "1",
@@ -395,7 +420,7 @@ export default function AuthGate({ children, accountType = "student", educationT
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,email,full_name,role,subscription_status")
+        .select("id,email,full_name,role,subscription_status,account_number")
         .eq("id", session.user.id)
         .single();
 
@@ -413,6 +438,27 @@ export default function AuthGate({ children, accountType = "student", educationT
     return () => {
       active = false;
     };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id || activityUserId.current === session.user.id) return;
+    activityUserId.current = session.user.id;
+    supabase.rpc("record_account_activity", { p_event: "session_open" }).then(({ error }) => {
+      if (error) console.warn("Unable to record account activity", error.message);
+    });
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id || claimedJoinUserId.current === session.user.id) return;
+    const token = window.sessionStorage.getItem("ednotebook-course-join-token");
+    if (!token) return;
+    claimedJoinUserId.current = session.user.id;
+    claimCourseJoinLink(token).then(() => {
+      window.sessionStorage.removeItem("ednotebook-course-join-token");
+    }).catch((error) => {
+      claimedJoinUserId.current = null;
+      console.warn("Unable to join the invited class", error.message);
+    });
   }, [session?.user?.id]);
 
   if (!isSupabaseConfigured) {
@@ -448,9 +494,10 @@ export default function AuthGate({ children, accountType = "student", educationT
       <main style={shell}>
         <section style={card} aria-labelledby="role-access-title">
           <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>EDNOTEBOOK · RESTRICTED WORKSPACE</div>
-          <h1 id="role-access-title">This account does not have access.</h1>
-          <p style={{ color: "#59667a", lineHeight: 1.55 }}>Sign in with an account assigned to this workspace.</p>
-          <button type="button" style={primaryButton} onClick={() => supabase.auth.signOut()}>Sign out</button>
+           <h1 id="role-access-title">This account does not have access.</h1>
+           <p style={{ color: "#59667a", lineHeight: 1.55 }}>Sign in with an account assigned to this workspace.</p>
+           <a href="#/" style={{ ...primaryButton, display: "block", marginBottom: 10, textAlign: "center", textDecoration: "none" }}>Return to portal home</a>
+           <button type="button" style={primaryButton} onClick={() => supabase.auth.signOut()}>Sign out</button>
         </section>
       </main>
     );
@@ -472,6 +519,21 @@ export default function AuthGate({ children, accountType = "student", educationT
               : "Use the student portal for class work, or sign out and use an educator account for teaching tools."}
           </p>
           <a href="#/professors" style={{ ...primaryButton, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}>Return to professor information</a>
+          <button type="button" style={{ ...primaryButton, background: "#eef2f8", color: "#245397" }} onClick={() => supabase.auth.signOut()}>Sign out</button>
+        </section>
+      </main>
+    );
+  }
+
+  const studentRole = ["learner", "student"].includes(profile?.role);
+  if (accountType === "student" && !studentRole) {
+    return (
+      <main style={shell}>
+        <section style={card} aria-labelledby="student-access-title">
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>EDNOTEBOOK · STUDENT WORKSPACE</div>
+          <h1 id="student-access-title">This is not a student account.</h1>
+          <p style={{ color: "#59667a", lineHeight: 1.55 }}>Use the public student tour to preview the student side. Sign in with a student account to open private class work and student profile tools.</p>
+          <a href={educationTrack === "k12" ? "#/tour/k12" : "#/tour/student"} style={{ ...primaryButton, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}>Open the student tour</a>
           <button type="button" style={{ ...primaryButton, background: "#eef2f8", color: "#245397" }} onClick={() => supabase.auth.signOut()}>Sign out</button>
         </section>
       </main>

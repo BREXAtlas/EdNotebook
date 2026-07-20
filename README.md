@@ -1,6 +1,6 @@
 # EdNotebook
 
-EdNotebook is a student-controlled learning workspace for school, class, and academic-life management. It brings syllabi, assignments, due dates, calendars, notes, sources, conversations, AI memory, verified academic identity, and professor organization into one accessible web application.
+EdNotebook is a student-controlled learning workspace for school, class, and academic-life management. It brings syllabi, assignments, due dates, calendars, notes, sources, conversations, saved course context, academic identity, and professor organization into one accessible web application.
 
 ## Live application
 
@@ -24,9 +24,9 @@ EdNotebook is a student-controlled learning workspace for school, class, and aca
 
 The public tour uses three fictional accounts with realistic mock data:
 
-- **Brooke Mercer** — a verified university student and the tour-mode AI guide.
+- **Brooke Mercer** — a verified university student and the university tour host.
 - **Jaylen Carter** — a verified K–12 senior preparing for college, accounting, investing, and continued MMA training.
-- **Atlas Reed** — a verified professor, former high-school teacher, Ed.D. student, mentor, and AI-forward educator.
+- **Atlas Reed** — a verified professor, former high-school teacher, Ed.D. student, and mentor.
 
 The profiles, grades, relationships, schools, assignments, conversations, schedules, and posts are demonstration data. They are not official educational records.
 
@@ -49,7 +49,7 @@ The demonstration workspace includes:
 
 ## Syllabus intelligence
 
-Students can use the syllabus workspace without waiting for a teacher account. The current front-end demonstration can read pasted text and text-based files, then prepare a human-reviewed extraction containing:
+Students can use the syllabus workspace without waiting for a teacher account. The browser workspace reads pasted text, TXT, Markdown, CSV, PDF, and Word DOCX files, then prepares a human-reviewed extraction containing:
 
 - Course title and code
 - Course themes
@@ -60,7 +60,7 @@ Students can use the syllabus workspace without waiting for a teacher account. T
 - Estimated project effort
 - Reminder windows
 
-Extracted information stays in draft state until the student or professor approves it. Production PDF and DOCX parsing requires a protected document-processing service.
+Extracted information stays in draft state until the student or professor approves it. Text-based PDF and DOCX files are read on the device; scanned-image documents can use the protected document-processing service after it is deployed.
 
 ## Notes, sources, and learning memory
 
@@ -71,9 +71,9 @@ The demo provides:
 - Searchable document previews
 - Prior-conversation memory
 - Role-separated university, K–12, and professor workspaces
-- A deterministic document-aware AI chat demonstration that searches only the seeded workspace data
+- A document-aware assistant demonstration that searches only the seeded workspace data
 
-A production AI connection must use authenticated server-side retrieval, provider routing, privacy controls, evaluation, cost controls, and institutional access boundaries. Provider keys must never be included in browser bundles or `VITE_*` variables.
+A production model connection must use authenticated server-side retrieval, provider routing, privacy controls, evaluation, cost controls, and institutional access boundaries. Provider keys must never be included in browser bundles or `VITE_*` variables.
 
 ## Open literacy courses
 
@@ -99,7 +99,7 @@ Verification does not automatically publish grades or private class records. Stu
 - `src/demo/portrait-data/` — optimized Atlas and Jaylen portrait data modules
 - `src/portal/` — audience chooser, University/K–12 student experience, educator dashboard, admin verification queue, publishing landing, and directory adapter
 - `src/Landing.jsx` — professor marketing page, mini-demo, pricing, and teacher onboarding
-- `src/Builder.jsx` — Learner, Professor, Admin, and Mastermind product prototype
+- `src/Builder.jsx` — Learner, Professor, Admin, and Mastermind product workspace
 - `src/main.jsx` — hash router for public portals, interactive demonstrations, presentation, dashboards, studio, and builder
 - `services/document-security-worker/` — document-security and conversion service with Python tests
 - `supabase/functions/` — server-side edge functions checked with Deno
@@ -157,7 +157,7 @@ There is no `gh-pages` source branch and no manual deploy script. The Vite base 
 
 The interactive tour is a working product demonstration, but several integrations remain intentionally separated from the static browser build:
 
-- Secure generative-AI provider calls
+- Managed assistant-provider calls
 - Production PDF/DOCX extraction
 - Google Calendar and Microsoft Outlook OAuth sync
 - LMS/SIS/LTI institution connectors

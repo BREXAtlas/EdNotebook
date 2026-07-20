@@ -100,7 +100,7 @@ export default function InteractiveReader({ publications, loading, onRefresh }) 
       <aside className="studio-reader-library">
         <div className="studio-panel-heading">
           <div><span className="studio-kicker">READING LIBRARY</span><h3>Books and assigned readings</h3></div>
-          <button type="button" onClick={onRefresh}>↻</button>
+          <button type="button" onClick={onRefresh}>Refresh reading library</button>
         </div>
         {publications.map((publication) => (
           <button
@@ -148,7 +148,7 @@ export default function InteractiveReader({ publications, loading, onRefresh }) 
                 : <p key={block.id}>{block.text}</p>
             ))}
             <div className="studio-reader-navigation">
-              <button type="button" disabled={chapterIndex === 0} onClick={() => setChapterIndex((index) => Math.max(0, index - 1))}>← Previous</button>
+              <button type="button" disabled={chapterIndex === 0} onClick={() => setChapterIndex((index) => Math.max(0, index - 1))}>← Previous chapter</button>
               <button type="button" disabled={chapterIndex === chapters.length - 1} onClick={() => setChapterIndex((index) => Math.min(chapters.length - 1, index + 1))}>Next chapter →</button>
             </div>
           </article>

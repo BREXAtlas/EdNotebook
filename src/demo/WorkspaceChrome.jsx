@@ -1,11 +1,11 @@
 import { useState } from "react";
 import BrandLogo from "../Brand.jsx";
 import { LiveDateTime } from "../AccountSettings.jsx";
-import { FEATURE_DEFAULTS, PERSONAS } from "./demoData.js";
+import { FEATURE_DEFAULTS } from "./demoData.js";
 import { cx, NotebookLabel, VerifiedBadge } from "./demoShared.jsx";
 
 const WORKSPACE_TABS = [["today", "Today"], ["homework", "Homework & due dates"], ["calendar", "Calendar"], ["syllabus", "Syllabus upload"], ["library", "Notes & sources"], ["chat", "Assistant"], ["social", "Social page"], ["profile", "Personal page"]];
-const PROFESSOR_TABS = [["today", "Today"], ["homework", "Review queue"], ["calendar", "Calendar"], ["syllabus", "Course setup"], ["library", "Research & sources"], ["chat", "Assistant"], ["social", "Community"], ["profile", "Professor page"]];
+const PROFESSOR_TABS = [["today", "Today"], ["syllabus", "Syllabus scanner"], ["lesson", "Lesson creator"], ["homework", "Review queue"], ["calendar", "Calendar"], ["library", "Research & sources"], ["chat", "Assistant"], ["social", "Community"], ["profile", "Professor page"]];
 const TOUR_STEPS = [
   { title: "Start with today", copy: "This is the quick view: classes, deadlines, progress, and the next thing that needs attention.", tryIt: "Open a card or update the status line, then continue when you are ready.", tab: "today", target: "panel-today" },
   { title: "Plan the work", copy: "Homework and review items stay together. Missed work remains visible until there is a new plan or it is finished.", tryIt: "Change an item’s status and watch the queue update.", tab: "homework", target: "panel-homework" },
@@ -18,6 +18,28 @@ const TOUR_STEPS = [
   { title: "Look back without losing your place", copy: "The story view turns posts and milestones into an easy timeline. Back, forward, refresh, and Close work like a small browser inside EdNotebook.", tryIt: "Use the arrows above or move between Community, Personal page, and Story.", surface: "story", target: "surface-story" },
   { title: "Choose what belongs on your page", copy: "Visibility controls let you simplify the page without deleting the information behind it.", tryIt: "Toggle a card, restore everything, or close the drawer to finish.", tab: "today", target: "feature-drawer", drawer: true },
 ];
+
+const PROFESSOR_TOUR_STEPS = [
+  { title: "Extract the syllabus in about 60 seconds", copy: "Upload the source, inspect every date and course detail, and edit the review before saving a clean course plan.", tryIt: "Use a sample or upload a file and change one extracted detail.", tab: "syllabus", target: "panel-syllabus" },
+  { title: "Shape a lesson in under five minutes", copy: "Build the lesson from the same teaching workspace, then keep editing until the plan fits your class.", tryIt: "Choose an objective and add or adjust one activity.", tab: "lesson", target: "panel-lesson" },
+  { title: "Run the day", copy: "Courses, review work, advising, and the next teaching task are gathered into one practical view.", tryIt: "Open a course card and check the next action.", tab: "today", target: "panel-today" },
+  { title: "Review student work", copy: "Pending, missing, and finalized work stays visible with the class and grading scale.", tryIt: "Change a review item status and watch the queue update.", tab: "homework", target: "panel-homework" },
+  { title: "See the teaching calendar", copy: "Course dates, office hours, and busy weeks remain easy to scan.", tryIt: "Move through the calendar and inspect a busy date.", tab: "calendar", target: "panel-calendar" },
+  { title: "Keep research and sources close", copy: "Sources, notes, course files, and citation details stay beside the work they support.", tryIt: "Open a source and review its details.", tab: "library", target: "panel-library" },
+  { title: "Use the workspace assistant", copy: "Ask about saved courses, deadlines, and teaching materials in plain language.", tryIt: "Ask for the next deadline or choose a suggested question.", tab: "chat", target: "panel-chat" },
+  { title: "Connect with faculty", copy: "The faculty area keeps educator updates together without mixing private student work.", tryIt: "Open a post or write a practice update.", surface: "community", target: "surface-community" },
+  { title: "Build your professor page", copy: "Your teaching page can collect courses, interests, links, and highlights in clean sections.", tryIt: "Open and close a section to see how the page works.", surface: "profile", target: "surface-profile" },
+  { title: "Choose what appears", copy: "Visibility controls simplify the page without deleting the information behind it.", tryIt: "Toggle a card, restore everything, or finish the tour.", tab: "today", target: "feature-drawer", drawer: true },
+];
+
+function tourStepsFor(persona) {
+  if (persona?.id === "professor") return PROFESSOR_TOUR_STEPS;
+  const syllabus = TOUR_STEPS.find((step) => step.tab === "syllabus");
+  return [
+    { ...syllabus, title: "Scan the syllabus first", copy: "Upload a PDF, Word file, text file, or paper scan. Check the review before anything reaches your calendar." },
+    ...TOUR_STEPS.filter((step) => step !== syllabus),
+  ];
+}
 
 function WorkspaceHeader({ persona, accountSettings, onlineStatus, setOnlineStatus, statusLine, setStatusLine, onTour, onCustomize }) {
   const [editing, setEditing] = useState(false);
@@ -44,7 +66,7 @@ function WorkspaceHeader({ persona, accountSettings, onlineStatus, setOnlineStat
             <option value="offline">Offline</option>
           </select>
         </label>
-        {editing ? <div className="status-editor"><input value={draft} onChange={(event) => setDraft(event.target.value)} aria-label="Status update" /><button type="button" onClick={saveStatus}>Save</button></div> : <button className="status-line-button" type="button" onClick={() => setEditing(true)}>{statusLine}</button>}
+        {editing ? <div className="status-editor"><input value={draft} onChange={(event) => setDraft(event.target.value)} aria-label="Status update" /><button type="button" onClick={saveStatus}>Save status update</button></div> : <button className="status-line-button" type="button" onClick={() => setEditing(true)}>{statusLine}</button>}
       </div>
       <div className="workspace-header-actions">
         <LiveDateTime />
@@ -113,22 +135,21 @@ function FeatureDrawer({ open, onClose, features, setFeatures }) {
   );
 }
 
-function TourCoach({ open, step, setStep, onClose, persona }) {
+function TourCoach({ open, step, setStep, onClose, onFinish, persona, steps = tourStepsFor(persona) }) {
   if (!open) return null;
-  const current = TOUR_STEPS[step];
+  const current = steps[step];
   return (
-    <div className="tour-coach" role="dialog" aria-label="Brooke guided tour">
-      <img src={PERSONAS.student.image} alt="Brooke" />
+    <div className="tour-coach" role="dialog" aria-label={`${persona.shortName} guided tour`}>
+      <img src={persona.image} alt={persona.shortName} />
       <div>
-        <span>Brooke’s tour · {step + 1}/{TOUR_STEPS.length}</span>
+        <span className="tour-host-label">{persona.shortName}&apos;s tour · {step + 1}/{steps.length}</span>
         <h3>{current.title}</h3>
         <p>{current.copy}</p>
         <div className="tour-try-it"><strong>Try it here</strong><span>{current.tryIt}</span></div>
-        {persona.id !== "student" && <small>I’m showing you {persona.shortName}’s version of the same system.</small>}
-        <footer><button type="button" onClick={onClose}>Close</button>{step > 0 && <button type="button" onClick={() => setStep(step - 1)}>Previous</button>}<button type="button" onClick={() => step === TOUR_STEPS.length - 1 ? onClose() : setStep(step + 1)}>{step === TOUR_STEPS.length - 1 ? "Finish" : "Next"}</button></footer>
+        <footer><button type="button" onClick={onClose}>Close tour</button>{step > 0 && <button type="button" onClick={() => setStep(step - 1)}>Previous tour step</button>}<button type="button" onClick={() => step === steps.length - 1 ? (onFinish || onClose)() : setStep(step + 1)}>{step === steps.length - 1 ? "Finish tour" : "Next tour step"}</button></footer>
       </div>
     </div>
   );
 }
 
-export { WORKSPACE_TABS, PROFESSOR_TABS, TOUR_STEPS, WorkspaceHeader, WorkspaceSidebar, FeatureDrawer, TourCoach };
+export { WORKSPACE_TABS, PROFESSOR_TABS, TOUR_STEPS, PROFESSOR_TOUR_STEPS, tourStepsFor, WorkspaceHeader, WorkspaceSidebar, FeatureDrawer, TourCoach };

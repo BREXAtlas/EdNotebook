@@ -74,10 +74,10 @@ function CollisionCard({ assignments }) {
   );
 }
 
-function ConversationsCard({ persona }) {
+function ConversationsCard({ persona, onOpenMessages }) {
   return (
     <article className="paper-card conversation-card">
-      <div className="dashboard-card-heading"><div><NotebookLabel>CONVERSATIONS</NotebookLabel><h2>Messages that may change the plan.</h2></div><button type="button">View all</button></div>
+      <div className="dashboard-card-heading"><div><NotebookLabel>CONVERSATIONS</NotebookLabel><h2>Messages that may change the plan.</h2></div><button type="button" onClick={onOpenMessages}>Open all messages</button></div>
       <div className="conversation-list">{persona.conversations.map((item) => <div key={item.name}><span className="conversation-avatar">{item.name.slice(0, 1)}</span><div><strong>{item.name}</strong><p>{item.preview}</p></div><span>{item.time}{item.unread > 0 && <i>{item.unread}</i>}</span></div>)}</div>
     </article>
   );
@@ -92,11 +92,11 @@ function ClassProgressCard({ persona }) {
   );
 }
 
-function CalendarMiniCard({ persona }) {
+function CalendarMiniCard({ persona, onOpenCalendar }) {
   const grouped = persona.calendarEvents.slice(0, 6);
   return (
     <article className="paper-card mini-calendar-card">
-      <div className="dashboard-card-heading"><div><NotebookLabel>CALENDAR</NotebookLabel><h2>Dates from every class.</h2></div><a href="#calendar">Sync</a></div>
+      <div className="dashboard-card-heading"><div><NotebookLabel>CALENDAR</NotebookLabel><h2>Dates from every class.</h2></div><button type="button" onClick={onOpenCalendar}>Open calendar</button></div>
       <div className="calendar-agenda">{grouped.map((event, index) => <div key={`${event.date}-${event.title}`}><span className={cx("agenda-icon", `is-${event.type}`)}>{iconForType(event.type)}</span><div><strong>{event.title}</strong><span>{formatDate(`${event.date}T12:00:00`)} · {event.time}</span></div>{index < 2 && <i>soon</i>}</div>)}</div>
     </article>
   );
@@ -111,7 +111,7 @@ function LiteracyCard() {
   );
 }
 
-function TodayPanel({ persona, assignments, setAssignments, features, onlineStatus, statusLine }) {
+function TodayPanel({ persona, assignments, setAssignments, features, onlineStatus, statusLine, onOpenCalendar, onOpenMessages }) {
   const urgent = assignments.filter((item) => item.status !== "complete").slice(0, 4);
   return (
     <div className="workspace-panel-stack">
@@ -126,8 +126,8 @@ function TodayPanel({ persona, assignments, setAssignments, features, onlineStat
       </section>
       <section className="today-lower-grid">
         <ClassProgressCard persona={persona} />
-        {features.calendar && <CalendarMiniCard persona={persona} />}
-        {features.conversations && <ConversationsCard persona={persona} />}
+        {features.calendar && <CalendarMiniCard persona={persona} onOpenCalendar={onOpenCalendar} />}
+        {features.conversations && <ConversationsCard persona={persona} onOpenMessages={onOpenMessages} />}
       </section>
       {features.literacy && <LiteracyCard />}
     </div>
@@ -176,7 +176,7 @@ function TodoCard({ persona }) {
   return (
     <article className="paper-card todo-card">
       <div className="dashboard-card-heading"><div><NotebookLabel>TO-DO LIST</NotebookLabel><h2>Small commitments beside the formal assignments.</h2></div><span>{todos.filter((item) => !item.complete).length} open</span></div>
-      <form onSubmit={add}><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add a personal task…" /><button type="submit">Add</button></form>
+      <form onSubmit={add}><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add a personal task…" /><button type="submit">Add task</button></form>
       <div className="todo-list">{todos.length ? todos.map((item) => <label className={item.complete ? "is-complete" : ""} key={item.id}><input type="checkbox" checked={item.complete} onChange={() => save(todos.map((todo) => todo.id === item.id ? { ...todo, complete: !todo.complete } : todo))} /><span>{item.body}</span><button type="button" onClick={() => save(todos.filter((todo) => todo.id !== item.id))} aria-label={`Delete ${item.body}`}>×</button></label>) : <p>No personal tasks yet.</p>}</div>
     </article>
   );

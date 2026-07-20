@@ -47,8 +47,8 @@ export default function ScientificCalculator() {
             <button key={key} type="button" onClick={() => setExpression((value) => `${value}${key}`)}>{key}</button>
           ))}
           <button type="button" onClick={() => setExpression("")}>Clear</button>
-          <button type="button" onClick={() => setExpression((value) => value.slice(0, -1))}>⌫</button>
-          <button className="is-equals" type="submit">=</button>
+          <button type="button" aria-label="Delete last character" onClick={() => setExpression((value) => value.slice(0, -1))}>⌫</button>
+          <button className="is-equals" type="submit" aria-label="Calculate result">=</button>
         </div>
       </form>
 

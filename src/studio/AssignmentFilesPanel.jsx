@@ -60,8 +60,8 @@ function SubmissionRow({ resource, onDownload, onDelete, review }) {
         </small>
       </div>
       <div className="studio-submission-actions">
-        {available && <button type="button" onClick={() => onDownload(resource)}>Download</button>}
-        {!review && <button className="is-danger" type="button" onClick={() => onDelete(resource)}>Remove</button>}
+        {available && <button type="button" onClick={() => onDownload(resource)}>Download assignment file</button>}
+        {!review && <button className="is-danger" type="button" onClick={() => onDelete(resource)}>Remove assignment file</button>}
       </div>
     </article>
   );

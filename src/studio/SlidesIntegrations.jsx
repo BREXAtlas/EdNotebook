@@ -140,7 +140,7 @@ function PresentationStudio() {
   return (
     <div className="studio-presentation-layout">
       <aside className="studio-slide-list">
-        <div className="studio-panel-heading"><div><span className="studio-kicker">SLIDES</span><h3>{slides.length} pages</h3></div><button type="button" onClick={addSlide}>+</button></div>
+        <div className="studio-panel-heading"><div><span className="studio-kicker">SLIDES</span><h3>{slides.length} pages</h3></div><button type="button" onClick={addSlide}>Add slide</button></div>
         {slides.map((slide, index) => (
           <button key={slide.id} type="button" className={selectedIndex === index ? "is-active" : ""} onClick={() => setSelectedIndex(index)}>
             <span>{index + 1}</span><div><strong>{slide.title || "Untitled slide"}</strong><small>{slide.layout}</small></div>
@@ -151,8 +151,8 @@ function PresentationStudio() {
       <main className="studio-slide-workbench">
         <div className="studio-slide-topbar">
           <input value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Presentation title" />
-          <button type="button" onClick={duplicateSlide}>Duplicate</button>
-          <button type="button" onClick={removeSlide} disabled={slides.length === 1}>Delete</button>
+          <button type="button" onClick={duplicateSlide}>Duplicate slide</button>
+          <button type="button" onClick={removeSlide} disabled={slides.length === 1}>Delete slide</button>
           <button type="button" onClick={exportPackage}>Download package</button>
           <button className="is-primary" type="button" disabled={busy} onClick={saveDeck}>{busy ? "Saving…" : "Save deck"}</button>
         </div>

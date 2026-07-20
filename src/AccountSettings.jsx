@@ -37,6 +37,7 @@ function defaultAccountSettings({ accountType = "student", name = "", email = ""
     allowFollowerPosts: false,
     allowWelcomePosts: true,
     productUpdates: false,
+    profileAccent: "#3151a6",
     assistantProvider: "builtin",
     assistantModel: "EdNotebook workspace",
     gatewayUrl: "",
@@ -125,6 +126,8 @@ export default function AccountSettings({
   onSettingsChange,
   authenticated = false,
   accountEmail = "",
+  accountNumber = "",
+  educationTrack = "university",
   compact = false,
 }) {
   const [section, setSection] = useState("profile");
@@ -132,10 +135,19 @@ export default function AccountSettings({
   const [connectorToken, setConnectorToken] = useState(() => readConnectorToken(scope));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [referralProgress, setReferralProgress] = useState({ account_number: accountNumber, referral_count: 0 });
   const models = useMemo(() => PROVIDER_MODELS[draft.assistantProvider] || PROVIDER_MODELS.builtin, [draft.assistantProvider]);
 
   useEffect(() => { setDraft(settings); }, [settings]);
   useEffect(() => { setConnectorToken(readConnectorToken(scope)); }, [scope]);
+  useEffect(() => {
+    setReferralProgress((current) => ({ ...current, account_number: accountNumber || current.account_number }));
+    if (!authenticated || !isSupabaseConfigured || !supabase) return;
+    supabase.rpc("get_my_referral_progress").then(({ data, error }) => {
+      if (!error && data) setReferralProgress(data);
+    });
+  }, [authenticated, accountNumber]);
   useEffect(() => {
     if (models.includes(draft.assistantModel)) return;
     setDraft((current) => ({ ...current, assistantModel: models[0] }));
@@ -149,12 +161,16 @@ export default function AccountSettings({
     setDraft((current) => ({ ...current, plugins: { ...current.plugins, [field]: value } }));
   }
 
-  function persist(label = "Settings saved") {
+  function persist(label = "Settings") {
     storeConnectorToken(scope, connectorToken.trim());
-    const next = saveAccountSettings(scope, draft, label);
+    const versionLabel = `${label} saved on this device`;
+    const next = saveAccountSettings(scope, draft, versionLabel);
     setDraft(next);
     onSettingsChange?.(next);
-    setNotice(`${label}. Version ${next.versions.length} is in the save history.`);
+    setNotice(`${versionLabel}. Version ${next.versions.length} is in the save history.`);
+    if (authenticated && isSupabaseConfigured && supabase) {
+      supabase.rpc("record_account_activity", { p_event: "settings_saved" }).then(() => {});
+    }
   }
 
   async function sendPasswordReset() {
@@ -174,12 +190,30 @@ export default function AccountSettings({
     setNotice(error ? error.message : "Password reset email sent. Open it to choose a new password.");
   }
 
-  function requestDeletion() {
-    const nextDraft = { ...draft, deletionStatus: draft.deletionStatus === "requested" ? "none" : "requested" };
-    const next = saveAccountSettings(scope, nextDraft, nextDraft.deletionStatus === "requested" ? "Account deletion requested" : "Account deletion request canceled");
-    setDraft(next);
-    onSettingsChange?.(next);
-    setNotice(next.deletionStatus === "requested" ? "Deletion request marked pending. A production account service must complete the request." : "Deletion request canceled.");
+  async function changeAccountEmail(event) {
+    event.preventDefault();
+    const requested = newEmail.trim().toLowerCase();
+    if (!authenticated || !requested) return setNotice("Enter a new email while signed in.");
+    if (requested === accountEmail.trim().toLowerCase()) return setNotice("That is already the account email.");
+    setBusy(true);
+    const returnHash = window.location.hash.split("?")[0] || (accountType === "professor" ? "#/professor/dashboard" : `#/student/${educationTrack}/app`);
+    const { error } = await supabase.auth.updateUser(
+      { email: requested },
+      { emailRedirectTo: `${window.location.origin}${window.location.pathname}${returnHash}` },
+    );
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    setNewEmail("");
+    setNotice("Email change started. Confirm the messages sent to the current and new addresses. Your account number, work, and referral link stay with this account.");
+  }
+
+  async function copyInviteLink() {
+    const code = referralProgress.account_number || accountNumber;
+    if (!code) return setNotice("Your invitation number is still being prepared. Refresh after signing in again.");
+    const audiencePath = accountType === "professor" ? "#/professors" : `#/students/${educationTrack}`;
+    const inviteLink = `${window.location.origin}${window.location.pathname}${audiencePath}?ref=${encodeURIComponent(code)}`;
+    await navigator.clipboard.writeText(inviteLink);
+    setNotice("Invitation link copied.");
   }
 
   function resetDeviceCopy() {
@@ -195,7 +229,7 @@ export default function AccountSettings({
   return (
     <section className={`account-settings-shell ${compact ? "is-compact" : ""}`} aria-labelledby={`account-settings-${scope}`}>
       <header className="account-settings-heading">
-        <div><span>ACCOUNT SETTINGS</span><h1 id={`account-settings-${scope}`}>{accountType === "professor" ? "Educator settings" : "Student settings"}</h1><p>Profile, assistant connections, visibility, and account controls live together.</p></div>
+        <div><span>ACCOUNT SETTINGS</span><h1 id={`account-settings-${scope}`}>{accountType === "professor" ? "Educator settings" : "Student settings"}</h1><p>Profile, assistant connections, visibility, and device preferences live together.</p></div>
         <div className="account-settings-heading-tools"><LiveDateTime /><div className="account-plan-chip"><strong>Free</strong><span>Paid services coming soon</span></div></div>
       </header>
       <nav className="account-settings-tabs" aria-label="Settings sections">
@@ -206,7 +240,8 @@ export default function AccountSettings({
         <article className="account-settings-card">
           <h2>Profile details</h2>
           <label>Display name<input value={draft.displayName} onChange={(event) => patchValue("displayName", event.target.value)} /></label>
-          <label>Account email<input type="email" value={authenticated ? accountEmail || draft.email : draft.email} readOnly={authenticated} onChange={(event) => patchValue("email", event.target.value)} />{authenticated && <small>Email changes need a verified account update and are not made by editing this field.</small>}</label>
+          <label>Account email<input type="email" value={authenticated ? accountEmail || draft.email : draft.email} readOnly={authenticated} onChange={(event) => patchValue("email", event.target.value)} />{authenticated && <small>This verified address is attached to your existing account.</small>}</label>
+          {authenticated && <form className="account-email-change" onSubmit={changeAccountEmail}><label>Change account email<input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="new-address@example.com" required /></label><button type="submit" disabled={busy}>{busy ? "Sending…" : "Verify and change email"}</button><small>The new address cannot already belong to another account. Confirmation keeps this same account and account number.</small></form>}
           <label>Bio or description<textarea rows={5} value={draft.bio} onChange={(event) => patchValue("bio", event.target.value)} /></label>
           <label>Links<textarea rows={3} value={draft.links} onChange={(event) => patchValue("links", event.target.value)} placeholder="One website, portfolio, YouTube, or social link per line" /></label>
         </article>
@@ -215,7 +250,8 @@ export default function AccountSettings({
           <label>Who can open the full page<select value={draft.profileVisibility} onChange={(event) => patchValue("profileVisibility", event.target.value)}><option value="private">Only me</option><option value="class">Connections or classmates</option><option value="public">Public</option></select></label>
           <FieldSwitch checked={draft.discoverable} onChange={(value) => patchValue("discoverable", value)} label="Appear in people search" detail="Turn this off to keep the profile hidden from search." />
           <FieldSwitch checked={draft.showDescriptions} onChange={(value) => patchValue("showDescriptions", value)} label="Show card descriptions" detail="This changes the amount of helper text in your dashboard." />
-          <button type="button" className="account-settings-save" onClick={() => persist("Profile settings saved")}>Save profile settings</button>
+          <label>Profile color<select value={draft.profileAccent} disabled={referralProgress.referral_count < 3} onChange={(event) => patchValue("profileAccent", event.target.value)}><option value="#3151a6">Notebook blue</option><option value="#7660b5">Campus violet</option><option value="#287b63">Library green</option><option value="#b15d3a">Study amber</option></select><small>{referralProgress.referral_count >= 3 ? "Unlocked by inviting three friends." : "Invite three friends to unlock profile color controls."}</small></label>
+          <button type="button" className="account-settings-save" onClick={() => persist("Profile settings")}>Save profile on this device</button>
         </article>
       </div>}
 
@@ -236,7 +272,7 @@ export default function AccountSettings({
           <FieldSwitch checked={draft.plugins.documents} onChange={(value) => patchPlugin("documents", value)} label="Documents and syllabi" />
           <FieldSwitch checked={draft.plugins.sources} onChange={(value) => patchPlugin("sources", value)} label="Saved sources" />
           <FieldSwitch checked={draft.plugins.conversations} onChange={(value) => patchPlugin("conversations", value)} label="Past conversations" />
-          <button type="button" className="account-settings-save" onClick={() => persist("Assistant and plugin settings saved")}>Save assistant settings</button>
+          <button type="button" className="account-settings-save" onClick={() => persist("Assistant and plugin settings")}>Save assistant settings on this device</button>
         </article>
       </div>}
 
@@ -250,9 +286,9 @@ export default function AccountSettings({
         </article>
         <article className="account-settings-card">
           <h2>Updates and uploads</h2>
-          <FieldSwitch checked={draft.productUpdates} onChange={(value) => patchValue("productUpdates", value)} label="Product update emails" detail="Optional feature news and testing invitations." />
-          <div className="storage-plan-card"><span>Free media allowance</span><strong>{draft.mediaUploadsPerWeek} picture or video uploads each week</strong><p>Text posts stay available. Unlimited media storage is a future paid option.</p></div>
-          <button type="button" className="account-settings-save" onClick={() => persist("Visibility and social controls saved")}>Save controls</button>
+          <FieldSwitch checked={draft.productUpdates} onChange={(value) => patchValue("productUpdates", value)} label="Product update emails" detail="This device remembers the preference; email delivery is not connected yet." />
+          <div className="storage-plan-card"><span>Free media allowance</span><strong>{referralProgress.referral_count >= 5 ? 10 : referralProgress.referral_count >= 1 ? 4 : draft.mediaUploadsPerWeek} picture or video uploads each week</strong><p>Text posts stay available. Inviting friends raises the free weekly media allowance.</p></div>
+          <button type="button" className="account-settings-save" onClick={() => persist("Visibility and social controls")}>Save controls on this device</button>
         </article>
       </div>}
 
@@ -261,10 +297,13 @@ export default function AccountSettings({
           <h2>Security and status</h2>
           <div><span>Account status</span><strong>{draft.accountStatus === "active" ? "Active" : draft.accountStatus}</strong></div>
           <div><span>Billing profile</span><strong>Free account · no payment method</strong></div>
+          <div><span>Unique account number</span><strong>{referralProgress.account_number || accountNumber || "Preparing…"}</strong></div>
+          <button type="button" onClick={copyInviteLink}>Copy my invitation link</button>
+          <div className="referral-progress-card"><span>Friends who created an account</span><strong>{referralProgress.referral_count || 0}</strong><small>1 unlocks more weekly media · 3 unlocks profile colors · 5 expands the creator allowance.</small></div>
           <button type="button" onClick={sendPasswordReset} disabled={busy}>{busy ? "Sending…" : "Send password reset email"}</button>
           <button type="button" onClick={resetDeviceCopy}>Reset this device workspace</button>
-          <button type="button" className={draft.deletionStatus === "requested" ? "is-warning" : ""} onClick={requestDeletion}>{draft.deletionStatus === "requested" ? "Cancel deletion request" : "Request account deletion"}</button>
-          <small>Device reset removes settings and sample activity on this browser. Account deletion needs the signed-in account service to finish.</small>
+          <button type="button" disabled title="Account deletion will be available after the account service is connected.">Account deletion coming soon</button>
+          <small>Device reset removes settings and sample activity from this browser. Account deletion is not available yet.</small>
         </article>
         <article className="account-settings-card">
           <h2>Save history</h2>

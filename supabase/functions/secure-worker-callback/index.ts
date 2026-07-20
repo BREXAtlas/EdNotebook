@@ -14,6 +14,7 @@ import {
   recordAudit,
   sha256,
 } from "../_shared/security.ts";
+import { removeStorageObject } from "../_shared/storage.ts";
 
 interface WorkerPreview {
   kind: "thumbnail" | "page" | "text" | "html" | "cover" | "slides" | "metadata";
@@ -36,7 +37,7 @@ interface WorkerCallback {
     details?: Record<string, unknown>;
   };
   archive?: {
-    status?: "not_archive" | "clean" | "suspicious" | "blocked" | "error";
+    status?: "pending" | "not_archive" | "clean" | "suspicious" | "blocked" | "error";
     details?: Record<string, unknown>;
   };
   previews?: WorkerPreview[];
@@ -132,6 +133,79 @@ async function persistPreviews(
   return saved;
 }
 
+function validateCallback(input: WorkerCallback, file: Record<string, unknown>) {
+  if (!["clean", "infected", "suspicious", "error"].includes(input.verdict)) {
+    throw new HttpError(400, "Worker verdict is invalid.");
+  }
+  const archiveStatus = input.archive?.status || "not_archive";
+  if (!["pending", "not_archive", "clean", "suspicious", "blocked", "error"].includes(archiveStatus)) {
+    throw new HttpError(400, "Archive inspection status is invalid.");
+  }
+
+  const sizeValue = input.actualSizeBytes as unknown;
+  const hasSize = typeof sizeValue === "number";
+  if (sizeValue !== undefined && sizeValue !== null && !hasSize) {
+    throw new HttpError(400, "actualSizeBytes must be a number.");
+  }
+  if (hasSize && (!Number.isSafeInteger(sizeValue) || sizeValue <= 0)) {
+    throw new HttpError(400, "actualSizeBytes must be a positive safe integer.");
+  }
+  if (input.sha256 !== undefined && input.sha256 !== null && typeof input.sha256 !== "string") {
+    throw new HttpError(400, "Worker SHA-256 must be a string.");
+  }
+  const actualHash = input.sha256?.trim().toLowerCase() || null;
+  if (actualHash && !/^[a-f0-9]{64}$/.test(actualHash)) {
+    throw new HttpError(400, "Worker SHA-256 is invalid.");
+  }
+  if (input.verdict === "clean" && (!hasSize || !actualHash)) {
+    throw new HttpError(400, "Clean results require actualSizeBytes and a SHA-256 digest.");
+  }
+
+  const expectedSize = Number(file.expected_size_bytes);
+  if (!Number.isSafeInteger(expectedSize) || expectedSize <= 0) {
+    throw new HttpError(500, "Secure file has an invalid expected byte count.");
+  }
+  const expectedHash = file.checksum_sha256
+    ? String(file.checksum_sha256).toLowerCase()
+    : null;
+  if (expectedHash && !/^[a-f0-9]{64}$/.test(expectedHash)) {
+    throw new HttpError(500, "Secure file has an invalid expected SHA-256 digest.");
+  }
+
+  const actualSize = hasSize ? sizeValue : null;
+  return {
+    actualHash,
+    actualSize,
+    archiveStatus,
+    expectedHash,
+    expectedSize,
+  };
+}
+
+async function transitionFromScanning(
+  admin: ReturnType<typeof adminClient>,
+  fileId: string,
+  tokenHash: string,
+  terminalValues: Record<string, unknown>,
+): Promise<void> {
+  const { data, error } = await admin
+    .from("secure_file_objects")
+    .update({
+      ...terminalValues,
+      worker_callback_token_hash: null,
+    })
+    .eq("id", fileId)
+    .eq("security_status", "scanning")
+    .eq("availability_status", "quarantined")
+    .eq("worker_callback_token_hash", tokenHash)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    throw new HttpError(409, "Worker callback was already consumed or the file is no longer scanning.");
+  }
+}
+
 Deno.serve(async (req) => {
   const options = preflight(req);
   if (options) return options;
@@ -156,26 +230,40 @@ Deno.serve(async (req) => {
       throw new HttpError(401, "Worker callback token is invalid.");
     }
 
-    if (file.availability_status === "released" && file.security_status === "clean") {
-      return jsonResponse(req, { secureFileId: file.id, status: "released", alreadyProcessed: true });
+    const {
+      actualHash,
+      actualSize,
+      archiveStatus,
+      expectedHash,
+      expectedSize,
+    } = validateCallback(input, file);
+    let sizeMismatch = actualSize !== null && actualSize !== expectedSize;
+    const checksumMismatch = Boolean(expectedHash && actualHash && expectedHash !== actualHash);
+    let finalVerdict = sizeMismatch || checksumMismatch ? "suspicious" : input.verdict;
+    let source: Blob | null = null;
+    let storageSize: number | null = null;
+
+    if (finalVerdict === "clean" && !["pending", "suspicious", "blocked", "error"].includes(archiveStatus)) {
+      const { data, error: downloadError } = await admin.storage
+        .from(file.quarantine_bucket)
+        .download(file.quarantine_path);
+      if (downloadError || !data) throw downloadError || new Error("Quarantined object could not be read.");
+      source = data;
+      storageSize = data.size;
+      if (storageSize !== actualSize || storageSize !== expectedSize) {
+        sizeMismatch = true;
+        finalVerdict = "suspicious";
+      }
     }
 
-    const actualHash = input.sha256?.toLowerCase() || null;
-    const expectedHash = file.checksum_sha256?.toLowerCase() || null;
-    const sizeMismatch = Number.isFinite(input.actualSizeBytes)
-      && Number(input.actualSizeBytes) !== Number(file.expected_size_bytes);
-    const checksumMismatch = Boolean(expectedHash && actualHash && expectedHash !== actualHash);
-    const archiveStatus: string = input.archive?.status || "not_archive";
-    const finalVerdict = sizeMismatch || checksumMismatch ? "suspicious" : input.verdict;
-
-    if (finalVerdict !== "clean" || ["suspicious", "blocked", "error"].includes(archiveStatus)) {
+    if (finalVerdict !== "clean" || ["pending", "suspicious", "blocked", "error"].includes(archiveStatus)) {
       const securityStatus = finalVerdict === "infected"
         ? "infected"
         : finalVerdict === "error"
         ? "error"
         : "suspicious";
-      await admin.from("secure_file_objects").update({
-        actual_size_bytes: input.actualSizeBytes || file.actual_size_bytes,
+      await transitionFromScanning(admin, file.id, tokenHash, {
+        actual_size_bytes: actualSize ?? file.actual_size_bytes,
         checksum_sha256: actualHash || file.checksum_sha256,
         detected_mime_type: input.detectedMimeType || file.claimed_mime_type,
         security_status: securityStatus,
@@ -188,17 +276,19 @@ Deno.serve(async (req) => {
           verdict: finalVerdict,
           details: input.scan?.details || {},
           sizeMismatch,
+          storageSize,
           checksumMismatch,
           workerError: input.error || null,
         },
         archive_result: input.archive?.details || {},
         preview_status: "error",
         conversion_status: file.conversion_status === "not_requested" ? "not_requested" : "error",
-      }).eq("id", file.id);
+      });
       await markJob(admin, file.id, finalVerdict === "error" ? "failed" : "succeeded", {
         verdict: finalVerdict,
         archiveStatus,
         sizeMismatch,
+        storageSize,
         checksumMismatch,
       }, input.error || undefined);
       await recordAudit(admin, req, {
@@ -210,15 +300,14 @@ Deno.serve(async (req) => {
         eventType: finalVerdict === "infected" ? "security.malware_blocked" : "security.file_blocked",
         targetType: "secure_file",
         targetId: file.id,
-        details: { verdict: finalVerdict, archiveStatus, sizeMismatch, checksumMismatch },
+        details: { verdict: finalVerdict, archiveStatus, sizeMismatch, storageSize, checksumMismatch },
       });
       return jsonResponse(req, { secureFileId: file.id, status: "blocked", verdict: finalVerdict });
     }
 
-    const { data: source, error: downloadError } = await admin.storage
-      .from(file.quarantine_bucket)
-      .download(file.quarantine_path);
-    if (downloadError || !source) throw downloadError || new Error("Quarantined object could not be read.");
+    if (!source || actualSize === null || !actualHash) {
+      throw new HttpError(500, "Clean callback integrity validation did not complete.");
+    }
 
     if (!(await destinationExists(admin, file.destination_bucket, file.destination_path))) {
       const { error: uploadError } = await admin.storage.from(file.destination_bucket).upload(
@@ -235,19 +324,20 @@ Deno.serve(async (req) => {
 
     const previewCount = await persistPreviews(admin, file.id, input.previews || []);
     if (file.publication_id && input.eduBookManifest) {
-      await admin.from("publications").update({
+      const { error: publicationError } = await admin.from("publications").update({
         edubook_manifest: input.eduBookManifest,
         conversion_status: "ready",
         preview_status: previewCount > 0 ? "ready" : "unsupported",
       }).eq("id", file.publication_id);
+      if (publicationError) throw publicationError;
     }
 
-    const { error: releaseError } = await admin.from("secure_file_objects").update({
-      actual_size_bytes: input.actualSizeBytes || source.size,
-      checksum_sha256: actualHash || file.checksum_sha256,
+    await transitionFromScanning(admin, file.id, tokenHash, {
+      actual_size_bytes: actualSize,
+      checksum_sha256: actualHash,
       detected_mime_type: input.detectedMimeType || file.claimed_mime_type,
       security_status: "clean",
-      archive_status: archiveStatus === "pending" ? "not_archive" : archiveStatus,
+      archive_status: archiveStatus,
       availability_status: "released",
       scanner_provider: input.scan?.provider || "document-security-worker",
       scanner_engine_version: input.scan?.engineVersion || null,
@@ -262,10 +352,13 @@ Deno.serve(async (req) => {
         : input.eduBookManifest ? "ready" : "error",
       released_at: new Date().toISOString(),
       metadata: { ...file.metadata, ...(input.metadata || {}) },
-    }).eq("id", file.id);
-    if (releaseError) throw releaseError;
+    });
 
-    await admin.storage.from(file.quarantine_bucket).remove([file.quarantine_path]);
+    try {
+      await removeStorageObject(admin, file.quarantine_bucket, file.quarantine_path);
+    } catch (cleanupError) {
+      console.error("released quarantine cleanup failed", cleanupError);
+    }
     await markJob(admin, file.id, "succeeded", {
       verdict: "clean",
       previewCount,

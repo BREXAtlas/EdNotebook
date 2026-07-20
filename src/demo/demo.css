@@ -8,3 +8,15 @@
 @import "./csschunks/demo-part-8.css";
 @import "./csschunks/demo-account-social.css";
 @import "./csschunks/demo-library-upgrade.css";
+.tour-signup-backdrop { position: fixed; z-index: 4200; inset: 0; display: grid; place-items: center; padding: 22px; background: rgba(13,27,51,.68); backdrop-filter: blur(7px); }
+.tour-signup-card { width: min(100%, 470px); display: grid; gap: 13px; padding: 28px; text-align: center; background: #fffdf8; border-radius: 22px; box-shadow: 0 28px 90px rgba(9,20,40,.32); }
+.tour-signup-card img { width: 92px; height: 92px; margin: 0 auto; object-fit: cover; object-position: center 22%; border-radius: 50%; }
+.tour-signup-card > span { color: #3151a6; font-size: 10px; font-weight: 900; letter-spacing: 1.4px; }
+.tour-signup-card h2, .tour-signup-card p { margin: 0; }
+.tour-signup-card p { color: #617086; line-height: 1.55; }
+.tour-signup-card a, .tour-signup-card button { padding: 12px 15px; border-radius: 10px; font-weight: 850; text-decoration: none; }
+.tour-signup-card a { color: #fff; background: #245397; }
+.tour-signup-card button { color: #3151a6; background: transparent; border: 1px solid #bac5d7; }
+.tour-next-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.tour-next-actions a, .tour-next-actions button { display: grid; place-items: center; min-height: 46px; }
+@media (max-width:520px){.tour-next-actions{grid-template-columns:1fr}}
