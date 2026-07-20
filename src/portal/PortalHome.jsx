@@ -70,11 +70,12 @@ export default function PortalHome() {
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
               <a href="#/tour" style={{ ...actionStyle, color: "#fff", background: "#1d4ed8" }}>Take the interactive tour</a>
-              <a href="#/presentation" style={{ ...actionStyle, color: "#153b91", border: "1px solid #9eabd0", background: "#fff" }}>View the presentation</a>
+              <a href="#/presentation" style={{ ...actionStyle, color: "#153b91", border: "1px solid #9eabd0", background: "#fff" }}>View the product presentation</a>
+              <a href="#/business-presentation" style={{ ...actionStyle, color: "#684800", border: "1px solid #d8b35e", background: "#fff8df" }}>View the business presentation</a>
             </div>
           </div>
           <div className="portal-choice-mark">
-            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchpriority="high" />
+            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchPriority="high" />
             <BrandMark size={82} inverse />
             <span>Making learning fun, connected, and high tech.</span>
           </div>
@@ -106,6 +107,13 @@ export default function PortalHome() {
           </div>
         </section>
 
+        <section style={{ maxWidth: 1180, margin: "0 auto 54px", padding: "0 28px" }} aria-labelledby="portal-business-title">
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(260px,.75fr)", gap: 28, alignItems: "center", padding: 34, color: "#fff", background: "linear-gradient(135deg,#101b33,#234e9e)", borderRadius: 24 }}>
+            <div><span className="portal-kicker" style={{ color: "#f0c45b" }}>BUSINESS, PRODUCT & PARTNERSHIP</span><h2 id="portal-business-title" style={{ margin: "10px 0", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 38 }}>See where EdNotebook is going next.</h2><p style={{ margin: 0, color: "#d6def0", lineHeight: 1.7 }}>Explore the professor-led growth strategy, student value, institutional path, learning-evidence model, publishing vision, revenue scenarios, valuation planning, and partnership opportunities.</p></div>
+            <a href="#/business-presentation" style={{ ...actionStyle, color: "#101b33", background: "#f0c45b", minHeight: 50 }}>Open the business presentation →</a>
+          </div>
+        </section>
+
         <section className="portal-home-share" aria-labelledby="portal-home-share-title">
           <div>
             <span className="portal-kicker">SHARE EDNOTEBOOK</span>
@@ -127,7 +135,7 @@ export default function PortalHome() {
           <div><strong>Your view stays yours</strong><span>Students see their own cross-class learning record; professors see only students and classes they are authorized to manage.</span></div>
         </section>
       </main>
-      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
+      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
     </div>
   );
 }
