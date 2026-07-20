@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { syncBuilderCoursePackage } from "./course-runtime/builderCourseAdapter.js";
 
 /* ============================================================
    EDNOTEBOOK — university course platform
@@ -706,6 +707,7 @@ Return ONLY the revised JSON, no fences.` }] }),
           <Pill t={t} tone={t.primary}>{TEMPLATES[course.templateKey || "ramready"].name} template</Pill>
           <Pill t={t} tone={t.slate}>{allEps.length} lessons</Pill>
           <Pill t={t} tone={t.slate}>{Object.keys(lessons).length} written</Pill>
+          {courseSync && <Pill t={t} tone={courseSync.includes("Synced") ? t.good : t.accentDark}>{courseSync}</Pill>}
         </div>
       </Card>
       {course.acts.map((act, ai) => (
@@ -1345,7 +1347,7 @@ function LearnerView({ t, xp, setXp, manuscript, setManuscript }) {
 /* ============================================================
    PROFESSOR — classes, plan, seat caps
    ============================================================ */
-function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manuscript, setManuscript }) {
+function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manuscript, setManuscript, session }) {
   const [tab, setTab] = useState("forge");
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState({});
@@ -1354,6 +1356,19 @@ function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manusc
   const [preview, setPreview] = useState(null);
   const [myClasses, setMyClasses] = useState([{ id: "c1", code: "SCI 101", name: "What Is a Cell?", students: 38 }]);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [courseSync, setCourseSync] = useState("");
+
+  useEffect(() => {
+    if (!course) { setCourseSync(""); return undefined; }
+    const timer = window.setTimeout(async () => {
+      setCourseSync("Syncing to Course Output…");
+      const result = await syncBuilderCoursePackage({ course, lessons, session });
+      if (result.error) setCourseSync("Saved on device · cloud sync will retry");
+      else if (result.source === "cloud") setCourseSync("Synced to Course Output");
+      else setCourseSync("Ready in Course Output");
+    }, 850);
+    return () => window.clearTimeout(timer);
+  }, [course, lessons, session?.user?.id]);
 
   const currentPlan = PLANS.find((p) => p.key === plan);
   const classCap = currentPlan.classCap;
@@ -1527,7 +1542,7 @@ function MastermindView({ t }) {
 /* ============================================================
    APP SHELL
    ============================================================ */
-export default function Builder() {
+export default function Builder({ session }) {
   const [themeKey, setThemeKey] = useState("ramready");
   const [view, setView] = useState("professor");
   const [xp, setXp] = useState(745);
@@ -1610,7 +1625,7 @@ export default function Builder() {
 
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "16px 14px 40px" }}>
         {view === "learner" && <LearnerView t={t} xp={xp} setXp={setXp} manuscript={manuscript} setManuscript={setManuscript} />}
-        {view === "professor" && <ProfessorView t={t} plan={plan} setPlan={setPlan} courseLength={courseLength} setCourseLength={setCourseLength} manuscript={manuscript} setManuscript={setManuscript} />}
+        {view === "professor" && <ProfessorView t={t} plan={plan} setPlan={setPlan} courseLength={courseLength} setCourseLength={setCourseLength} manuscript={manuscript} setManuscript={setManuscript} session={session} />}
         {view === "admin" && <AdminView t={t} />}
         {view === "mastermind" && <MastermindView t={t} />}
       </div>
