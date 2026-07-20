@@ -36,6 +36,14 @@ jobs:
       - name: Build production site
         run: npm run build
 
+      - name: Upload PR bundle for inspection
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ednotebook-pr-dist
+          path: dist
+          retention-days: 2
+
       - name: Verify core and feature bundle split
         run: npm run audit:bundle
 
