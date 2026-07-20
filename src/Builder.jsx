@@ -560,7 +560,7 @@ ${pasted.slice(0, 3500)}` }] }),
 /* ============================================================
    CONTENT MAP + LESSON EDITOR
    ============================================================ */
-function CourseWorkspace({ t, course, setCourse, lessons, setLessons, history, hIdx, undo, redo, pushHistory, onPreview }) {
+function CourseWorkspace({ t, course, setCourse, lessons, setLessons, history, hIdx, undo, redo, pushHistory, onPreview, courseSync }) {
   const [openId, setOpenId] = useState(null);
   const [askOpen, setAskOpen] = useState(false);
   const [ask, setAsk] = useState("");
@@ -1399,7 +1399,7 @@ function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manusc
 
       {tab === "forge" && <CourseForge t={t} setCourse={setCourse} pushHistory={pushHistory} />}
       {tab === "build" && course && (
-        <CourseWorkspace t={t} course={course} setCourse={setCourse} lessons={lessons} setLessons={setLessons} history={history} hIdx={hIdx} undo={undo} redo={redo} pushHistory={pushHistory} onPreview={(ep, lesson) => setPreview({ ep, lesson })} />
+        <CourseWorkspace t={t} course={course} setCourse={setCourse} lessons={lessons} setLessons={setLessons} history={history} hIdx={hIdx} undo={undo} redo={redo} pushHistory={pushHistory} onPreview={(ep, lesson) => setPreview({ ep, lesson })} courseSync={courseSync} />
       )}
       {tab === "grade" && <PaperGrader t={t} manuscript={manuscript} setManuscript={setManuscript} />}
       {tab === "classes" && (
