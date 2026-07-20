@@ -16,7 +16,7 @@ const CourseRuntimePage = lazy(() => import("./course-runtime/CourseRuntimePage.
 const StudentAudienceChooser = lazy(() => import("./portal/StudentAudienceChooser.jsx"));
 const StudentLanding = lazy(() => import("./portal/StudentLanding.jsx"));
 const PublishingLanding = lazy(() => import("./portal/PublishingLanding.jsx"));
-const StudentDashboard = lazy(() => import("./portal/StudentDashboard.jsx"));
+const StudentDashboard = lazy(() => import("./portal/ConnectedStudentDashboard.jsx"));
 const ProfessorDashboard = lazy(() => import("./portal/ProfessorDashboard.jsx"));
 const PlatformAdminDashboard = lazy(() => import("./portal/PlatformAdminDashboard.jsx"));
 const PasswordUpdate = lazy(() => import("./portal/PasswordUpdate.jsx"));
@@ -40,9 +40,7 @@ function Router() {
   }
 
   if (route.startsWith("#/business-presentation") || route.startsWith("#/business")) return <MotionFrame routeKey="business-presentation"><BusinessPresentation /></MotionFrame>;
-
   if (route.startsWith("#/tour") || route.startsWith("#/presentation") || route.startsWith("#/about") || route.startsWith("#/careers")) return <MotionFrame routeKey={route}><DemoExperience route={route} /></MotionFrame>;
-
   if (route.startsWith("#/account/update-password")) return <MotionFrame routeKey="password-update"><PasswordUpdate /></MotionFrame>;
 
   const courseRoute = route.match(/^#\/student\/(?:university\/|k12\/)?course\/([0-9a-f-]{36})/i) || route.match(/^#\/student\/course\/([0-9a-f-]{36})/i);
