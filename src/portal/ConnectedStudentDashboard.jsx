@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import StudentDashboard from "./StudentDashboard.jsx";
 import { listCurrentStudentCourses } from "./portalService.js";
 import { loadLearnerProgress, loadStudentCourseLinks } from "../course-runtime/courseService.js";
+import "./connected-student.css";
 
 export default function ConnectedStudentDashboard(props) {
   const { session, track = "university" } = props;
