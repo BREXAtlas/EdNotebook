@@ -11,7 +11,7 @@ const Builder = lazy(() => import("./Builder.jsx"));
 const CourseStart = lazy(() => import("./CourseStart.jsx"));
 const CourseJourneyShell = lazy(() => import("./CourseJourneyShell.jsx"));
 const LearningStudio = lazy(() => import("./studio/LearningStudio.jsx"));
-const CoursePackageStudio = lazy(() => import("./course-runtime/CoursePackageStudio.jsx"));
+const CoursePackageStudio = lazy(() => import("./course-runtime/ConnectedCoursePackageStudio.jsx"));
 const CourseRuntimePage = lazy(() => import("./course-runtime/CourseRuntimePage.jsx"));
 const StudentAudienceChooser = lazy(() => import("./portal/StudentAudienceChooser.jsx"));
 const StudentLanding = lazy(() => import("./portal/StudentLanding.jsx"));
