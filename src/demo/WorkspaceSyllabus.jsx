@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import FullscreenSurface from "../FullscreenSurface.jsx";
 import { dateKey, formatDateTime, NotebookLabel } from "./demoShared.jsx";
 import { extractSyllabusFile, MAX_EXTRACTED_CHARACTERS } from "./syllabusFileExtractors.js";
+import "./demo.css";
 import "./syllabus-review.css";
 
 const SyllabusScanner = lazy(() => import("./SyllabusScanner.jsx"));
@@ -64,8 +65,17 @@ function stableToken(value) {
   return (hash >>> 0).toString(36);
 }
 
-function syllabusSourceId(personaId, name, course) {
-  return `syllabus-${personaId}-${stableToken(`${String(course || "course").trim().toLowerCase()}\u0000${String(name || "sample").trim().toLowerCase()}`)}`;
+function syllabusSourceId(personaId, name, course, instanceToken = "") {
+  const sourceScope = `${String(course || "course").trim().toLowerCase()}\u0000${String(name || "sample").trim().toLowerCase()}`;
+  const normalizedInstance = String(instanceToken || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 96);
+  const instanceSuffix = normalizedInstance ? `-${normalizedInstance}` : "";
+  return `syllabus-${personaId}-${stableToken(sourceScope)}${instanceSuffix}`;
+}
+
+function sourceInstanceToken(sequence) {
+  const uniquePart = globalThis.crypto?.randomUUID?.()
+    || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${uniquePart}-${Number(sequence || 0).toString(36)}`;
 }
 
 function clockFromText(value, { beforeDate = false } = {}) {
@@ -352,7 +362,7 @@ function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
         <p>This sample workspace saves the report only on this device. Reporter: <strong>{persona?.name || "Guest"}</strong> · Source: <strong>{fileName || "Pasted or sample text"}</strong></p>
         <label>Where did it happen?<select value={stage} onChange={(event) => setStage(event.target.value)}><option>Upload or file reading</option><option>Source detection</option><option>Assignment conversion</option><option>Calendar output</option><option>Something else</option></select></label>
         <label>What was missed or converted incorrectly?<textarea autoFocus required minLength={8} rows={6} value={issue} onChange={(event) => setIssue(event.target.value)} placeholder="Example: Line 14 was highlighted as an assignment, but it is an office-hours date." /></label>
-        <footer><button type="button" onClick={onClose}>Cancel</button><button className="primary-paper-button" type="submit">Save demo report</button></footer>
+        <footer><button type="button" onClick={onClose}>Cancel issue report</button><button className="primary-paper-button" type="submit">Save demo report</button></footer>
       </form>
     </div>
   );
@@ -377,6 +387,7 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
   const inputRef = useRef(null);
   const readControllerRef = useRef(null);
   const readSequenceRef = useRef(0);
+  const sourceInstanceRef = useRef(0);
   const analysis = useMemo(() => analyzeSyllabusLines(text, parameters), [text, parameters]);
 
   useEffect(() => {
@@ -396,6 +407,7 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     setReadError("");
     setScannerOpen(false);
     setScanArtifact(null);
+    sourceInstanceRef.current = 0;
     setSourceId(syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
     return () => {
       readControllerRef.current?.abort();
@@ -410,18 +422,30 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     if (extraction) setReviewStale(true);
   }
 
-  function commitSyllabusSource({ text: sourceText, name, detail, warnings = [], artifact = null }) {
-    setSourceId(syllabusSourceId(persona.id, name, parameters.course));
-    setFileName(name);
+  function commitSyllabusSource({ text: sourceText, name, detail, warnings = [], artifact = null } = {}) {
+    if (typeof sourceText !== "string" || !sourceText.trim()) {
+      setReadError("No readable course text was returned. Your current syllabus and review were not changed.");
+      return false;
+    }
+    const nextName = String(name || "Syllabus source").trim() || "Syllabus source";
+    const nextDetail = String(detail || "this device").trim() || "this device";
+    const nextWarnings = Array.isArray(warnings) ? warnings : [];
+    const nextInstance = sourceInstanceRef.current + 1;
+    sourceInstanceRef.current = nextInstance;
+    const nextSourceId = syllabusSourceId(persona.id, nextName, parameters.course, sourceInstanceToken(nextInstance));
+
+    setSourceId(nextSourceId);
+    setFileName(nextName);
     setTextState(sourceText);
     setExtraction(null);
     setApproved([]);
     setReviewStale(false);
     setReadError("");
-    setScanArtifact(artifact);
-    const warningNote = warnings.length ? ` Review the source carefully because ${warnings.length} reading warning${warnings.length === 1 ? " was" : "s were"} reported.` : "";
-    setNotice(`${name} is ready from ${detail}. Review the highlighted source before conversion.${warningNote}`);
+    setScanArtifact(typeof Blob !== "undefined" && artifact instanceof Blob && artifact.type === "application/pdf" ? artifact : null);
+    const warningNote = nextWarnings.length ? ` Review the source carefully because ${nextWarnings.length} reading warning${nextWarnings.length === 1 ? " was" : "s were"} reported.` : "";
+    setNotice(`${nextName} is ready from ${nextDetail}. Review the highlighted source before conversion.${warningNote}`);
     setSurfacePage("source");
+    return true;
   }
 
   function downloadScanArtifact() {
@@ -443,7 +467,6 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     readControllerRef.current = controller;
     setIsReading(true);
     setReadError("");
-    setNotice("");
     setReadProgress("Opening syllabus…");
     try {
       const result = await extractSyllabusFile(file, {
@@ -539,10 +562,10 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
       <section className="paper-card syllabus-upload-card" aria-busy={isReading}>
         <div className="dashboard-card-heading"><div><NotebookLabel>SYLLABUS REVIEW</NotebookLabel><h1>Upload the syllabus. Check every conversion.</h1><p>Edit the course text and highlighted lines before any date reaches the calendar.</p></div><div className="syllabus-upload-actions"><button type="button" disabled={isReading} onClick={() => setScannerOpen(true)}>Scan paper syllabus</button><button className="primary-paper-button" type="button" disabled={isReading} onClick={() => inputRef.current?.click()}>{isReading ? "Reading syllabus…" : "Upload syllabus"}</button></div></div>
         <input ref={inputRef} className="sr-only" type="file" tabIndex={-1} aria-label="Choose a PDF, Word DOCX, TXT, Markdown, or CSV syllabus" disabled={isReading} accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; handleFile(file); }} />
-        {isReading && <div className="syllabus-read-progress" role="status" aria-live="polite"><span aria-hidden="true" /><strong>{readProgress || "Reading syllabus…"}</strong><button type="button" onClick={() => readControllerRef.current?.abort()}>Cancel</button></div>}
+        {isReading && <div className="syllabus-read-progress" role="status" aria-live="polite"><span aria-hidden="true" /><strong>{readProgress || "Reading syllabus…"}</strong><button type="button" onClick={() => readControllerRef.current?.abort()}>Stop reading syllabus</button></div>}
         {readError && <p className="syllabus-read-error" role="alert">{readError}</p>}
         <div className="syllabus-editor-grid">
-          <div><label>Course text<textarea spellCheck disabled={isReading} value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>PDF · Word DOCX · TXT · MD · CSV · read on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download scanned image copy (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button><button type="button" disabled={isReading} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
+          <div><label>Course text<textarea spellCheck disabled={isReading} value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>PDF · Word DOCX · TXT · MD · CSV · read on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download processed scan (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button><button type="button" disabled={isReading} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
           <DetectedLinePreview analysis={analysis} />
         </div>
         {reviewStale && <div className="syllabus-stale-warning" role="status"><span>The course text or extraction settings changed. Refresh the review before saving dates.</span><button type="button" onClick={runExtraction}>Refresh review</button></div>}
@@ -551,7 +574,7 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
       {extraction && <section className="paper-card extraction-result-card"><div className="dashboard-card-heading"><div><NotebookLabel>EXTRACTION REVIEW</NotebookLabel><h2>{extraction.title}</h2><p>Detected source lines: {extraction.detectedLines.join(", ") || "none"}</p></div><div className="syllabus-heading-actions"><button type="button" onClick={() => setSurfacePage("review")}>Review full screen</button><button type="button" disabled={reviewStale} onClick={addApproved}>Add approved dates to calendar</button></div></div><ExtractionReview extraction={extraction} setExtraction={setExtraction} approved={approved} setApproved={setApproved} parameters={parameters} onAddAssignment={addMissingAssignment} /></section>}
       {surfacePage && <FullscreenSurface key={surfacePage} title="Syllabus review" pages={REVIEW_PAGES} initialPage={surfacePage} addressPrefix="ednotebook://syllabus" onClose={() => setSurfacePage(null)} renderPage={renderReviewPage} />}
       {reportOpen && <IssueReportDialog persona={persona} fileName={fileName} onClose={() => setReportOpen(false)} onSaved={setNotice} />}
-      {scannerOpen && <Suspense fallback={<div className="syllabus-scanner-loading" role="status">Opening the paper scanner…</div>}><SyllabusScanner onClose={() => setScannerOpen(false)} onComplete={(result) => { commitSyllabusSource(result); setScannerOpen(false); }} /></Suspense>}
+      {scannerOpen && <Suspense fallback={<div className="syllabus-scanner-loading" role="status">Opening the paper scanner…</div>}><SyllabusScanner onClose={() => setScannerOpen(false)} onComplete={(result) => { if (commitSyllabusSource(result)) setScannerOpen(false); }} /></Suspense>}
     </div>
   );
 }

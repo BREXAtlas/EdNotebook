@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
+import CoursePublishingStudio from "./CoursePublishingStudio.jsx";
 
 /* ============================================================
    EDNOTEBOOK — university course platform
    Roles: Learner · Professor · Admin (institution) · Mastermind (owner)
    ============================================================ */
 
-const FONT_LINK = `@import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Karla:wght@400;500;700&family=Space+Mono:wght@400;700&family=Archivo+Black&family=Newsreader:wght@400;500;600&display=swap');`;
+const FONT_LINK = `@import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');`;
 
 /* ---------- THEMES ---------- */
 const THEMES = {
@@ -24,7 +25,7 @@ const THEMES = {
     paper: "#0E1116", card: "#171B22", line: "#262C38",
     primary: "#6D8FFF", primaryDark: "#4C6BE0", accent: "#4ADE80", accentDark: "#22C55E",
     good: "#4ADE80", bad: "#F87171",
-    display: "'Space Grotesk', sans-serif", bodyFont: "'Inter', sans-serif", mono: "'JetBrains Mono', monospace",
+    display: "'Zilla Slab', serif", bodyFont: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace",
     radius: "14px", heroGrad: "linear-gradient(135deg,#171B22,#26304A)",
   },
   fieldnotes: {
@@ -33,7 +34,7 @@ const THEMES = {
     paper: "#FBF7EE", card: "#FFFDF8", line: "#E4DACA",
     primary: "#2F6B4F", primaryDark: "#22503B", accent: "#C2703D", accentDark: "#9B542A",
     good: "#2F6B4F", bad: "#B3452F",
-    display: "'Fraunces', serif", bodyFont: "'Karla', sans-serif", mono: "'Space Mono', monospace",
+    display: "'Zilla Slab', serif", bodyFont: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace",
     radius: "10px", heroGrad: "linear-gradient(135deg,#2B2A25,#3F5A48)",
   },
   letterpress: {
@@ -42,7 +43,7 @@ const THEMES = {
     paper: "#FFFFFF", card: "#FFFFFF", line: "#111111",
     primary: "#111111", primaryDark: "#000000", accent: "#E0342C", accentDark: "#B32019",
     good: "#1B7A3D", bad: "#E0342C",
-    display: "'Archivo Black', sans-serif", bodyFont: "'Newsreader', serif", mono: "'Space Mono', monospace",
+    display: "'Zilla Slab', serif", bodyFont: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace",
     radius: "0px", heroGrad: "linear-gradient(135deg,#111111,#333333)",
   },
 };
@@ -57,13 +58,13 @@ const TEMPLATES = {
     desc: "Each lesson is a scene: a character faces a problem the concept solves.",
     sections: ["The scene", "The problem", "The turn", "The concept", "Your move"], unit: "Chapter", group: "Part" },
   lab: { name: "Lab", tag: "Do it, then explain it",
-    desc: "Hands-on first. Learners run the procedure, then build the theory from what they observed.",
+    desc: "Hands-on first. Students run the procedure, then build the theory from what they observed.",
     sections: ["Setup", "Procedure", "What you should see", "Why it happened", "Push further"], unit: "Lab", group: "Module" },
   drill: { name: "Drill", tag: "Mastery repetition",
     desc: "Short explanation, then graduated practice until it's automatic. Good for math and language.",
     sections: ["The rule", "Worked example", "Guided practice", "Independent set", "Common errors"], unit: "Set", group: "Block" },
   seminar: { name: "Seminar", tag: "Argument & evidence",
-    desc: "Learners read a source, take a position, and defend it in discussion.",
+    desc: "Students read a source, take a position, and defend it in discussion.",
     sections: ["The source", "Context", "Competing readings", "Take a position", "Discussion prompt"], unit: "Session", group: "Unit" },
 };
 
@@ -83,6 +84,128 @@ const DEMO_COURSE = {
       { id: "e7", title: "When Cells Divide", type: "Story", minutes: 25 } ] },
   ],
 };
+
+const COURSE_TITLE_STOP_WORDS = new Set([
+  "about", "after", "again", "also", "because", "before", "between", "course", "from", "have", "into", "lesson", "notes", "should", "students", "syllabus", "that", "their", "these", "this", "through", "using", "what", "when", "where", "which", "with", "your",
+]);
+
+function buildLocalCourseMap(source, templateKey, counts) {
+  const lessonCount = Number(counts?.lessons) || 8;
+  const text = String(source || "").replace(/\r/g, "").trim();
+  const lines = text.split("\n").map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean);
+  const firstLine = (lines[0] || "New course").replace(/\s+/g, " ").slice(0, 90);
+  const candidates = text
+    .split(/(?:\n+|[.!?;:]\s+)/)
+    .map((part) => part.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").replace(/\s+/g, " ").trim())
+    .filter((part) => part.length >= 8 && part.length <= 110);
+  const keywords = [...new Set((text.toLowerCase().match(/[a-z][a-z'-]{4,}/g) || []).filter((word) => !COURSE_TITLE_STOP_WORDS.has(word)))];
+  const lessonTitles = [];
+  for (const candidate of candidates) {
+    const title = candidate.replace(/^(?:week|unit|module|chapter|topic)\s*\d*\s*[-:–—]?\s*/i, "").trim();
+    if (title && !lessonTitles.some((item) => item.toLowerCase() === title.toLowerCase())) lessonTitles.push(title);
+    if (lessonTitles.length >= lessonCount) break;
+  }
+  for (const keyword of keywords) {
+    if (lessonTitles.length >= lessonCount) break;
+    const title = `Understanding ${keyword.replace(/^./, (letter) => letter.toUpperCase())}`;
+    if (!lessonTitles.some((item) => item.toLowerCase() === title.toLowerCase())) lessonTitles.push(title);
+  }
+  while (lessonTitles.length < lessonCount) lessonTitles.push(`Apply the course ideas · ${lessonTitles.length + 1}`);
+
+  const template = TEMPLATES[templateKey] || TEMPLATES.ramready;
+  const types = ["Story", "Lab", "Drill", "Seminar"];
+  const groups = Array.from({ length: Math.min(3, Math.max(1, lessonCount)) }, (_, groupIndex) => ({
+    title: `${template.group} ${groupIndex + 1} · ${groupIndex === 0 ? "Start" : groupIndex === 1 ? "Build" : "Apply"}`,
+    episodes: [],
+  }));
+  lessonTitles.slice(0, lessonCount).forEach((title, index) => {
+    const groupIndex = Math.min(groups.length - 1, Math.floor((index * groups.length) / lessonCount));
+    groups[groupIndex].episodes.push({
+      id: `local-${Date.now()}-${index + 1}`,
+      title: title.slice(0, 120),
+      type: types[index % types.length],
+      minutes: 20 + ((index % 3) * 5),
+    });
+  });
+  return {
+    courseTitle: firstLine,
+    subtitle: `${lessonCount} ${template.unit.toLowerCase()}${lessonCount === 1 ? "" : "s"} organized from your source`,
+    templateKey,
+    sourceSummary: text.slice(0, 1800),
+    lessonOptions: { quizzes: Number(counts?.quizzes) || 0, checks: Number(counts?.checks) || 0 },
+    acts: groups,
+  };
+}
+
+function buildLocalLessonStarter(course, episode, headings) {
+  const sourceSentences = String(course?.sourceSummary || "")
+    .split(/\n+|[.!?]\s+/)
+    .map((sentence) => sentence.replace(/\s+/g, " ").trim())
+    .filter((sentence) => sentence.length > 20);
+  const sections = headings.map((heading, index) => ({
+    heading,
+    body: [
+      `${episode.title}: ${heading}.`,
+      sourceSentences[index % Math.max(1, sourceSentences.length)] || `Use this section to connect ${heading.toLowerCase()} to the lesson goal.`,
+      "Review this starter, add the course-specific example or evidence your students need, and remove anything that does not fit your class.",
+    ].join(" "),
+  }));
+  const checkCount = Math.max(0, Math.min(6, Number(course?.lessonOptions?.checks) || 0));
+  const quizCount = Math.max(0, Math.min(8, Number(course?.lessonOptions?.quizzes) || 0));
+  const checkQuestion = `Which explanation best connects “${episode.title}” to the source material?`;
+  return {
+    sections,
+    knowledgeChecks: Array.from({ length: checkCount }, (_, index) => index % 2 === 0
+      ? { after: Math.min(index + 1, Math.max(0, sections.length - 1)), q: checkQuestion, options: ["The explanation supported by the assigned source", "The longest explanation", "The newest explanation", "The explanation with no evidence"], answer: 0, why: "Students should connect the lesson to evidence in the assigned material." }
+      : { after: Math.min(index + 1, Math.max(0, sections.length - 1)), q: "What should a student do when the source and an example do not agree?", options: ["Ignore the source", "Compare the evidence and explain the difference", "Choose the shorter answer", "Skip the lesson"], answer: 1, why: "Comparing evidence makes the reasoning visible and gives the teacher something concrete to assess." }),
+    quiz: Array.from({ length: quizCount }, (_, index) => index % 2 === 0
+      ? { q: `What is the main purpose of this lesson on “${episode.title}”?`, options: ["Connect the topic to course evidence and apply it", "Memorize the title only", "Avoid examples", "Replace the assigned source"], answer: 0, why: "The lesson is designed to move from the topic into supported understanding and application." }
+      : { q: "Which response shows the strongest understanding?", options: ["A claim with relevant evidence and explanation", "A copied heading", "An unsupported guess", "A list with no connection"], answer: 0, why: "A supported claim shows both knowledge and reasoning." }),
+  };
+}
+
+function applyLocalLessonDirection(lesson, direction) {
+  const note = String(direction || "").trim();
+  const lower = note.toLowerCase();
+  const targetMatch = lower.match(/\bsection\s+(\d{1,2})\b/);
+  const targetIndex = targetMatch ? Number(targetMatch[1]) - 1 : null;
+  const shorten = lower.includes("shorter") || lower.includes("concise") || lower.includes("shorten");
+  const addExample = lower.includes("example");
+  const raiseDifficulty = lower.includes("harder") || lower.includes("advanced") || lower.includes("challenge");
+
+  if (!shorten && !addExample && !raiseDifficulty) {
+    return {
+      applied: false,
+      lesson,
+      message: "No supported direction was found. Try shorten, add an example prompt, or make harder. Add “section 3” to change one section.",
+    };
+  }
+
+  if (targetIndex !== null && (targetIndex < 0 || targetIndex >= lesson.sections.length)) {
+    return {
+      applied: false,
+      lesson,
+      message: `This lesson has ${lesson.sections.length} sections. Choose a section in that range.`,
+    };
+  }
+
+  const sections = lesson.sections.map((section, index) => {
+    if (targetIndex !== null && index !== targetIndex) return section;
+    let body = section.body;
+    if (shorten) {
+      const words = section.body.split(/\s+/).filter(Boolean);
+      body = words.slice(0, Math.min(words.length, Math.max(35, Math.ceil(words.length * 0.7)))).join(" ");
+    }
+    if (addExample) body = `${body}\n\nExample prompt: Add one course-specific example that demonstrates ${section.heading.toLowerCase()} and explain why it fits.`;
+    if (raiseDifficulty) body = `${body}\n\nExtension: Compare this idea with a competing explanation and defend the stronger interpretation with evidence.`;
+    return { ...section, body };
+  });
+  return {
+    applied: true,
+    lesson: { ...lesson, sections },
+    message: `${targetIndex === null ? "Lesson sections" : `Section ${targetIndex + 1}`} updated. Review the result before publishing.`,
+  };
+}
 
 const DEMO_LESSON = {
   sections: [
@@ -105,8 +228,8 @@ const DEMO_LESSON = {
 
 /* ---------- SEED SOCIAL / ROSTER / STYLE DATA ---------- */
 const SEED_DISCUSSIONS = [
-  { id: 1, author: "A. Rivera", role: "Learner", time: "2h", text: "If the membrane costs that much energy, is there a size limit where a cell just can't afford its own surface anymore?", replies: [{ author: "Dr. Nguyen", role: "Professor", time: "1h", text: "Exactly the right question — look up surface-area-to-volume ratio before Thursday." }] },
-  { id: 2, author: "M. Tran", role: "Learner", time: "5h", text: "Episode 2's lab made the osmosis part click for me.", replies: [] },
+  { id: 1, author: "A. Rivera", role: "Student", time: "2h", text: "If the membrane costs that much energy, is there a size limit where a cell just can't afford its own surface anymore?", replies: [{ author: "Dr. Nguyen", role: "Professor", time: "1h", text: "Exactly the right question — look up surface-area-to-volume ratio before Thursday." }] },
+  { id: 2, author: "M. Tran", role: "Student", time: "5h", text: "Episode 2's lab made the osmosis part click for me.", replies: [] },
 ];
 const SEED_GROUPS = [
   { name: "Group A · Membrane Model", members: ["A. Rivera", "J. Okafor", "S. Patel"], due: "Fri", progress: 60 },
@@ -156,23 +279,19 @@ function makeManuscript() {
 
 /* ---------- SUBSCRIPTION PLANS ---------- */
 const PLANS = [
-  { key: "free", name: "Free", price: 0, cadence: "forever", classCap: 1,
-    features: ["1 class", "Up to 50 students", "Ram Ready template", "Community support"] },
-  { key: "perCourse", name: "Per-Course", price: null, cadence: "billed per course", classCap: 1,
-    features: ["1 class per purchase", "All 5 templates", "AI paper grader", "8 or 16-week pricing"] },
-  { key: "semester", name: "Semester", price: 179, cadence: "per semester", classCap: 5,
-    features: ["Up to 5 classes", "Writing coach", "Priority support"] },
-  { key: "annual", name: "Annual", price: 549, cadence: "per year", classCap: 10,
-    features: ["Up to 10 classes", "Save ~35% vs. semester", "Priority support", "Early access features"] },
-  { key: "enterprise", name: "University Enterprise", price: null, cadence: "seat-based, billed to institution", classCap: Infinity,
-    features: ["Unlimited classes & seats", "SIS / SSO sync", "Institution-managed data controls", "Dedicated onboarding"] },
+  { key: "free", name: "Free start", price: 0, cadence: "free during early access", classCap: 1,
+    features: ["1 class", "Up to 50 students", "All learning templates", "Writing and grading previews"] },
+  { key: "expanded", name: "Free expanded access", price: 0, cadence: "free during testing", classCap: 5,
+    features: ["Up to 5 classes", "Assignment templates", "Course broadcast and HTML export", "Live-room preview"] },
+  { key: "institution", name: "Institution preview", price: 0, cadence: "free setup preview", classCap: Infinity,
+    features: ["Unlimited demonstration classes", "Admin controls", "Integration previews", "Setup review"] },
 ];
 const SEAT_CAP_PER_CLASS = 50;
 
 /* ---------- MASTERMIND PORTFOLIO ---------- */
 const PROJECTS = [
-  { name: "EdNotebook", role: "Platform · this build", status: "Prototype live", repo: "github.com/BREXAtlas/EdNotebook", repoNote: "Repo not yet created — this build is ready to push as the first commit.", metric: "Synthetic demonstration workspace", color: "primary" },
-  { name: "Example University", role: "Synthetic institution workspace", status: "Demo", repo: null, metric: "Demonstration records only", color: "good" },
+  { name: "EdNotebook", role: "Platform · this build", status: "Early access", repo: "github.com/BREXAtlas/EdNotebook", repoNote: "Public source repository", metric: "Demonstration workspace", color: "primary" },
+  { name: "Example University", role: "Guided institution workspace", status: "Sample", repo: null, metric: "Sample records only", color: "good" },
   { name: "Ram Ready Digital Literacy", role: "Flagship demo · Ram Ready template source", status: "Live", repo: "github.com/Brexatlas/Digital-Literacy-Course", metric: "20 episodes across 4 acts", color: "good" },
   { name: "Ram Ready Financial Futures", role: "Sequel course, same template family", status: "Live", repo: "github.com/Brexatlas/Financial-Literacy-Course", metric: "Continues the Ram Ready sequence", color: "accentDark" },
 ];
@@ -180,16 +299,16 @@ const PROJECTS = [
 /* ---------- TUTORIAL TOURS ---------- */
 const TOURS = {
   professor: [
-    { id: "t-forge", title: "Course Forge", text: "Paste any content — a syllabus, lecture notes, a chapter. This is where every course starts." },
-    { id: "t-template", title: "Lesson templates", text: "The template decides the shape of every lesson. Ram Ready uses the six-question spine from the Digital Literacy course." },
-    { id: "t-counts", title: "Set the volume", text: "Tell it how many lessons, quizzes, and knowledge checks you want. It builds to the number." },
-    { id: "t-prompt", title: "Prompting guide", text: "Open this to learn how to phrase a request. Better input, better course." },
-    { id: "t-generate", title: "Generate", text: "One click builds the full course map. Nothing goes live — it lands in your sandbox first." },
-    { id: "t-map", title: "Content map", text: "Read the whole course at a glance. Click any lesson to open it." },
-    { id: "t-editor", title: "Lesson editor", text: "Edit by hand, or ask the AI editor to change just that lesson. Undo and redo cover every change." },
-    { id: "t-sandbox", title: "Sandbox", text: "Play the course exactly as a student will, before anyone is enrolled." },
-    { id: "t-grader", title: "Paper grader", text: "Set your grading parameters, get a suggested grade with reasoning. You confirm — it never posts on its own." },
-    { id: "t-classes", title: "Classes & plan", text: "Each class holds up to 50 students. Your plan controls how many classes you can run at once." },
+    { id: "t-forge", tab: "forge", title: "Create a course", text: "Paste a syllabus, lecture notes, or a chapter outline. This is where every course starts." },
+    { id: "t-template", tab: "forge", title: "Lesson templates", text: "The template decides the shape of every lesson. Ram Ready uses the six-question spine from the Digital Literacy course." },
+    { id: "t-counts", tab: "forge", title: "Set the volume", text: "Tell it how many lessons, quizzes, and knowledge checks you want. It builds to the number." },
+    { id: "t-prompt", tab: "forge", title: "Prompting guide", text: "Open this to learn how to phrase a request. Better input, better course." },
+    { id: "t-generate", tab: "forge", title: "Build the course map", text: "One click builds the editable map on this device. Nothing goes live; it stays in your preview workspace." },
+    { id: "t-map", tab: "build", title: "Content map", text: "After you build a course, this tab opens automatically. Read the whole course at a glance and choose any lesson to edit it." },
+    { id: "t-editor", tab: "build", title: "Lesson editor", text: "Open a lesson to edit by hand or apply one of the supported focused directions. Undo and redo include saved edit steps." },
+    { id: "t-sandbox", tab: "build", title: "Student preview", text: "Try the course exactly as a student will before you connect it to a class." },
+    { id: "t-grader", tab: "grade", title: "Paper grading preview", text: "Set the parameters and review a local suggested score. You confirm it; this preview does not send or post a grade." },
+    { id: "t-classes", tab: "classes", title: "Classes and plan", text: "Create and review demonstration classes here. Cloud enrollment starts only after a saved class is connected." },
   ],
   learner: [
     { id: "t-xp", title: "Your progress", text: "XP, level, and streak. Finishing lessons and passing checks moves all three." },
@@ -202,7 +321,7 @@ const TOURS = {
   admin: [
     { id: "t-stats", title: "Institution pulse", text: "Live counts across every department running on the platform." },
     { id: "t-catalog", title: "Catalog", text: "Every course, its owner, and a health indicator based on learner activity." },
-    { id: "t-ai", title: "AI governance", text: "Budget, usage split, and the policy line that matters: instructors approve all grades, data stays in your tenancy." },
+    { id: "t-ai", title: "Assistant controls", text: "Usage, review steps, and the policy line that matters: instructors approve all grades and control class access." },
     { id: "t-plugins", title: "Plug-ins", text: "Toggle integrations without a ticket. SIS sync, proctoring, library reserves." },
   ],
 };
@@ -236,7 +355,7 @@ function Btn({ t, children, onClick, variant = "solid", size = "md", disabled, s
     danger: { background: "transparent", color: t.bad, border: `1px solid ${t.bad}` },
   };
   return (
-    <button data-tour={tour} onClick={disabled ? undefined : onClick} style={{ ...base, ...variants[variant], ...style }}
+    <button type="button" disabled={disabled} data-tour={tour} onClick={disabled ? undefined : onClick} style={{ ...base, ...variants[variant], ...style }}
       onMouseDown={(e) => !disabled && (e.currentTarget.style.transform = "scale(.97)")}
       onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
       onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
@@ -258,15 +377,23 @@ function Tutorial({ t, steps, step, setStep, onClose }) {
   const current = steps[step];
   useEffect(() => {
     if (!current) return;
+    let rectTimer;
+    let settleTimer;
     const find = () => {
       const el = document.querySelector(`[data-tour="${current.id}"]`);
       if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => { const r = el.getBoundingClientRect(); setRect({ top: r.top, left: r.left, width: r.width, height: r.height }); }, 320);
+        rectTimer = setTimeout(() => { const r = el.getBoundingClientRect(); setRect({ top: r.top, left: r.left, width: r.width, height: r.height }); }, 320);
       } else setRect(null);
     };
-    find();
+    const tabButton = current.tab ? document.querySelector(`[data-tour-tab="${current.tab}"]`) : null;
+    if (tabButton && !tabButton.disabled) tabButton.click();
+    settleTimer = setTimeout(find, tabButton ? 90 : 0);
     window.addEventListener("resize", find);
-    return () => window.removeEventListener("resize", find);
+    return () => {
+      window.removeEventListener("resize", find);
+      clearTimeout(rectTimer);
+      clearTimeout(settleTimer);
+    };
   }, [step, current]);
 
   if (!current) return null;
@@ -274,7 +401,7 @@ function Tutorial({ t, steps, step, setStep, onClose }) {
   const popTop = rect ? (below ? rect.top + rect.height + 22 : rect.top - 20) : window.innerHeight / 2;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 90 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 90, pointerEvents: "none" }}>
       {rect ? (
         <div style={{ position: "fixed", top: rect.top - 6, left: rect.left - 6, width: rect.width + 12, height: rect.height + 12,
           borderRadius: t.radius, border: `2px solid ${t.accent}`, boxShadow: "0 0 0 9999px rgba(6,10,20,.72)", pointerEvents: "none" }} />
@@ -284,12 +411,13 @@ function Tutorial({ t, steps, step, setStep, onClose }) {
           top: below ? rect.top + rect.height + 2 : rect.top - 22, color: t.accent, fontSize: 20, pointerEvents: "none",
           transform: below ? "none" : "rotate(180deg)" }}>▲</div>
       )}
-      <div className="cc-pop" style={{ position: "fixed", left: 16, right: 16, maxWidth: 380, margin: "0 auto",
+      <div className="cc-pop" style={{ position: "fixed", left: 16, right: 16, maxWidth: 440, margin: "0 auto",
         top: Math.max(16, Math.min(popTop, window.innerHeight - 200)), transform: below ? "none" : "translateY(-100%)",
-        background: t.card, border: `1px solid ${t.accent}`, borderRadius: t.radius, padding: 16, zIndex: 92 }}>
+        background: t.card, border: `1px solid ${t.accent}`, borderRadius: t.radius, padding: 16, zIndex: 92, pointerEvents: "auto" }}
+        role="dialog" aria-modal="false" aria-label={`Tutorial step ${step + 1} of ${steps.length}: ${current.title}`}>
         <div style={{ fontFamily: t.mono, fontSize: 11, color: t.accentDark, letterSpacing: ".1em" }}>TUTORIAL · {step + 1} / {steps.length}</div>
-        <div style={{ fontFamily: t.display, fontSize: 19, fontWeight: 700, color: t.ink, margin: "4px 0 6px" }}>{current.title}</div>
-        <div style={{ fontFamily: t.bodyFont, fontSize: 14, color: t.body, lineHeight: 1.5 }}>{current.text}</div>
+        <div style={{ fontFamily: t.display, fontSize: 22, fontWeight: 700, color: t.ink, margin: "4px 0 6px" }}>{current.title}</div>
+        <div style={{ fontFamily: t.bodyFont, fontSize: 16, color: t.body, lineHeight: 1.55 }}>{current.text}</div>
         <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
           <Btn t={t} variant="quiet" size="sm" onClick={onClose}>Skip tour</Btn>
           <div style={{ flex: 1 }} />
@@ -347,7 +475,7 @@ function EpisodePlayer({ t, episode, lesson, onExit, preview, onXP }) {
               {check.options.map((o, i) => {
                 const picked = answers[idx] === i, right = i === check.answer;
                 return (
-                  <button key={i} onClick={() => { if (answers[idx] !== undefined) return; setAnswers({ ...answers, [idx]: i }); if (right) { setGained((g) => g + 25); onXP && onXP(25); } }}
+                  <button type="button" key={i} onClick={() => { if (answers[idx] !== undefined) return; setAnswers({ ...answers, [idx]: i }); if (right) { setGained((g) => g + 25); onXP && onXP(25); } }}
                     style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 7,
                       borderRadius: t.radius === "0px" ? 0 : 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: t.bodyFont, color: t.ink,
                       border: `1px solid ${picked ? (right ? t.good : t.bad) : t.line}`, background: picked ? (right ? t.good + "18" : t.bad + "18") : "transparent" }}>
@@ -382,7 +510,7 @@ function EpisodePlayer({ t, episode, lesson, onExit, preview, onXP }) {
             {lesson.quiz[qi].options.map((o, i) => {
               const picked = quizAns[qi] === i, right = i === lesson.quiz[qi].answer;
               return (
-                <button key={i} onClick={() => { if (quizAns[qi] !== undefined) return; setQuizAns({ ...quizAns, [qi]: i }); if (right) { setGained((g) => g + 50); onXP && onXP(50); } }}
+                <button type="button" key={i} onClick={() => { if (quizAns[qi] !== undefined) return; setQuizAns({ ...quizAns, [qi]: i }); if (right) { setGained((g) => g + 50); onXP && onXP(50); } }}
                   style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 7,
                     borderRadius: t.radius === "0px" ? 0 : 12, fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: t.bodyFont, color: t.ink,
                     border: `1px solid ${picked ? (right ? t.good : t.bad) : t.line}`, background: picked ? (right ? t.good + "18" : t.bad + "18") : "transparent" }}>
@@ -418,15 +546,13 @@ function EpisodePlayer({ t, episode, lesson, onExit, preview, onXP }) {
 /* ============================================================
    COURSE FORGE
    ============================================================ */
-function CourseForge({ t, setCourse, pushHistory }) {
+function CourseForge({ t, onCreateCourse }) {
   const [pasted, setPasted] = useState("");
   const [tpl, setTpl] = useState("ramready");
-  const [model, setModel] = useState("Claude Sonnet");
   const [counts, setCounts] = useState({ lessons: 8, quizzes: 2, checks: 2 });
   const [showPrompt, setShowPrompt] = useState(false);
   const [phase, setPhase] = useState("idle");
   const [stepI, setStepI] = useState(0);
-  const [demo, setDemo] = useState(false);
 
   const STEPS = ["Reading your content…", "Detecting concepts and dependencies…", `Applying the ${TEMPLATES[tpl].name} template…`, `Structuring ${counts.lessons} lessons…`, "Writing knowledge checks…"];
 
@@ -435,39 +561,20 @@ function CourseForge({ t, setCourse, pushHistory }) {
     if (stepI < STEPS.length - 1) { const id = setTimeout(() => setStepI(stepI + 1), 850); return () => clearTimeout(id); }
   }, [phase, stepI]);
 
-  const generate = async () => {
-    setPhase("building"); setStepI(0); setDemo(false);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000,
-          messages: [{ role: "user", content:
-`You are the course-generation engine in a university LMS. Build a course MAP (titles only) from the professor's content.
-Template: "${TEMPLATES[tpl].name}" — ${TEMPLATES[tpl].desc}
-Group unit "${TEMPLATES[tpl].group}", lesson unit "${TEMPLATES[tpl].unit}". Total lessons: exactly ${counts.lessons}, across 3 groups.
-Return ONLY valid JSON, no fences:
-{"courseTitle":string,"subtitle":string,"acts":[{"title":string,"episodes":[{"id":string,"title":string,"type":"Story"|"Lab"|"Drill"|"Seminar","minutes":number}]}]}
-Titles must be vivid and specific, not generic. Vary the types.
-Professor's content:
-${pasted.slice(0, 3500)}` }] }),
-      });
-      const d = await r.json();
-      const text = d.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      parsed.templateKey = tpl;
-      setCourse(parsed); pushHistory(parsed);
-      setPhase("done");
-    } catch (e) {
-      setCourse(DEMO_COURSE); pushHistory(DEMO_COURSE); setDemo(true); setPhase("done");
-    }
+  const generate = () => {
+    setPhase("building");
+    setStepI(0);
+    const generated = buildLocalCourseMap(pasted, tpl, counts);
+    onCreateCourse(generated);
+    setPhase("done");
   };
 
   return (
     <div className="cc-rise">
       <div style={{ background: t.heroGrad, borderRadius: t.radius, padding: 20, marginBottom: 14, color: "#fff" }}>
-        <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>COURSE FORGE</div>
-        <h1 style={{ fontFamily: t.display, fontSize: 26, fontWeight: 700, margin: "6px 0 4px" }}>Paste your content. We transform it.</h1>
-        <p style={{ fontSize: 14, opacity: 0.82, margin: 0, lineHeight: 1.5 }}>A syllabus, lecture notes, a chapter outline. You get an interactive course you can read, edit, test, and deploy.</p>
+        <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>CREATE COURSE</div>
+        <h1 style={{ fontFamily: t.display, fontSize: 26, fontWeight: 700, margin: "6px 0 4px" }}>Paste your content. Build a course map.</h1>
+        <p style={{ fontSize: 14, opacity: 0.82, margin: 0, lineHeight: 1.5 }}>Start with a syllabus, lecture notes, or a chapter outline. EdNotebook organizes an editable course map on this device.</p>
       </div>
 
       <Card t={t} tour="t-forge" style={{ marginBottom: 12 }}>
@@ -477,7 +584,7 @@ ${pasted.slice(0, 3500)}` }] }),
           style={{ width: "100%", padding: 12, fontSize: 14, fontFamily: t.bodyFont, color: t.ink, background: t.paper,
             border: `1px solid ${t.line}`, borderRadius: t.radius === "0px" ? 0 : 12, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
         <div style={{ marginTop: 12 }} data-tour="t-prompt">
-          <button onClick={() => setShowPrompt(!showPrompt)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: t.mono, fontSize: 12, color: t.primary }}>
+          <button type="button" onClick={() => setShowPrompt(!showPrompt)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: t.mono, fontSize: 12, color: t.primary }}>
             {showPrompt ? "▾" : "▸"} How to prompt this well
           </button>
           {showPrompt && (
@@ -499,7 +606,7 @@ ${pasted.slice(0, 3500)}` }] }),
         <Label t={t}>2 · Lesson template</Label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
           {Object.entries(TEMPLATES).map(([k, v]) => (
-            <button key={k} onClick={() => setTpl(k)} style={{ padding: "6px 13px", borderRadius: t.radius === "0px" ? 0 : 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            <button type="button" key={k} onClick={() => setTpl(k)} style={{ padding: "6px 13px", borderRadius: t.radius === "0px" ? 0 : 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
               fontFamily: t.bodyFont, border: `1px solid ${tpl === k ? t.primary : t.line}`, background: tpl === k ? t.primary : "transparent", color: tpl === k ? "#fff" : t.slate }}>
               {v.name}{k === "ramready" && " ★"}
             </button>
@@ -524,20 +631,8 @@ ${pasted.slice(0, 3500)}` }] }),
         ))}
       </Card>
 
-      <Card t={t} style={{ marginBottom: 12 }}>
-        <Label t={t}>4 · Model</Label>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {["Claude Sonnet", "Claude Haiku", "Campus model"].map((m) => (
-            <button key={m} onClick={() => setModel(m)} style={{ padding: "6px 13px", borderRadius: t.radius === "0px" ? 0 : 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
-              fontFamily: t.bodyFont, border: `1px solid ${model === m ? t.primary : t.line}`, background: model === m ? t.primary : "transparent", color: model === m ? "#fff" : t.slate }}>
-              {m}
-            </button>
-          ))}
-        </div>
-      </Card>
-
       <Btn t={t} variant="accent" size="lg" full tour="t-generate" onClick={generate} disabled={phase === "building" || pasted.trim().length < 10} style={{ fontFamily: t.display, marginBottom: 12 }}>
-        {phase === "building" ? "Forging…" : "⚡ Generate course"}
+        {phase === "building" ? "Building course map…" : "Build course from content"}
       </Btn>
 
       {phase === "building" && (
@@ -551,7 +646,7 @@ ${pasted.slice(0, 3500)}` }] }),
           ))}
         </Card>
       )}
-      {demo && phase === "done" && <div style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, textAlign: "center" }}>demo course loaded — connection unavailable</div>}
+      {phase === "done" && <div role="status" style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, textAlign: "center" }}>Course map created on this device. Review and edit it before publishing.</div>}
     </div>
   );
 }
@@ -563,6 +658,7 @@ function CourseWorkspace({ t, course, setCourse, lessons, setLessons, history, h
   const [openId, setOpenId] = useState(null);
   const [askOpen, setAskOpen] = useState(false);
   const [ask, setAsk] = useState("");
+  const [directionNotice, setDirectionNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState(false);
 
@@ -572,47 +668,30 @@ function CourseWorkspace({ t, course, setCourse, lessons, setLessons, history, h
   const openEp = allEps.find((e) => e.id === openId);
   const lesson = openId ? lessons[openId] : null;
 
-  const genLesson = async (ep) => {
+  const genLesson = (ep) => {
     setBusy(true);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000,
-          messages: [{ role: "user", content:
-`Write ONE lesson for "${course.courseTitle}". Lesson title: "${ep.title}". Type: ${ep.type}.
-Use exactly these section headings in order: ${tplSections.join(" | ")}.
-Each section body: 55-90 words, concrete, undergrad level.
-Return ONLY JSON, no fences:
-{"sections":[{"heading":string,"body":string}],"knowledgeChecks":[{"after":number,"q":string,"options":[string,string,string,string],"answer":number,"why":string}],"quiz":[{"q":string,"options":[string,string,string,string],"answer":number,"why":string}]}
-Include 2 knowledgeChecks (after = section index they follow) and 2 quiz questions. "why" explains reasoning.` }] }),
-      });
-      const d = await r.json();
-      const text = d.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      const nl = { ...lessons, [ep.id]: parsed }; setLessons(nl); pushHistory(course, nl);
-    } catch { const nl = { ...lessons, [ep.id]: DEMO_LESSON }; setLessons(nl); pushHistory(course, nl); }
+    const starter = buildLocalLessonStarter(course, ep, tplSections);
+    const nl = { ...lessons, [ep.id]: starter };
+    setLessons(nl);
+    pushHistory(course, nl);
     setBusy(false);
   };
 
-  const askEditor = async () => {
+  const askEditor = () => {
     if (!ask.trim() || !lesson) return;
     setBusy(true);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000,
-          messages: [{ role: "user", content:
-`Revise this lesson per the instructor's request. Keep the same JSON shape and section headings unless asked to change them.
-Instructor request: "${ask}"
-Current lesson JSON:
-${JSON.stringify(lesson).slice(0, 3000)}
-Return ONLY the revised JSON, no fences.` }] }),
-      });
-      const d = await r.json();
-      const text = d.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      const nl = { ...lessons, [openId]: parsed }; setLessons(nl); pushHistory(course, nl); setAsk(""); setAskOpen(false);
-    } catch { setAsk(""); }
+    const result = applyLocalLessonDirection(lesson, ask);
+    if (!result.applied) {
+      setDirectionNotice(result.message);
+      setBusy(false);
+      return;
+    }
+    const nl = { ...lessons, [openId]: result.lesson };
+    setLessons(nl);
+    pushHistory(course, nl);
+    setDirectionNotice(result.message);
+    setAsk("");
+    setAskOpen(false);
     setBusy(false);
   };
 
@@ -643,28 +722,30 @@ Return ONLY the revised JSON, no fences.` }] }),
         </Card>
         {!lesson && (
           <Card t={t} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 14, color: t.body, marginBottom: 12 }}>This lesson is a title so far. Generate the full body using the {TEMPLATES[course.templateKey || "ramready"].name} template.</div>
-            <Btn t={t} variant="accent" full onClick={() => genLesson(openEp)} disabled={busy}>{busy ? "Writing…" : "Generate full lesson"}</Btn>
+            <div style={{ fontSize: 14, color: t.body, marginBottom: 12 }}>This lesson is a title so far. Create an editable starter using the {TEMPLATES[course.templateKey || "ramready"].name} sections and your pasted source.</div>
+            <Btn t={t} variant="accent" full onClick={() => genLesson(openEp)} disabled={busy}>{busy ? "Creating lesson starter…" : "Create editable lesson starter"}</Btn>
           </Card>
         )}
         {lesson && (
           <>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <Btn t={t} variant="accent" onClick={() => onPreview(openEp, lesson)} full>▶ Preview as student</Btn>
-              <Btn t={t} variant="ghost" onClick={() => setAskOpen(!askOpen)}>✎ Ask editor</Btn>
+              <Btn t={t} variant="ghost" onClick={() => setAskOpen(!askOpen)}>✎ Apply an editing direction</Btn>
             </div>
             {askOpen && (
               <Card t={t} className="cc-rise" style={{ marginBottom: 12, borderColor: t.primary }}>
-                <Label t={t}>Lesson editor · applies to this lesson only</Label>
-                <textarea value={ask} onChange={(e) => setAsk(e.target.value)} rows={2} placeholder="e.g. Make section 3 harder and add a real-world example about kidney dialysis."
+                <Label t={t}>Quick editing directions · applies to this lesson only</Label>
+                <div style={{ fontSize: 12.5, color: t.slate, lineHeight: 1.45, marginBottom: 7 }}>Supported: shorten, add an example prompt, and make harder. Add “section 3” to target one section.</div>
+                <textarea value={ask} onChange={(e) => { setAsk(e.target.value); setDirectionNotice(""); }} rows={2} placeholder="e.g. Make section 3 harder and add an example prompt."
                   style={{ width: "100%", padding: 10, fontSize: 14, fontFamily: t.bodyFont, color: t.ink, background: t.paper, border: `1px solid ${t.line}`, borderRadius: t.radius === "0px" ? 0 : 12, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
-                <Btn t={t} variant="solid" full style={{ marginTop: 8 }} onClick={askEditor} disabled={busy || !ask.trim()}>{busy ? "Revising…" : "Apply change"}</Btn>
+                <Btn t={t} variant="solid" full style={{ marginTop: 8 }} onClick={askEditor} disabled={busy || !ask.trim()}>{busy ? "Applying direction…" : "Apply editing direction"}</Btn>
+                {directionNotice && <div role="status" style={{ marginTop: 8, fontSize: 12.5, color: t.slate }}>{directionNotice}</div>}
               </Card>
             )}
             {lesson.sections.map((s, si) => (
               <Card t={t} key={si} style={{ marginBottom: 8 }}>
                 <div style={{ fontFamily: t.mono, fontSize: 11, color: t.accentDark, letterSpacing: ".1em", marginBottom: 5 }}>{s.heading.toUpperCase()}</div>
-                <textarea value={s.body} onChange={(e) => editSection(si, e.target.value)} rows={4}
+                <textarea value={s.body} onChange={(e) => editSection(si, e.target.value)} onBlur={() => pushHistory(course, lessons)} rows={4}
                   style={{ width: "100%", padding: 10, fontSize: 14.5, lineHeight: 1.6, fontFamily: t.bodyFont, color: t.body, background: t.paper, border: `1px solid ${t.line}`, borderRadius: t.radius === "0px" ? 0 : 10, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
                 {lesson.knowledgeChecks?.filter((k) => k.after === si).map((k, ki) => (
                   <div key={ki} style={{ marginTop: 8, padding: 10, background: t.accent + "12", borderRadius: t.radius === "0px" ? 0 : 10, border: `1px solid ${t.accent}44` }}>
@@ -696,7 +777,7 @@ Return ONLY the revised JSON, no fences.` }] }),
         <Btn t={t} variant="quiet" size="sm" onClick={undo} disabled={hIdx <= 0}>↶ Undo</Btn>
         <Btn t={t} variant="quiet" size="sm" onClick={redo} disabled={hIdx >= history.length - 1}>↷ Redo</Btn>
         <div style={{ flex: 1 }} />
-        <Pill t={t} tone={live ? t.good : t.accentDark}>{live ? "LIVE" : "SANDBOX"}</Pill>
+        <Pill t={t} tone={live ? t.good : t.accentDark}>{live ? "DEVICE PREVIEW READY" : "EDITING"}</Pill>
       </div>
       <Card t={t} tour="t-map" style={{ marginBottom: 12 }}>
         <Label t={t}>Content map · read the whole course without clicking through</Label>
@@ -714,7 +795,7 @@ Return ONLY the revised JSON, no fences.` }] }),
           {act.episodes.map((ep) => {
             const written = !!lessons[ep.id];
             return (
-              <button key={ep.id} onClick={() => setOpenId(ep.id)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, marginBottom: 7, cursor: "pointer" }}>
+              <button type="button" key={ep.id} onClick={() => setOpenId(ep.id)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, marginBottom: 7, cursor: "pointer" }}>
                 <Card t={t} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 99, background: written ? t.good : t.line, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -730,8 +811,8 @@ Return ONLY the revised JSON, no fences.` }] }),
       ))}
       <Card t={t} tour="t-sandbox" style={{ marginBottom: 12, borderColor: t.accent }}>
         <Label t={t}>Sandbox</Label>
-        <div style={{ fontSize: 14, color: t.body, lineHeight: 1.55, marginBottom: 10 }}>Nothing here is visible to students yet. Open any written lesson and hit <strong>Preview as student</strong>, then publish when it holds up.</div>
-        <Btn t={t} variant={live ? "quiet" : "solid"} full onClick={() => setLive(!live)}>{live ? "Unpublish · return to sandbox" : "Publish course to this class"}</Btn>
+        <div style={{ fontSize: 14, color: t.body, lineHeight: 1.55, marginBottom: 10 }}>Nothing here is visible to students. Open a written lesson and choose <strong>Preview as student</strong>, then mark this device draft ready when it holds up.</div>
+        <Btn t={t} variant={live ? "quiet" : "solid"} full onClick={() => setLive(!live)}>{live ? "Return device draft to editing" : "Mark device draft ready for preview"}</Btn>
       </Card>
     </div>
   );
@@ -762,14 +843,14 @@ function ManuscriptReview({ t, manuscript, setManuscript }) {
       </div>
       {manuscript.paragraphs.map((p) => (
         <div key={p.id} style={{ marginBottom: 10 }}>
-          <div style={{ background: t.paper, padding: 11, borderRadius: t.radius === "0px" ? 0 : 10, fontFamily: "'Newsreader', serif", fontSize: 14.5, lineHeight: 1.65, color: t.ink }}>{p.text}</div>
+          <div style={{ background: t.paper, padding: 11, borderRadius: t.radius === "0px" ? 0 : 10, fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 14.5, lineHeight: 1.65, color: t.ink }}>{p.text}</div>
           {p.comments.map((c) => (
             <div key={c.id} style={{ display: "flex", gap: 7, marginTop: 6, paddingLeft: 10, borderLeft: `2px solid ${c.resolved ? t.good : t.accent}` }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: t.mono, fontSize: 10, color: c.resolved ? t.good : t.accentDark }}>{c.author.toUpperCase()} {c.resolved ? "· ADDRESSED" : "· OPEN"}</div>
                 <div style={{ fontSize: 13, color: t.body, lineHeight: 1.5 }}>{c.text}</div>
               </div>
-              <button onClick={() => toggleResolve(p.id, c.id)} style={{ fontFamily: t.mono, fontSize: 10, color: t.slate, background: "transparent", border: `1px solid ${t.line}`, borderRadius: 999, padding: "2px 8px", cursor: "pointer", height: "fit-content" }}>
+              <button type="button" onClick={() => toggleResolve(p.id, c.id)} style={{ fontFamily: t.mono, fontSize: 10, color: t.slate, background: "transparent", border: `1px solid ${t.line}`, borderRadius: 999, padding: "2px 8px", cursor: "pointer", height: "fit-content" }}>
                 {c.resolved ? "reopen" : "resolve"}
               </button>
             </div>
@@ -780,11 +861,11 @@ function ManuscriptReview({ t, manuscript, setManuscript }) {
                 style={{ width: "100%", padding: 8, fontSize: 13, fontFamily: t.bodyFont, color: t.ink, background: t.card, border: `1px solid ${t.primary}`, borderRadius: t.radius === "0px" ? 0 : 10, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
               <div style={{ display: "flex", gap: 6, marginTop: 5 }}>
                 <Btn t={t} variant="solid" size="sm" onClick={() => addComment(p.id)}>Post note</Btn>
-                <Btn t={t} variant="quiet" size="sm" onClick={() => { setOpenFor(null); setDraft(""); }}>Cancel</Btn>
+                <Btn t={t} variant="quiet" size="sm" onClick={() => { setOpenFor(null); setDraft(""); }}>Cancel paragraph note</Btn>
               </div>
             </div>
           ) : (
-            <button onClick={() => setOpenFor(p.id)} style={{ marginTop: 5, background: "transparent", border: "none", cursor: "pointer", fontFamily: t.mono, fontSize: 11, color: t.primary, padding: 0 }}>+ comment on this paragraph</button>
+            <button type="button" onClick={() => setOpenFor(p.id)} style={{ marginTop: 5, background: "transparent", border: "none", cursor: "pointer", fontFamily: t.mono, fontSize: 11, color: t.primary, padding: 0 }}>+ comment on this paragraph</button>
           )}
         </div>
       ))}
@@ -810,36 +891,17 @@ function PaperGrader({ t, manuscript, setManuscript }) {
   const [graded, setGraded] = useState({});
 
   const open = subs.find((s) => s.id === openId);
-  const bodyText = open?.live ? manuscript.paragraphs.map((p) => p.text).join(" ") : open?.excerpt;
-
-  const suggest = async () => {
+  const suggest = () => {
     setBusy(true); setResult(null);
     const active = params.filter((p) => p.on);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000,
-          messages: [{ role: "user", content:
-`You are a grading assistant producing a SUGGESTED grade only — a human instructor confirms it.
-Rubric: ${active.map((p) => `${p.name} ${p.weight}%`).join(", ")}. Required style: ${open.style}. Length: ${open.words} words.
-Paper excerpt: "${bodyText}"
-Return ONLY JSON, no fences:
-{"suggested":number 0-100,"criteria":[{"name":string,"score":number,"note":string}],"strength":string,"growth":string}
-"growth" must teach — explain WHY something is weak and what to practice, never rewrite it.` }] }),
-      });
-      const d = await r.json();
-      const text = d.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
-      setResult(JSON.parse(text.replace(/```json|```/g, "").trim()));
-    } catch {
-      setResult({
-        suggested: open.words < 800 ? 71 : 89,
-        criteria: active.map((p) => ({ name: p.name, score: open.words < 800 ? 68 + Math.round(Math.random() * 8) : 85 + Math.round(Math.random() * 10), note: "Assessed against the submitted draft." })),
-        strength: open.words < 800 ? "The core claim is stated plainly and never contradicts itself." : "Sources are integrated into the argument rather than dropped in as blocks.",
-        growth: open.words < 800
-          ? "Paragraphs are stating facts and stopping. A paragraph earns its place when it does something with the fact. Try this: after each factual sentence, write one sentence beginning 'which means…' and see which ones you keep."
-          : "The counterargument section concedes too fast. Practice naming the strongest version of the opposing view before you answer it.",
-      });
-    }
+    setResult({
+      suggested: open.words < 800 ? 71 : 89,
+      criteria: active.map((p, index) => ({ name: p.name, score: open.words < 800 ? 69 + (index % 4) : 86 + (index % 4), note: "Local rubric preview only. The instructor must read the work and confirm every score." })),
+      strength: open.words < 800 ? "The core claim is stated plainly and stays consistent." : "Sources appear within the argument instead of standing apart from it.",
+      growth: open.words < 800
+        ? "Several paragraphs state a fact and stop. After each factual sentence, write one sentence beginning with ‘which means…’ and keep the version that advances the claim."
+        : "Review the counterargument and make sure it presents the strongest opposing view before answering it.",
+    });
     setBusy(false);
   };
 
@@ -863,7 +925,7 @@ Return ONLY JSON, no fences:
           <Label t={t}>Grading parameters</Label>
           {params.map((p, i) => (
             <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0" }}>
-              <button onClick={() => setParams(params.map((x, j) => j === i ? { ...x, on: !x.on } : x))}
+              <button type="button" onClick={() => setParams(params.map((x, j) => j === i ? { ...x, on: !x.on } : x))}
                 style={{ width: 20, height: 20, borderRadius: 5, border: `1px solid ${p.on ? t.primary : t.line}`, background: p.on ? t.primary : "transparent", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: 1 }}>
                 {p.on ? "✓" : ""}
               </button>
@@ -900,8 +962,8 @@ Return ONLY JSON, no fences:
             <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} placeholder="Add your own note — this is what the student sees first."
               style={{ width: "100%", padding: 10, fontSize: 14, fontFamily: t.bodyFont, color: t.ink, background: t.paper, border: `1px solid ${t.line}`, borderRadius: t.radius === "0px" ? 0 : 12, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <Btn t={t} variant="solid" full onClick={() => { setGraded({ ...graded, [open.id]: result.suggested }); setOpenId(null); setResult(null); }}>Confirm {result.suggested} & send</Btn>
-              <Btn t={t} variant="quiet" onClick={suggest}>↻</Btn>
+              <Btn t={t} variant="solid" full onClick={() => { setGraded({ ...graded, [open.id]: result.suggested }); setOpenId(null); setResult(null); }}>Save {result.suggested} in this grading preview</Btn>
+              <Btn t={t} variant="quiet" onClick={suggest}>Refresh suggested grade</Btn>
             </div>
           </Card>
         )}
@@ -916,7 +978,7 @@ Return ONLY JSON, no fences:
         <div style={{ fontSize: 14, color: t.body, lineHeight: 1.55 }}>Set your rubric, get a suggested grade with reasoning, then confirm or override. Nothing posts without you.</div>
       </Card>
       {subs.map((s) => (
-        <button key={s.id} onClick={() => setOpenId(s.id)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, marginBottom: 8, cursor: "pointer" }}>
+        <button type="button" key={s.id} onClick={() => setOpenId(s.id)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, marginBottom: 8, cursor: "pointer" }}>
           <Card t={t} style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14.5, fontWeight: 600, color: t.ink }}>{s.title}{s.live && " ✎"}</div>
@@ -942,7 +1004,7 @@ function CommunityPanel({ t, asProfessor }) {
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={2} placeholder={asProfessor ? "Post a prompt to the class…" : "Ask the class something…"}
           style={{ width: "100%", padding: 10, fontSize: 14, fontFamily: t.bodyFont, color: t.ink, background: t.paper, border: `1px solid ${t.line}`, borderRadius: t.radius === "0px" ? 0 : 12, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
         <Btn t={t} variant="solid" size="sm" style={{ marginTop: 8 }} disabled={!draft.trim()}
-          onClick={() => { setThreads([{ id: Date.now(), author: asProfessor ? "Dr. Nguyen" : "You", role: asProfessor ? "Professor" : "Learner", time: "now", text: draft, replies: [] }, ...threads]); setDraft(""); }}>Post</Btn>
+          onClick={() => { setThreads([{ id: Date.now(), author: asProfessor ? "Dr. Nguyen" : "You", role: asProfessor ? "Professor" : "Student", time: "now", text: draft, replies: [] }, ...threads]); setDraft(""); }}>Publish discussion post</Btn>
       </Card>
       {threads.map((th) => (
         <Card t={t} key={th.id} style={{ marginBottom: 8 }}>
@@ -975,9 +1037,7 @@ function CommunityPanel({ t, asProfessor }) {
 /* ============================================================
    SUBSCRIPTION PLANS / UPGRADE MODAL
    ============================================================ */
-function PlanCard({ t, plan, current, courseLength, setCourseLength, onChoose }) {
-  const isPerCourse = plan.key === "perCourse";
-  const price = isPerCourse ? (courseLength === "8" ? 59 : 99) : plan.price;
+function PlanCard({ t, plan, current, onChoose }) {
   return (
     <Card t={t} style={{ marginBottom: 10, borderColor: current === plan.key ? t.accent : t.line }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -988,25 +1048,13 @@ function PlanCard({ t, plan, current, courseLength, setCourseLength, onChoose })
         {current === plan.key && <Pill t={t} tone={t.accentDark}>CURRENT</Pill>}
       </div>
       <div style={{ margin: "8px 0" }}>
-        {price === null && plan.key !== "enterprise" ? <span style={{ fontFamily: t.display, fontSize: 15, color: t.ink }}>See below</span>
-          : plan.key === "enterprise" ? <span style={{ fontFamily: t.display, fontSize: 22, fontWeight: 700, color: t.ink }}>Custom</span>
-          : <><span style={{ fontFamily: t.display, fontSize: 28, fontWeight: 700, color: t.ink }}>${price}</span><span style={{ fontFamily: t.mono, fontSize: 12, color: t.slate }}> {plan.cadence}</span></>}
+        <span style={{ fontFamily: t.display, fontSize: 28, fontWeight: 700, color: t.ink }}>Free</span>
       </div>
-      {isPerCourse && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-          {["8", "16"].map((wk) => (
-            <button key={wk} onClick={() => setCourseLength(wk)} style={{ padding: "4px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
-              fontFamily: t.bodyFont, border: `1px solid ${courseLength === wk ? t.primary : t.line}`, background: courseLength === wk ? t.primary : "transparent", color: courseLength === wk ? "#fff" : t.slate }}>
-              {wk}-week course
-            </button>
-          ))}
-        </div>
-      )}
       <div style={{ marginBottom: 10 }}>
         {plan.features.map((f, i) => <div key={i} style={{ fontSize: 13, color: t.body, padding: "2px 0" }}>✓ {f}</div>)}
       </div>
-      <Btn t={t} variant={current === plan.key ? "quiet" : plan.key === "enterprise" ? "ghost" : "accent"} full disabled={current === plan.key} onClick={() => onChoose(plan.key)}>
-        {current === plan.key ? "Current plan" : plan.key === "enterprise" ? "Talk to sales" : "Choose plan"}
+      <Btn t={t} variant={current === plan.key ? "quiet" : "accent"} full disabled={current === plan.key} onClick={() => onChoose(plan.key)}>
+        {current === plan.key ? "Current access" : "Use free access"}
       </Btn>
     </Card>
   );
@@ -1016,11 +1064,11 @@ function UpgradeModal({ t, plan, setPlan, courseLength, setCourseLength, onClose
     <div style={{ position: "fixed", inset: 0, background: "rgba(6,10,20,.72)", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div className="cc-pop" style={{ background: t.paper, borderRadius: `${t.radius} ${t.radius} 0 0`, maxWidth: 460, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontFamily: t.display, fontSize: 20, fontWeight: 700, color: t.ink }}>Plans</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: t.slate, cursor: "pointer" }}>×</button>
+          <div style={{ fontFamily: t.display, fontSize: 20, fontWeight: 700, color: t.ink }}>Free early access</div>
+          <button type="button" aria-label="Close free-access options" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: t.slate, cursor: "pointer" }}>×</button>
         </div>
-        <div style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, marginBottom: 12 }}>Every class holds up to {SEAT_CAP_PER_CLASS} students. Your plan controls how many classes run at once. UI only in this prototype — wire to Stripe or your billing provider for real charges.</div>
-        {PLANS.map((p) => <PlanCard key={p.key} t={t} plan={p} current={plan} courseLength={courseLength} setCourseLength={setCourseLength} onChoose={(k) => { if (k !== "enterprise") setPlan(k); onClose(); }} />)}
+        <div style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, marginBottom: 12 }}>Every class holds up to {SEAT_CAP_PER_CLASS} students. Paid services are coming later and are not required during early access.</div>
+        {PLANS.map((p) => <PlanCard key={p.key} t={t} plan={p} current={plan} onChoose={(k) => { setPlan(k); onClose(); }} />)}
       </div>
     </div>
   );
@@ -1057,33 +1105,15 @@ function PaperWriter({ t, manuscript, setManuscript }) {
   const addPara = () => setManuscript({ ...manuscript, paragraphs: [...manuscript.paragraphs, { id: "p" + Date.now(), text: "", comments: [] }] });
   const resolveComment = (pid, cid) => setManuscript({ ...manuscript, paragraphs: manuscript.paragraphs.map((p) => p.id === pid ? { ...p, comments: p.comments.map((c) => c.id === cid ? { ...c, resolved: true } : c) } : p) });
 
-  const askCoach = async () => {
+  const askCoach = () => {
     setBusy(true); setCoach(null);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000,
-          messages: [{ role: "user", content:
-`You are a writing coach inside a university platform. You NEVER rewrite the student's sentences for them. You diagnose and teach.
-Style required: ${manuscript.style}.
-Student draft:
-"""${fullText.slice(0, 2500)}"""
-Return ONLY JSON, no fences:
-{"diagnosis":[{"where":string,"issue":string,"why":string,"practice":string}],"doingWell":string}
-2-3 diagnosis items. Never include a rewritten version of their text.` }] }),
-      });
-      const d = await r.json();
-      const txt = d.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
-      setCoach(JSON.parse(txt.replace(/```json|```/g, "").trim()));
-    } catch {
-      setCoach({
-        doingWell: "Your opening move — stating the common framing, then undercutting it — is a real academic gesture.",
-        diagnosis: [
-          { where: "Short paragraph carrying no argument", issue: "A sentence standing alone as its own paragraph.", why: "A paragraph is a unit of reasoning, not a unit of fact. Standing alone, it reads as a note you left yourself.", practice: "Finish that sentence three ways starting with 'which means…', 'which costs…', 'which is why…'. Keep the one that connects to your thesis." },
-          { where: "The one-third figure", issue: "A strong statistic with no source attached.", why: "In academic writing an uncited number is treated as an unsupported claim, no matter how true it is.", practice: "Find where you got that figure and add it in the required citation form." },
-        ],
-      });
-    }
+    setCoach({
+      doingWell: "Your opening move states the common framing and then challenges it, which gives the paper a clear direction.",
+      diagnosis: [
+        { where: "Short paragraph carrying no argument", issue: "A sentence stands alone as its own paragraph.", why: "A paragraph should develop one unit of reasoning, not only state one fact.", practice: "Finish that sentence three ways starting with ‘which means…’, ‘which costs…’, and ‘which is why…’. Keep the one that connects to your thesis." },
+        { where: "The one-third figure", issue: "A strong statistic has no source attached.", why: "A reader cannot verify an uncited number, even when the number is accurate.", practice: `Find the source and add it using the selected ${manuscript.style} citation pattern.` },
+      ],
+    });
     setBusy(false);
   };
 
@@ -1093,13 +1123,13 @@ Return ONLY JSON, no fences:
         <Label t={t}>Paper setup · EduSync format</Label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
           {["APA", "MLA", "Chicago"].map((s) => (
-            <button key={s} onClick={() => setManuscript({ ...manuscript, style: s })} style={{ padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            <button type="button" key={s} onClick={() => setManuscript({ ...manuscript, style: s })} style={{ padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
               fontFamily: t.bodyFont, border: `1px solid ${manuscript.style === s ? t.primary : t.line}`, background: manuscript.style === s ? t.primary : "transparent", color: manuscript.style === s ? "#fff" : t.slate }}>{s}</button>
           ))}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {["Standard", "Formal", "Minimal"].map((c) => (
-            <button key={c} onClick={() => setCover(c)} style={{ padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            <button type="button" key={c} onClick={() => setCover(c)} style={{ padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: t.bodyFont, border: `1px solid ${cover === c ? t.accent : t.line}`, background: cover === c ? t.accent : "transparent", color: cover === c ? t.ink : t.slate }}>{c} cover page</button>
           ))}
         </div>
@@ -1118,9 +1148,9 @@ Return ONLY JSON, no fences:
       <Card t={t} style={{ marginBottom: 12 }}>
         <Label t={t}>{manuscript.style} title page · {cover.toLowerCase()}</Label>
         <div style={{ background: "#fff", border: `1px solid ${t.line}`, padding: "26px 16px", textAlign: "center", minHeight: 130 }}>
-          <div style={{ fontFamily: "'Newsreader', serif", fontSize: 17, fontWeight: 700, color: "#111", marginBottom: 14 }}>{manuscript.title}</div>
+          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 17, fontWeight: 700, color: "#111", marginBottom: 14 }}>{manuscript.title}</div>
           {["Your Name", "Example University", manuscript.course, manuscript.professor].map((c, i) => (
-            <div key={i} style={{ fontFamily: "'Newsreader', serif", fontSize: 12.5, color: "#444", lineHeight: 1.7 }}>{c}</div>
+            <div key={i} style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 12.5, color: "#444", lineHeight: 1.7 }}>{c}</div>
           ))}
         </div>
         <div style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, marginTop: 8, lineHeight: 1.5 }}>{STYLE_RULES[manuscript.style].notes}</div>
@@ -1135,10 +1165,10 @@ Return ONLY JSON, no fences:
           return (
             <div key={p.id} style={{ marginBottom: 10, position: "relative" }}>
               <textarea value={p.text} onChange={(e) => editPara(p.id, e.target.value)} rows={Math.max(2, Math.ceil(p.text.length / 60))}
-                style={{ width: "100%", padding: 10, fontSize: 15, lineHeight: 1.7, fontFamily: "'Newsreader', serif", color: t.ink, background: t.card,
+                style={{ width: "100%", padding: 10, fontSize: 15, lineHeight: 1.7, fontFamily: "Georgia, 'Times New Roman', serif", color: t.ink, background: t.card,
                   border: `1px solid ${unresolved.length ? t.accent : t.line}`, borderRadius: t.radius === "0px" ? 0 : 10, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
               {p.comments.length > 0 && (
-                <button onClick={() => setThread(thread === p.id ? null : p.id)}
+                <button type="button" onClick={() => setThread(thread === p.id ? null : p.id)}
                   style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: 99, border: "none", cursor: "pointer",
                     background: unresolved.length ? t.accent : t.good, color: "#fff", fontFamily: t.mono, fontSize: 11, lineHeight: 1 }}>{p.comments.length}</button>
               )}
@@ -1148,7 +1178,7 @@ Return ONLY JSON, no fences:
                     <div key={c.id} style={{ marginBottom: 8, paddingLeft: 9, borderLeft: `2px solid ${c.resolved ? t.good : t.accent}` }}>
                       <div style={{ fontFamily: t.mono, fontSize: 10, color: c.resolved ? t.good : t.accentDark }}>{c.author.toUpperCase()} {c.resolved ? "· ADDRESSED" : "· OPEN"}</div>
                       <div style={{ fontSize: 13, color: t.body, lineHeight: 1.5, marginBottom: 4 }}>{c.text}</div>
-                      {!c.resolved && <button onClick={() => resolveComment(p.id, c.id)} style={{ fontFamily: t.mono, fontSize: 10, color: t.primary, background: "transparent", border: `1px solid ${t.primary}`, borderRadius: 999, padding: "2px 8px", cursor: "pointer" }}>mark as revised</button>}
+                      {!c.resolved && <button type="button" onClick={() => resolveComment(p.id, c.id)} style={{ fontFamily: t.mono, fontSize: 10, color: t.primary, background: "transparent", border: `1px solid ${t.primary}`, borderRadius: 999, padding: "2px 8px", cursor: "pointer" }}>mark as revised</button>}
                     </div>
                   ))}
                 </div>
@@ -1159,7 +1189,7 @@ Return ONLY JSON, no fences:
         <Btn t={t} variant="quiet" size="sm" onClick={addPara}>+ New paragraph</Btn>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
           {STYLE_RULES[manuscript.style].headings.slice(0, 3).map((h, i) => (
-            <button key={i} onClick={() => setManuscript({ ...manuscript, paragraphs: [...manuscript.paragraphs, { id: "p" + Date.now() + i, text: ["Level 1 Heading", "Level 2 Heading", "Level 3 Heading"][i], comments: [] }] })}
+            <button type="button" key={i} onClick={() => setManuscript({ ...manuscript, paragraphs: [...manuscript.paragraphs, { id: "p" + Date.now() + i, text: ["Level 1 Heading", "Level 2 Heading", "Level 3 Heading"][i], comments: [] }] })}
               style={{ padding: "5px 11px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", fontFamily: t.mono, border: `1px solid ${t.line}`, background: "transparent", color: t.slate }}>+ H{i + 1}</button>
           ))}
         </div>
@@ -1200,8 +1230,8 @@ Return ONLY JSON, no fences:
         </Card>
       )}
 
-      <Btn t={t} variant="solid" full onClick={() => setManuscript({ ...manuscript, versions: [...manuscript.versions, { label: "Submitted draft", when: "just now", words }] })}>
-        Submit to {manuscript.professor}
+      <Btn t={t} variant="solid" full onClick={() => setManuscript({ ...manuscript, versions: [...manuscript.versions, { label: "Device submission preview", when: "just now", words }] })}>
+        Save submission preview on this device
       </Btn>
 
       <Label t={t}><span style={{ marginTop: 16, display: "block" }}>Version history</span></Label>
@@ -1249,7 +1279,7 @@ function FindClasses({ t, onEnroll }) {
         <Card t={t} key={c.code} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14.5, fontWeight: 600, color: t.ink }}>{c.code} · {c.title}</div>
-            <div style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, marginTop: 2 }}>{c.prof} · {c.learners} learners · {c.template} template</div>
+            <div style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, marginTop: 2 }}>{c.prof} · {c.learners} students · {c.template} template</div>
           </div>
           <Btn t={t} variant="ghost" size="sm" onClick={onEnroll}>Enroll</Btn>
         </Card>
@@ -1290,7 +1320,7 @@ function LearnerView({ t, xp, setXp, manuscript, setManuscript }) {
 
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {[{ id: "quest", l: "Quest map" }, { id: "find", l: "Find classes" }, { id: "write", l: "Paper writer" }, { id: "talk", l: "Discussion" }].map((x) => (
-          <button key={x.id} onClick={() => setTab(x.id)} style={{ padding: "7px 15px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+          <button type="button" key={x.id} onClick={() => setTab(x.id)} style={{ padding: "7px 15px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
             fontFamily: t.bodyFont, border: `1px solid ${tab === x.id ? t.primary : t.line}`, background: tab === x.id ? t.primary : "transparent", color: tab === x.id ? "#fff" : t.slate }}>{x.l}</button>
         ))}
       </div>
@@ -1299,7 +1329,7 @@ function LearnerView({ t, xp, setXp, manuscript, setManuscript }) {
         <>
           <div data-tour="t-mode" style={{ display: "flex", gap: 6, marginBottom: 14, alignItems: "center" }}>
             {[{ id: "story", l: "Story mode" }, { id: "focus", l: "Focus mode" }].map((m) => (
-              <button key={m.id} onClick={() => setMode(m.id)} style={{ padding: "5px 13px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              <button type="button" key={m.id} onClick={() => setMode(m.id)} style={{ padding: "5px 13px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
                 fontFamily: t.bodyFont, border: `1px solid ${mode === m.id ? t.accent : t.line}`, background: mode === m.id ? t.accent : "transparent", color: mode === m.id ? t.ink : t.slate }}>{m.l}</button>
             ))}
             <span style={{ fontFamily: t.mono, fontSize: 11, color: t.slate, marginLeft: "auto" }}>{mode === "story" ? "narrative on" : "essentials only"}</span>
@@ -1311,7 +1341,7 @@ function LearnerView({ t, xp, setXp, manuscript, setManuscript }) {
                 {act.episodes.map((ep) => {
                   const done = ep.state === "done", cur = ep.state === "current";
                   return (
-                    <button key={ep.id} disabled={ep.state === "locked"} onClick={() => cur && setPlaying(ep)}
+                    <button type="button" key={ep.id} disabled={ep.state === "locked"} onClick={() => cur && setPlaying(ep)}
                       style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, marginBottom: 7, cursor: cur ? "pointer" : "default", opacity: ep.state === "locked" ? 0.42 : 1 }}>
                       <Card t={t} style={{ display: "flex", alignItems: "center", gap: 11, ...(cur ? { borderColor: t.accent, boxShadow: `0 0 0 3px ${t.accent}2E` } : {}) }}>
                         <div className={cur ? "cc-pulse" : ""} style={{ width: 32, height: 32, borderRadius: 99, display: "flex", alignItems: "center", justifyContent: "center",
@@ -1354,11 +1384,19 @@ function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manusc
   const [preview, setPreview] = useState(null);
   const [myClasses, setMyClasses] = useState([{ id: "c1", code: "SCI 101", name: "What Is a Cell?", students: 38 }]);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [publishingStudioOpen, setPublishingStudioOpen] = useState(false);
 
   const currentPlan = PLANS.find((p) => p.key === plan);
   const classCap = currentPlan.classCap;
 
   const pushHistory = (c, l) => { const snap = { course: c ?? course, lessons: l ?? lessons }; const next = [...history.slice(0, hIdx + 1), snap]; setHistory(next); setHIdx(next.length - 1); };
+  const createCourse = (nextCourse) => {
+    const initialLessons = {};
+    setCourse(nextCourse);
+    setLessons(initialLessons);
+    setHistory([{ course: nextCourse, lessons: initialLessons }]);
+    setHIdx(0);
+  };
   const undo = () => { if (hIdx > 0) { const s = history[hIdx - 1]; setCourse(s.course); setLessons(s.lessons); setHIdx(hIdx - 1); } };
   const redo = () => { if (hIdx < history.length - 1) { const s = history[hIdx + 1]; setCourse(s.course); setLessons(s.lessons); setHIdx(hIdx + 1); } };
   useEffect(() => { if (course && tab === "forge") setTab("build"); }, [course]);
@@ -1374,15 +1412,17 @@ function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manusc
     <div>
       {showUpgrade && <UpgradeModal t={t} plan={plan} setPlan={setPlan} courseLength={courseLength} setCourseLength={setCourseLength} onClose={() => setShowUpgrade(false)} />}
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-        {[{ id: "forge", l: "Forge" }, { id: "build", l: "Course", off: !course }, { id: "grade", l: "Grader" }, { id: "classes", l: "Classes" }].map((x) => (
-          <button key={x.id} onClick={() => !x.off && setTab(x.id)} style={{ padding: "7px 15px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, cursor: x.off ? "not-allowed" : "pointer", opacity: x.off ? 0.4 : 1,
+        {[{ id: "forge", l: "Create course" }, { id: "build", l: "Edit course", off: !course }, { id: "grade", l: "Grade papers" }, { id: "classes", l: "Manage classes" }].map((x) => (
+          <button type="button" key={x.id} data-tour-tab={x.id} disabled={x.off} onClick={() => setTab(x.id)} style={{ padding: "7px 15px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, cursor: x.off ? "not-allowed" : "pointer", opacity: x.off ? 0.4 : 1,
             fontFamily: t.bodyFont, border: `1px solid ${tab === x.id ? t.primary : t.line}`, background: tab === x.id ? t.primary : "transparent", color: tab === x.id ? "#fff" : t.slate }}>{x.l}</button>
         ))}
-        <button onClick={() => setShowUpgrade(true)} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
+        <button type="button" onClick={() => setShowUpgrade(true)} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer",
           fontFamily: t.mono, border: `1px solid ${t.accent}`, background: t.accent + "1A", color: t.accentDark }}>{currentPlan.name.toUpperCase()} ⚙</button>
+        <button type="button" onClick={() => setPublishingStudioOpen(true)} disabled={!course} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: course ? "pointer" : "not-allowed", opacity: course ? 1 : .45,
+          fontFamily: t.mono, border: `1px solid ${t.accent}`, background: course ? t.accent : "transparent", color: course ? t.ink : t.slate }}>Preview · Export · Device presentation</button>
       </div>
 
-      {tab === "forge" && <CourseForge t={t} setCourse={setCourse} pushHistory={pushHistory} />}
+      {tab === "forge" && <CourseForge t={t} onCreateCourse={createCourse} />}
       {tab === "build" && course && (
         <CourseWorkspace t={t} course={course} setCourse={setCourse} lessons={lessons} setLessons={setLessons} history={history} hIdx={hIdx} undo={undo} redo={redo} pushHistory={pushHistory} onPreview={(ep, lesson) => setPreview({ ep, lesson })} />
       )}
@@ -1419,6 +1459,7 @@ function ProfessorView({ t, plan, setPlan, courseLength, setCourseLength, manusc
           <CommunityPanel t={t} asProfessor />
         </div>
       )}
+      {publishingStudioOpen && course && <CoursePublishingStudio course={course} lessons={lessons} courseId={null} onClose={() => setPublishingStudioOpen(false)} />}
     </div>
   );
 }
@@ -1433,10 +1474,10 @@ function AdminView({ t }) {
       <div style={{ background: t.heroGrad, borderRadius: t.radius, padding: 20, marginBottom: 12, color: "#fff" }}>
         <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>INSTITUTION CONSOLE · POWERED BY EDNOTEBOOK</div>
         <h1 style={{ fontFamily: t.display, fontSize: 24, fontWeight: 700, margin: "5px 0 3px" }}>Example University</h1>
-        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Synthetic institution workspace · demonstration data only</div>
+        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Guided institution workspace · sample data only</div>
       </div>
       <div data-tour="t-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
-        {[["24", "courses"], ["1,102", "learners"], ["87%", "weekly active"]].map(([n, l], i) => (
+        {[["24", "courses"], ["1,102", "students"], ["87%", "weekly active"]].map(([n, l], i) => (
           <Card t={t} key={i} style={{ textAlign: "center" }}><div style={{ fontFamily: t.display, fontSize: 23, fontWeight: 700, color: t.primaryDark }}>{n}</div><div style={{ fontFamily: t.mono, fontSize: 10, color: t.slate }}>{l}</div></Card>
         ))}
       </div>
@@ -1445,26 +1486,25 @@ function AdminView({ t }) {
         {[["SCI 101", "What Is a Cell?", "Dr. Nguyen", 214, "green"], ["UNIV 1101", "Digital Literacy Foundations", "Dr. Ellis", 186, "green"], ["MATH 1314", "College Algebra · Story Mode", "Prof. Aguilar", 340, "amber"]].map((c, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i ? `1px solid ${t.line}` : "none" }}>
             <span style={{ width: 8, height: 8, borderRadius: 99, background: c[4] === "green" ? t.good : t.accent, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 600, color: t.ink }}>{c[0]} · {c[1]}</div><div style={{ fontFamily: t.mono, fontSize: 10.5, color: t.slate, marginTop: 2 }}>{c[2]} · {c[3]} learners</div></div>
-            <Btn t={t} variant="quiet" size="sm">Manage</Btn>
+            <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 600, color: t.ink }}>{c[0]} · {c[1]}</div><div style={{ fontFamily: t.mono, fontSize: 10.5, color: t.slate, marginTop: 2 }}>{c[2]} · {c[3]} students</div></div>
+            <Btn t={t} variant="quiet" size="sm" disabled>Course management preview</Btn>
           </div>
         ))}
       </Card>
-      <Label t={t}>AI governance</Label>
+      <Label t={t}>Course tool status</Label>
       <Card t={t} tour="t-ai" style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontFamily: t.mono, fontSize: 11, color: t.slate, marginBottom: 5 }}><span>Monthly AI budget</span><span>$412 of $1,000</span></div>
-        <div style={{ height: 9, background: t.line, borderRadius: 999, marginBottom: 12 }}><div style={{ height: 9, width: "41%", background: t.primary, borderRadius: 999 }} /></div>
-        {[["Course generation", 61], ["Grading suggestions", 27], ["Writing coach", 12]].map(([k, v], i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14, color: t.ink }}><span>{k}</span><span style={{ fontFamily: t.mono, fontSize: 12, color: t.slate }}>{v}%</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontFamily: t.mono, fontSize: 11, color: t.slate, marginBottom: 8 }}><span>SETUP PREVIEW</span><span>No provider billing connected</span></div>
+        {[["Course map builder", "On device"], ["Rubric suggestion", "Preview"], ["Writing guidance", "Preview"]].map(([k, v], i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14, color: t.ink }}><span>{k}</span><span style={{ fontFamily: t.mono, fontSize: 12, color: t.slate }}>{v}</span></div>
         ))}
-        <div style={{ background: t.paper, padding: 11, borderRadius: t.radius === "0px" ? 0 : 12, marginTop: 10, fontFamily: t.mono, fontSize: 11, color: t.slate, lineHeight: 1.6 }}>Product controls · instructors confirm every AI-suggested grade · the writing coach diagnoses but never drafts · institution-linked records stay inside their assigned workspace</div>
+        <div style={{ background: t.paper, padding: 11, borderRadius: t.radius === "0px" ? 0 : 12, marginTop: 10, fontFamily: t.mono, fontSize: 11, color: t.slate, lineHeight: 1.6 }}>Instructors confirm every grade. Writing guidance diagnoses patterns without rewriting the student’s work. External model connections belong behind an authenticated server gateway.</div>
       </Card>
       <Label t={t}>Plug-ins</Label>
       <Card t={t} tour="t-plugins" style={{ marginBottom: 12 }}>
         {Object.entries(plugins).map(([name, on], i, arr) => (
           <div key={name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: i ? `1px solid ${t.line}` : "none" }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: t.ink }}>{name}</span>
-            <button onClick={() => setPlugins({ ...plugins, [name]: !on })} style={{ width: 44, height: 24, borderRadius: 999, position: "relative", cursor: "pointer", border: "none", background: on ? t.good : t.line, transition: "background .2s" }}>
+            <button type="button" role="switch" aria-checked={on} aria-label={`${on ? "Turn off" : "Turn on"} ${name}`} onClick={() => setPlugins({ ...plugins, [name]: !on })} style={{ width: 44, height: 24, borderRadius: 999, position: "relative", cursor: "pointer", border: "none", background: on ? t.good : t.line, transition: "background .2s" }}>
               <span style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 20, height: 20, borderRadius: 99, background: "#fff", transition: "left .2s cubic-bezier(.3,1.4,.5,1)" }} />
             </button>
           </div>
@@ -1472,7 +1512,7 @@ function AdminView({ t }) {
       </Card>
       <Label t={t}>Roles & ownership</Label>
       <Card t={t}>
-        {[["Owner", "L. (you)", "Billing · policy · everything"], ["Dept. admin", "3 people", "Catalog · rosters · reports"], ["Professor", "18 people", "Own classes · grading · AI tools"], ["Learner", "1,102 people", "Enrolled classes only"]].map((r, i) => (
+        {[["Owner", "L. (you)", "Billing · policy · everything"], ["Dept. admin", "3 people", "Catalog · rosters · reports"], ["Professor", "18 people", "Own classes · grading · assistant tools"], ["Student", "1,102 people", "Enrolled classes only"]].map((r, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 0", borderTop: i ? `1px solid ${t.line}` : "none" }}>
             <Pill t={t} tone={t.primary}>{r[0]}</Pill><span style={{ fontSize: 13.5, fontWeight: 600, color: t.ink }}>{r[1]}</span>
             <span style={{ fontFamily: t.mono, fontSize: 10.5, color: t.slate, marginLeft: "auto", textAlign: "right" }}>{r[2]}</span>
@@ -1490,12 +1530,12 @@ function MastermindView({ t }) {
   return (
     <div className="cc-rise">
       <div style={{ background: "linear-gradient(135deg,#0B0E14,#211A0A)", borderRadius: t.radius, padding: 20, marginBottom: 12, color: "#fff", border: `1px solid ${t.accent}55` }}>
-        <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>MASTERMIND · OWNER ONLY</div>
+        <div style={{ fontFamily: t.mono, fontSize: 11, letterSpacing: ".14em", color: t.accent }}>OWNER DASHBOARD PREVIEW · SAMPLE DATA</div>
         <h1 style={{ fontFamily: t.display, fontSize: 24, fontWeight: 700, margin: "5px 0 3px" }}>BrexAtlas Portfolio</h1>
-        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Every project, one dashboard. The synthetic institution workspace demonstrates how Ram Ready courses can feed reusable templates.</div>
+        <div style={{ fontSize: 13.5, opacity: 0.82 }}>Every project, one dashboard. The example institution shows how Ram Ready courses can feed reusable templates.</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-        {[["4", "demo projects"], ["1,102", "synthetic learners"], ["1", "example institution"]].map(([n, l], i) => (
+        {[["4", "sample projects"], ["1,102", "sample students"], ["1", "example institution"]].map(([n, l], i) => (
           <Card t={t} key={i} style={{ textAlign: "center" }}><div style={{ fontFamily: t.display, fontSize: 23, fontWeight: 700, color: t.primaryDark }}>{n}</div><div style={{ fontFamily: t.mono, fontSize: 10, color: t.slate }}>{l}</div></Card>
         ))}
       </div>
@@ -1517,7 +1557,7 @@ function MastermindView({ t }) {
       <Card t={t} style={{ marginTop: 12, borderColor: t.line }}>
         <Label t={t}>How the repos connect</Label>
         <div style={{ fontSize: 13.5, color: t.body, lineHeight: 1.6 }}>
-          The Ram Ready template inside EdNotebook's Course Forge is backwards-mapped from Digital-Literacy-Course's six-question structure. Real repo sync — so an edit to one updates the other — needs a shared design-tokens file or a small build step pulling the template schema from Digital-Literacy-Course into EdNotebook at build time. This prototype hard-codes that mapping; wiring an actual GitHub Action or npm package is the next step once EdNotebook has its own repo.
+          The Ram Ready template follows the Digital Literacy course's six-question structure. Each course stays editable here, so educators can adjust the wording, order, and activities before sharing it.
         </div>
       </Card>
     </div>
@@ -1527,13 +1567,13 @@ function MastermindView({ t }) {
 /* ============================================================
    APP SHELL
    ============================================================ */
-export default function Builder() {
+export default function Builder({ guest = false, lockedView = null, onSignup }) {
   const [themeKey, setThemeKey] = useState("ramready");
-  const [view, setView] = useState("professor");
+  const [view, setView] = useState(lockedView || "professor");
   const [xp, setXp] = useState(745);
   const [tourStep, setTourStep] = useState(null);
   const [showThemes, setShowThemes] = useState(false);
-  const [welcomed, setWelcomed] = useState(false);
+  const [welcomed, setWelcomed] = useState(guest);
   const [ownerMode, setOwnerMode] = useState(false);
   const [plan, setPlan] = useState("free");
   const [courseLength, setCourseLength] = useState("16");
@@ -1564,17 +1604,19 @@ export default function Builder() {
         textarea, input { font-family: inherit; }
       `}</style>
 
-      <div style={{ position: "sticky", top: 0, zIndex: 20, background: themeKey === "nightshift" ? t.card : t.ink, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${t.line}`, flexWrap: "wrap" }}>
+      {guest && <div style={{ position: "sticky", top: 0, zIndex: 24, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", background: "#f2b33d", color: "#101b33", fontWeight: 700, flexWrap: "wrap" }}><span>Guest lesson preview · build and edit before signing up.</span><button type="button" onClick={onSignup} style={{ border: 0, borderRadius: 999, background: "#101b33", color: "#fff", padding: "8px 14px", fontWeight: 800, cursor: "pointer" }}>Save with a free account</button></div>}
+
+      <div style={{ position: "sticky", top: guest ? 48 : 0, zIndex: 20, background: themeKey === "nightshift" ? t.card : t.ink, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${t.line}`, flexWrap: "wrap" }}>
         <div style={{ fontFamily: t.display, fontWeight: 700, fontSize: 17, color: themeKey === "nightshift" ? t.ink : "#fff" }}>Ed<span style={{ color: t.accent }}>Notebook</span></div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 4, padding: 3, borderRadius: 999, background: themeKey === "nightshift" ? t.paper : "rgba(255,255,255,.1)" }}>
-          {[["learner", "Learner"], ["professor", "Professor"], ["admin", "Admin"], ...(ownerMode ? [["mastermind", "★ Mastermind"]] : [])].map(([id, l]) => (
-            <button key={id} onClick={() => { setView(id); setTourStep(null); }} style={{ padding: "4px 11px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none", fontFamily: t.bodyFont,
+        {!lockedView && <div style={{ marginLeft: "auto", display: "flex", gap: 4, padding: 3, borderRadius: 999, background: themeKey === "nightshift" ? t.paper : "rgba(255,255,255,.1)" }}>
+          {[["learner", "Student"], ["professor", "Professor"], ["admin", "Admin"], ...(ownerMode ? [["mastermind", "★ Mastermind"]] : [])].map(([id, l]) => (
+            <button type="button" key={id} onClick={() => { setView(id); setTourStep(null); }} style={{ padding: "4px 11px", borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none", fontFamily: t.bodyFont,
               background: view === id ? t.accent : "transparent", color: view === id ? t.ink : (themeKey === "nightshift" ? t.slate : "#C6CCDB") }}>{l}</button>
           ))}
-        </div>
-        <button onClick={() => setOwnerMode(!ownerMode)} title="Owner mode" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: ownerMode ? t.accent : (themeKey === "nightshift" ? t.slate : "#8E97AD"), padding: 0 }}>🔑</button>
-        <button onClick={() => setShowThemes(!showThemes)} title="Themes" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 17, color: t.accent, padding: 0 }}>◐</button>
-        <button onClick={startTour} title="Tutorial mode" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 15, color: t.accent, padding: 0 }}>?</button>
+        </div>}
+        {!lockedView && <button type="button" onClick={() => setOwnerMode(!ownerMode)} title="Owner dashboard preview" aria-label={`${ownerMode ? "Hide" : "Show"} owner dashboard preview`} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: ownerMode ? t.accent : (themeKey === "nightshift" ? t.slate : "#8E97AD"), padding: 0 }}>🔑</button>}
+        <button type="button" onClick={() => setShowThemes(!showThemes)} title="Themes" aria-label="Choose workspace theme" aria-expanded={showThemes} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 17, color: t.accent, padding: 0 }}>◐</button>
+        <button type="button" onClick={startTour} title="Tutorial mode" aria-label="Start workspace tutorial" style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 15, color: t.accent, padding: 0 }}>?</button>
       </div>
 
       {showThemes && (
@@ -1583,7 +1625,7 @@ export default function Builder() {
             <Label t={t}>Theme · applies to every role</Label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {Object.entries(THEMES).map(([k, th]) => (
-                <button key={k} onClick={() => { setThemeKey(k); setShowThemes(false); }} style={{ textAlign: "left", padding: 10, cursor: "pointer", borderRadius: th.radius, border: `1px solid ${themeKey === k ? t.accent : t.line}`, background: th.paper }}>
+                <button type="button" key={k} onClick={() => { setThemeKey(k); setShowThemes(false); }} style={{ textAlign: "left", padding: 10, cursor: "pointer", borderRadius: th.radius, border: `1px solid ${themeKey === k ? t.accent : t.line}`, background: th.paper }}>
                   <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>{[th.primary, th.accent, th.good].map((c, i) => <span key={i} style={{ width: 14, height: 14, borderRadius: th.radius === "0px" ? 0 : 99, background: c }} />)}</div>
                   <div style={{ fontFamily: th.display, fontSize: 14, fontWeight: 700, color: th.ink }}>{th.name}</div>
                   <div style={{ fontFamily: th.mono, fontSize: 10, color: th.slate, marginTop: 2 }}>{th.blurb}</div>
@@ -1614,8 +1656,6 @@ export default function Builder() {
         {view === "admin" && <AdminView t={t} />}
         {view === "mastermind" && <MastermindView t={t} />}
       </div>
-
-      <div style={{ textAlign: "center", paddingBottom: 26, fontFamily: t.mono, fontSize: 10.5, color: t.slate }}>EdNotebook prototype · demonstration data only · external AI is not production-connected</div>
 
       {tourStep !== null && <Tutorial t={t} steps={TOURS[view] || TOURS.professor} step={tourStep} setStep={setTourStep} onClose={() => setTourStep(null)} />}
     </div>

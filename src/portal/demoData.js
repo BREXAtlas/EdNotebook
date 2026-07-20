@@ -3,7 +3,7 @@ export const SCHOOLS = [
     id: "example-university",
     name: "Example University",
     location: "West Texas",
-    label: "Synthetic demonstration campus",
+    label: "Example campus · sample data",
     tips: [
       "Check the course schedule before registration closes.",
       "Keep your university ID nearby when joining a class.",
@@ -56,7 +56,7 @@ export const SCHOOLS = [
     id: "north-plains-college",
     name: "North Plains College",
     location: "North Texas",
-    label: "Synthetic demonstration campus",
+    label: "Example campus · sample data",
     tips: ["Advising appointments open on Monday.", "Use your course group to compare study plans, not answers."],
     news: [{ title: "Library study night", detail: "Tutors and peer mentors will be available until 9 PM." }],
     classes: [
@@ -90,7 +90,7 @@ export const SCHOOLS = [
     id: "metro-community-college",
     name: "Metro Community College",
     location: "Central Texas",
-    label: "Synthetic demonstration campus",
+    label: "Example campus · sample data",
     tips: ["Career services hosts walk-in résumé reviews each Friday."],
     news: [{ title: "New student clubs directory", detail: "Find academic, service, and career groups by interest." }],
     classes: [
@@ -155,7 +155,7 @@ export const K12_SCHOOLS = [
     id: "example-high-school",
     name: "Example High School",
     location: "West Texas",
-    label: "Synthetic demonstration school",
+    label: "Example school · sample data",
     tips: ["Check today’s class list before the first bell.", "Ask your teacher when an assignment status is unclear.", "School groups stay separate from university communities."],
     news: [{ title: "Clubs meet Thursday", detail: "Find study groups, robotics, art, service, and student council in School life." }],
     classes: [
@@ -168,7 +168,7 @@ export const K12_SCHOOLS = [
     id: "north-ridge-middle",
     name: "North Ridge Middle School",
     location: "North Texas",
-    label: "Synthetic demonstration school",
+    label: "Example school · sample data",
     tips: ["Your class page shows what is due next and where to ask for help."],
     news: [{ title: "Family learning night", detail: "Teachers and student mentors will share study routines and project tips." }],
     classes: [

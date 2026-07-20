@@ -21,6 +21,34 @@ interface DnsAnswer {
   type?: number;
 }
 
+function trustedHosts(): Set<string> {
+  const configured = (Deno.env.get("LINK_PREVIEW_ALLOWED_HOSTS") || "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase().replace(/\.$/, ""))
+    .filter(Boolean);
+  if (!configured.length) {
+    throw new HttpError(503, "Link previews are unavailable until trusted hosts are configured.");
+  }
+  for (const host of configured) {
+    const labels = host.split(".");
+    const valid = host.length <= 253 && labels.every((label) =>
+      label.length > 0
+      && label.length <= 63
+      && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label)
+    );
+    if (!valid) {
+      throw new HttpError(503, "LINK_PREVIEW_ALLOWED_HOSTS contains an invalid exact hostname.");
+    }
+  }
+  return new Set(configured);
+}
+
+function assertTrustedHost(hostname: string): void {
+  if (!trustedHosts().has(hostname.toLowerCase().replace(/\.$/, ""))) {
+    throw new HttpError(403, "That website is not enabled for link previews.");
+  }
+}
+
 function normalizeUrl(input: string): URL {
   const value = String(input || "").trim();
   if (!value || value.length > 2048) throw new HttpError(400, "URL is missing or too long.");
@@ -91,6 +119,10 @@ async function dnsAnswers(hostname: string, type: "A" | "AAAA"): Promise<string[
 
 async function assertPublicUrl(url: URL): Promise<void> {
   const host = url.hostname;
+  // Deno fetch cannot pin a hostname to the address validated below. Requiring
+  // an operator-managed exact-host allowlist prevents arbitrary callers from
+  // supplying a rebinding domain between validation and fetch.
+  assertTrustedHost(host);
   if (["localhost", "localhost.localdomain"].includes(host) || host.endsWith(".localhost") || host.endsWith(".local")) {
     throw new HttpError(403, "Local-network URLs are blocked.");
   }

@@ -349,7 +349,7 @@ function SourcesPanel({ persona }) {
                     <div className="custom-source-row" key={element.id}>
                       <input aria-label="Custom element name" value={element.label} onChange={(event) => updateCustomElement(element.id, "label", event.target.value)} placeholder="Element name" />
                       <input aria-label="Custom element value" value={element.value} onChange={(event) => updateCustomElement(element.id, "value", event.target.value)} placeholder="Value" />
-                      <button type="button" onClick={() => removeCustomElement(element.id)} aria-label={`Remove ${element.label || "custom element"}`}>Remove</button>
+                      <button type="button" onClick={() => removeCustomElement(element.id)} aria-label={`Remove ${element.label || "custom element"}`}>Remove custom field</button>
                     </div>
                   ))}
                 </div>

@@ -199,7 +199,7 @@ function PageList({ pages, onMove, onRemove }) {
           <div>
             <button type="button" disabled={index === 0} onClick={() => onMove(index, -1)} aria-label={`Move page ${index + 1} earlier`}>↑</button>
             <button type="button" disabled={index === pages.length - 1} onClick={() => onMove(index, 1)} aria-label={`Move page ${index + 1} later`}>↓</button>
-            <button type="button" onClick={() => onRemove(index)} aria-label={`Remove page ${index + 1}`}>Remove</button>
+            <button type="button" onClick={() => onRemove(index)} aria-label={`Remove page ${index + 1}`}>Remove page</button>
           </div>
         </li>
       ))}
@@ -875,7 +875,7 @@ export default function SyllabusScanner({ onClose, onComplete }) {
           {pages.length > 0 && <><PageList pages={pages} onMove={movePage} onRemove={removePage} /><button className="scanner-primary" type="button" onClick={finishScan}>Done — combine {pages.length} page{pages.length === 1 ? "" : "s"}</button></>}
         </div>}
 
-        {stage === "requesting" && <div className="scanner-processing" data-scanner-stage="requesting" role="status" aria-live="polite" aria-atomic="true"><span className="scanner-spinner" aria-hidden="true" /><h2>{progress}</h2><p>If permission does not appear, choose page photos instead.</p><button type="button" onClick={() => { sessionRef.current += 1; stopCamera(); setStage("ready"); }}>Cancel</button></div>}
+        {stage === "requesting" && <div className="scanner-processing" data-scanner-stage="requesting" role="status" aria-live="polite" aria-atomic="true"><span className="scanner-spinner" aria-hidden="true" /><h2>{progress}</h2><p>If permission does not appear, choose page photos instead.</p><button type="button" onClick={() => { sessionRef.current += 1; stopCamera(); setStage("ready"); }}>Cancel camera request</button></div>}
 
         {stage === "camera" && <div className="scanner-camera-stage" data-scanner-stage="camera">
           <h2 className="sr-only">Capture a syllabus page.</h2>
@@ -903,7 +903,7 @@ export default function SyllabusScanner({ onClose, onComplete }) {
           <div className="scanner-review-actions"><button type="button" onClick={retakeCandidate}>Retake or skip</button><button className="scanner-primary" type="button" onClick={acceptCandidate}>Looks good</button></div>
         </div>}
 
-        {stage === "processing-page" && <div className="scanner-processing" data-scanner-stage="processing-page" role="status" aria-live="polite" aria-atomic="true"><span className="scanner-spinner" aria-hidden="true" /><h2>{progress || "Preparing page…"}</h2><p>The original camera frame stays only in memory during this step.</p><button type="button" onClick={cancelPageProcessing}>Cancel</button></div>}
+        {stage === "processing-page" && <div className="scanner-processing" data-scanner-stage="processing-page" role="status" aria-live="polite" aria-atomic="true"><span className="scanner-spinner" aria-hidden="true" /><h2>{progress || "Preparing page…"}</h2><p>The original camera frame stays only in memory during this step.</p><button type="button" onClick={cancelPageProcessing}>Stop page processing</button></div>}
 
         {stage === "pages" && <div className="scanner-pages-stage" data-scanner-stage="pages">
           <div><span>{pages.length} OF {MAX_SCAN_PAGES} PAGES</span><h2>Pages are ready in this order.</h2><p>Move, remove, or add pages before text recognition begins.</p></div>
@@ -911,7 +911,7 @@ export default function SyllabusScanner({ onClose, onComplete }) {
           <div className="scanner-page-actions"><button type="button" onClick={startCamera}>Open live camera</button><button type="button" onClick={() => captureInputRef.current?.click()}>Take one photo</button><button type="button" onClick={() => photoInputRef.current?.click()}>Add saved photos</button><button className="scanner-primary" type="button" disabled={!pages.length} onClick={finishScan}>Done — combine pages</button></div>
         </div>}
 
-        {stage === "processing" && <div className="scanner-processing" data-scanner-stage="processing" role="status" aria-live="polite" aria-atomic="true"><span className="scanner-spinner" aria-hidden="true" /><h2>{progress || "Finishing the syllabus…"}</h2><p>Text recognition runs one page at a time so older phones are not overloaded.</p><button type="button" onClick={cancelProcessing}>Cancel</button></div>}
+        {stage === "processing" && <div className="scanner-processing" data-scanner-stage="processing" role="status" aria-live="polite" aria-atomic="true"><span className="scanner-spinner" aria-hidden="true" /><h2>{progress || "Finishing the syllabus…"}</h2><p>Text recognition runs one page at a time so older phones are not overloaded.</p><button type="button" onClick={cancelProcessing}>Stop syllabus processing</button></div>}
 
         {stage === "complete" && <div className="scanner-complete-stage" data-scanner-stage="complete">
           <div><span>FINAL TEXT CHECK</span><h2>Correct anything the scanner misread.</h2><p>The highlighted source review opens next. No date is added until you approve it.</p></div>

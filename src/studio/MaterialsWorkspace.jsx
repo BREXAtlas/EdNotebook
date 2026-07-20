@@ -594,7 +594,7 @@ export default function MaterialsWorkspace() {
       </div>
 
       <section className="studio-library" aria-labelledby="resource-library-title">
-        <div className="studio-library-heading"><div><span className="studio-kicker">COURSE RESOURCE LIBRARY</span><h3 id="resource-library-title">Everything has an owner, location, security state, and storage mode.</h3></div><button type="button" onClick={refresh}>Refresh</button></div>
+        <div className="studio-library-heading"><div><span className="studio-kicker">COURSE RESOURCE LIBRARY</span><h3 id="resource-library-title">Everything has an owner, location, security state, and storage mode.</h3></div><button type="button" onClick={refresh}>Refresh resource library</button></div>
         {loading ? <div className="studio-library-empty">Loading secure materials…</div> : combinedResources.length === 0 ? <div className="studio-library-empty">No materials yet. Use the panel above to attach the first resource.</div> : (
           <div className="studio-resource-table">
             {combinedResources.map((resource) => {
@@ -606,7 +606,7 @@ export default function MaterialsWorkspace() {
                   <div className="studio-resource-main"><strong>{resource.title}</strong><p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p><small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement} · <em className={`security-${status.tone}`}>{status.label}</em></small></div>
                   <div className="studio-resource-actions">
                     {canOpen && <button type="button" onClick={() => downloadResource(resource)}>{resource.storage_mode === "external" ? "Open" : "Download"}</button>}
-                    <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Remove</button>
+                    <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Remove resource</button>
                   </div>
                 </article>
               );

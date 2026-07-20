@@ -6,13 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:auth-route": "node scripts/check-auth-route-transition.mjs",
+    "verify:compact-panels": "node scripts/check-compact-panel-deck.mjs",
+    "verify:compact-panels:e2e": "node scripts/check-compact-panel-deck-browser.mjs",
+    "verify:app-bundle": "npm run build && node scripts/check-capacitor-ready.mjs"
   },
   "dependencies": {
+    "@livekit/components-react": "^2.9.23",
     "@opencvjs/web": "4.13.0-release.1",
     "@supabase/supabase-js": "^2.57.4",
     "@tesseract.js-data/eng": "1.0.0",
     "jspdf": "4.2.1",
+    "livekit-client": "^2.20.1",
     "mammoth": "1.12.0",
     "pdfjs-dist": "6.1.200",
     "react": "^18.3.1",
@@ -22,6 +28,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.3",
+    "playwright": "^1.61.1",
     "vite": "8.1.5"
   }
 }

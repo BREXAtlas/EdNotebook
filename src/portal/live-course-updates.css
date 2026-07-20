@@ -1,0 +1,208 @@
+.live-course-updates {
+  display: grid;
+  gap: 16px;
+}
+
+.live-course-updates__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.live-course-updates__header > div:first-child {
+  max-width: 720px;
+}
+
+.live-course-updates__header p,
+.live-course-updates__list p {
+  color: var(--portal-muted, #5d6470);
+  line-height: 1.55;
+}
+
+.live-course-updates__course-picker {
+  display: grid;
+  gap: 7px;
+  max-width: 440px;
+  margin-top: 16px;
+  color: var(--portal-ink, #17233b);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.live-course-updates__course-picker select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid var(--portal-line, #d9dde7);
+  border-radius: 10px;
+  color: var(--portal-ink, #17233b);
+  background: #fff;
+  font: inherit;
+}
+
+.live-course-updates__status {
+  display: grid;
+  gap: 8px;
+  min-width: 210px;
+}
+
+.live-course-updates__status > span {
+  width: max-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #7a4712;
+  background: #fff2d9;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.live-course-updates__status > span.is-connected {
+  color: #155d44;
+  background: #e5f7ee;
+}
+
+.live-course-updates__status small {
+  color: var(--portal-muted, #5d6470);
+}
+
+.live-course-updates__status button,
+.live-course-updates__list button,
+.live-course-updates__section-action,
+.live-course-updates__composer button {
+  padding: 9px 12px;
+  border: 1px solid var(--portal-line, #d9dde7);
+  border-radius: 10px;
+  color: var(--portal-ink, #17233b);
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.live-course-updates button:disabled {
+  cursor: wait;
+  opacity: .58;
+}
+
+.live-course-updates__notice,
+.live-course-updates__error {
+  padding: 12px 14px;
+  border-radius: 11px;
+}
+
+.live-course-updates__notice {
+  color: #155d44;
+  background: #e9f8f1;
+}
+
+.live-course-updates__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.live-course-updates__choose-class {
+  text-align: center;
+}
+
+.live-course-updates__choose-class p {
+  margin-bottom: 0;
+  color: var(--portal-muted, #5d6470);
+}
+
+.live-course-updates__list {
+  display: grid;
+  gap: 10px;
+}
+
+.live-course-updates__list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 13px;
+  border: 1px solid var(--portal-line, #d9dde7);
+  border-radius: 12px;
+  background: #fbfcff;
+}
+
+.live-course-updates__list article > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.live-course-updates__list strong,
+.live-course-updates__list span,
+.live-course-updates__list small,
+.live-course-updates__list p {
+  overflow-wrap: anywhere;
+}
+
+.live-course-updates__list p {
+  margin: 2px 0;
+}
+
+.live-course-updates__list small,
+.live-course-updates__list span,
+.live-course-updates__empty {
+  color: var(--portal-muted, #5d6470);
+  font-size: 12px;
+}
+
+.live-course-updates__section-action {
+  margin-top: 14px;
+}
+
+.live-course-updates__composer {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.live-course-updates__composer label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.live-course-updates__composer input,
+.live-course-updates__composer textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid var(--portal-line, #d9dde7);
+  border-radius: 10px;
+  color: var(--portal-ink, #17233b);
+  background: #fff;
+  font: inherit;
+}
+
+.live-course-updates__composer > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.live-course-updates__composer button.primary {
+  color: #fff;
+  border-color: var(--portal-blue, #315cce);
+  background: var(--portal-blue, #315cce);
+}
+
+@media (max-width: 760px) {
+  .live-course-updates__header,
+  .live-course-updates__list article {
+    flex-direction: column;
+  }
+
+  .live-course-updates__status {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .live-course-updates__grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -10,6 +10,7 @@ import {
   requireUser,
 } from "../_shared/runtime.ts";
 import { recordAudit } from "../_shared/security.ts";
+import { removeStorageObject } from "../_shared/storage.ts";
 
 interface DeleteRequest {
   secureFileId: string;
@@ -17,20 +18,30 @@ interface DeleteRequest {
 }
 
 async function removeObjects(admin: ReturnType<typeof adminClient>, file: Record<string, unknown>) {
-  const removals: Promise<unknown>[] = [];
+  const removals: Promise<"removed" | "not_found">[] = [];
   if (file.quarantine_bucket && file.quarantine_path) {
-    removals.push(admin.storage.from(String(file.quarantine_bucket)).remove([String(file.quarantine_path)]));
+    removals.push(removeStorageObject(
+      admin,
+      String(file.quarantine_bucket),
+      String(file.quarantine_path),
+    ));
   }
   if (file.destination_bucket && file.destination_path) {
-    removals.push(admin.storage.from(String(file.destination_bucket)).remove([String(file.destination_path)]));
+    removals.push(removeStorageObject(
+      admin,
+      String(file.destination_bucket),
+      String(file.destination_path),
+    ));
   }
-  const { data: previews } = await admin.from("file_previews").select("bucket_id,storage_path").eq("secure_file_id", file.id);
+  const { data: previews, error: previewError } = await admin
+    .from("file_previews")
+    .select("bucket_id,storage_path")
+    .eq("secure_file_id", file.id);
+  if (previewError) throw previewError;
   for (const preview of previews || []) {
-    removals.push(admin.storage.from(preview.bucket_id).remove([preview.storage_path]));
+    removals.push(removeStorageObject(admin, preview.bucket_id, preview.storage_path));
   }
-  const results = await Promise.allSettled(removals);
-  const hardFailure = results.find((result) => result.status === "rejected");
-  if (hardFailure?.status === "rejected") throw hardFailure.reason;
+  await Promise.all(removals);
 }
 
 Deno.serve(async (req) => {
@@ -68,19 +79,30 @@ Deno.serve(async (req) => {
       .single();
     if (fileError || !file) throw new HttpError(404, "Secure file was not found.");
 
-    await admin.from("file_deletion_requests").update({ status: "processing" }).eq("id", deletion.request_id);
+    const { error: processingError } = await admin
+      .from("file_deletion_requests")
+      .update({ status: "processing" })
+      .eq("id", deletion.request_id);
+    if (processingError) throw processingError;
     try {
       await removeObjects(admin, file);
       const now = new Date().toISOString();
-      await admin.from("secure_file_objects").update({
+      const { error: fileUpdateError } = await admin.from("secure_file_objects").update({
         availability_status: "deleted",
         deleted_at: now,
+        worker_callback_token_hash: null,
       }).eq("id", file.id);
-      await admin.from("upload_quota_reservations").update({ status: "released" }).eq("secure_file_id", file.id);
-      await admin.from("file_deletion_requests").update({
+      if (fileUpdateError) throw fileUpdateError;
+      const { error: quotaError } = await admin
+        .from("upload_quota_reservations")
+        .update({ status: "released" })
+        .eq("secure_file_id", file.id);
+      if (quotaError) throw quotaError;
+      const { error: completedError } = await admin.from("file_deletion_requests").update({
         status: "completed",
         processed_at: now,
       }).eq("id", deletion.request_id);
+      if (completedError) throw completedError;
       await recordAudit(admin, req, {
         actorId: user.id,
         institutionId: file.institution_id,

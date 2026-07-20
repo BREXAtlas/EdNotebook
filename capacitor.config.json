@@ -1,0 +1,20 @@
+{
+  "appId": "com.transformontologysystems.ednotebook",
+  "appName": "EdNotebook",
+  "webDir": "dist",
+  "backgroundColor": "#f6f7fb",
+  "zoomEnabled": true,
+  "loggingBehavior": "production",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "recommended"
+  },
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

@@ -34,6 +34,10 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Build production site
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_LIVE_ROOMS_ENABLED: ${{ vars.VITE_LIVE_ROOMS_ENABLED }}
         run: npm run build
 
       - name: Configure GitHub Pages

@@ -1,0 +1,12 @@
+project_id = "ednotebook"
+
+# These three endpoints authenticate with their own signed secret or webhook
+# token. Browser/user endpoints keep the default JWT verification enabled.
+[functions.retention-worker]
+verify_jwt = false
+
+[functions.secure-worker-callback]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

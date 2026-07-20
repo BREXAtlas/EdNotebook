@@ -9,9 +9,9 @@ export default function PublishingLanding({ onEnter }) {
           <span className="portal-kicker">EDNOTEBOOK PUBLISHING</span>
           <h1>Prepare material that fits the course instead of sitting beside it.</h1>
           <p>Professors can turn their own material into readings and interactive books. Publishing partners can prepare catalogs for course placement, student access, and optional purchase.</p>
-          <div><button type="button" onClick={onEnter}>Open publishing studio</button><a href="#publishing-path">See the publishing path</a></div>
+          <div><button type="button" onClick={onEnter}>Open publishing studio</button><button className="publishing-secondary-action" type="button" onClick={() => document.getElementById("publishing-path")?.scrollIntoView({ behavior: "smooth", block: "start" })}>See the publishing path</button></div>
           <figure className="publishing-hero-image">
-            <img src="/landing/landing-publishing-materials.png" alt="Course books and manuscript pages being reviewed for publication" width="1536" height="1024" fetchPriority="high" />
+            <img src="/landing/landing-publishing-materials.png" alt="Course books and manuscript pages being reviewed for publication" width="1536" height="1024" />
             <figcaption><strong>From source to course-ready.</strong><span>Review structure, access, and placement before material reaches students.</span></figcaption>
           </figure>
         </section>
@@ -27,7 +27,6 @@ export default function PublishingLanding({ onEnter }) {
           <article><span className="portal-kicker">LEARNING SUPPLIERS</span><h2>Connect books and supplies to the assignment.</h2><p>Give professors a clear preview and let students see why an item is needed before purchase.</p></article>
         </section>
       </main>
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/">Portal home</a><a href="#/students">Student portal</a><a href="#/professors">Professor portal</a></footer>
     </div>
   );
 }

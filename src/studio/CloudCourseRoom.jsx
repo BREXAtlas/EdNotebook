@@ -90,7 +90,7 @@ export default function CloudCourseRoom({ course, onDownload }) {
       <main className="studio-message-thread" aria-live="polite">
         <header>
           <div><strong>{course.name || "Course room"}</strong><small>Authenticated course members only</small></div>
-          <div><button type="button" onClick={() => onDownload(messages, "cloud")}>Download</button><button type="button" onClick={loadRoom}>Refresh</button></div>
+          <div><button type="button" onClick={() => onDownload(messages, "cloud")}>Download room messages</button><button type="button" onClick={loadRoom}>Refresh room messages</button></div>
         </header>
         {!courseId && <div className="studio-warning">Save the course shell once before using the cloud room.</div>}
         {error && <div className="studio-alert is-error">{error}</div>}

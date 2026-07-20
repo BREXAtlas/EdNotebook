@@ -55,7 +55,7 @@ export default function DeviceNotebook({ onDownload }) {
         <header>
           <div><strong>Private device notebook</strong><small>Clears when this browser session ends</small></div>
           <div>
-            <button type="button" onClick={() => onDownload(messages, "device")}>Download</button>
+            <button type="button" onClick={() => onDownload(messages, "device")}>Download local notes</button>
             <button type="button" onClick={clearAll} disabled={messages.length === 0}>Clear all</button>
           </div>
         </header>

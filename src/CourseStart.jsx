@@ -118,6 +118,7 @@ export default function CourseStart({ onContinue, onHome }) {
       window.localStorage.setItem("ednotebook-course-draft", JSON.stringify(draft));
       window.localStorage.setItem("ednotebook-course-id", savedCourse.id);
       window.localStorage.setItem("ednotebook-course-step", "2");
+      await supabase.rpc("record_account_activity", { p_event: "course_created" });
       onContinue?.();
     } catch (saveError) {
       setError(saveError.message || "The secure course record could not be created.");
@@ -141,7 +142,7 @@ export default function CourseStart({ onContinue, onHome }) {
           <h1 id="create-course-title">Every EdNotebook course starts here.</h1>
           <p>
             Create the class shell first. Then EdNotebook walks you through source content, learning design,
-            generation, learner preview, and publication in a numbered path.
+            lesson drafting, student preview, and publication in a numbered path.
           </p>
           <div className="course-start-promise">
             <span aria-hidden="true">✓</span>
@@ -215,10 +216,10 @@ export default function CourseStart({ onContinue, onHome }) {
           {error && <div className="course-form-error" role="alert">{error}</div>}
 
           <button className="primary-course-button" type="submit" data-motion="true" disabled={busy}>
-            {busy ? "Creating secure course record…" : "Save course and continue to Step 2"}
+            {busy ? "Creating course…" : "Save course and continue to Step 2"}
             <span aria-hidden="true">→</span>
           </button>
-          <p className="course-create-note">Saved to your authenticated Supabase course tenancy so materials, assignments, books, and messages have a secure owner.</p>
+          <p className="course-create-note">Saved to your EdNotebook account so course materials, assignments, books, and messages stay together.</p>
         </form>
       </section>
 

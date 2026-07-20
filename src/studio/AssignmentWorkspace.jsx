@@ -276,7 +276,7 @@ export default function AssignmentWorkspace() {
 
   return (
     <section className="studio-workspace" aria-labelledby="assignment-builder-title">
-      <div className="studio-section-heading"><div><span className="studio-kicker">ASSIGNMENT BUILDER</span><h2 id="assignment-builder-title">Build the task, rubric, syllabus language, and learner view together.</h2><p>The learner-facing preview is not a separate mockup. It is generated from the same saved assignment record.</p></div><div className="studio-heading-actions"><span className={`studio-status-pill is-${status}`}>{status}</span><button className="studio-secondary-button" type="button" onClick={() => setMode("learner")}>Preview as learner</button></div></div>
+      <div className="studio-section-heading"><div><span className="studio-kicker">ASSIGNMENT BUILDER</span><h2 id="assignment-builder-title">Build the task, rubric, syllabus language, and student view together.</h2><p>The student preview comes from the same saved assignment record.</p></div><div className="studio-heading-actions"><span className={`studio-status-pill is-${status}`}>{status}</span><button className="studio-secondary-button" type="button" onClick={() => setMode("learner")}>Preview as student</button></div></div>
       {notice && <div className="studio-alert is-success">{notice}</div>}
       {error && <div className="studio-alert is-error">{error}</div>}
 
@@ -287,7 +287,7 @@ export default function AssignmentWorkspace() {
           <label>Instructions<textarea rows={7} value={instructions} onChange={(event) => setInstructions(event.target.value)} /></label>
           <div className="studio-field-grid"><label>Deliverable<input value={deliverable} onChange={(event) => setDeliverable(event.target.value)} /></label><label>Due date and time<input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} /></label></div>
           <label>Submission options<input value={submissionLabel} onChange={(event) => setSubmissionLabel(event.target.value)} /></label>
-          <div className="studio-inline-actions"><button type="button" onClick={generateSyllabus}>Generate syllabus section</button><button className="studio-primary-button" type="submit" disabled={busy}>{busy ? "Saving…" : "Save assignment"}</button><button className="studio-publish-button" type="button" disabled={busy} onClick={() => saveAssignment("published")}>Publish</button></div>
+          <div className="studio-inline-actions"><button type="button" onClick={generateSyllabus}>Generate syllabus section</button><button className="studio-primary-button" type="submit" disabled={busy}>{busy ? "Saving…" : "Save assignment"}</button><button className="studio-publish-button" type="button" disabled={busy} onClick={() => saveAssignment("published")}>Publish assignment</button></div>
         </form>
         <SyllabusPreview section={syllabusSection || buildSyllabusSection({ title, instructions, dueAt, outcomes, deliverable, points: totalPoints, submissionLabel })} />
       </div>
