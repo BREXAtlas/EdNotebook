@@ -56,6 +56,8 @@ const LOGO_VARIANTS = [
   { name: "One-color logo", use: "Print, embroidery, stamps, and simple backgrounds", src: "/brand/ednotebook-logo-monochrome.svg", file: "ednotebook-logo-monochrome.svg" },
 ];
 
+const deferredImage = { loading: "lazy", decoding: "async", fetchPriority: "low" };
+
 export default function PortalHome() {
   return (
     <div className="portal-page portal-home-page">
@@ -75,7 +77,7 @@ export default function PortalHome() {
             </div>
           </div>
           <div className="portal-choice-mark">
-            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchPriority="high" />
+            <img className="portal-choice-hero-image" src="/landing/landing-learning-planner.png" alt="An organized learning desk with notebook, planner, books, and laptop" width="1536" height="1024" fetchPriority="high" decoding="async" />
             <BrandMark size={82} inverse />
             <span>Making learning fun, connected, and high tech.</span>
           </div>
@@ -84,7 +86,7 @@ export default function PortalHome() {
         <section className="portal-choice-grid" aria-label="Choose an EdNotebook portal">
           {PORTAL_CARDS.map((portal) => (
             <article className={`portal-choice-card is-${portal.id}`} key={portal.id}>
-              <img className="portal-choice-card-image" src={portal.image} alt={portal.imageAlt} width="1536" height="1024" loading="lazy" />
+              <img className="portal-choice-card-image" src={portal.image} alt={portal.imageAlt} width="1536" height="1024" {...deferredImage} />
               <span className="portal-card-number">{portal.number}</span>
               <h2>{portal.title}</h2>
               <p>{portal.description}</p>
@@ -100,9 +102,9 @@ export default function PortalHome() {
             <h2 style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>Meet Brooke, Atlas, and Jaylen.</h2>
             <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Open a ready-made student, professor, or K–12 workspace and try the features for yourself.</p>
             <div className="portal-demo-team">
-              <a href="#/tour/student"><img src="/demo-media/brooke-portrait.png" alt="Brooke, student tour guide" /><span><strong>Brooke</strong><small>University student</small></span></a>
-              <a href="#/tour/professor"><img src="/demo-media/atlas-portrait.png" alt="Atlas, professor guide" /><span><strong>Atlas</strong><small>Professor</small></span></a>
-              <a href="#/tour/k12"><img src="/demo-media/jaylen-portrait.png" alt="Jaylen, K–12 student guide" /><span><strong>Jaylen</strong><small>K–12 student</small></span></a>
+              <a href="#/tour/student"><img src="/demo-media/brooke-portrait.png" alt="Brooke, student tour guide" {...deferredImage} /><span><strong>Brooke</strong><small>University student</small></span></a>
+              <a href="#/tour/professor"><img src="/demo-media/atlas-portrait.png" alt="Atlas, professor guide" {...deferredImage} /><span><strong>Atlas</strong><small>Professor</small></span></a>
+              <a href="#/tour/k12"><img src="/demo-media/jaylen-portrait.png" alt="Jaylen, K–12 student guide" {...deferredImage} /><span><strong>Jaylen</strong><small>K–12 student</small></span></a>
             </div>
           </div>
         </section>
@@ -121,12 +123,12 @@ export default function PortalHome() {
             <p>Send the website directly, post it to social media, or download the ready-to-share invitation graphic for a class group, campus page, or message.</p>
             <ShareEdNotebook buttonLabel="Share or download the invitation" targetPath="#/" />
           </div>
-          <img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" />
+          <img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" {...deferredImage} />
         </section>
 
         <section className="portal-brand-kit" aria-labelledby="portal-brand-kit-title">
           <div className="portal-brand-kit-heading"><div><span className="portal-kicker">EDNOTEBOOK LOGO KIT</span><h2 id="portal-brand-kit-title">Three marks for every setting.</h2></div><p>Use the primary logo whenever space allows, the compact mark for small placements, and the one-color logo when full color is not practical.</p></div>
-          <div className="portal-brand-variant-grid">{LOGO_VARIANTS.map((logo) => <article key={logo.name}><div className={logo.name === "One-color logo" ? "is-monochrome" : ""}><img src={logo.src} alt={`${logo.name} for EdNotebook`} /></div><strong>{logo.name}</strong><span>{logo.use}</span><a href={logo.src} download={logo.file}>Download SVG</a></article>)}</div>
+          <div className="portal-brand-variant-grid">{LOGO_VARIANTS.map((logo) => <article key={logo.name}><div className={logo.name === "One-color logo" ? "is-monochrome" : ""}><img src={logo.src} alt={`${logo.name} for EdNotebook`} {...deferredImage} /></div><strong>{logo.name}</strong><span>{logo.use}</span><a href={logo.src} download={logo.file}>Download SVG</a></article>)}</div>
         </section>
 
         <section className="portal-home-principle">
@@ -135,7 +137,7 @@ export default function PortalHome() {
           <div><strong>Your view stays yours</strong><span>Students see their own cross-class learning record; professors see only students and classes they are authorized to manage.</span></div>
         </section>
       </main>
-      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
+      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" {...deferredImage} /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
     </div>
   );
 }

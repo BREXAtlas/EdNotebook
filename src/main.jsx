@@ -59,7 +59,7 @@ function Router() {
 
   if (route.startsWith("#/app/course-output")) return <AuthGate accountType="professor" returnTo="#/app/course-output">{({ session }) => <CoursePackageStudio session={session} onBack={() => navigate("#/app/builder")} onOpenStudentCourse={(publicationId) => navigate(`#/student/course/${publicationId}`)} />}</AuthGate>;
   if (route.startsWith("#/app/studio")) return <AuthGate accountType="professor" returnTo="#/app/studio?tab=materials"><MotionFrame routeKey={route}><LearningStudio onBack={() => navigate("#/app/builder")} onCourseSetup={() => navigate("#/app")} /></MotionFrame></AuthGate>;
-  if (route.startsWith("#/app/builder")) return <AuthGate accountType="professor" returnTo="#/app/builder"><MotionFrame routeKey="builder"><CourseJourneyShell onBack={() => navigate("#/app")} onStudio={() => navigate("#/app/studio?tab=materials")} onCourseOutput={() => navigate("#/app/course-output")}><Builder /></CourseJourneyShell></MotionFrame></AuthGate>;
+  if (route.startsWith("#/app/builder")) return <AuthGate accountType="professor" returnTo="#/app/builder">{({ session }) => <MotionFrame routeKey="builder"><CourseJourneyShell onBack={() => navigate("#/app")} onStudio={() => navigate("#/app/studio?tab=materials")} onCourseOutput={() => navigate("#/app/course-output")}><Builder session={session} /></CourseJourneyShell></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/app")) return <AuthGate accountType="professor" returnTo="#/app"><MotionFrame routeKey="course-start"><CourseStart onContinue={() => navigate("#/app/builder")} onHome={() => navigate("#/")} /></MotionFrame></AuthGate>;
 
   if (route.startsWith("#/students/k12")) return studentLanding("k12");

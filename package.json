@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "audit:bundle": "node scripts/check-bundle-split.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

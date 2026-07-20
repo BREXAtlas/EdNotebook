@@ -36,6 +36,9 @@ jobs:
       - name: Build production site
         run: npm run build
 
+      - name: Verify core and feature bundle split
+        run: npm run audit:bundle
+
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v6

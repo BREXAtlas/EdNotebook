@@ -77,6 +77,7 @@ export function validateCourseManifest(manifest) {
       if (!clean(node.id) || ids.has(node.id)) errors.push("Lesson IDs must be unique.");
       ids.add(node.id);
       if (!clean(node.title) || !clean(node.openingNarrative)) errors.push("Every lesson needs a title and opening context.");
+      if (node.builderStatus === "title_only") errors.push(`${node.title || "A Course Forge lesson"} is still title-only. Generate its full lesson before publishing.`);
       for (const check of node.knowledgeChecks || []) if (!check.options?.includes(check.correctAnswer)) errors.push(`${node.title} has an invalid knowledge check.`);
     }
   }
