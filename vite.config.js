@@ -5,12 +5,12 @@ function manualChunk(id) {
   if (!id.includes("node_modules")) return undefined;
   if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react-core";
   if (id.includes("node_modules/@supabase/")) return "supabase-core";
-  if (/node_modules\/(pdfjs-dist|mammoth|tesseract\.js|@tesseract\.js-data|@opencvjs|jspdf)\//.test(id)) return "document-tools";
-  if (id.includes("node_modules/tus-js-client/")) return "upload-tools";
 
-  // Let Rollup place every other dependency with the route or lazy feature that
-  // imports it. A catch-all vendor chunk would pull transitive OCR/PDF helpers
-  // back into the initial page even though the workspace itself is lazy.
+  // Do not force the document and upload libraries into named manual chunks.
+  // Vite/Rolldown shares its dynamic-import helper with lazy modules. Forcing
+  // those modules into one manual chunk can make the helper's chunk an initial
+  // dependency and preload every PDF/OCR engine. Let Rollup keep each heavy
+  // library with the lazy workspace that actually imports it instead.
   return undefined;
 }
 
