@@ -38,6 +38,12 @@ export default function CourseJourneyShell({ children, onBack, onStudio, onCours
     if (["Ram Ready ★", "Story", "Lab", "Drill", "Seminar"].includes(label)) advance(3);
     if (label.includes("Generate course") || label === "Course") advance(4);
     if (label.includes("Preview as student")) advance(5);
+    if (label.includes("Publish course to this class")) {
+      event.preventDefault();
+      event.stopPropagation();
+      advance(6);
+      onCourseOutput?.();
+    }
   };
 
   return <div className="course-builder-shell" onClickCapture={handleCapture} onFocusCapture={handleCapture}>
