@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AssignmentTemplateWorkspace from "../portal/AssignmentTemplateWorkspace.jsx";
 import { addLessonToManifest, cloneManifest, COURSE_PRESETS, createStarterManifest, flattenLessons, removeLessonFromManifest, validateCourseManifest } from "./courseManifest.js";
+import { adaptBuilderCourseToManifest, readBuilderCourseDraft } from "./builderCourseAdapter.js";
 import { gradeCourseProgress, listManageableCourses, listProgressOverview, loadPublicationForCourse, publishCoursePackage, saveCoursePackageDraft, setPublicationState } from "./courseService.js";
 import "./course-runtime.css";
 import "./course-studio.css";
@@ -63,8 +64,24 @@ export default function CoursePackageStudio({ session, onBack, onOpenStudentCour
       const course = courses.find((item) => item.id === courseId);
       if (!course) return;
       const result = await loadPublicationForCourse(courseId);
-      const nextManifest = result.data?.draft_manifest?.format ? result.data.draft_manifest : createStarterManifest(course);
-      setPublication(result.data || null); setManifest(nextManifest); setSelected(null); setNotice("");
+      const cloudManifest = result.data?.draft_manifest?.format ? result.data.draft_manifest : null;
+      const localBuilderDraft = readBuilderCourseDraft();
+      const localUpdatedAt = Date.parse(localBuilderDraft?.updatedAt || "") || 0;
+      const cloudBuilderUpdatedAt = Date.parse(cloudManifest?.builderSource?.updatedAt || "") || 0;
+      const nextManifest = localBuilderDraft?.course && (!cloudManifest || localUpdatedAt > cloudBuilderUpdatedAt)
+        ? adaptBuilderCourseToManifest({
+            builderCourse: localBuilderDraft.course,
+            builderLessons: localBuilderDraft.lessons || {},
+            platformCourse: course,
+            existingManifest: cloudManifest,
+            updatedAt: localBuilderDraft.updatedAt,
+          })
+        : cloudManifest || createStarterManifest(course);
+      setPublication(result.data || null); setManifest(nextManifest); setSelected(null); setNotice(
+        localBuilderDraft?.course && (!cloudManifest || localUpdatedAt > cloudBuilderUpdatedAt)
+          ? "Latest Course Forge lessons loaded from this device. Save the draft to synchronize them to the class."
+          : ""
+      );
       window.localStorage.setItem("ednotebook-course-id", courseId);
     })();
   }, [courseId, courses]);
