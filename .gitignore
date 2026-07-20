@@ -4,6 +4,7 @@ dist/
 .scanner-build-check*/
 .codex-browser-check.mjs
 .codex-browser-output/
+test-results/
 __pycache__/
 .pytest_cache/
 supabase/.temp/

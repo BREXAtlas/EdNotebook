@@ -376,9 +376,15 @@ export default function AuthGate({ children, accountType = "student", educationT
           setLoading(false);
           return;
         }
-        profileUserId.current = data.session?.user?.id || null;
+        // This gate is preserved when an authenticated user moves between protected routes.
+        // Only a different identity needs a new profile load; the same id will not retrigger
+        // the profile effect and would otherwise leave the route on its loading screen forever.
+        const nextUserId = data.session?.user?.id || null;
+        if (profileUserId.current !== nextUserId) {
+          profileUserId.current = nextUserId;
+          setProfileLoading(Boolean(nextUserId));
+        }
         setSession(data.session ?? null);
-        setProfileLoading(Boolean(data.session?.user));
         setLoading(false);
       }
     }

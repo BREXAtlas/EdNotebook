@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "verify:auth-route": "node scripts/check-auth-route-transition.mjs",
+    "verify:compact-panels": "node scripts/check-compact-panel-deck.mjs",
+    "verify:compact-panels:e2e": "node scripts/check-compact-panel-deck-browser.mjs",
     "verify:app-bundle": "npm run build && node scripts/check-capacitor-ready.mjs"
   },
   "dependencies": {
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.3",
+    "playwright": "^1.61.1",
     "vite": "8.1.5"
   }
 }

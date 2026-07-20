@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
+import {
+  CompactDisclosure,
+  CompactDisclosureGroup,
+  CompactPanel,
+  CompactPanelDeck,
+} from "./CompactPanelDeck.jsx";
 import "./account-settings.css";
 
 const PROVIDER_MODELS = {
@@ -236,28 +242,42 @@ export default function AccountSettings({
         {SETTING_SECTIONS.map(([id, label]) => <button key={id} type="button" className={section === id ? "is-active" : ""} onClick={() => setSection(id)}>{label}</button>)}
       </nav>
 
-      {section === "profile" && <div className="account-settings-grid">
-        <article className="account-settings-card">
-          <h2>Profile details</h2>
+      <CompactPanelDeck
+        ariaLabel={accountType === "professor" ? "Educator account settings" : "Student account settings"}
+        desktopActiveId={section}
+      >
+        <CompactPanel
+          id="profile"
+          title="Profile"
+          summary="Details and page appearance"
+          bodyScroll="contained"
+        >
+          <CompactDisclosureGroup className="account-settings-grid" singleOpen ariaLabel="Profile settings groups">
+            <CompactDisclosure as="article" className="account-settings-card" id="profile-details" title="Profile details" defaultOpen>
           <label>Display name<input value={draft.displayName} onChange={(event) => patchValue("displayName", event.target.value)} /></label>
           <label>Account email<input type="email" value={authenticated ? accountEmail || draft.email : draft.email} readOnly={authenticated} onChange={(event) => patchValue("email", event.target.value)} />{authenticated && <small>This verified address is attached to your existing account.</small>}</label>
           {authenticated && <form className="account-email-change" onSubmit={changeAccountEmail}><label>Change account email<input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="new-address@example.com" required /></label><button type="submit" disabled={busy}>{busy ? "Sending…" : "Verify and change email"}</button><small>The new address cannot already belong to another account. Confirmation keeps this same account and account number.</small></form>}
           <label>Bio or description<textarea rows={5} value={draft.bio} onChange={(event) => patchValue("bio", event.target.value)} /></label>
           <label>Links<textarea rows={3} value={draft.links} onChange={(event) => patchValue("links", event.target.value)} placeholder="One website, portfolio, YouTube, or social link per line" /></label>
-        </article>
-        <article className="account-settings-card">
-          <h2>Profile appearance</h2>
+            </CompactDisclosure>
+            <CompactDisclosure as="article" className="account-settings-card" id="profile-appearance" title="Profile appearance">
           <label>Who can open the full page<select value={draft.profileVisibility} onChange={(event) => patchValue("profileVisibility", event.target.value)}><option value="private">Only me</option><option value="class">Connections or classmates</option><option value="public">Public</option></select></label>
           <FieldSwitch checked={draft.discoverable} onChange={(value) => patchValue("discoverable", value)} label="Appear in people search" detail="Turn this off to keep the profile hidden from search." />
           <FieldSwitch checked={draft.showDescriptions} onChange={(value) => patchValue("showDescriptions", value)} label="Show card descriptions" detail="This changes the amount of helper text in your dashboard." />
           <label>Profile color<select value={draft.profileAccent} disabled={referralProgress.referral_count < 3} onChange={(event) => patchValue("profileAccent", event.target.value)}><option value="#3151a6">Notebook blue</option><option value="#7660b5">Campus violet</option><option value="#287b63">Library green</option><option value="#b15d3a">Study amber</option></select><small>{referralProgress.referral_count >= 3 ? "Unlocked by inviting three friends." : "Invite three friends to unlock profile color controls."}</small></label>
           <button type="button" className="account-settings-save" onClick={() => persist("Profile settings")}>Save profile on this device</button>
-        </article>
-      </div>}
+            </CompactDisclosure>
+          </CompactDisclosureGroup>
+        </CompactPanel>
 
-      {section === "assistant" && <div className="account-settings-grid">
-        <article className="account-settings-card">
-          <h2>Assistant model</h2>
+        <CompactPanel
+          id="assistant"
+          title="Assistant & plugins"
+          summary="Models and workspace connections"
+          bodyScroll="document"
+        >
+          <CompactDisclosureGroup className="account-settings-grid" singleOpen ariaLabel="Assistant and plugin settings groups">
+            <CompactDisclosure as="article" className="account-settings-card" id="assistant-model" title="Assistant model" defaultOpen>
           <label>Provider<select value={draft.assistantProvider} onChange={(event) => patchValue("assistantProvider", event.target.value)}><option value="builtin">EdNotebook built-in demo</option><option value="openai">OpenAI / ChatGPT API</option><option value="anthropic">Anthropic / Claude API</option></select></label>
           <label>Model<select value={draft.assistantModel} onChange={(event) => patchValue("assistantModel", event.target.value)}>{models.map((model) => <option key={model}>{model}</option>)}</select></label>
           {draft.assistantProvider !== "builtin" && <>
@@ -265,36 +285,46 @@ export default function AccountSettings({
             <label>Gateway access token<input type="password" value={connectorToken} onChange={(event) => setConnectorToken(event.target.value)} autoComplete="off" placeholder="Kept only in this browser tab" /><small>Keep provider keys on your server. This temporary gateway token is never written to saved settings or the public site bundle.</small></label>
           </>}
           <div className={`connector-status ${draft.assistantProvider === "builtin" || (draft.gatewayUrl && connectorToken) ? "is-ready" : ""}`}><strong>{draft.assistantProvider === "builtin" ? "Built-in workspace search is ready" : draft.gatewayUrl && connectorToken ? "Connection details are ready for this tab" : "Add a gateway URL and temporary token"}</strong><span>{draft.assistantProvider === "builtin" ? "No external key is needed." : "External requests go only to the gateway you provide."}</span></div>
-        </article>
-        <article className="account-settings-card">
-          <h2>Workspace plugins</h2>
+            </CompactDisclosure>
+            <CompactDisclosure as="article" className="account-settings-card" id="workspace-plugins" title="Workspace plugins">
           <FieldSwitch checked={draft.plugins.calendar} onChange={(value) => patchPlugin("calendar", value)} label="Assignments and calendar" />
           <FieldSwitch checked={draft.plugins.documents} onChange={(value) => patchPlugin("documents", value)} label="Documents and syllabi" />
           <FieldSwitch checked={draft.plugins.sources} onChange={(value) => patchPlugin("sources", value)} label="Saved sources" />
           <FieldSwitch checked={draft.plugins.conversations} onChange={(value) => patchPlugin("conversations", value)} label="Past conversations" />
           <button type="button" className="account-settings-save" onClick={() => persist("Assistant and plugin settings")}>Save assistant settings on this device</button>
-        </article>
-      </div>}
+            </CompactDisclosure>
+          </CompactDisclosureGroup>
+        </CompactPanel>
 
-      {section === "controls" && <div className="account-settings-grid">
-        <article className="account-settings-card">
-          <h2>Social controls</h2>
+        <CompactPanel
+          id="controls"
+          title="Visibility & controls"
+          summary="Social visibility and upload preferences"
+          bodyScroll="document"
+        >
+          <CompactDisclosureGroup className="account-settings-grid" singleOpen ariaLabel="Visibility and control settings groups">
+            <CompactDisclosure as="article" className="account-settings-card" id="social-controls" title="Social controls" defaultOpen>
           <FieldSwitch checked={draft.showPresence} onChange={(value) => patchValue("showPresence", value)} label="Show online status" />
           <FieldSwitch checked={draft.allowComments} onChange={(value) => patchValue("allowComments", value)} label="Allow comments on my posts" />
           <FieldSwitch checked={draft.allowFollowerPosts} onChange={(value) => patchValue("allowFollowerPosts", value)} label="Allow connections to post on my page" />
           <FieldSwitch checked={draft.allowWelcomePosts} onChange={(value) => patchValue("allowWelcomePosts", value)} label="Allow a welcome post from my guide" />
-        </article>
-        <article className="account-settings-card">
-          <h2>Updates and uploads</h2>
+            </CompactDisclosure>
+            <CompactDisclosure as="article" className="account-settings-card" id="updates-uploads" title="Updates and uploads">
           <FieldSwitch checked={draft.productUpdates} onChange={(value) => patchValue("productUpdates", value)} label="Product update emails" detail="This device remembers the preference; email delivery is not connected yet." />
           <div className="storage-plan-card"><span>Free media allowance</span><strong>{referralProgress.referral_count >= 5 ? 10 : referralProgress.referral_count >= 1 ? 4 : draft.mediaUploadsPerWeek} picture or video uploads each week</strong><p>Text posts stay available. Inviting friends raises the free weekly media allowance.</p></div>
           <button type="button" className="account-settings-save" onClick={() => persist("Visibility and social controls")}>Save controls on this device</button>
-        </article>
-      </div>}
+            </CompactDisclosure>
+          </CompactDisclosureGroup>
+        </CompactPanel>
 
-      {section === "account" && <div className="account-settings-grid">
-        <article className="account-settings-card account-action-stack">
-          <h2>Security and status</h2>
+        <CompactPanel
+          id="account"
+          title="Account"
+          summary="Security, invitations, and save history"
+          bodyScroll="document"
+        >
+          <CompactDisclosureGroup className="account-settings-grid" singleOpen ariaLabel="Account settings groups">
+            <CompactDisclosure as="article" className="account-settings-card account-action-stack" id="security-status" title="Security and status" defaultOpen>
           <div><span>Account status</span><strong>{draft.accountStatus === "active" ? "Active" : draft.accountStatus}</strong></div>
           <div><span>Billing profile</span><strong>Free account · no payment method</strong></div>
           <div><span>Unique account number</span><strong>{referralProgress.account_number || accountNumber || "Preparing…"}</strong></div>
@@ -304,12 +334,13 @@ export default function AccountSettings({
           <button type="button" onClick={resetDeviceCopy}>Reset this device workspace</button>
           <button type="button" disabled title="Account deletion will be available after the account service is connected.">Account deletion coming soon</button>
           <small>Device reset removes settings and sample activity from this browser. Account deletion is not available yet.</small>
-        </article>
-        <article className="account-settings-card">
-          <h2>Save history</h2>
+            </CompactDisclosure>
+            <CompactDisclosure as="article" className="account-settings-card" id="save-history" title="Save history">
           <div className="settings-version-list">{draft.versions?.length ? draft.versions.map((version, index) => <div key={version.id}><strong>v{draft.versions.length - index}</strong><span>{version.label}</span><time>{new Date(version.savedAt).toLocaleString()}</time></div>) : <p>No saved versions yet. Each settings save creates one.</p>}</div>
-        </article>
-      </div>}
+            </CompactDisclosure>
+          </CompactDisclosureGroup>
+        </CompactPanel>
+      </CompactPanelDeck>
 
       {notice && <p className="account-settings-notice" role="status">{notice}</p>}
     </section>
