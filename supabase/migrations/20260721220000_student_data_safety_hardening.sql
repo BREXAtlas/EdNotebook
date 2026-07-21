@@ -4,6 +4,16 @@
 -- direct governance writes with audited RPCs, and enforces tenant-consistent
 -- course, roster, enrollment, grade, and grade-share references.
 
+-- Publication-backed learning resources need the same explicit relationship
+-- used by the access helper, scope trigger, and preflight checks below.
+alter table public.learning_resources
+  add column if not exists publication_id uuid
+  references public.publications(id) on delete set null;
+
+create index if not exists learning_resources_publication_idx
+  on public.learning_resources(publication_id)
+  where publication_id is not null;
+
 -- ---------------------------------------------------------------------------
 -- Platform and institution authorization helpers
 -- ---------------------------------------------------------------------------

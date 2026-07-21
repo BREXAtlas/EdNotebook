@@ -435,6 +435,16 @@ test("database migrations contain no captured tool-output truncation markers", a
   }
 });
 
+test("student-data hardening defines publication-backed learning resources before using them", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260721220000_student_data_safety_hardening.sql", import.meta.url), "utf8");
+  const relationshipPosition = sql.indexOf("add column if not exists publication_id uuid");
+  const firstReferencePosition = sql.indexOf("create or replace function private.can_access_publication");
+
+  assert.ok(relationshipPosition >= 0, "learning_resources.publication_id relationship is missing");
+  assert.ok(firstReferencePosition >= 0 && relationshipPosition < firstReferencePosition, "publication relationship must exist before access functions and preflight checks");
+  assert.match(sql, /create index if not exists learning_resources_publication_idx\s+on public\.learning_resources\(publication_id\)/u);
+});
+
 test("every new administration table uses RLS and browser writes stay behind RPCs", async () => {
   const sql = await readFile(new URL("../../supabase/migrations/20260721210000_institution_admin_control_center.sql", import.meta.url), "utf8");
   const tables = [
