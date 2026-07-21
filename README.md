@@ -19,6 +19,7 @@ EdNotebook is a student-controlled learning workspace for school, class, and aca
 - Publishing portal: https://ednotebook.com/#/publishers
 - Educator builder: https://ednotebook.com/#/app
 - Master admin: https://ednotebook.com/#/admin
+- LTI owner setup: https://ednotebook.com/#/admin/integrations/lti
 
 ## Interactive demonstration accounts
 
@@ -107,6 +108,17 @@ Verification does not automatically publish grades or private class records. Stu
 - `vite.config.js` — root base path for the `ednotebook.com` custom domain
 - `.github/workflows/deploy.yml` — pull-request build/security checks and production deployment
 
+## Technology and integration documentation
+
+- [`docs/TECH_STACK_AUDIT.md`](docs/TECH_STACK_AUDIT.md) — current systems, connections, privacy/storage boundaries, alternatives, and institutional handoff options
+- [`docs/integrations/LEARNING_SYSTEM_DATA_MODEL.md`](docs/integrations/LEARNING_SYSTEM_DATA_MODEL.md) — shared institution/LMS/course/roster/grade identifiers and records used across CSV, LTI, REST, and future SIS adapters
+- [`docs/integrations/BLACKBOARD_GRADE_EXPORT.md`](docs/integrations/BLACKBOARD_GRADE_EXPORT.md) — professor workflow, matching/scaling rules, validation, privacy, deployment, rollback, and acceptance testing
+- [`docs/integrations/LTI_1_3_OWNER_SETUP.md`](docs/integrations/LTI_1_3_OWNER_SETUP.md) — owner deployment, fields, secrets, course binding, activation gate, and key rotation
+- [`docs/integrations/BLACKBOARD_LTI_ADMIN_SETUP.md`](docs/integrations/BLACKBOARD_LTI_ADMIN_SETUP.md) — values and test sequence for the Blackboard administrator
+- [`docs/integrations/LTI_1_3_SECURITY.md`](docs/integrations/LTI_1_3_SECURITY.md) — launch, service-call, database, privacy, and residual-risk controls
+- [`docs/integrations/LTI_1_3_TEST_PLAN.md`](docs/integrations/LTI_1_3_TEST_PLAN.md) — automated, negative, launch, Deep Linking, NRPS, AGS, and activation acceptance tests
+- [`docs/integrations/LTI_1_3_TROUBLESHOOTING.md`](docs/integrations/LTI_1_3_TROUBLESHOOTING.md) — safe operator diagnosis and rollback without collecting tokens or records
+
 ## Local development
 
 Requirements:
@@ -133,21 +145,33 @@ npm run preview
 Security-service checks used by CI:
 
 ```bash
+npm run test:student-data-safety
+npm run test:blackboard
+npm run test:lti
 python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
 PYTHONPATH=services/document-security-worker pytest -q services/document-security-worker/tests
 deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+deno test --config supabase/functions/deno.json supabase/functions/_shared/lti/*.test.ts
+deno test --config supabase/functions/deno.json supabase/functions/_shared/deletion.test.ts
 ```
 
 ## GitHub Pages deployment and CI
 
-Pull requests targeting `main` run two required jobs:
+Pull requests targeting `main` run three release-gate jobs. Repository settings must mark these checks as required before they can enforce protected merges:
 
 1. **Build Vite app**
    - Install locked dependencies on Node.js 22 with `npm ci`
+   - Run the student-data safety, Blackboard reconciliation, and LTI contract tests
+   - Review `docs/STUDENT_DATA_SAFETY_TEST_REPORT.md`; production student data remains blocked while any operational evidence is marked `HOLD`
    - Run `npm run build`
 2. **Test security services**
    - Run the Python document-worker test suite
    - Type-check Supabase Edge Functions with Deno
+   - Run the LTI and deletion-worker Deno tests
+3. **Rehearse student-data database gates**
+   - Start a fresh PostgreSQL 17 Supabase database in Docker
+   - Apply every repository migration in order
+   - Run the rollback-safe restore, access-control, Blackboard reconciliation, and deletion/retention SQL harness with `ON_ERROR_STOP=1`
 
 Pushes to `main` run the same checks, upload `dist/`, and deploy to the `github-pages` environment. Production status is recorded in `pages-status.json` on the `automation/pages-status` branch.
 
@@ -160,7 +184,7 @@ The interactive tour is a working product demonstration, but several integration
 - Secure generative-AI provider calls
 - Production PDF/DOCX extraction
 - Google Calendar and Microsoft Outlook OAuth sync
-- LMS/SIS/LTI institution connectors
+- Live institution registrations, SIS/OneRoster feeds, and production-approved LTI deployments (the LTI pilot foundation is in code but is not a live institutional connection)
 - Moderated persistent photo uploads
 - Production hiring and ambassador application processing
 - Institution-specific contracts, policy review, and accessibility validation

@@ -1,0 +1,28 @@
+project_id = "ednotebook-local"
+
+[db]
+major_version = 17
+
+[functions.lti-configuration]
+verify_jwt = false
+
+[functions.lti-jwks]
+verify_jwt = false
+
+[functions.lti-oidc-login]
+verify_jwt = false
+
+[functions.lti-launch]
+verify_jwt = false
+
+[functions.lti-session]
+verify_jwt = false
+
+[functions.lti-deep-link-response]
+verify_jwt = false
+
+[functions.lti-nrps-sync]
+verify_jwt = false
+
+[functions.lti-ags]
+verify_jwt = false

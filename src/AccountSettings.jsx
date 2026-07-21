@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
+import InstitutionPicker from "./admin-control/InstitutionPicker.jsx";
+import { requestInstitutionTransfer } from "./admin-control/adminControlService.js";
+import { useFeatureManifest } from "./admin-control/FeatureBoundary.jsx";
 import "./account-settings.css";
 
 const PROVIDER_MODELS = {
@@ -12,6 +15,7 @@ const SETTING_SECTIONS = [
   ["profile", "Profile"],
   ["assistant", "Assistant & plugins"],
   ["controls", "Visibility & controls"],
+  ["institution", "Institution"],
   ["account", "Account"],
 ];
 
@@ -132,7 +136,15 @@ export default function AccountSettings({
   const [connectorToken, setConnectorToken] = useState(() => readConnectorToken(scope));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [institutionState, setInstitutionState] = useState({ loading: false, affiliation: null, transfer: null, name: "" });
+  const [transferChoice, setTransferChoice] = useState(null);
+  const [transferReason, setTransferReason] = useState("");
+  const [transferEffectiveOn, setTransferEffectiveOn] = useState("");
+  const featureControls = useFeatureManifest();
   const models = useMemo(() => PROVIDER_MODELS[draft.assistantProvider] || PROVIDER_MODELS.builtin, [draft.assistantProvider]);
+  const pathway = accountType === "professor" ? "professor" : "student";
+  const transferFeatureKey = accountType === "professor" ? "shared.institution_affiliation" : "student.institution_transfer";
+  const transferEnabled = featureControls ? featureControls.isEnabled(transferFeatureKey) : true;
 
   useEffect(() => { setDraft(settings); }, [settings]);
   useEffect(() => { setConnectorToken(readConnectorToken(scope)); }, [scope]);
@@ -140,6 +152,67 @@ export default function AccountSettings({
     if (models.includes(draft.assistantModel)) return;
     setDraft((current) => ({ ...current, assistantModel: models[0] }));
   }, [draft.assistantModel, models]);
+
+  async function loadInstitutionState() {
+    if (!authenticated || !isSupabaseConfigured || !supabase) {
+      setInstitutionState({ loading: false, affiliation: null, transfer: null, name: "" });
+      return;
+    }
+    setInstitutionState((current) => ({ ...current, loading: true }));
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) throw new Error("Sign in again to review institution access.");
+      const [{ data: affiliation, error: affiliationError }, { data: transfer, error: transferError }] = await Promise.all([
+        supabase
+          .from("institution_affiliations")
+          .select("id,pathway,institution_id,directory_key,relationship,status,started_at,updated_at")
+          .eq("user_id", userId)
+          .eq("pathway", pathway)
+          .eq("is_primary", true)
+          .in("status", ["active", "independent", "transfer_pending", "pending"])
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("institution_transfer_requests")
+          .select("id,pathway,to_directory_key,to_institution_id,requested_institution_name,reason,effective_on,status,created_at,reviewed_at,review_notes")
+          .eq("user_id", userId)
+          .eq("pathway", pathway)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      if (affiliationError) throw affiliationError;
+      if (transferError) throw transferError;
+
+      let name = affiliation?.status === "independent" ? "Independent / no institution" : "";
+      if (affiliation?.directory_key) {
+        const { data: directory } = await supabase
+          .from("institution_directory_entries")
+          .select("canonical_name")
+          .eq("directory_key", affiliation.directory_key)
+          .maybeSingle();
+        name = directory?.canonical_name || affiliation.directory_key;
+      } else if (affiliation?.institution_id) {
+        const { data: institution } = await supabase
+          .from("institutions")
+          .select("name")
+          .eq("id", affiliation.institution_id)
+          .maybeSingle();
+        name = institution?.name || "Approved institution";
+      }
+      setInstitutionState({ loading: false, affiliation: affiliation || null, transfer: transfer || null, name });
+    } catch (institutionError) {
+      setInstitutionState({ loading: false, affiliation: null, transfer: null, name: "" });
+      setNotice(institutionError?.message || "Institution access could not be loaded.");
+    }
+  }
+
+  useEffect(() => {
+    if (section === "institution") loadInstitutionState();
+  }, [section, authenticated, pathway]);
 
   function patchValue(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -190,6 +263,37 @@ export default function AccountSettings({
     setDraft(next);
     onSettingsChange?.(next);
     setNotice("This device copy was reset. Signed-in cloud records were not changed.");
+  }
+
+  async function submitTransferRequest(event) {
+    event.preventDefault();
+    if (!transferChoice) {
+      setNotice("Choose the institution you want reviewed as the transfer destination.");
+      return;
+    }
+    if (transferReason.trim().length < 5) {
+      setNotice("Explain the transfer request in at least 5 characters.");
+      return;
+    }
+    setBusy(true);
+    setNotice("");
+    try {
+      await requestInstitutionTransfer({
+        pathway,
+        institutionChoice: transferChoice,
+        reason: transferReason,
+        effectiveOn: transferEffectiveOn || null,
+      });
+      setTransferChoice(null);
+      setTransferReason("");
+      setTransferEffectiveOn("");
+      setNotice("Institution transfer request submitted. Your current environment is preserved while an authorized administrator reviews the destination and access effect.");
+      await loadInstitutionState();
+    } catch (transferError) {
+      setNotice(transferError?.message || "The institution transfer request could not be submitted.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -253,6 +357,36 @@ export default function AccountSettings({
           <FieldSwitch checked={draft.productUpdates} onChange={(value) => patchValue("productUpdates", value)} label="Product update emails" detail="Optional feature news and testing invitations." />
           <div className="storage-plan-card"><span>Free media allowance</span><strong>{draft.mediaUploadsPerWeek} picture or video uploads each week</strong><p>Text posts stay available. Unlimited media storage is a future paid option.</p></div>
           <button type="button" className="account-settings-save" onClick={() => persist("Visibility and social controls saved")}>Save controls</button>
+        </article>
+      </div>}
+
+      {section === "institution" && <div className="account-settings-grid">
+        <article className="account-settings-card account-action-stack">
+          <h2>Current institution relationship</h2>
+          {institutionState.loading ? <p>Loading institution access…</p> : institutionState.affiliation ? <>
+            <div><span>Institution</span><strong>{institutionState.name || "Pending institution match"}</strong></div>
+            <div><span>Relationship status</span><strong>{institutionState.affiliation.status.replaceAll("_", " ")}</strong></div>
+            <div><span>Pathway</span><strong>{pathway}</strong></div>
+          </> : <p>No primary institution relationship is available yet. New institutional course access requires a reviewed school match.</p>}
+          <small>Institution choice is an access boundary. It cannot be changed by editing a profile label, and selecting a school never grants access by itself.</small>
+        </article>
+        <article className="account-settings-card">
+          <h2>Request an institution transfer</h2>
+          {!authenticated ? <p>Sign in before requesting an institution change.</p> : !transferEnabled ? <p>An administrator has paused institution transfer requests for this pathway. Your existing institution history and access records are preserved.</p> : ["pending", "reviewing", "approved"].includes(institutionState.transfer?.status) ? <div className="storage-plan-card"><span>Transfer request</span><strong>{institutionState.transfer.requested_institution_name || institutionState.transfer.to_directory_key || "Destination under review"}</strong><p>Status: {institutionState.transfer.status}. Submitted {new Date(institutionState.transfer.created_at).toLocaleString()}.</p></div> : <form onSubmit={submitTransferRequest}>
+            <InstitutionPicker
+              value={transferChoice}
+              onChange={setTransferChoice}
+              educationDivision=""
+              label="Destination institution"
+              required
+              allowIndependent={false}
+              helpText="Choose the exact destination. If it is not listed, request a reviewed match. Your current institution does not change when this form is submitted."
+            />
+            <label>Reason for transfer<textarea rows={4} value={transferReason} onChange={(event) => setTransferReason(event.target.value)} required minLength={5} maxLength={2000} placeholder="Explain why the institution relationship should change." /></label>
+            <label>Requested effective date<input type="date" value={transferEffectiveOn} onChange={(event) => setTransferEffectiveOn(event.target.value)} /></label>
+            <div className="storage-plan-card"><span>Before you submit</span><strong>This is a reviewed request, not an immediate switch.</strong><p>Approval ends inappropriate prior access while preserving records required for grades, audit, retention, legal hold, and reconciliation.</p></div>
+            <button type="submit" className="account-settings-save" disabled={busy || !["active", "independent"].includes(institutionState.affiliation?.status)}>{busy ? "Submitting…" : "Submit transfer request"}</button>
+          </form>}
         </article>
       </div>}
 
