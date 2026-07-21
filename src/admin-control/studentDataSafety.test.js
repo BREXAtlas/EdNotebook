@@ -412,6 +412,7 @@ test("the disposable SQL harness contains all four rollback-safe database gates"
   assert.match(sql, /PASS Blackboard export and reconciliation test/u);
   assert.match(sql, /PASS deletion, retention, and legal-hold test/u);
   assert.match(sql, /set local role authenticated/u);
+  assert.match(sql, /reset role;\s*reset request\.jwt\.claim\.sub;\s*reset request\.jwt\.claim\.role;/u);
   assert.match(sql, /request_secure_file_deletion/u);
 });
 

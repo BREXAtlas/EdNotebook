@@ -176,6 +176,8 @@ select public.publish_course_package(
   'full_course','ednotebook-default','auto','Disposable grade-integrity fixture'
 );
 reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
 
 do $$
 declare v_signature text;
