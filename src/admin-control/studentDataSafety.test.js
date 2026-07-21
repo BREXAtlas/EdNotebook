@@ -413,6 +413,7 @@ test("the disposable SQL harness contains all four rollback-safe database gates"
   assert.match(sql, /PASS deletion, retention, and legal-hold test/u);
   assert.match(sql, /set local role authenticated/u);
   assert.match(sql, /reset role;\s*reset request\.jwt\.claim\.sub;\s*reset request\.jwt\.claim\.role;/u);
+  assert.match(sql, /set_config\('request\.jwt\.claim\.sub','10000000-0000-4000-8000-000000000011',true\);\s*select set_config\('request\.jwt\.claim\.role','authenticated',true\);\s*insert into public\.learning_messages select \* from safety_backup_messages;\s*reset request\.jwt\.claim\.sub;\s*reset request\.jwt\.claim\.role;/u);
   assert.match(sql, /request_secure_file_deletion/u);
 });
 
