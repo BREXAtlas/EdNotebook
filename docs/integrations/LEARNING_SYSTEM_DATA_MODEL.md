@@ -150,3 +150,19 @@ The runtime definitions live in `src/integrations/learningRecordContract.js`. Ea
 6. Add a contract migration and compatibility test before changing a canonical field.
 
 Nullable fields mean “not supplied by this integration,” not “safe to infer.” This permits a small CSV pilot now without redesigning course and grade records when LTI, Blackboard REST, or an SIS is approved later.
+
+## Database implementation
+
+Migration `20260721190000_lti_1_3_foundation.sql` makes the canonical model durable across adapters:
+
+- `institutions` carries institution code, SIS sourced ID, primary LMS, academic domain, and timezone.
+- `courses` carries section code, academic-session sourced ID, external course sourced ID, source system, and start/end dates while retaining the existing course ID and gradebook.
+- `learning_system_identifiers` is the common provider/mode/object/identifier crosswalk for Blackboard, SIS, OneRoster, and future adapters.
+- `lti_context_mappings` binds a signed deployment/context to an existing course.
+- `lti_user_mappings` binds deployment/subject to an existing profile and keeps LTI/LIS/OneRoster identifiers distinct.
+- `lti_context_memberships` stores the per-course enrollment role/status and optional external enrollment ID separately from the person identity.
+- `lti_resource_links` binds the LMS resource-link ID to an existing publication, lesson, assignment, or course.
+- `lti_grade_item_mappings` binds an existing grade item to an AGS line-item URL with release mode.
+- `lti_grade_sync_events` and `lti_roster_sync_events` preserve status, counts, idempotency/retry, and reconciliation evidence.
+
+Provider-specific fields stay in these crosswalks. `courses`, `course_memberships`, `grade_items`, and `student_grades` remain the EdNotebook source records used by the application, manual CSV, LTI, and any future REST/OneRoster adapters.

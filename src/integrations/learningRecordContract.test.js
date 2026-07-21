@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 import {
   ACTIVITY_PROGRESS,
   canonicalCourseRecord,
+  canonicalConnectionRecord,
+  canonicalEnrollmentRecord,
   canonicalGradeItemRecord,
   canonicalGradeResultRecord,
   canonicalIdentifiersFromCsv,
+  canonicalInstitutionRecord,
   GRADING_PROGRESS,
   LEARNING_RECORD_CONTRACT_VERSION,
   validateCanonicalGradeResult,
@@ -38,6 +41,18 @@ test("keeps Blackboard and SIS learner identifiers separate", () => {
     student_id: "A01234567",
     email: "student@example.edu",
   });
+});
+
+test("normalizes institution, connection, and per-course enrollment fields without credentials", () => {
+  const institution = canonicalInstitutionRecord({ id: "institution-1", institution_code: "ASU", sis_sourced_id: "org-100", primary_lms: "blackboard", academic_domain: "ANGELO.EDU", timezone_name: "America/Chicago" });
+  const connection = canonicalConnectionRecord({ institution_id: institution.ednotebookInstitutionId, provider: "blackboard", integration_mode: "lti_1_3", issuer: "https://lms.example.edu", client_id: "client-1", deployment_id: "deployment-1", enabled_scopes: ["scope-a", "scope-a"], status: "testing" });
+  const enrollment = canonicalEnrollmentRecord({ institution_id: institution.ednotebookInstitutionId, course_id: "course-1", user_id: "user-1", context_id: "context-1", lti_subject: "subject-1", enrollment_sourced_id: "enrollment-1", role: "learner", status: "active", identifiers: { oneroster_sourced_id: "user-100" } });
+  assert.equal(institution.academicDomain, "angelo.edu");
+  assert.deepEqual(connection.approvedScopes, ["scope-a"]);
+  assert.equal(enrollment.externalContextId, "context-1");
+  assert.equal(enrollment.externalUserId, "subject-1");
+  assert.equal(enrollment.identifiers.oneroster_sourced_id, "user-100");
+  assert.equal("privateKey" in connection, false);
 });
 
 test("uses the same line-item and result vocabulary for CSV and LTI adapters", () => {

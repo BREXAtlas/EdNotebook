@@ -19,6 +19,7 @@ EdNotebook is a student-controlled learning workspace for school, class, and aca
 - Publishing portal: https://ednotebook.com/#/publishers
 - Educator builder: https://ednotebook.com/#/app
 - Master admin: https://ednotebook.com/#/admin
+- LTI owner setup: https://ednotebook.com/#/admin/integrations/lti
 
 ## Interactive demonstration accounts
 
@@ -112,6 +113,11 @@ Verification does not automatically publish grades or private class records. Stu
 - [`docs/TECH_STACK_AUDIT.md`](docs/TECH_STACK_AUDIT.md) — current systems, connections, privacy/storage boundaries, alternatives, and institutional handoff options
 - [`docs/integrations/LEARNING_SYSTEM_DATA_MODEL.md`](docs/integrations/LEARNING_SYSTEM_DATA_MODEL.md) — shared institution/LMS/course/roster/grade identifiers and records used across CSV, LTI, REST, and future SIS adapters
 - [`docs/integrations/BLACKBOARD_GRADE_EXPORT.md`](docs/integrations/BLACKBOARD_GRADE_EXPORT.md) — professor workflow, matching/scaling rules, validation, privacy, deployment, rollback, and acceptance testing
+- [`docs/integrations/LTI_1_3_OWNER_SETUP.md`](docs/integrations/LTI_1_3_OWNER_SETUP.md) — owner deployment, fields, secrets, course binding, activation gate, and key rotation
+- [`docs/integrations/BLACKBOARD_LTI_ADMIN_SETUP.md`](docs/integrations/BLACKBOARD_LTI_ADMIN_SETUP.md) — values and test sequence for the Blackboard administrator
+- [`docs/integrations/LTI_1_3_SECURITY.md`](docs/integrations/LTI_1_3_SECURITY.md) — launch, service-call, database, privacy, and residual-risk controls
+- [`docs/integrations/LTI_1_3_TEST_PLAN.md`](docs/integrations/LTI_1_3_TEST_PLAN.md) — automated, negative, launch, Deep Linking, NRPS, AGS, and activation acceptance tests
+- [`docs/integrations/LTI_1_3_TROUBLESHOOTING.md`](docs/integrations/LTI_1_3_TROUBLESHOOTING.md) — safe operator diagnosis and rollback without collecting tokens or records
 
 ## Local development
 
@@ -142,6 +148,7 @@ Security-service checks used by CI:
 python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
 PYTHONPATH=services/document-security-worker pytest -q services/document-security-worker/tests
 deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+deno test --config supabase/functions/deno.json supabase/functions/_shared/lti/*.test.ts
 ```
 
 ## GitHub Pages deployment and CI
@@ -166,7 +173,7 @@ The interactive tour is a working product demonstration, but several integration
 - Secure generative-AI provider calls
 - Production PDF/DOCX extraction
 - Google Calendar and Microsoft Outlook OAuth sync
-- LMS/SIS/LTI institution connectors
+- Live institution registrations, SIS/OneRoster feeds, and production-approved LTI deployments (the LTI pilot foundation is in code but is not a live institutional connection)
 - Moderated persistent photo uploads
 - Production hiring and ambassador application processing
 - Institution-specific contracts, policy review, and accessibility validation

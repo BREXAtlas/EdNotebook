@@ -8,6 +8,7 @@
     "build": "vite build",
     "audit:bundle": "node scripts/check-bundle-split.mjs",
     "test:blackboard": "node --test src/integrations/learningRecordContract.test.js src/integrations/blackboard/blackboardCsvParser.test.js src/integrations/blackboard/blackboardMatching.test.js src/integrations/blackboard/blackboardMigration.test.js",
+    "test:lti": "node --test src/integrations/lti/ltiContract.test.js src/integrations/lti/ltiMigration.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

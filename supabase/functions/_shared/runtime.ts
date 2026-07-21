@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const DEFAULT_ORIGINS = [
   "https://brexatlas.github.io",
+  "https://ednotebook.com",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];
@@ -81,7 +82,7 @@ export function corsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get("origin");
   const allowed = allowedOrigins();
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret, stripe-signature, x-ednotebook-worker-token",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret, stripe-signature, x-ednotebook-worker-token, x-ednotebook-lti-launch",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",

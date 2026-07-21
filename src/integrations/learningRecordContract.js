@@ -89,6 +89,36 @@ export function canonicalProvenance({ provider, mode, sourceRecordId = null, rec
   };
 }
 
+export function canonicalInstitutionRecord(input = {}) {
+  return {
+    ednotebookInstitutionId: cleanText(input.ednotebookInstitutionId || input.id),
+    institutionCode: cleanText(input.institutionCode || input.institution_code, 180),
+    name: cleanText(input.name, 300),
+    sisSourcedId: cleanText(input.sisSourcedId || input.sis_sourced_id),
+    primaryLms: cleanText(input.primaryLms || input.primary_lms, 120),
+    academicDomain: cleanText(input.academicDomain || input.academic_domain, 320)?.toLowerCase() || null,
+    timezoneName: cleanText(input.timezoneName || input.timezone_name, 120),
+    provenance: canonicalProvenance(input.provenance || {}),
+  };
+}
+
+export function canonicalConnectionRecord(input = {}) {
+  return {
+    institutionId: cleanText(input.institutionId || input.institution_id),
+    provider: cleanText(input.provider, 80),
+    mode: cleanText(input.mode || input.integration_mode, 80),
+    issuer: cleanText(input.issuer, 1_000),
+    clientId: cleanText(input.clientId || input.client_id, 500),
+    deploymentId: cleanText(input.deploymentId || input.deployment_id, 500),
+    oidcAuthorizationUrl: cleanText(input.oidcAuthorizationUrl || input.oidc_authorization_url, 2_000),
+    jwksUrl: cleanText(input.jwksUrl || input.jwks_url, 2_000),
+    oauthTokenUrl: cleanText(input.oauthTokenUrl || input.oauth_token_url, 2_000),
+    approvedScopes: Array.from(new Set((input.approvedScopes || input.enabled_scopes || []).map((value) => cleanText(value, 500)).filter(Boolean))),
+    status: cleanText(input.status, 80) || "setup",
+    provenance: canonicalProvenance(input.provenance || {}),
+  };
+}
+
 export function canonicalCourseRecord(input = {}) {
   return {
     ednotebookCourseId: cleanText(input.ednotebookCourseId || input.id),
@@ -127,14 +157,18 @@ export function canonicalPersonRecord(input = {}) {
 
 export function canonicalEnrollmentRecord(input = {}) {
   return {
+    institutionId: cleanText(input.institutionId || input.institution_id),
     ednotebookCourseId: cleanText(input.ednotebookCourseId || input.course_id),
     ednotebookUserId: cleanText(input.ednotebookUserId || input.user_id),
+    externalContextId: cleanText(input.externalContextId || input.context_id),
+    externalUserId: cleanText(input.externalUserId || input.lti_subject || input.lms_user_id),
     externalEnrollmentId: cleanText(input.externalEnrollmentId || input.enrollment_sourced_id),
     role: cleanText(input.role, 120) || CANONICAL_ROLES.UNKNOWN,
     status: cleanText(input.status, 80),
     isPrimary: Boolean(input.isPrimary || input.is_primary),
     beginAt: cleanDateTime(input.beginAt || input.begin_at),
     endAt: cleanDateTime(input.endAt || input.end_at),
+    identifiers: Object.fromEntries(Object.entries(input.identifiers || {}).map(([key, value]) => [cleanText(key, 80), cleanText(value)]).filter(([key, value]) => key && value)),
     provenance: canonicalProvenance(input.provenance || {}),
   };
 }

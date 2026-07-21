@@ -22,6 +22,8 @@ const PlatformAdminDashboard = lazy(() => import("./portal/PlatformAdminDashboar
 const PasswordUpdate = lazy(() => import("./portal/PasswordUpdate.jsx"));
 const DemoExperience = lazy(() => import("./demo/DemoExperience.jsx"));
 const BusinessPresentation = lazy(() => import("./business/BusinessPresentation.jsx"));
+const LtiOwnerSetup = lazy(() => import("./integrations/lti/LtiOwnerSetup.jsx"));
+const LtiLaunchWorkspace = lazy(() => import("./integrations/lti/LtiLaunchWorkspace.jsx"));
 
 function RouteLoading() { return <main className="portal-route-loading" aria-live="polite"><strong>EdNotebook</strong><span>Opening your portal…</span></main>; }
 
@@ -43,6 +45,9 @@ function Router() {
   if (route.startsWith("#/tour") || route.startsWith("#/presentation") || route.startsWith("#/about") || route.startsWith("#/careers")) return <MotionFrame routeKey={route}><DemoExperience route={route} /></MotionFrame>;
   if (route.startsWith("#/account/update-password")) return <MotionFrame routeKey="password-update"><PasswordUpdate /></MotionFrame>;
 
+  if (route.startsWith("#/lti/instructor")) return <MotionFrame routeKey="lti-instructor"><LtiLaunchWorkspace audience="instructor" /></MotionFrame>;
+  if (route.startsWith("#/lti/student")) return <MotionFrame routeKey="lti-student"><LtiLaunchWorkspace audience="student" /></MotionFrame>;
+
   const courseRoute = route.match(/^#\/student\/(?:university\/|k12\/)?course\/([0-9a-f-]{36})/i) || route.match(/^#\/student\/course\/([0-9a-f-]{36})/i);
   if (courseRoute) {
     const track = route.includes("/k12/") ? "k12" : "university";
@@ -53,6 +58,7 @@ function Router() {
   if (route.startsWith("#/student/k12/app")) return studentDashboard("k12");
   if (route.startsWith("#/student/university/app") || route.startsWith("#/student/app")) return studentDashboard("university");
 
+  if (route.startsWith("#/admin/integrations/lti")) return <AuthGate accountType="professor" returnTo="#/admin/integrations/lti" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="lti-owner-setup"><LtiOwnerSetup onBack={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin")) return <AuthGate accountType="professor" returnTo="#/admin" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="platform-admin"><PlatformAdminDashboard onHome={() => navigate("#/")} onEducatorPortal={() => navigate("#/professor/dashboard")} /></MotionFrame>}</AuthGate>;
 
   if (route.startsWith("#/professor/dashboard")) return <AuthGate accountType="professor" returnTo="#/professor/dashboard">{({ profile, session }) => <MotionFrame routeKey="professor-dashboard"><ProfessorDashboard profile={profile} session={session} onHome={() => navigate("#/professors")} onBuild={() => navigate("#/app")} onStudentPortal={() => navigate("#/students")} onAdmin={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;

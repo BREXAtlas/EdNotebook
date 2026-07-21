@@ -2,7 +2,7 @@
 
 ## Executive view
 
-EdNotebook is a React web application with Supabase providing the authenticated data plane and server-side functions. GitHub holds source code and runs CI/deployment. A separate Python document-security container is designed for Railway. Blackboard currently has a professor-controlled CSV grade export; LTI 1.3/LTI Advantage is the standards-based next integration, while Blackboard REST remains an optional Blackboard-specific extension.
+EdNotebook is a React web application with Supabase providing the authenticated data plane and server-side functions. GitHub holds source code and runs CI/deployment. A separate Python document-security container is designed for Railway. Blackboard has a professor-controlled CSV grade export and a deployable LTI 1.3/LTI Advantage pilot foundation; neither is a claim of a live institutional connection. Blackboard REST remains an optional Blackboard-specific extension.
 
 Status labels in this audit are deliberate:
 
@@ -63,7 +63,7 @@ Status labels in this audit are deliberate:
 
 ### Supabase Edge Functions — active in code; individual functions require deployment/secrets
 
-- **Connected to:** link preview, secure upload completion, retention processing, Stripe webhooks, audit helpers, and future LTI server endpoints.
+- **Connected to:** link preview, secure upload completion, retention processing, Stripe webhooks, audit helpers, and the LTI OIDC/launch/JWKS/Deep Linking/NRPS/AGS server endpoints.
 - **Stores:** normally no durable state outside Postgres/Storage; function secrets live in the Supabase secret store. Functions may use a service-role key only server-side and only after request-specific authorization.
 - **Security:** authenticated functions receive user JWTs; webhooks/LTI launches require their own signature/state validation; service-to-service functions require a dedicated secret. Supabase documents Edge Functions as server-side TypeScript intended for webhooks and third-party integrations: [Edge Functions](https://supabase.com/docs/guides/functions).
 - **Alternatives:** Azure Functions, AWS Lambda/API Gateway, Google Cloud Functions/Run, Cloudflare Workers, Netlify Functions, Vercel Functions, Railway, Render, Fly.io, or an institutional application server.
@@ -86,12 +86,12 @@ Status labels in this audit are deliberate:
 - **Alternatives:** Blackboard's own manual spreadsheet workflow, LTI Advantage AGS, Blackboard REST APIs, or OneRoster gradebook exchange. The manual path should remain available as a controlled fallback even after LTI.
 - **Handoff requirement:** non-production Blackboard import test, institution-specific template examples, FERPA handling guidance, mapping/history retention, an identified reconciliation owner, and audit review.
 
-### Blackboard LTI 1.3/LTI Advantage — planned secure integration
+### Blackboard LTI 1.3/LTI Advantage — pilot foundation; deployment and institutional testing required
 
-- **Connected to when configured:** institution/LMS registration, OIDC login and signed launch, course context/resource link, user role, Deep Linking, Names and Roles Provisioning Service (NRPS), Assignment and Grade Services (AGS), and the shared EdNotebook record contract.
+- **Connected to when configured:** owner registration UI, server-side OIDC login and signed launch, existing EdNotebook institution/course/membership/publication/grade records, Deep Linking, Names and Roles Provisioning Service (NRPS), Assignment and Grade Services (AGS), short-lived browser continuation, reconciliation/audit tables, and the shared EdNotebook record contract.
 - **Required identifiers:** issuer, client ID, deployment ID, platform JWKS/auth/token endpoints, tool key ID/public JWKS, LTI subject, roles, context ID, resource-link ID, line-item URL/ID, NRPS/AGS service URLs, scopes, nonce/state, and launch/message timestamps.
-- **Stores:** connection/configuration metadata, encrypted/private signing material in server secrets, one-time state/nonce records, course/user/resource/line-item mappings, service scopes, grade-release decisions, response status, retry/reconciliation metadata, and redacted audits.
-- **Security:** all launch and service work is server-side; verify signature, issuer, audience/authorized party, deployment, nonce, state, expiry, message type/version, target link, HTTPS endpoints, role, context, and service scopes. Access tokens are short-lived and never enter browser storage.
+- **Stores:** connection/configuration metadata; SHA-256 hashes of one-time state, nonce, login hint, and opaque launch handle; course/user/resource/line-item mappings; optional protected roster profile fields; service scopes/endpoints; grade-release decisions; response status; retry/reconciliation metadata; and redacted audits. RSA private keys remain in the server secret store, and OAuth access tokens remain in function memory.
+- **Security:** all launch and service work is server-side; verify signature/RS256/key ID, issuer, audience/authorized party, deployment, nonce, atomically consumed state, expiry/issue time, message type/version, exact target link, allowlisted HTTPS endpoints, role, context, resource ownership, and service scopes. Redirects are disabled. Only finalized grades pass, with professor confirmation and idempotency. Access tokens and raw JWTs never enter browser storage or database rows.
 - **Institution alternatives:** another standards-compliant LMS using the same LTI 1.3 adapter; Blackboard REST for Blackboard-only operations; OneRoster/SIS for roster authority. Anthology explains that LTI provides portable launches/NRPS/AGS while REST exposes Blackboard-specific objects: [LTI or REST](https://docs.anthology.com/docs/blackboard/rest-apis/getting-started/lti-or-rest).
 - **Handoff requirement:** Blackboard developer registration, institution administrator deployment, privacy review, permitted data fields/scopes, test course, Deep Linking/NRPS/AGS acceptance tests, key rotation, incident/revocation process, and certification review. Status remains setup/testing until the real client and deployment IDs pass live institutional tests.
 
@@ -147,6 +147,7 @@ Status labels in this audit are deliberate:
 | Generated Blackboard CSV | Professor device | Local device/Blackboard import controls | Institution handling policy |
 | Blackboard mapping/export history | Supabase Postgres | Course and institution managers | Reconciliation/audit retention |
 | LTI keys/tokens | Server secret store/memory | Integration service only | Rotate/expire; never application tables unless encrypted design is approved |
+| LTI mappings and sync evidence | Supabase Postgres | Platform/institution/course managers; server-only state/session/service tables | Institution integration/audit schedule |
 | Audit events | Supabase Postgres | Authorized administrators | Approved audit/legal-hold schedule |
 | Demo settings | Browser local/session storage | Current browser profile | User clear/reset; not authoritative |
 
@@ -157,7 +158,7 @@ Status labels in this audit are deliberate:
 - Institution-owned GitHub organization/repository and Pages domain.
 - Institution-owned Supabase project/organization for Auth, Postgres, Storage, and Edge Functions.
 - Institution-owned Railway project for the document worker.
-- Blackboard test deployment for manual CSV first, then LTI setup/testing.
+- Blackboard test deployment for manual CSV plus LTI setup/testing; activation remains gated by live launch/roster/grade evidence.
 - Fastest pilot path, but requires vendor/DPA/data-residency and account-ownership review.
 
 ### Pattern B: Microsoft/institution-hosted equivalent

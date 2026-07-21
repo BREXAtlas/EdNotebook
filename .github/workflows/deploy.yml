@@ -83,6 +83,9 @@ jobs:
       - name: Type-check Supabase Edge Functions
         run: deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
 
+      - name: Test LTI claim and cryptography controls
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/lti/*.test.ts
+
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request'
