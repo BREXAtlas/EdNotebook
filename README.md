@@ -107,6 +107,12 @@ Verification does not automatically publish grades or private class records. Stu
 - `vite.config.js` — root base path for the `ednotebook.com` custom domain
 - `.github/workflows/deploy.yml` — pull-request build/security checks and production deployment
 
+## Technology and integration documentation
+
+- [`docs/TECH_STACK_AUDIT.md`](docs/TECH_STACK_AUDIT.md) — current systems, connections, privacy/storage boundaries, alternatives, and institutional handoff options
+- [`docs/integrations/LEARNING_SYSTEM_DATA_MODEL.md`](docs/integrations/LEARNING_SYSTEM_DATA_MODEL.md) — shared institution/LMS/course/roster/grade identifiers and records used across CSV, LTI, REST, and future SIS adapters
+- [`docs/integrations/BLACKBOARD_GRADE_EXPORT.md`](docs/integrations/BLACKBOARD_GRADE_EXPORT.md) — professor workflow, matching/scaling rules, validation, privacy, deployment, rollback, and acceptance testing
+
 ## Local development
 
 Requirements:
