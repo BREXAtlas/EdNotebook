@@ -439,10 +439,16 @@ test("student-data hardening defines publication-backed learning resources befor
   const sql = await readFile(new URL("../../supabase/migrations/20260721220000_student_data_safety_hardening.sql", import.meta.url), "utf8");
   const relationshipPosition = sql.indexOf("add column if not exists publication_id uuid");
   const firstReferencePosition = sql.indexOf("create or replace function private.can_access_publication");
+  const scopeGuard = sql.match(/create or replace function private\.enforce_learning_resource_scope\(\)[\s\S]*?as \$\$([\s\S]*?)\$\$;/u)?.[1];
 
   assert.ok(relationshipPosition >= 0, "learning_resources.publication_id relationship is missing");
   assert.ok(firstReferencePosition >= 0 && relationshipPosition < firstReferencePosition, "publication relationship must exist before access functions and preflight checks");
   assert.match(sql, /create index if not exists learning_resources_publication_idx\s+on public\.learning_resources\(publication_id\)/u);
+  assert.match(sql, /create policy learning_resources_insert[\s\S]*?publication_id is null or private\.can_access_publication\(publication_id,\(select auth\.uid\(\)\)\)/u);
+  assert.match(sql, /create policy learning_resources_update[\s\S]*?publication_id is null or private\.can_access_publication\(publication_id,\(select auth\.uid\(\)\)\)/u);
+  assert.ok(scopeGuard, "learning-resource scope guard is missing");
+  assert.match(scopeGuard, /tg_op='INSERT'/u);
+  assert.match(scopeGuard, /not private\.can_access_publication\(new\.publication_id,\(select auth\.uid\(\)\)\)/u);
 });
 
 test("every new administration table uses RLS and browser writes stay behind RPCs", async () => {

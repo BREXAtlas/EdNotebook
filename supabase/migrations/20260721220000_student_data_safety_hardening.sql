@@ -360,6 +360,36 @@ as $$
   );
 $$;
 
+-- The publication relationship is browser-visible, so RLS must authorize it
+-- independently of course, assignment, and secure-file relationships.
+drop policy if exists learning_resources_insert on public.learning_resources;
+create policy learning_resources_insert on public.learning_resources
+for insert to authenticated
+with check (
+  owner_id=(select auth.uid())
+  and (course_id is null or private.can_access_course(course_id))
+  and (assignment_id is null or private.can_access_assignment(assignment_id))
+  and (secure_file_id is null or private.can_access_secure_file(secure_file_id,(select auth.uid())))
+  and (publication_id is null or private.can_access_publication(publication_id,(select auth.uid())))
+);
+
+drop policy if exists learning_resources_update on public.learning_resources;
+create policy learning_resources_update on public.learning_resources
+for update to authenticated
+using (
+  owner_id=(select auth.uid())
+  or (assignment_id is not null and private.can_manage_assignment(assignment_id))
+  or (course_id is not null and private.can_manage_course(course_id))
+)
+with check (
+  (
+    owner_id=(select auth.uid())
+    or (assignment_id is not null and private.can_manage_assignment(assignment_id))
+    or (course_id is not null and private.can_manage_course(course_id))
+  )
+  and (publication_id is null or private.can_access_publication(publication_id,(select auth.uid())))
+);
+
 create or replace function private.user_has_current_student_group_context(
   p_group_id uuid,
   p_user_id uuid default auth.uid()
@@ -1732,10 +1762,16 @@ begin
   if new.publication_id is not null and new.course_id is not null and not exists (
     select 1 from public.publications p where p.id=new.publication_id and p.course_id=new.course_id
   ) then raise exception 'Learning-resource publication is outside its course'; end if;
-  if tg_op='UPDATE' and (
-    new.course_id is distinct from old.course_id
-    or new.assignment_id is distinct from old.assignment_id
-    or new.publication_id is distinct from old.publication_id
+  if (
+    tg_op='INSERT'
+    or (
+      tg_op='UPDATE'
+      and (
+        new.course_id is distinct from old.course_id
+        or new.assignment_id is distinct from old.assignment_id
+        or new.publication_id is distinct from old.publication_id
+      )
+    )
   ) and (select auth.uid()) is not null then
     if new.course_id is not null and not private.can_access_course(new.course_id) then
       raise exception 'Learning-resource target course access required';
