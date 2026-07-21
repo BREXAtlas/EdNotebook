@@ -137,7 +137,7 @@ export default function PortalHome() {
           <div><strong>Your view stays yours</strong><span>Students see their own cross-class learning record; professors see only students and classes they are authorized to manage.</span></div>
         </section>
       </main>
-      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" {...deferredImage} /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a></footer>
+      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" {...deferredImage} /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a><a href="#/institution-access">Institution access</a></footer>
     </div>
   );
 }

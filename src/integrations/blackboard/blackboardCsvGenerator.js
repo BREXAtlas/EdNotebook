@@ -133,6 +133,8 @@ export function createExportPreview({ parsed, context, studentMappings, columnMa
         if (changed) {
           changes.push({ rowIndex: studentMapping.rowIndex, columnIndex: columnMapping.columnIndex, value: newValue });
           gradeSnapshot.push({
+            blackboard_row_key: studentMapping.rowKey,
+            blackboard_column_key: columnMapping.columnKey,
             student_id: studentMapping.learnerId,
             source_kind: sourceKind,
             grade_item_id: columnMapping.mappingType === "grade_item" ? columnMapping.gradeItemId : null,

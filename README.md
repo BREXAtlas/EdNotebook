@@ -145,22 +145,33 @@ npm run preview
 Security-service checks used by CI:
 
 ```bash
+npm run test:student-data-safety
+npm run test:blackboard
+npm run test:lti
 python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
 PYTHONPATH=services/document-security-worker pytest -q services/document-security-worker/tests
 deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
 deno test --config supabase/functions/deno.json supabase/functions/_shared/lti/*.test.ts
+deno test --config supabase/functions/deno.json supabase/functions/_shared/deletion.test.ts
 ```
 
 ## GitHub Pages deployment and CI
 
-Pull requests targeting `main` run two required jobs:
+Pull requests targeting `main` run three release-gate jobs. Repository settings must mark these checks as required before they can enforce protected merges:
 
 1. **Build Vite app**
    - Install locked dependencies on Node.js 22 with `npm ci`
+   - Run the student-data safety, Blackboard reconciliation, and LTI contract tests
+   - Review `docs/STUDENT_DATA_SAFETY_TEST_REPORT.md`; production student data remains blocked while any operational evidence is marked `HOLD`
    - Run `npm run build`
 2. **Test security services**
    - Run the Python document-worker test suite
    - Type-check Supabase Edge Functions with Deno
+   - Run the LTI and deletion-worker Deno tests
+3. **Rehearse student-data database gates**
+   - Start a fresh PostgreSQL 17 Supabase database in Docker
+   - Apply every repository migration in order
+   - Run the rollback-safe restore, access-control, Blackboard reconciliation, and deletion/retention SQL harness with `ON_ERROR_STOP=1`
 
 Pushes to `main` run the same checks, upload `dist/`, and deploy to the `github-pages` environment. Production status is recorded in `pages-status.json` on the `automation/pages-status` branch.
 

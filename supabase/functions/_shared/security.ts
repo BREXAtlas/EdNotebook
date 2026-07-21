@@ -47,11 +47,11 @@ export interface AuditInput {
   details?: Record<string, unknown>;
 }
 
-export async function recordAudit(
+async function insertAudit(
   admin: SupabaseClient,
   req: Request | null,
   input: AuditInput,
-): Promise<void> {
+): Promise<unknown | null> {
   const forwarded = req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
   const userAgent = req?.headers.get("user-agent") || null;
   const requestId = input.requestId || req?.headers.get("x-request-id") || crypto.randomUUID();
@@ -71,6 +71,29 @@ export async function recordAudit(
     details: input.details || {},
     event_hash: "",
   });
+  return error;
+}
+
+export async function recordAuditRequired(
+  admin: SupabaseClient,
+  req: Request | null,
+  input: AuditInput,
+): Promise<void> {
+  const error = await insertAudit(admin, req, input);
+  if (error) {
+    const message = error instanceof Error
+      ? error.message
+      : String((error as { message?: unknown })?.message || error);
+    throw new Error(`Audit insert failed: ${message}`);
+  }
+}
+
+export async function recordAudit(
+  admin: SupabaseClient,
+  req: Request | null,
+  input: AuditInput,
+): Promise<void> {
+  const error = await insertAudit(admin, req, input);
   if (error) console.error("audit insert failed", error);
 }
 

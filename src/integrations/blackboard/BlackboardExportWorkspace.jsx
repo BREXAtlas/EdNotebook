@@ -338,6 +338,8 @@ export default function BlackboardExportWorkspace({ onClose }) {
       const currentIssues = validateMappings({ structure, context, studentMappings, columnMappings, preview });
       if (!exportIsReady(currentIssues)) throw new Error("Return to Review issues and resolve the blocking items before downloading.");
       const csv = generateBlackboardCsv(parsed, preview.changes);
+      const outputBytes = new TextEncoder().encode(csv);
+      const outputFileHash = await sha256Hex(outputBytes);
       const mappingSnapshot = {
         students: studentMappings.filter((mapping) => mapping.status === "accepted" && !mapping.excluded).map((mapping) => ({ row_key: mapping.rowKey, learner_id: mapping.learnerId, match_method: mapping.method })),
         columns: columnMappings.filter((mapping) => mapping.status === "accepted").map(columnMappingPayload),
@@ -347,6 +349,8 @@ export default function BlackboardExportWorkspace({ onClose }) {
         courseId: selectedCourseId,
         sourceFilename: sourceFile.name,
         sourceFileHash,
+        outputFileHash,
+        outputByteLength: outputBytes.byteLength,
         exportFilename,
         formatDetected: `Blackboard CSV · ${structure.encoding}`,
         totalRows: parsed.rows.length,

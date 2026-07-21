@@ -113,6 +113,8 @@ export async function confirmBlackboardExport(payload) {
     p_course_id: payload.courseId,
     p_source_filename: payload.sourceFilename,
     p_source_file_hash: payload.sourceFileHash,
+    p_output_file_hash: payload.outputFileHash,
+    p_output_byte_length: payload.outputByteLength,
     p_export_filename: payload.exportFilename,
     p_format_detected: payload.formatDetected,
     p_total_rows: payload.totalRows,

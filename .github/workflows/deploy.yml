@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages-${{ github.ref }}
@@ -32,6 +30,15 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Test student-data safety controls
+        run: npm run test:student-data-safety
+
+      - name: Test Blackboard reconciliation contracts
+        run: npm run test:blackboard
+
+      - name: Test LTI data contracts
+        run: npm run test:lti
 
       - name: Build production site
         run: npm run build
@@ -86,11 +93,47 @@ jobs:
       - name: Test LTI claim and cryptography controls
         run: deno test --config supabase/functions/deno.json supabase/functions/_shared/lti/*.test.ts
 
+      - name: Test deletion failure handling
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/deletion.test.ts
+
+  database-safety:
+    name: Rehearse student-data database gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+
+      - name: Start a fresh local Supabase database and apply every migration
+        run: supabase db start
+
+      - name: Run rollback-safe student-data safety gates
+        env:
+          PGCONNECT_TIMEOUT: '10'
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/institution_student_data_safety.sql
+
+      - name: Stop the disposable local database
+        if: always()
+        run: supabase stop --no-backup
+
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request'
-    needs: [build, security-tests]
+    needs: [build, security-tests, database-safety]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -104,7 +147,7 @@ jobs:
   report:
     name: Record production deployment status
     if: ${{ always() && github.event_name != 'pull_request' }}
-    needs: [build, security-tests, deploy]
+    needs: [build, security-tests, database-safety, deploy]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -118,7 +161,7 @@ jobs:
       - name: Write deployment result
         shell: bash
         run: |
-          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
+          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.database-safety.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
             status="success"
           else
             status="failure"
@@ -130,6 +173,7 @@ jobs:
             "status": "$status",
             "build": "${{ needs.build.result }}",
             "security_tests": "${{ needs.security-tests.result }}",
+            "database_safety": "${{ needs.database-safety.result }}",
             "deploy": "${{ needs.deploy.result }}",
             "page_url": "${{ needs.deploy.outputs.page_url }}",
             "run_url": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",

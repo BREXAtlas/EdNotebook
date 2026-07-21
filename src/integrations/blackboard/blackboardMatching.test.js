@@ -102,6 +102,8 @@ test("creates a preview from finalized grades and excludes pending grades", () =
   };
   const preview = createExportPreview({ parsed, context, studentMappings, columnMappings });
   assert.equal(preview.changedGradeCells, 1);
+  assert.equal(preview.gradeSnapshot[0].blackboard_row_key, studentMappings[0].rowKey);
+  assert.equal(preview.gradeSnapshot[0].blackboard_column_key, columnMappings[0].columnKey);
   assert.equal(preview.rows.find((row) => row.studentId === "student-2").status, "Not finalized");
 });
 

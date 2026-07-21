@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
+import InstitutionPicker from "./admin-control/InstitutionPicker.jsx";
+import "./admin-control/admin-control-center.css";
 
 const shell = {
   minHeight: "100vh",
@@ -54,8 +56,16 @@ function withAccountLoadTimeout(request, message) {
     .finally(() => window.clearTimeout(timeoutId));
 }
 
-async function hashInstitutionIdentifier(institution, identifier) {
-  const normalized = `${institution.trim().toLowerCase()}::${identifier.trim().toUpperCase().replace(/\s+/g, "")}`;
+async function signOutWithAccountTimeout() {
+  const { error } = await withAccountLoadTimeout(
+    supabase.auth.signOut({ scope: "local" }),
+    "The verification session sign-out took too long.",
+  );
+  if (error) throw error;
+}
+
+async function hashInstitutionIdentifier(institutionKey, identifier) {
+  const normalized = `${institutionKey.trim().toLowerCase()}::${identifier.trim().toUpperCase().replace(/\s+/g, "")}`;
   const bytes = new TextEncoder().encode(normalized);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
@@ -67,7 +77,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [university, setUniversity] = useState("");
+  const [institutionChoice, setInstitutionChoice] = useState(null);
   const [universityId, setUniversityId] = useState("");
   const [department, setDepartment] = useState("");
   const [educationDivision, setEducationDivision] = useState(educationTrack === "k12" ? "k12" : "university");
@@ -76,9 +86,15 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   const [error, setError] = useState("");
 
   const title = useMemo(() => {
-    if (mode === "signup") return accountType === "professor" ? "Create a professor account" : "Create a student account";
+    if (mode === "signup") {
+      if (accountType === "professor") return "Create a professor account";
+      if (accountType === "institution") return "Create an institution account";
+      return "Create a student account";
+    }
     if (mode === "reset") return "Reset your password";
-    return accountType === "professor" ? "Professor sign in" : "Student sign in";
+    if (accountType === "professor") return "Professor sign in";
+    if (accountType === "institution") return "Institution administrator sign in";
+    return "Student sign in";
   }, [accountType, mode]);
 
   async function submit(event) {
@@ -90,46 +106,64 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
     try {
       if (mode === "signup") {
         const schoolLabel = educationTrack === "k12" ? "school or district" : "college or university";
-        if (!university.trim()) throw new Error(`Add your ${schoolLabel}.`);
-        if (accountType === "student" && !universityId.trim()) throw new Error(`Add the ${educationTrack === "k12" ? "student ID" : "university ID"} your educator will use for roster matching.`);
+        if (!institutionChoice) throw new Error(`Choose your ${schoolLabel}, choose Other institution for review, or select Independent when available.`);
+        if (accountType === "professor" && institutionChoice.choice === "independent") {
+          throw new Error("Professor accounts require an institution request. Choose the exact institution or request review for an unlisted institution.");
+        }
+        if (institutionChoice.choice === "other" && !institutionChoice.name?.trim()) throw new Error("Add the institution's full legal name for review.");
+        const institutionalStudent = accountType === "student" && institutionChoice.choice !== "independent";
+        if (institutionalStudent && !universityId.trim()) throw new Error(`Add the ${educationTrack === "k12" ? "student ID" : "university ID"} your educator will use for roster matching.`);
 
-        const identifierHash = accountType === "student"
-          ? await hashInstitutionIdentifier(university, universityId)
+        const institutionKey = institutionChoice.directoryKey || institutionChoice.name || "independent";
+        const identifierHash = institutionalStudent
+          ? await hashInstitutionIdentifier(institutionKey, universityId)
           : null;
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              requested_role: accountType === "professor" ? "professor" : "learner",
-              education_division: accountType === "professor" ? educationDivision : educationTrack,
-              institution_name: university.trim(),
-              department: accountType === "professor" ? department.trim() : null,
-              institution_identifier_hash: identifierHash,
-              institution_identifier_last4: accountType === "student" ? universityId.trim().slice(-4) : null,
+        const { data, error: signUpError } = await withAccountLoadTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+                requested_role: accountType === "professor" ? "professor" : "learner",
+                education_division: accountType === "professor" ? educationDivision : educationTrack,
+                affiliation_choice: institutionChoice.choice,
+                institution_directory_key: institutionChoice.directoryKey || null,
+                institution_name: institutionChoice.choice === "independent" ? null : institutionChoice.name?.trim() || null,
+                department: accountType === "professor" ? department.trim() : null,
+                institution_identifier_hash: identifierHash,
+                institution_identifier_last4: institutionalStudent ? universityId.trim().slice(-4) : null,
+              },
+              emailRedirectTo: `${window.location.origin}${window.location.pathname}${returnTo}${returnTo.includes("?") ? "&" : "?"}confirmed=1`,
             },
-            emailRedirectTo: `${window.location.origin}${window.location.pathname}${returnTo}${returnTo.includes("?") ? "&" : "?"}confirmed=1`,
-          },
-        });
+          }),
+          "Account creation took too long. Check the connection and try again.",
+        );
         if (signUpError) throw signUpError;
         if (data.session) {
-          await supabase.auth.signOut();
+          try {
+            await signOutWithAccountTimeout();
+          } catch (signOutError) {
+            console.error("Unable to confirm verification session sign-out", signOutError);
+          }
           setSignupState("verified");
         } else {
           setSignupState("email");
         }
       } else if (mode === "reset") {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}${window.location.pathname}${returnTo}`,
-        });
+        const { error: resetError } = await withAccountLoadTimeout(
+          supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}${window.location.pathname}${returnTo}`,
+          }),
+          "The password reset request took too long. Check the connection and try again.",
+        );
         if (resetError) throw resetError;
         setMessage("Password reset email sent. Check your inbox.");
       } else {
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error: loginError } = await withAccountLoadTimeout(
+          supabase.auth.signInWithPassword({ email, password }),
+          "Sign-in took too long. Check the connection and try again.",
+        );
         if (loginError) throw loginError;
       }
     } catch (submitError) {
@@ -185,8 +219,10 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
           {title}
         </h1>
         <p style={{ margin: "0 0 22px", color: "#59667a", lineHeight: 1.5 }}>
-          {accountType === "professor"
-            ? "Use any email to begin teaching, publish classes, and choose a plan. School affiliation is a separate optional verification step."
+          {accountType === "institution"
+            ? "Use an approved EdNotebook account. The control center will show only the platform or institution workspaces assigned to that account."
+            : accountType === "professor"
+            ? "Choose the exact institution you work for. Professor access stays pending until the institution relationship is reviewed and approved."
             : educationTrack === "k12"
               ? "Browse schools and classes first, then sign in when you join a class or save your work."
               : "Browse colleges and classes publicly, then sign in when you join a class or save private work."}
@@ -216,11 +252,20 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                   </select>
                 </label>
               )}
-              <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
-                {accountType === "professor" ? "Primary school or university" : educationTrack === "k12" ? "School or district" : "College or university"}
-                <input style={field} value={university} onChange={(event) => setUniversity(event.target.value)} required />
-              </label>
-              {accountType === "student" ? (
+              <InstitutionPicker
+                value={institutionChoice}
+                onChange={setInstitutionChoice}
+                educationDivision={accountType === "professor"
+                  ? educationDivision === "both" ? "" : educationDivision
+                  : educationTrack}
+                label={accountType === "professor" ? "Primary institution" : educationTrack === "k12" ? "School or district" : "College or university"}
+                required
+                allowIndependent={accountType === "student"}
+                helpText={accountType === "professor"
+                  ? "Choose the exact institution you work for. An unlisted institution can be submitted for review; selection alone does not grant professor access."
+                  : "Choose the exact school you attend. Select Independent only for free public use without professor enrollment, assignment, roster, or institutional grade access."}
+              />
+              {accountType === "student" && institutionChoice?.choice !== "independent" ? (
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
                   {educationTrack === "k12" ? "Student ID" : "University ID"}
                   <input style={field} value={universityId} onChange={(event) => setUniversityId(event.target.value)} required autoComplete="off" />
@@ -230,7 +275,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
                   Department
                   <input style={field} value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Optional" />
-                  <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>You can use educator tools immediately. Upload a teacher ID later only if you want a verified school-affiliation badge.</small>
+                  <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>Department is descriptive only. Institution approval—not this field—controls professor access.</small>
                 </label>
               )}
             </>
@@ -382,7 +427,13 @@ export default function AuthGate({ children, accountType = "student", educationT
         if (error) throw error;
         if (!active) return;
         if (confirmationRequested.current) {
-          if (data.session) await supabase.auth.signOut();
+          if (data.session) {
+            try {
+              await signOutWithAccountTimeout();
+            } catch (signOutError) {
+              console.error("Unable to confirm verification session sign-out", signOutError);
+            }
+          }
           finishConfirmation();
           setLoading(false);
           return;
@@ -402,7 +453,13 @@ export default function AuthGate({ children, accountType = "student", educationT
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (confirmationRequested.current) {
         finishConfirmation();
-        if (nextSession) window.setTimeout(() => supabase.auth.signOut(), 0);
+        if (nextSession) {
+          window.setTimeout(() => {
+            signOutWithAccountTimeout().catch((signOutError) => {
+              console.error("Unable to finish verification session sign-out", signOutError);
+            });
+          }, 0);
+        }
         setLoading(false);
         return;
       }
@@ -530,7 +587,7 @@ export default function AuthGate({ children, accountType = "student", educationT
           </h1>
           <p style={{ color: "#59667a", lineHeight: 1.55 }}>
             {requestedProfessor
-              ? "Your account was created before instant educator access was enabled. Sign out and back in after the account update finishes. School-affiliation verification is optional and does not lock teaching tools."
+              ? "Your professor request is pending institution review. You cannot open institutional teaching, roster, assignment, or grade tools until the selected institution relationship is approved."
               : "Use the student portal for class work, or sign out and use an educator account for teaching tools."}
           </p>
           <a href="#/professors" style={{ ...primaryButton, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}>Return to professor information</a>

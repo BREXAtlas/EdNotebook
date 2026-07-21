@@ -1,3 +1,8 @@
+project_id = "ednotebook-local"
+
+[db]
+major_version = 17
+
 [functions.lti-configuration]
 verify_jwt = false
 

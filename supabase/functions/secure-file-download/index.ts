@@ -9,7 +9,7 @@ import {
   requirePost,
   requireUser,
 } from "../_shared/runtime.ts";
-import { recordAudit } from "../_shared/security.ts";
+import { recordAuditRequired } from "../_shared/security.ts";
 
 interface DownloadRequest {
   secureFileId?: string;
@@ -42,17 +42,23 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("id", input.previewId)
         .single();
-      if (previewError || !preview) throw new HttpError(404, "Preview was not found.");
+      if (previewError || !preview) {
+        throw new HttpError(404, "Preview was not found.");
+      }
       const { data: parent, error: parentError } = await client
         .from("secure_file_objects")
         .select("*")
         .eq("id", preview.secure_file_id)
         .single();
-      if (parentError || !parent) throw new HttpError(404, "Preview source file was not found.");
+      if (parentError || !parent) {
+        throw new HttpError(404, "Preview source file was not found.");
+      }
       file = parent;
       bucket = preview.bucket_id;
       path = preview.storage_path;
-      filename = `${parent.safe_name || "preview"}-${preview.kind}${preview.page_number ? `-${preview.page_number}` : ""}`;
+      filename = `${parent.safe_name || "preview"}-${preview.kind}${
+        preview.page_number ? `-${preview.page_number}` : ""
+      }`;
       previewId = preview.id;
       eventType = "preview.downloaded";
     } else {
@@ -61,22 +67,43 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("id", input.secureFileId)
         .single();
-      if (error || !data) throw new HttpError(404, "File was not found or you do not have access.");
-      file = data;
-      if (data.availability_status !== "released" || data.security_status !== "clean") {
-        throw new HttpError(423, "The file is not available until security processing is complete.", {
-          securityStatus: data.security_status,
-          availabilityStatus: data.availability_status,
-        });
+      if (error || !data) {
+        throw new HttpError(
+          404,
+          "File was not found or you do not have access.",
+        );
       }
+      file = data;
       bucket = data.destination_bucket;
       path = data.destination_path;
       filename = data.safe_name || data.original_name || "download";
     }
 
     if (!file) throw new HttpError(404, "File was not found.");
-    if (file.availability_status === "deleted" || file.availability_status === "pending_delete") {
-      throw new HttpError(410, "The file is pending deletion or has been deleted.");
+    if (
+      file.availability_status === "deleted" ||
+      file.availability_status === "pending_delete"
+    ) {
+      throw new HttpError(
+        410,
+        "The file is pending deletion or has been deleted.",
+      );
+    }
+    // Apply the same release gate to original objects and previews. A preview
+    // can contain the full substance of a document and must never bypass the
+    // quarantine/security decision of its parent file.
+    if (
+      file.availability_status !== "released" ||
+      file.security_status !== "clean"
+    ) {
+      throw new HttpError(
+        423,
+        "The file is not available until security processing is complete.",
+        {
+          securityStatus: file.security_status,
+          availabilityStatus: file.availability_status,
+        },
+      );
     }
 
     const admin = adminClient();
@@ -86,9 +113,11 @@ Deno.serve(async (req) => {
       .createSignedUrl(path, expiresIn, {
         download: input.disposition === "inline" ? false : filename,
       });
-    if (signedError || !signed?.signedUrl) throw signedError || new Error("Signed URL could not be created.");
+    if (signedError || !signed?.signedUrl) {
+      throw signedError || new Error("Signed URL could not be created.");
+    }
 
-    await recordAudit(admin, req, {
+    await recordAuditRequired(admin, req, {
       actorId: user.id,
       institutionId: file.institution_id as string | null,
       courseId: file.course_id as string | null,

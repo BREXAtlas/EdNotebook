@@ -198,4 +198,4 @@ Status labels in this audit are deliberate:
 - Begin grades with the reviewed manual CSV workflow.
 - Enable LTI only after real registration values and security tests pass; enable NRPS/AGS scopes separately.
 - Leave Blackboard REST, AI, payment, calendar, messaging, and analytics disabled unless each receives explicit institutional approval.
-- Complete a restore test, access-control test, export/reconciliation test, and deletion/retention test before production student data enters the system.
+- Complete a restore test, access-control test, export/reconciliation test, and deletion/retention test before production student data enters the system. The repository test contract, disposable-database rehearsal, evidence fields, and limits are documented in [Student-data safety gates](STUDENT_DATA_SAFETY_GATES.md). The current release decision and remaining external-system evidence are recorded in [Student-data safety test report](STUDENT_DATA_SAFETY_TEST_REPORT.md).
