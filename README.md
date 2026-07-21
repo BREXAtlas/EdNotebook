@@ -1,75 +1,125 @@
-# EdNotebook
+<p align="center">
+  <a href="https://ednotebook.com/">
+    <img src="public/brand/ednotebook-logo-primary.svg" alt="EdNotebook" width="420" />
+  </a>
+</p>
 
-[![Build and deploy](https://github.com/BREXAtlas/EdNotebook/actions/workflows/deploy.yml/badge.svg)](https://github.com/BREXAtlas/EdNotebook/actions/workflows/deploy.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<h3 align="center">One connected place for classes, deadlines, notes, people, and learning.</h3>
 
-EdNotebook is a web-based learning workspace and course-publishing platform for students, educators, and publishers. This repository contains the public site, interactive demonstrations, authenticated student and educator workflows, the course builder and runtime, Supabase backend resources, and the document-security worker.
+<p align="center">
+  EdNotebook is a student-centered learning workspace that brings the academic day together—from the first syllabus to the final submission.
+</p>
 
-> **Project status:** EdNotebook is under active development. The public tour uses fictional people and seeded demonstration data. Authenticated features use the connected Supabase project, while secure file release, document conversion, billing, and other production workflows require separately deployed services and secrets.
+<p align="center">
+  <a href="https://ednotebook.com/"><strong>Open EdNotebook</strong></a>
+  ·
+  <a href="https://ednotebook.com/#/tour"><strong>Take the interactive tour</strong></a>
+  ·
+  <a href="https://ednotebook.com/#/presentation"><strong>View the product presentation</strong></a>
+</p>
 
-## Live site
+<p align="center">
+  <a href="https://github.com/BREXAtlas/EdNotebook/actions/workflows/deploy.yml"><img alt="Build and deploy" src="https://github.com/BREXAtlas/EdNotebook/actions/workflows/deploy.yml/badge.svg" /></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1d4ed8.svg" /></a>
+</p>
 
-- [EdNotebook](https://ednotebook.com/)
-- [Interactive product tour](https://ednotebook.com/#/tour)
-- [Student portals](https://ednotebook.com/#/students)
-- [Educator portal](https://ednotebook.com/#/professors)
-- [Publishing portal](https://ednotebook.com/#/publishers)
-- [Business presentation](https://ednotebook.com/#/business-presentation)
+<p align="center">
+  <a href="https://ednotebook.com/#/tour">
+    <img src="public/landing/landing-learning-planner.png" alt="An organized learning desk with a notebook, planner, books, and laptop" width="900" />
+  </a>
+</p>
 
-## What is included
+## Learning should feel connected
 
-- University and K–12 student portals
-- Student dashboards for courses, assignments, calendars, notes, sources, and progress
-- Educator authentication, course creation, publishing, grading, and roster workflows
-- Course-package authoring and student course runtime
-- Publishing, reading, document, OCR, and accessibility tools
-- Public product tours with fictional student and professor accounts
-- Supabase migrations, private-storage policies, and Edge Functions
-- A Python document-security worker for malware scanning, archive inspection, previews, and conversion
-- GitHub Pages deployment with build, bundle, Python, and Deno checks
+School life is usually scattered across syllabi, calendars, learning systems, email, notes, documents, chats, and reminders. EdNotebook brings those pieces into one clear workspace so students can understand what matters, what comes next, and how everything connects.
 
-## Architecture
+It is designed around a simple idea: **the student should have a useful learning workspace even before every teacher, school, or platform is connected.**
 
-```text
-Browser
-  └─ React + Vite single-page application
-       ├─ Public tours and marketing routes
-       ├─ Authenticated student and educator workspaces
-       └─ Supabase client using a public publishable key
-            ├─ Auth
-            ├─ Postgres + row-level security
-            ├─ Private Storage
-            └─ Edge Functions
-                 └─ Document-security worker
-                      ├─ ClamAV scanning
-                      ├─ Archive inspection
-                      ├─ LibreOffice/Poppler previews
-                      └─ EduBook conversion
-```
+With EdNotebook, learners can organize classes, turn syllabi into plans, track deadlines across courses, keep notes and sources close to the work, revisit prior learning, and build a clearer picture of their academic progress. Educators can create courses, manage rosters, grade work, communicate with students, and preview the experience from the learner’s point of view.
 
-The frontend is a hash-routed static application deployed to GitHub Pages. Private records and uploaded educational files belong in Supabase, not in the repository. Secure cloud uploads are reserved into quarantine and are released only after the server-side security pipeline returns a clean result.
+## One product, three starting points
 
-## Technology
+| Students | Educators | Publishers |
+|---|---|---|
+| <img src="public/landing/landing-university-study.png" alt="University student studying with a notebook and laptop" width="420" /> | <img src="public/landing/landing-professor-planning.png" alt="Professor planning a course with books, notes, and a laptop" width="420" /> | <img src="public/landing/landing-publishing-materials.png" alt="Course books and manuscript pages being reviewed" width="420" /> |
+| Keep classes, assignments, grades, notes, sources, schedules, and people together. | Build and publish courses, approve rosters, grade work, share feedback, and stay connected with each class. | Prepare books, readings, supplies, and course-ready resources for educator review and student access. |
+| [Open the student portal →](https://ednotebook.com/#/students) | [Open the educator portal →](https://ednotebook.com/#/professors) | [Open the publishing portal →](https://ednotebook.com/#/publishers) |
 
-| Area | Technology |
+## What EdNotebook brings together
+
+### Plan from the syllabus outward
+
+Students can begin with the document that defines a course. EdNotebook’s syllabus workspace helps identify course information, learning objectives, materials, assignments, due dates, estimated effort, and reminder windows—then keeps the extracted information in draft form until a person reviews and approves it.
+
+### See the whole academic week
+
+Assignments from different classes belong on one understandable timeline. EdNotebook supports cross-course due dates, workload awareness, overlapping-deadline detection, missed-work recovery, personal tasks, reminders, time-zone preferences, and calendar export.
+
+### Keep learning context close
+
+Notes, readings, sources, document previews, conversations, and prior course context stay connected to the class and assignment where they matter. The goal is not another folder of disconnected files; it is a usable learning memory.
+
+### Support independent learners
+
+Students do not have to wait for an institution-wide rollout to start organizing their learning. Public browsing, syllabus tools, planning, notes, sources, literacy courses, and learning search are designed to provide value from the beginning.
+
+### Give educators a complete course view
+
+Educators can move from course creation to publication, roster approval, assignments, grading, announcements, feedback, and student-experience previews without losing the structure of the class.
+
+### Make learning materials part of the experience
+
+EdNotebook includes a pathway for educator-authored material, partner catalogs, readings, books, supplies, accessibility tools, and course-ready publishing workflows.
+
+## Meet the demo team
+
+The public tour opens ready-made workspaces with realistic fictional data, so the product can be explored without creating an account.
+
+| Brooke | Jaylen | Atlas |
+|---|---|---|
+| <a href="https://ednotebook.com/#/tour/student"><img src="public/demo-media/brooke-portrait.png" alt="Brooke, university student tour guide" width="220" /></a> | <a href="https://ednotebook.com/#/tour/k12"><img src="public/demo-media/jaylen-portrait.png" alt="Jaylen, K–12 student tour guide" width="220" /></a> | <a href="https://ednotebook.com/#/tour/professor"><img src="public/demo-media/atlas-portrait.png" alt="Atlas, professor tour guide" width="220" /></a> |
+| **University student**<br />Explore courses, assignments, planning, notes, sources, and student life. | **K–12 student**<br />Explore school planning, college preparation, financial literacy, and personal goals. | **Professor**<br />Explore course management, teaching workflows, communication, and student support. |
+| [Enter Brooke’s workspace →](https://ednotebook.com/#/tour/student) | [Enter Jaylen’s workspace →](https://ednotebook.com/#/tour/k12) | [Enter Atlas’s workspace →](https://ednotebook.com/#/tour/professor) |
+
+> Brooke, Jaylen, Atlas, and all associated schools, grades, assignments, relationships, conversations, and schedules are fictional demonstration data. They are not official educational records.
+
+## Designed around trust
+
+**Browse first.** Public schools, classes, product tours, and general information can be explored without an account.
+
+**Start independently.** Students can use core organization and learning tools without waiting for every teacher or institution to join.
+
+**Keep people in control.** Extracted syllabus information remains a draft until a student or educator approves it. Verification is handled by people, not awarded automatically by an algorithm.
+
+**Respect academic boundaries.** Students see their own cross-class learning record. Educators see only the classes and learners they are authorized to manage. Private records and educational files belong behind authenticated, row-level access controls.
+
+**Keep secrets off the client.** AI provider keys, service-role credentials, billing secrets, and document-processing tokens never belong in the browser bundle.
+
+## Explore EdNotebook
+
+| Experience | Link |
 |---|---|
-| Frontend | React 18, Vite 8, JavaScript, CSS |
-| Routing | Lightweight hash router in `src/main.jsx` |
-| Data and identity | Supabase Auth, Postgres, Row Level Security |
-| File storage | Supabase private Storage and TUS resumable uploads |
-| Document tooling | PDF.js, Tesseract.js, OpenCV.js, Mammoth, jsPDF |
-| Edge services | Supabase Edge Functions with Deno |
-| Security worker | Python 3.12, FastAPI, ClamAV, LibreOffice, Poppler |
-| Hosting and CI | GitHub Pages and GitHub Actions |
+| Product home | [ednotebook.com](https://ednotebook.com/) |
+| Interactive tour | [Choose a guided workspace](https://ednotebook.com/#/tour) |
+| Student experience | [University and K–12 portals](https://ednotebook.com/#/students) |
+| Educator experience | [Course and teaching portal](https://ednotebook.com/#/professors) |
+| Publishing experience | [Learning-material publishing](https://ednotebook.com/#/publishers) |
+| Product presentation | [See the full product story](https://ednotebook.com/#/presentation) |
+| Business presentation | [Vision, strategy, and partnerships](https://ednotebook.com/#/business-presentation) |
+| About and values | [Why EdNotebook exists](https://ednotebook.com/#/about) |
+| Careers | [Work with EdNotebook](https://ednotebook.com/#/careers) |
 
-## Quick start
+## Product status
 
-### Requirements
+EdNotebook is under active development. The repository includes the public experience, guided demonstrations, student and educator portals, course-building and course-runtime workflows, publishing tools, Supabase backend resources, and a document-security service.
 
-- Node.js 22
-- npm
+Some production capabilities intentionally depend on separately deployed, authenticated services, including secure generative-AI calls, full PDF and DOCX processing, calendar OAuth connections, institution integrations, persistent moderated uploads, billing, and institution-specific policy or accessibility review.
 
-Clone and start the development server:
+The product tour shows the intended connected experience while keeping credentials and sensitive workflows out of the static client.
+
+## Run the product locally
+
+EdNotebook is a React and Vite application.
 
 ```bash
 git clone https://github.com/BREXAtlas/EdNotebook.git
@@ -78,9 +128,9 @@ npm ci
 npm run dev
 ```
 
-Vite serves the application at `http://localhost:5173` by default.
+Vite serves the local application at `http://localhost:5173` by default.
 
-Create a production build and inspect it locally:
+Create and inspect a production build:
 
 ```bash
 npm run build
@@ -88,149 +138,43 @@ npm run audit:bundle
 npm run preview
 ```
 
-`npm run audit:bundle` must run after `npm run build`; it verifies that heavy document and OCR libraries remain outside the initial JavaScript bundle.
+<details>
+<summary><strong>Technology and services</strong></summary>
 
-## Configuration
+- React 18 and Vite 8
+- Supabase Auth, Postgres, Row Level Security, private Storage, and Edge Functions
+- PDF.js, Tesseract.js, OpenCV.js, Mammoth, and jsPDF document tooling
+- Deno-based server functions
+- Python 3.12 document-security worker with FastAPI, ClamAV, LibreOffice, and Poppler
+- GitHub Actions and GitHub Pages deployment
 
-The frontend reads these optional browser variables:
+Browser configuration uses public `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` values. Private service credentials must be configured only in protected server environments.
 
-```dotenv
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
-```
-
-Add them to a local `.env.local` file when working against another Supabase project. The current client falls back to the public URL and publishable key in `src/supabaseClient.js`, so the interface can start without a local environment file.
-
-Everything prefixed with `VITE_` is included in the browser bundle. **Never place service-role keys, Stripe secrets, worker tokens, salts, or other private credentials in a `VITE_*` variable.**
-
-Server-side Edge Function variable names are documented in [`supabase/functions/.env.example`](supabase/functions/.env.example). Configure those values as Supabase secrets rather than committing real values.
-
-The repository includes migrations and Edge Functions under `supabase/`, but it does not currently include a root `supabase/config.toml`. Frontend development can use the configured remote project; a fully isolated local backend requires adding and maintaining a separate Supabase local-project configuration.
-
-## Commands
-
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start the Vite development server |
-| `npm run build` | Build the production site into `dist/` |
-| `npm run audit:bundle` | Verify core/feature code splitting and bundle-size limits |
-| `npm run preview` | Serve the production build locally |
-
-There is currently no frontend unit-test script. Pull requests are validated through the production build, bundle audit, Python worker tests, and Deno type checks.
-
-## Backend and security checks
-
-### Document-security worker tests
-
-Requirements:
-
-- Python 3.12
-- `libmagic1`
-- Python packages from the worker requirements file
-- `pytest==8.4.1`
-
-```bash
-python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
-PYTHONPATH=services/document-security-worker \
-  pytest -q services/document-security-worker/tests
-```
-
-The deployable worker image additionally installs ClamAV, LibreOffice, Poppler, and archive utilities from [`services/document-security-worker/Dockerfile`](services/document-security-worker/Dockerfile).
-
-### Supabase Edge Function type checks
-
-Requirements:
-
-- Deno 2
-
-```bash
-deno check \
-  --config supabase/functions/deno.json \
-  supabase/functions/_shared/*.ts \
-  supabase/functions/*/index.ts
-```
-
-## Application routes
-
-| Route | Purpose |
-|---|---|
-| `#/` | Portal chooser |
-| `#/tour` | Interactive demonstration |
-| `#/students` | Student audience chooser |
-| `#/students/university` | University student landing page |
-| `#/students/k12` | K–12 student landing page |
-| `#/student/university/app` | Authenticated university workspace |
-| `#/student/k12/app` | Authenticated K–12 workspace |
-| `#/professors` | Educator landing page |
-| `#/professor/dashboard` | Authenticated educator dashboard |
-| `#/app` | Authenticated course-building entry point |
-| `#/app/builder` | Course builder |
-| `#/app/studio` | Learning and publishing studio |
-| `#/app/course-output` | Course-package output |
-| `#/publishers` | Publishing landing page |
-| `#/admin` | Role-restricted platform administration |
-| `#/business-presentation` | Business presentation |
-
-## Repository layout
-
-```text
-.
-├── src/
-│   ├── demo/             # Public product tour and fictional demo accounts
-│   ├── portal/           # Student, educator, publisher, and admin portals
-│   ├── studio/           # Learning, document, assignment, and publishing tools
-│   ├── course-runtime/   # Course packages and student course experience
-│   ├── AuthGate.jsx      # Supabase authentication and account bootstrap
-│   └── main.jsx          # Lazy-loaded hash routing
-├── public/               # Static assets and custom-domain configuration
-├── scripts/              # Build and bundle validation
-├── services/
-│   └── document-security-worker/
-├── supabase/
-│   ├── functions/        # Deno Edge Functions
-│   └── migrations/       # Database schema, RLS, storage, and service migrations
-├── docs/                 # Architecture, security, rollout, and product documentation
-└── .github/workflows/    # CI and GitHub Pages deployment
-```
-
-## Deployment
-
-The workflow in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pull requests and pushes to `main`.
-
-Pull requests run:
-
-1. `npm ci`
-2. `npm run build`
-3. `npm run audit:bundle`
-4. Python document-worker tests
-5. Deno Edge Function type checks
-
-A successful push to `main` runs the same checks, uploads `dist/`, and deploys the site to GitHub Pages. `public/CNAME` maps the Pages deployment to `ednotebook.com`. Deployment results are recorded on the `automation/pages-status` branch.
-
-## Security and data handling
-
-- Treat the Supabase publishable key as public and rely on authentication plus row-level security for authorization.
-- Never expose a Supabase service-role key or any server secret in frontend code.
-- Do not commit student submissions, grade exports, identity records, private course materials, database backups, or restricted publications.
-- Cloud educational files belong in private storage buckets; GitHub Pages contains only the static application.
-- The upload pipeline is fail-closed: files remain quarantined unless the security worker reports a clean result.
-- Demonstration profiles and records are fictional and are not official educational records.
-
-Read the detailed runbooks before changing storage or upload behavior:
+For architecture and security details, see:
 
 - [`docs/STORAGE_ARCHITECTURE.md`](docs/STORAGE_ARCHITECTURE.md)
 - [`docs/PRODUCTION_SECURITY_1_10.md`](docs/PRODUCTION_SECURITY_1_10.md)
 - [`docs/PORTAL_ROLLOUT.md`](docs/PORTAL_ROLLOUT.md)
 
+</details>
+
 ## Contributing
 
-1. Create a branch from `main`.
-2. Keep each change focused and avoid committing generated `dist/` or local environment files.
-3. Run the frontend checks and any relevant Python or Deno checks.
-4. Open a pull request describing the behavior changed and how it was validated.
+EdNotebook welcomes focused improvements to the learning experience, accessibility, reliability, privacy, security, course tooling, and product documentation.
 
-Security-sensitive changes should preserve row-level boundaries, private-storage defaults, quarantine behavior, audit logging, and the rule that browser bundles contain no private credentials.
+Before opening a pull request:
+
+```bash
+npm run build
+npm run audit:bundle
+```
+
+Changes to the document-security worker or Supabase Edge Functions should also run their relevant Python or Deno checks. Never commit private student data, restricted course material, production credentials, generated `dist/` output, or local environment files.
 
 ## License
 
 EdNotebook is available under the [MIT License](LICENSE).
+
+<p align="center">
+  <strong>Making learning fun, connected, and high tech.</strong>
+</p>
