@@ -1007,12 +1007,15 @@ begin
   return jsonb_build_object(
     'accounts',coalesce((
       select jsonb_agg(row_data order by row_data->>'full_name') from (
-        select distinct jsonb_build_object(
-          'user_id',p.id,'full_name',p.full_name,'email',p.email,'platform_role',p.role,
-          'platform_owner',(p.role='owner'),'institution_id',coalesce(ia.institution_id,im.institution_id),
-          'institution_name',i.name,'pathway',ia.pathway,'affiliation_status',ia.status,
-          'membership_role',im.role,'membership_status',im.status
-        ) row_data
+        select distinct
+          jsonb_build_object(
+            'user_id',p.id,'full_name',p.full_name,'email',p.email,'platform_role',p.role,
+            'platform_owner',(p.role='owner'),'institution_id',coalesce(ia.institution_id,im.institution_id),
+            'institution_name',i.name,'pathway',ia.pathway,'affiliation_status',ia.status,
+            'membership_role',im.role,'membership_status',im.status
+          ) row_data,
+          p.full_name sort_full_name,
+          p.id sort_user_id
         from public.profiles p
         left join public.institution_affiliations ia on ia.user_id=p.id
           and (p_institution_id is null or ia.institution_id=p_institution_id)
@@ -1022,7 +1025,7 @@ begin
         where (p_institution_id is null or ia.institution_id=p_institution_id or im.institution_id=p_institution_id)
           and (p_pathway is null or ia.pathway=p_pathway)
           and (v_query='' or lower(coalesce(p.full_name,'')) like '%'||v_query||'%' or lower(coalesce(p.email,'')) like '%'||v_query||'%')
-        order by p.full_name,p.id
+        order by sort_full_name,sort_user_id
         limit 75
       ) account_rows
     ),'[]'::jsonb),
