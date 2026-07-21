@@ -1136,6 +1136,10 @@ begin
   raise notice 'PASS deletion claim overlap, fencing, backoff, partial recovery, late-hold, quota, and audit test';
 end $$;
 
+update public.legal_holds
+set active=false,released_at=now(),updated_at=now()
+where id='81000000-0000-4000-8000-000000000002';
+
 do $$
 declare v_request_id uuid; v_claim record; v_renew_denied boolean:=false;
 begin
@@ -1200,8 +1204,9 @@ begin
   update public.secure_file_objects set expiration_next_attempt_at=now()-interval '1 second' where id='80000000-0000-4000-8000-000000000009';
   select * into v_expired_c from public.claim_expired_uploads('expiry-worker-c',25,interval '10 minutes')
   where secure_file_id='80000000-0000-4000-8000-000000000009';
-  insert into public.legal_hold_files(legal_hold_id,secure_file_id,added_by)
-  values('81000000-0000-4000-8000-000000000002','80000000-0000-4000-8000-000000000009','10000000-0000-4000-8000-000000000001');
+  insert into public.legal_holds(id,institution_id,name,reason,created_by)
+  values('81000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000001',
+    'Late expired-upload safety hold','Race after expired-upload Storage removal began','10000000-0000-4000-8000-000000000001');
   perform public.finish_expired_upload_claim('80000000-0000-4000-8000-000000000009',v_expired_c.claim_token,'expiry-worker-c',true,null);
   if not exists(select 1 from public.secure_file_objects where id='80000000-0000-4000-8000-000000000009' and upload_status='expired' and availability_status='deleted' and expiration_completion_outcome='late_governance_conflict')
      or (select status from public.upload_quota_reservations where secure_file_id='80000000-0000-4000-8000-000000000009')<>'expired' then
@@ -1209,6 +1214,10 @@ begin
   end if;
   raise notice 'PASS expired-upload hold exclusion, overlap, fencing, backoff, late-hold, and quota test';
 end $$;
+
+update public.legal_holds
+set active=false,released_at=now(),updated_at=now()
+where id='81000000-0000-4000-8000-000000000003';
 
 do $$ begin
   update public.legal_holds set active=false,released_at=now() where id='81000000-0000-4000-8000-000000000001';
