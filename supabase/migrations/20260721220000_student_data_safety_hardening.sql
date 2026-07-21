@@ -2869,16 +2869,16 @@ begin
   -- Create-or-find the one active request first. Every deletion mutation then
   -- locks request -> file, avoiding the inverse lock order that can deadlock a
   -- worker renewal against a repeated browser request.
-  insert into public.file_deletion_requests(secure_file_id,requested_by,reason,status)
+  insert into public.file_deletion_requests as fdr(secure_file_id,requested_by,reason,status)
   values(p_secure_file_id,v_user_id,left(coalesce(p_reason,''),2000),'pending')
-  on conflict (secure_file_id) where status in ('pending','eligible','deferred_retention','blocked_legal_hold','processing','failed')
+  on conflict (secure_file_id) where fdr.status in ('pending','eligible','deferred_retention','blocked_legal_hold','processing','failed')
   do nothing
   returning true into v_created;
   v_created:=coalesce(v_created,false);
-  select * into v_request from public.file_deletion_requests
-  where secure_file_id=p_secure_file_id
-    and status in ('pending','eligible','deferred_retention','blocked_legal_hold','processing','failed')
-  order by created_at desc limit 1 for update;
+  select fdr.* into v_request from public.file_deletion_requests as fdr
+  where fdr.secure_file_id=p_secure_file_id
+    and fdr.status in ('pending','eligible','deferred_retention','blocked_legal_hold','processing','failed')
+  order by fdr.created_at desc limit 1 for update;
   if not found then raise exception 'Active deletion request could not be created'; end if;
   if found and v_request.status='processing' then
     return query select v_request.id,v_request.status,v_request.eligible_at;
@@ -3043,9 +3043,9 @@ declare
   v_request public.file_deletion_requests%rowtype;
   v_file public.secure_file_objects%rowtype;
 begin
-  select * into v_request from public.file_deletion_requests
-  where id=p_request_id and status='processing' and claim_token=p_claim_token and claimed_by=left(trim(p_worker_id),200)
-    and claim_expires_at>now()
+  select fdr.* into v_request from public.file_deletion_requests as fdr
+  where fdr.id=p_request_id and fdr.status='processing' and fdr.claim_token=p_claim_token and fdr.claimed_by=left(trim(p_worker_id),200)
+    and fdr.claim_expires_at>now()
   for update;
   if not found then raise exception 'Matching active deletion claim not found'; end if;
   select * into v_file from public.secure_file_objects where id=v_request.secure_file_id for update;
@@ -3054,10 +3054,10 @@ begin
     if private.file_is_on_legal_hold(v_file.id) then raise exception 'Claimed secure file is now on an active legal hold'; end if;
     if v_file.retention_until is not null and v_file.retention_until>now() then raise exception 'Claimed secure file retention was extended'; end if;
   end if;
-  update public.file_deletion_requests set claimed_at=now(),claim_expires_at=now()+interval '10 minutes',updated_at=now()
-  where id=p_request_id and status='processing' and claim_token=p_claim_token and claimed_by=left(trim(p_worker_id),200)
-    and claim_expires_at>now()
-  returning public.file_deletion_requests.claimed_at into v_request.claimed_at;
+  update public.file_deletion_requests as fdr set claimed_at=now(),claim_expires_at=now()+interval '10 minutes',updated_at=now()
+  where fdr.id=p_request_id and fdr.status='processing' and fdr.claim_token=p_claim_token and fdr.claimed_by=left(trim(p_worker_id),200)
+    and fdr.claim_expires_at>now()
+  returning fdr.claimed_at into v_request.claimed_at;
   return query select v_request.id,v_request.secure_file_id,p_claim_token,v_request.claimed_at,to_jsonb(v_file);
 end;
 $$;

@@ -453,6 +453,14 @@ test("student-data hardening defines publication-backed learning resources befor
   assert.match(scopeGuard, /not private\.can_access_publication\(new\.publication_id,\(select auth\.uid\(\)\)\)/u);
 });
 
+test("deletion routines qualify columns that share public return-field names", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260721220000_student_data_safety_hardening.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /insert into public\.file_deletion_requests as fdr[\s\S]*?on conflict \(secure_file_id\) where fdr\.status in/u);
+  assert.match(sql, /select fdr\.\* into v_request from public\.file_deletion_requests as fdr[\s\S]*?and fdr\.status in/u);
+  assert.match(sql, /create or replace function public\.renew_file_deletion_claim[\s\S]*?fdr\.claim_token=p_claim_token[\s\S]*?update public\.file_deletion_requests as fdr[\s\S]*?fdr\.claim_token=p_claim_token/u);
+});
+
 test("every new administration table uses RLS and browser writes stay behind RPCs", async () => {
   const sql = await readFile(new URL("../../supabase/migrations/20260721210000_institution_admin_control_center.sql", import.meta.url), "utf8");
   const tables = [
