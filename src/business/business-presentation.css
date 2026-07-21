@@ -1,3 +1,11 @@
 @import "./business-layout.css";
 @import "./business-sections.css";
 @import "./business-responsive.css";
+
+.bp-section[id]{scroll-margin-top:88px}
+.bp-nav nav button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 2px;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+.bp-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 17px;border:1px solid transparent;border-radius:12px;background:var(--blue);color:#fff;font:inherit;font-weight:850;cursor:pointer}
+.bp-actions button.is-secondary{color:var(--blue);background:#fff;border-color:#b7c3df}
+.bp-section[tabindex="-1"]:focus-visible{outline:3px solid #f3b92e;outline-offset:6px}
+
+@media(max-width:720px){.bp-section[id]{scroll-margin-top:72px}}
