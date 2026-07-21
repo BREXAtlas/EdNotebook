@@ -1,0 +1,17 @@
+create index if not exists audit_events_assignment_id_idx on public.audit_events(assignment_id);
+create index if not exists audit_events_institution_id_idx on public.audit_events(institution_id);
+create index if not exists audit_events_resource_id_idx on public.audit_events(resource_id);
+create index if not exists file_deletion_requests_requested_by_idx on public.file_deletion_requests(requested_by);
+create index if not exists file_deletion_requests_secure_file_id_idx on public.file_deletion_requests(secure_file_id);
+create index if not exists learning_resources_link_preview_id_idx on public.learning_resources(link_preview_id);
+create index if not exists legal_hold_files_added_by_idx on public.legal_hold_files(added_by);
+create index if not exists legal_hold_files_secure_file_id_idx on public.legal_hold_files(secure_file_id);
+create index if not exists legal_holds_created_by_idx on public.legal_holds(created_by);
+create index if not exists plan_entitlements_entitlement_key_idx on public.plan_entitlements(entitlement_key);
+create index if not exists processing_jobs_secure_file_id_idx on public.processing_jobs(secure_file_id);
+create index if not exists profiles_plan_key_idx on public.profiles(plan_key);
+create index if not exists publications_secure_file_id_idx on public.publications(secure_file_id);
+create index if not exists retention_policies_created_by_idx on public.retention_policies(created_by);
+create index if not exists secure_file_objects_institution_id_idx on public.secure_file_objects(institution_id);
+create index if not exists stripe_price_plan_map_plan_key_idx on public.stripe_price_plan_map(plan_key);
+create index if not exists user_entitlements_entitlement_key_idx on public.user_entitlements(entitlement_key);
