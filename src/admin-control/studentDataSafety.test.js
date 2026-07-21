@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 
 import {
   STUDENT_DATA_DOMAINS,
@@ -423,6 +423,16 @@ test("the institution migration enforces tenant-aware course and affiliation pol
   assert.match(sql, /private\.has_institution_capability\(institution_id, 'view_accounts'/u);
   assert.match(sql, /create policy course_memberships_insert/u);
   assert.match(sql, /private\.can_join_course/u);
+});
+
+test("database migrations contain no captured tool-output truncation markers", async () => {
+  const migrationDirectory = new URL("../../supabase/migrations/", import.meta.url);
+  const migrationFiles = (await readdir(migrationDirectory)).filter((fileName) => fileName.endsWith(".sql"));
+
+  for (const fileName of migrationFiles) {
+    const sql = await readFile(new URL(fileName, migrationDirectory), "utf8");
+    assert.doesNotMatch(sql, /\b(?:\d+\s+)?tokens?\s+truncated\b/iu, `${fileName} contains captured tool output`);
+  }
 });
 
 test("every new administration table uses RLS and browser writes stay behind RPCs", async () => {
