@@ -42,6 +42,18 @@ const primaryButton = {
   cursor: "pointer",
 };
 
+const ACCOUNT_LOAD_TIMEOUT_MS = 12000;
+
+function withAccountLoadTimeout(request, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), ACCOUNT_LOAD_TIMEOUT_MS);
+  });
+
+  return Promise.race([Promise.resolve(request), timeout])
+    .finally(() => window.clearTimeout(timeoutId));
+}
+
 async function hashInstitutionIdentifier(institution, identifier) {
   const normalized = `${institution.trim().toLowerCase()}::${identifier.trim().toUpperCase().replace(/\s+/g, "")}`;
   const bytes = new TextEncoder().encode(normalized);
@@ -316,6 +328,8 @@ export default function AuthGate({ children, accountType = "student", educationT
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [verificationConfirmed, setVerificationConfirmed] = useState(false);
   const profileUserId = useRef(null);
   const confirmationRequested = useRef(
@@ -330,8 +344,25 @@ export default function AuthGate({ children, accountType = "student", educationT
     }
 
     let active = true;
+    let sessionResolved = false;
+
+    function applySession(nextSession) {
+      if (!active) return;
+
+      sessionResolved = true;
+      const nextUserId = nextSession?.user?.id || null;
+      if (profileUserId.current !== nextUserId) {
+        profileUserId.current = nextUserId;
+        setProfile(null);
+        setProfileLoading(Boolean(nextUserId));
+        setLoadError("");
+      }
+      setSession(nextSession ?? null);
+      setLoading(false);
+    }
 
     function finishConfirmation() {
+      sessionResolved = true;
       confirmationRequested.current = false;
       setVerificationConfirmed(true);
       setSession(null);
@@ -343,18 +374,27 @@ export default function AuthGate({ children, accountType = "student", educationT
     }
 
     async function loadSession() {
-      const { data } = await supabase.auth.getSession();
-      if (active) {
+      try {
+        const { data, error } = await withAccountLoadTimeout(
+          supabase.auth.getSession(),
+          "The account session took too long to load.",
+        );
+        if (error) throw error;
+        if (!active) return;
         if (confirmationRequested.current) {
           if (data.session) await supabase.auth.signOut();
           finishConfirmation();
           setLoading(false);
           return;
         }
-        profileUserId.current = data.session?.user?.id || null;
-        setSession(data.session ?? null);
-        setProfileLoading(Boolean(data.session?.user));
-        setLoading(false);
+        applySession(data.session);
+      } catch (sessionError) {
+        if (active && !sessionResolved) {
+          console.error("Unable to load account session", sessionError);
+          setLoading(false);
+          setProfileLoading(false);
+          setLoadError(sessionError?.message || "EdNotebook could not load the account session.");
+        }
       }
     }
 
@@ -366,20 +406,14 @@ export default function AuthGate({ children, accountType = "student", educationT
         setLoading(false);
         return;
       }
-      const nextUserId = nextSession?.user?.id || null;
-      if (profileUserId.current !== nextUserId) {
-        profileUserId.current = nextUserId;
-        setProfileLoading(Boolean(nextSession?.user));
-      }
-      setSession(nextSession ?? null);
-      setLoading(false);
+      applySession(nextSession);
     });
 
     return () => {
       active = false;
       listener.subscription.unsubscribe();
     };
-  }, [returnTo]);
+  }, [returnTo, loadAttempt]);
 
   useEffect(() => {
     let active = true;
@@ -393,27 +427,41 @@ export default function AuthGate({ children, accountType = "student", educationT
 
       setProfileLoading(true);
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id,email,full_name,role,subscription_status")
-        .eq("id", session.user.id)
-        .single();
+      try {
+        const { data, error } = await withAccountLoadTimeout(
+          supabase
+            .from("profiles")
+            .select("id,email,full_name,role,subscription_status")
+            .eq("id", session.user.id)
+            .single(),
+          "The account profile took too long to load.",
+        );
 
-      if (!active) return;
-      if (error) {
-        console.error("Unable to load profile", error);
-        setProfile(null);
-      } else {
+        if (error) throw error;
+        if (!active) return;
         setProfile(data);
+        setProfileLoading(false);
+      } catch (profileError) {
+        if (!active) return;
+        console.error("Unable to load profile", profileError);
+        setProfile(null);
+        setProfileLoading(false);
+        setLoadError(profileError?.message || "EdNotebook could not load the account profile.");
       }
-      setProfileLoading(false);
     }
 
     loadProfile();
     return () => {
       active = false;
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, loadAttempt]);
+
+  function retryAccountLoad() {
+    setLoadError("");
+    if (session?.user) setProfileLoading(true);
+    else setLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   if (!isSupabaseConfigured) {
     return (
@@ -428,6 +476,20 @@ export default function AuthGate({ children, accountType = "student", educationT
 
   if (loading || (session?.user && profileLoading)) {
     return <main style={shell}><div style={card}>Loading your EdNotebook account…</div></main>;
+  }
+
+  if (loadError) {
+    return (
+      <main style={shell}>
+        <section style={card} role="alert" aria-labelledby="account-load-error-title">
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>EDNOTEBOOK · ACCOUNT</div>
+          <h1 id="account-load-error-title" style={{ marginBottom: 8 }}>The account did not finish loading.</h1>
+          <p style={{ color: "#59667a", lineHeight: 1.55 }}>{loadError}</p>
+          <button type="button" style={primaryButton} onClick={retryAccountLoad}>Try again</button>
+          {session?.user && <button type="button" style={{ ...primaryButton, marginTop: 10, background: "#eef2f8", color: "#245397" }} onClick={() => supabase.auth.signOut()}>Sign out</button>}
+        </section>
+      </main>
+    );
   }
 
   if (!session?.user) {
