@@ -1,168 +1,180 @@
-# EdNotebook
+<p align="center">
+  <a href="https://ednotebook.com/">
+    <img src="public/brand/ednotebook-logo-primary.svg" alt="EdNotebook" width="420" />
+  </a>
+</p>
 
-EdNotebook is a student-controlled learning workspace for school, class, and academic-life management. It brings syllabi, assignments, due dates, calendars, notes, sources, conversations, AI memory, verified academic identity, and professor organization into one accessible web application.
+<h3 align="center">One connected place for classes, deadlines, notes, people, and learning.</h3>
 
-## Live application
+<p align="center">
+  EdNotebook is a student-centered learning workspace that brings the academic day together—from the first syllabus to the final submission.
+</p>
 
-- Portal chooser: https://ednotebook.com/
-- Interactive product tour: https://ednotebook.com/#/tour
-- Brooke university-student demo: https://ednotebook.com/#/tour/student
-- Jaylen K–12 student demo: https://ednotebook.com/#/tour/k12
-- Atlas professor demo: https://ednotebook.com/#/tour/professor
-- Demonstration presentation: https://ednotebook.com/#/presentation
-- About and values: https://ednotebook.com/#/about
-- Work with us: https://ednotebook.com/#/careers
-- Student path chooser: https://ednotebook.com/#/students
-- University student portal: https://ednotebook.com/#/students/university
-- K–12 student portal: https://ednotebook.com/#/students/k12
-- Educator portal: https://ednotebook.com/#/professors
-- Publishing portal: https://ednotebook.com/#/publishers
-- Educator builder: https://ednotebook.com/#/app
-- Master admin: https://ednotebook.com/#/admin
+<p align="center">
+  <a href="https://ednotebook.com/"><strong>Open EdNotebook</strong></a>
+  ·
+  <a href="https://ednotebook.com/#/tour"><strong>Take the interactive tour</strong></a>
+  ·
+  <a href="https://ednotebook.com/#/presentation"><strong>View the product presentation</strong></a>
+</p>
 
-## Interactive demonstration accounts
+<p align="center">
+  <a href="https://github.com/BREXAtlas/EdNotebook/actions/workflows/deploy.yml"><img alt="Build and deploy" src="https://github.com/BREXAtlas/EdNotebook/actions/workflows/deploy.yml/badge.svg" /></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1d4ed8.svg" /></a>
+</p>
 
-The public tour uses three fictional accounts with realistic mock data:
+<p align="center">
+  <a href="https://ednotebook.com/#/tour">
+    <img src="public/landing/landing-learning-planner.png" alt="An organized learning desk with a notebook, planner, books, and laptop" width="900" />
+  </a>
+</p>
 
-- **Brooke Mercer** — a verified university student and the tour-mode AI guide.
-- **Jaylen Carter** — a verified K–12 senior preparing for college, accounting, investing, and continued MMA training.
-- **Atlas Reed** — a verified professor, former high-school teacher, Ed.D. student, mentor, and AI-forward educator.
+## Learning should feel connected
 
-The profiles, grades, relationships, schools, assignments, conversations, schedules, and posts are demonstration data. They are not official educational records.
+School life is usually scattered across syllabi, calendars, learning systems, email, notes, documents, chats, and reminders. EdNotebook brings those pieces into one clear workspace so students can understand what matters, what comes next, and how everything connects.
 
-The existing generated Atlas and Jaylen portraits are committed as optimized data assets under `src/demo/portrait-data/` and assembled by `src/demo/portraits.js`. Brooke’s portrait remains in `public/mascots/brooke.svg`.
+It is designed around a simple idea: **the student should have a useful learning workspace even before every teacher, school, or platform is connected.**
 
-## Student planning features
+With EdNotebook, learners can organize classes, turn syllabi into plans, track deadlines across courses, keep notes and sources close to the work, revisit prior learning, and build a clearer picture of their academic progress. Educators can create courses, manage rosters, grade work, communicate with students, and preview the experience from the learner’s point of view.
 
-The demonstration workspace includes:
+## One product, three starting points
 
-- Homework and assignment command center
-- Course-connected titles, descriptions, due dates, times, and estimated work hours
-- Cross-class due-date calendar
-- Overlapping-deadline and workload detection
-- Missed-assignment recovery queue that remains visible until action is recorded
-- Seven-day, 48-hour, two-hour, and recovery reminder settings
-- Personal to-do list
-- Calendar time-zone and 12/24-hour display settings
-- Downloadable `.ics` calendar export
-- Product demonstrations for future authenticated Google Calendar and Outlook sync
+| Students | Educators | Publishers |
+|---|---|---|
+| <img src="public/landing/landing-university-study.png" alt="University student studying with a notebook and laptop" width="420" /> | <img src="public/landing/landing-professor-planning.png" alt="Professor planning a course with books, notes, and a laptop" width="420" /> | <img src="public/landing/landing-publishing-materials.png" alt="Course books and manuscript pages being reviewed" width="420" /> |
+| Keep classes, assignments, grades, notes, sources, schedules, and people together. | Build and publish courses, approve rosters, grade work, share feedback, and stay connected with each class. | Prepare books, readings, supplies, and course-ready resources for educator review and student access. |
+| [Open the student portal →](https://ednotebook.com/#/students) | [Open the educator portal →](https://ednotebook.com/#/professors) | [Open the publishing portal →](https://ednotebook.com/#/publishers) |
 
-## Syllabus intelligence
+## What EdNotebook brings together
 
-Students can use the syllabus workspace without waiting for a teacher account. The current front-end demonstration can read pasted text and text-based files, then prepare a human-reviewed extraction containing:
+### Plan from the syllabus outward
 
-- Course title and code
-- Course themes
-- Key learning objectives
-- Required books, readings, and materials
-- Assignment titles and descriptions
-- Due dates and times
-- Estimated project effort
-- Reminder windows
+Students can begin with the document that defines a course. EdNotebook’s syllabus workspace helps identify course information, learning objectives, materials, assignments, due dates, estimated effort, and reminder windows—then keeps the extracted information in draft form until a person reviews and approves it.
 
-Extracted information stays in draft state until the student or professor approves it. Production PDF and DOCX parsing requires a protected document-processing service.
+### See the whole academic week
 
-## Notes, sources, and learning memory
+Assignments from different classes belong on one understandable timeline. EdNotebook supports cross-course due dates, workload awareness, overlapping-deadline detection, missed-work recovery, personal tasks, reminders, time-zone preferences, and calendar export.
 
-The demo provides:
+### Keep learning context close
 
-- Class-connected notes
-- Source cabinet and citation-status coaching
-- Searchable document previews
-- Prior-conversation memory
-- Role-separated university, K–12, and professor workspaces
-- A deterministic document-aware AI chat demonstration that searches only the seeded workspace data
+Notes, readings, sources, document previews, conversations, and prior course context stay connected to the class and assignment where they matter. The goal is not another folder of disconnected files; it is a usable learning memory.
 
-A production AI connection must use authenticated server-side retrieval, provider routing, privacy controls, evaluation, cost controls, and institutional access boundaries. Provider keys must never be included in browser bundles or `VITE_*` variables.
+### Support independent learners
 
-## Open literacy courses
+Students do not have to wait for an institution-wide rollout to start organizing their learning. Public browsing, syllabus tools, planning, notes, sources, literacy courses, and learning search are designed to provide value from the beginning.
 
-Digital literacy and financial literacy learning paths are visible to all students, including independent students whose teachers have not joined EdNotebook.
+### Give educators a complete course view
 
-The public presentation links to official Texas Education Agency guidance covering technology applications, digital citizenship, accessibility, equitable access, safety, and personal financial literacy, along with research on Blackboard usability, course layout, accessibility, engagement, and the need for clearer learning interfaces.
+Educators can move from course creation to publication, roster approval, assignments, grading, announcements, feedback, and student-experience previews without losing the structure of the class.
 
-## Verification model
+### Make learning materials part of the experience
 
-Verification is manual and completed by a human.
+EdNotebook includes a pathway for educator-authored material, partner catalogs, readings, books, supplies, accessibility tools, and course-ready publishing workflows.
 
-- A verified university student represents confirmed active enrollment.
-- A verified K–12 student may be confirmed through a teacher, counselor, or school contact.
-- A verified professor represents confirmed faculty identity.
-- Verified educators may help confirm active student enrollment.
-- Additional verification may require the EdNotebook liaison team to contact an educator, school, or institution.
+## Meet the demo team
 
-Verification does not automatically publish grades or private class records. Students control which social-profile cards are visible.
+The public tour opens ready-made workspaces with realistic fictional data, so the product can be explored without creating an account.
 
-## Repository map
+| Brooke | Jaylen | Atlas |
+|---|---|---|
+| <a href="https://ednotebook.com/#/tour/student"><img src="public/demo-media/brooke-portrait.png" alt="Brooke, university student tour guide" width="220" /></a> | <a href="https://ednotebook.com/#/tour/k12"><img src="public/demo-media/jaylen-portrait.png" alt="Jaylen, K–12 student tour guide" width="220" /></a> | <a href="https://ednotebook.com/#/tour/professor"><img src="public/demo-media/atlas-portrait.png" alt="Atlas, professor tour guide" width="220" /></a> |
+| **University student**<br />Explore courses, assignments, planning, notes, sources, and student life. | **K–12 student**<br />Explore school planning, college preparation, financial literacy, and personal goals. | **Professor**<br />Explore course management, teaching workflows, communication, and student support. |
+| [Enter Brooke’s workspace →](https://ednotebook.com/#/tour/student) | [Enter Jaylen’s workspace →](https://ednotebook.com/#/tour/k12) | [Enter Atlas’s workspace →](https://ednotebook.com/#/tour/professor) |
 
-- `src/demo/` — interactive tour, three demonstration accounts, presentation, About page, careers page, syllabus tools, calendar, alerts, notes, sources, chat, social pages, and responsive card design system
-- `src/demo/portrait-data/` — optimized Atlas and Jaylen portrait data modules
-- `src/portal/` — audience chooser, University/K–12 student experience, educator dashboard, admin verification queue, publishing landing, and directory adapter
-- `src/Landing.jsx` — professor marketing page, mini-demo, pricing, and teacher onboarding
-- `src/Builder.jsx` — Learner, Professor, Admin, and Mastermind product prototype
-- `src/main.jsx` — hash router for public portals, interactive demonstrations, presentation, dashboards, studio, and builder
-- `services/document-security-worker/` — document-security and conversion service with Python tests
-- `supabase/functions/` — server-side edge functions checked with Deno
-- `supabase/migrations/` — row-level data boundaries for directory, identity linking, rosters, grades, profiles, groups, and announcements
-- `vite.config.js` — root base path for the `ednotebook.com` custom domain
-- `.github/workflows/deploy.yml` — pull-request build/security checks and production deployment
+> Brooke, Jaylen, Atlas, and all associated schools, grades, assignments, relationships, conversations, and schedules are fictional demonstration data. They are not official educational records.
 
-## Local development
+## Designed around trust
 
-Requirements:
+**Browse first.** Public schools, classes, product tours, and general information can be explored without an account.
 
-- Node.js 22
-- npm
-- Python 3.12 and `libmagic1` for the document-security test suite
-- Deno 2 for Supabase function type checks
+**Start independently.** Students can use core organization and learning tools without waiting for every teacher or institution to join.
 
-Install and run:
+**Keep people in control.** Extracted syllabus information remains a draft until a student or educator approves it. Verification is handled by people, not awarded automatically by an algorithm.
+
+**Respect academic boundaries.** Students see their own cross-class learning record. Educators see only the classes and learners they are authorized to manage. Private records and educational files belong behind authenticated, row-level access controls.
+
+**Keep secrets off the client.** AI provider keys, service-role credentials, billing secrets, and document-processing tokens never belong in the browser bundle.
+
+## Explore EdNotebook
+
+| Experience | Link |
+|---|---|
+| Product home | [ednotebook.com](https://ednotebook.com/) |
+| Interactive tour | [Choose a guided workspace](https://ednotebook.com/#/tour) |
+| Student experience | [University and K–12 portals](https://ednotebook.com/#/students) |
+| Educator experience | [Course and teaching portal](https://ednotebook.com/#/professors) |
+| Publishing experience | [Learning-material publishing](https://ednotebook.com/#/publishers) |
+| Product presentation | [See the full product story](https://ednotebook.com/#/presentation) |
+| Business presentation | [Vision, strategy, and partnerships](https://ednotebook.com/#/business-presentation) |
+| About and values | [Why EdNotebook exists](https://ednotebook.com/#/about) |
+| Careers | [Work with EdNotebook](https://ednotebook.com/#/careers) |
+
+## Product status
+
+EdNotebook is under active development. The repository includes the public experience, guided demonstrations, student and educator portals, course-building and course-runtime workflows, publishing tools, Supabase backend resources, and a document-security service.
+
+Some production capabilities intentionally depend on separately deployed, authenticated services, including secure generative-AI calls, full PDF and DOCX processing, calendar OAuth connections, institution integrations, persistent moderated uploads, billing, and institution-specific policy or accessibility review.
+
+The product tour shows the intended connected experience while keeping credentials and sensitive workflows out of the static client.
+
+## Run the product locally
+
+EdNotebook is a React and Vite application.
 
 ```bash
+git clone https://github.com/BREXAtlas/EdNotebook.git
+cd EdNotebook
 npm ci
 npm run dev
 ```
 
-Production build:
+Vite serves the local application at `http://localhost:5173` by default.
+
+Create and inspect a production build:
 
 ```bash
 npm run build
+npm run audit:bundle
 npm run preview
 ```
 
-Security-service checks used by CI:
+<details>
+<summary><strong>Technology and services</strong></summary>
+
+- React 18 and Vite 8
+- Supabase Auth, Postgres, Row Level Security, private Storage, and Edge Functions
+- PDF.js, Tesseract.js, OpenCV.js, Mammoth, and jsPDF document tooling
+- Deno-based server functions
+- Python 3.12 document-security worker with FastAPI, ClamAV, LibreOffice, and Poppler
+- GitHub Actions and GitHub Pages deployment
+
+Browser configuration uses public `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` values. Private service credentials must be configured only in protected server environments.
+
+For architecture and security details, see:
+
+- [`docs/STORAGE_ARCHITECTURE.md`](docs/STORAGE_ARCHITECTURE.md)
+- [`docs/PRODUCTION_SECURITY_1_10.md`](docs/PRODUCTION_SECURITY_1_10.md)
+- [`docs/PORTAL_ROLLOUT.md`](docs/PORTAL_ROLLOUT.md)
+
+</details>
+
+## Contributing
+
+EdNotebook welcomes focused improvements to the learning experience, accessibility, reliability, privacy, security, course tooling, and product documentation.
+
+Before opening a pull request:
 
 ```bash
-python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
-PYTHONPATH=services/document-security-worker pytest -q services/document-security-worker/tests
-deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+npm run build
+npm run audit:bundle
 ```
 
-## GitHub Pages deployment and CI
+Changes to the document-security worker or Supabase Edge Functions should also run their relevant Python or Deno checks. Never commit private student data, restricted course material, production credentials, generated `dist/` output, or local environment files.
 
-Pull requests targeting `main` run two required jobs:
+## License
 
-1. **Build Vite app**
-   - Install locked dependencies on Node.js 22 with `npm ci`
-   - Run `npm run build`
-2. **Test security services**
-   - Run the Python document-worker test suite
-   - Type-check Supabase Edge Functions with Deno
+EdNotebook is available under the [MIT License](LICENSE).
 
-Pushes to `main` run the same checks, upload `dist/`, and deploy to the `github-pages` environment. Production status is recorded in `pages-status.json` on the `automation/pages-status` branch.
-
-There is no `gh-pages` source branch and no manual deploy script. The Vite base path is `/`, and `public/CNAME` routes the deployment through `ednotebook.com`.
-
-## Product boundaries
-
-The interactive tour is a working product demonstration, but several integrations remain intentionally separated from the static browser build:
-
-- Secure generative-AI provider calls
-- Production PDF/DOCX extraction
-- Google Calendar and Microsoft Outlook OAuth sync
-- LMS/SIS/LTI institution connectors
-- Moderated persistent photo uploads
-- Production hiring and ambassador application processing
-- Institution-specific contracts, policy review, and accessibility validation
-
-Those capabilities require authenticated server-side services and should not be simulated with exposed credentials in a static deployment.
+<p align="center">
+  <strong>Making learning fun, connected, and high tech.</strong>
+</p>
