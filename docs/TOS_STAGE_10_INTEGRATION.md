@@ -4,7 +4,9 @@
 
 Pilot foundation and synthetic demonstration only. Production is not
 activated. No institution approval, real-user pilot, trusted TOS adapter, or
-official record transfer is claimed.
+official record transfer is claimed. The owner-approved synthetic bounded
+pilot now rehearses the entire institution-to-closeout journey before later
+approved-pilot or production activation is considered.
 
 ## Purpose
 
@@ -33,9 +35,29 @@ EdNotebook protected backend (not implemented here)
 ```
 
 No browser-to-TOS API call exists. The preview creates only a local synthetic
-fixture containing aggregate counts and boundary flags. It carries no names,
+fixture containing aggregate counts, exact existing-infrastructure mappings,
+and boundary flags. It carries no names,
 student IDs, raw grades, submissions, attendance, accommodations, credentials,
-or authentication tokens.
+or authentication tokens. After closeout it exports a SHA-256 evidence packet
+that the owner imports and confirms in TOS.
+
+## Complete synthetic journey
+
+The authenticated `#/admin/synthetic-pilot` cockpit runs 15 ordered,
+role-bounded actions: institution application and approval; professor signup
+and independent approval; course creation; student signup and enrollment;
+assignment publication; student and professor discussion; submission; points;
+grade publication; student grade view; and semester closeout.
+
+Each action displays the existing EdNotebook route and authoritative record
+families it would use. The rehearsal does not write those records. This keeps
+the simulator faithful to the deployed Auth, membership, course, roster,
+discussion, assignment, progress, grade, Blackboard, and audit architecture
+without creating fake production activity.
+
+Approved-pilot and production modes remain fail-closed until Stages 1-12 and
+all institution, assurance, privacy, support, backend rate-limit, budget,
+rollback, and critical-finding gates carry independent human evidence.
 
 ## Login and Supabase
 
