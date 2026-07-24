@@ -20,6 +20,7 @@ EdNotebook is a student-controlled learning workspace for school, class, and aca
 - Educator builder: https://ednotebook.com/#/app
 - Master admin: https://ednotebook.com/#/admin
 - LTI owner setup: https://ednotebook.com/#/admin/integrations/lti
+- TOS integration preview: https://ednotebook.com/#/admin/tos-integration
 
 ## Interactive demonstration accounts
 
@@ -118,6 +119,7 @@ Verification does not automatically publish grades or private class records. Stu
 - [`docs/integrations/LTI_1_3_SECURITY.md`](docs/integrations/LTI_1_3_SECURITY.md) — launch, service-call, database, privacy, and residual-risk controls
 - [`docs/integrations/LTI_1_3_TEST_PLAN.md`](docs/integrations/LTI_1_3_TEST_PLAN.md) — automated, negative, launch, Deep Linking, NRPS, AGS, and activation acceptance tests
 - [`docs/integrations/LTI_1_3_TROUBLESHOOTING.md`](docs/integrations/LTI_1_3_TROUBLESHOOTING.md) — safe operator diagnosis and rollback without collecting tokens or records
+- [`docs/TOS_STAGE_10_INTEGRATION.md`](docs/TOS_STAGE_10_INTEGRATION.md) — synthetic TOS control-plane handoff, Supabase coexistence, data boundary, tests, and rollback
 
 ## Local development
 
@@ -148,6 +150,7 @@ Security-service checks used by CI:
 npm run test:student-data-safety
 npm run test:blackboard
 npm run test:lti
+npm run test:tos-integration
 python -m pip install -r services/document-security-worker/requirements.txt pytest==8.4.1
 PYTHONPATH=services/document-security-worker pytest -q services/document-security-worker/tests
 deno check --config supabase/functions/deno.json supabase/functions/_shared/*.ts supabase/functions/*/index.ts
