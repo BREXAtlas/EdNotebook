@@ -4,6 +4,7 @@ import AuthGate from "./AuthGate.jsx";
 import MotionFrame from "./MotionFrame.jsx";
 import PortalHome from "./portal/PortalHome.jsx";
 import { FeatureBoundary, FeatureManifestProvider } from "./admin-control/FeatureBoundary.jsx";
+import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
 import "./index.css";
 import "./portal/portal.css";
 
@@ -32,7 +33,26 @@ function RouteLoading() { return <main className="portal-route-loading" aria-liv
 
 function Router() {
   const [route, setRoute] = useState(window.location.hash || "#/");
-  useEffect(() => { const onHash = () => setRoute(window.location.hash || "#/"); window.addEventListener("hashchange", onHash); return () => window.removeEventListener("hashchange", onHash); }, []);
+
+  useEffect(() => {
+    const onHash = () => setRoute(window.location.hash || "#/");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return undefined;
+
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "PASSWORD_RECOVERY") return;
+      if (!window.location.hash.startsWith("#/account/update-password") && !window.location.hash.startsWith("#/reset-password")) {
+        window.location.hash = "#/account/update-password";
+      }
+    });
+
+    return () => data.subscription.unsubscribe();
+  }, []);
+
   const navigate = (next) => { window.location.hash = next; };
 
   function studentDashboard(track) {
@@ -46,7 +66,7 @@ function Router() {
 
   if (route.startsWith("#/business-presentation") || route.startsWith("#/business")) return <MotionFrame routeKey="business-presentation"><BusinessPresentation /></MotionFrame>;
   if (route.startsWith("#/tour") || route.startsWith("#/presentation") || route.startsWith("#/about") || route.startsWith("#/careers")) return <MotionFrame routeKey={route}><DemoExperience route={route} /></MotionFrame>;
-  if (route.startsWith("#/account/update-password")) return <MotionFrame routeKey="password-update"><PasswordUpdate /></MotionFrame>;
+  if (route.startsWith("#/account/update-password") || route.startsWith("#/reset-password")) return <MotionFrame routeKey="password-update"><PasswordUpdate /></MotionFrame>;
 
   if (route.startsWith("#/lti/instructor")) return <MotionFrame routeKey="lti-instructor"><LtiLaunchWorkspace audience="instructor" /></MotionFrame>;
   if (route.startsWith("#/lti/student")) return <MotionFrame routeKey="lti-student"><LtiLaunchWorkspace audience="student" /></MotionFrame>;
