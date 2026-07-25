@@ -35,9 +35,9 @@ export default function CourseJourneyShell({ children, onBack, onStudio, onCours
     if (label === "Learner" || label === "Admin" || label.includes("Mastermind")) setVisible(false);
     if (label === "Professor") setVisible(true);
     if (target.matches("textarea") || label === "Forge") advance(2);
-    if (["Ram Ready ★", "Story", "Lab", "Drill", "Seminar"].includes(label)) advance(3);
-    if (label.includes("Generate course") || label === "Course") advance(4);
-    if (label.includes("Preview as student")) advance(5);
+    if (["Ram Ready", "Story", "Lab", "Drill", "Seminar"].includes(label)) advance(3);
+    if (label.includes("Generate course outline") || label.includes("Regenerate outline") || label.includes("Accept outline")) advance(4);
+    if (label.includes("Continue to Course Output") || label.includes("Preview as student")) advance(5);
     if (label.includes("Publish course to this class")) {
       event.preventDefault();
       event.stopPropagation();
