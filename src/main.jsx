@@ -29,6 +29,7 @@ const LtiLaunchWorkspace = lazy(() => import("./integrations/lti/LtiLaunchWorksp
 const AdminControlCenter = lazy(() => import("./admin-control/AdminControlCenter.jsx"));
 const InstitutionAccessPage = lazy(() => import("./admin-control/InstitutionAccessPage.jsx"));
 const TosIntegrationPreview = lazy(() => import("./integrations/tos/TosIntegrationPreview.jsx"));
+const SyntheticInstitutionPilot = lazy(() => import("./integrations/tos/SyntheticInstitutionPilot.jsx"));
 
 function RouteLoading() { return <main className="portal-route-loading" aria-live="polite"><strong>EdNotebook</strong><span>Opening your portal…</span></main>; }
 
@@ -86,6 +87,7 @@ function Router() {
   if (route.startsWith("#/student/k12/app")) return studentDashboard("k12");
   if (route.startsWith("#/student/university/app") || route.startsWith("#/student/app")) return studentDashboard("university");
 
+  if (route.startsWith("#/admin/synthetic-pilot")) return <AuthGate accountType="institution" returnTo="#/admin/synthetic-pilot" allowSignup={false}>{() => <MotionFrame routeKey="synthetic-institution-pilot"><SyntheticInstitutionPilot onBack={() => navigate("#/admin/control-center")} onOpenTos={() => window.open("https://brexatlas.github.io/TOS-Platform/control-center/institutions/example-university/pilots/", "_blank", "noopener,noreferrer")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/tos-integration")) return <AuthGate accountType="institution" returnTo="#/admin/tos-integration" allowSignup={false}>{() => <MotionFrame routeKey="tos-integration-preview"><TosIntegrationPreview onBack={() => navigate("#/admin/control-center")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/control-center") || route.startsWith("#/institution-admin/control-center")) return <AuthGate accountType="institution" returnTo="#/admin/control-center" allowSignup={false}>{() => <MotionFrame routeKey="admin-control-center"><AdminControlCenter onExit={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/integrations/lti")) return <AuthGate accountType="professor" returnTo="#/admin/integrations/lti" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="lti-owner-setup"><LtiOwnerSetup onBack={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;

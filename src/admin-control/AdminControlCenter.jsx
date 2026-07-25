@@ -1110,6 +1110,7 @@ export default function AdminControlCenter({ onExit }) {
           </label>
           <button type="button" className="ac-button ac-button--quiet" onClick={() => loadCenter()} disabled={loading}>Refresh</button>
           <a className="ac-button ac-button--quiet" href="#/admin/tos-integration">TOS integration preview</a>
+          <a className="ac-button ac-button--quiet" href="#/admin/synthetic-pilot">Synthetic institution pilot</a>
           {onExit ? <button type="button" className="ac-button ac-button--quiet" onClick={onExit}>Exit admin</button> : null}
         </div>
       </header>

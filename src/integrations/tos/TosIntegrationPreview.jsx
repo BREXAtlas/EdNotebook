@@ -86,7 +86,10 @@ export default function TosIntegrationPreview({ onBack }) {
           <h1 id="tos-preview-heading">TOS control-plane handoff</h1>
           <span>Production: not activated</span>
         </div>
-        <button type="button" onClick={onBack}>Back to EdNotebook admin</button>
+        <div className="tos-preview__actions">
+          <button type="button" onClick={onBack}>Back to EdNotebook admin</button>
+          <a href="#/admin/synthetic-pilot">Run complete synthetic pilot</a>
+        </div>
       </header>
 
       <section className="tos-preview__warning" role="status">
