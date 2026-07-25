@@ -4,6 +4,7 @@ const BUILDER_TYPES = new Map([
   ["drill", "Drill"],
   ["seminar", "Seminar"],
 ]);
+const TEMPLATE_KEYS = new Set(["ramready", "story", "lab", "drill", "seminar"]);
 
 const clean = (value, fallback = "") => String(value ?? fallback).trim();
 
@@ -12,9 +13,18 @@ function slug(value, fallback) {
   return normalized || fallback;
 }
 
-function builderLessonType(value) {
+function normalizedLessonType(value) {
   const normalized = clean(value, "seminar").toLowerCase();
-  return BUILDER_TYPES.get(normalized) || "Seminar";
+  return BUILDER_TYPES.has(normalized) ? normalized : "seminar";
+}
+
+function builderLessonType(value) {
+  return BUILDER_TYPES.get(normalizedLessonType(value)) || "Seminar";
+}
+
+function normalizedTemplateKey(value, fallback = "ramready") {
+  const normalized = clean(value, fallback).toLowerCase();
+  return TEMPLATE_KEYS.has(normalized) ? normalized : fallback;
 }
 
 function uniqueEpisodeId(title, unitIndex, lessonIndex, used) {
@@ -56,10 +66,11 @@ export function validateCourseOutlineArtifact(artifact) {
 
 export function createEditableOutline(routerResult, requestInput) {
   const artifact = validateCourseOutlineArtifact(routerResult?.artifact);
+  const requestedTemplate = normalizedTemplateKey(requestInput.templateKey, "ramready");
   return {
     courseTitle: clean(artifact.courseTitle),
     subtitle: clean(artifact.subtitle, `${clean(requestInput.subject, "Course")} learning pathway`),
-    templateKey: clean(artifact.templateKey, requestInput.templateKey || "ramready"),
+    templateKey: normalizedTemplateKey(artifact.templateKey, requestedTemplate),
     learningObjectives: artifact.learningObjectives.map((item) => clean(item)).filter(Boolean),
     assessmentPlan: Array.isArray(artifact.assessmentPlan) ? artifact.assessmentPlan.map((item) => clean(item)).filter(Boolean) : [],
     sourceGaps: Array.isArray(artifact.sourceGaps) ? artifact.sourceGaps.map((item) => clean(item)).filter(Boolean) : [],
@@ -67,7 +78,7 @@ export function createEditableOutline(routerResult, requestInput) {
       title: clean(unit.title),
       lessons: unit.lessons.map((lesson) => ({
         title: clean(lesson.title),
-        lessonType: clean(lesson.lessonType, "seminar").toLowerCase(),
+        lessonType: normalizedLessonType(lesson.lessonType),
         estimatedMinutes: Math.max(5, Math.round(Number(lesson.estimatedMinutes) || 15)),
       })),
     })),
@@ -90,7 +101,7 @@ export function outlineToBuilderCourse(outline, acceptedAt = new Date().toISOStr
   return {
     courseTitle: clean(outline.courseTitle),
     subtitle: clean(outline.subtitle),
-    templateKey: clean(outline.templateKey, "ramready"),
+    templateKey: normalizedTemplateKey(outline.templateKey, "ramready"),
     learningObjectives: outline.learningObjectives.map((item) => clean(item)).filter(Boolean),
     assessmentPlan: (outline.assessmentPlan || []).map((item) => clean(item)).filter(Boolean),
     sourceGaps: (outline.sourceGaps || []).map((item) => clean(item)).filter(Boolean),
