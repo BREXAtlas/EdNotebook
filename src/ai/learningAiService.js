@@ -1,0 +1,36 @@
+import { supabase } from "../supabaseClient.js";
+
+export const LEARNING_AI_API_VERSION = "2026-07-24";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function messageFromInvocationError(error, data) {
+  if (data?.message) return data.message;
+  if (error?.context?.message) return error.context.message;
+  return error?.message || "The governed AI request could not be completed.";
+}
+
+export async function generateProfessorCourseOutline(input, { courseId } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!sessionData.session?.user) throw new Error("Sign in with an approved professor account before generating an outline.");
+
+  const context = UUID_PATTERN.test(courseId || "") ? { courseId } : undefined;
+  const { data, error } = await supabase.functions.invoke("ai-learning-router", {
+    body: {
+      apiVersion: LEARNING_AI_API_VERSION,
+      taskType: "course_outline",
+      input,
+      ...(context ? { context } : {}),
+    },
+  });
+
+  if (error) throw new Error(messageFromInvocationError(error, data));
+  if (!data || data.status !== "human_review_required" || data.humanReviewRequired !== true) {
+    throw new Error(data?.message || "The AI router did not return a professor-reviewable outline.");
+  }
+  if (!data.artifact || !data.provenance) {
+    throw new Error("The AI router response is missing its outline or provenance record.");
+  }
+  return data;
+}
