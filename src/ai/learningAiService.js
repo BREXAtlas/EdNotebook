@@ -4,9 +4,16 @@ export const LEARNING_AI_API_VERSION = "2026-07-24";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function messageFromInvocationError(error, data) {
+async function messageFromInvocationError(error, data) {
   if (data?.message) return data.message;
-  if (error?.context?.message) return error.context.message;
+  if (error?.context instanceof Response) {
+    try {
+      const body = await error.context.clone().json();
+      if (body?.message) return body.message;
+    } catch {
+      // The response body may be empty or non-JSON. Use the safe fallback below.
+    }
+  }
   return error?.message || "The governed AI request could not be completed.";
 }
 
@@ -25,7 +32,7 @@ export async function generateProfessorCourseOutline(input, { courseId } = {}) {
     },
   });
 
-  if (error) throw new Error(messageFromInvocationError(error, data));
+  if (error) throw new Error(await messageFromInvocationError(error, data));
   if (!data || data.status !== "human_review_required" || data.humanReviewRequired !== true) {
     throw new Error(data?.message || "The AI router did not return a professor-reviewable outline.");
   }
