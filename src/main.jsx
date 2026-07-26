@@ -5,6 +5,7 @@ import EnvironmentBanner from "./EnvironmentBanner.jsx";
 import MotionFrame from "./MotionFrame.jsx";
 import PortalHome from "./portal/PortalHome.jsx";
 import { FeatureBoundary, FeatureManifestProvider } from "./admin-control/FeatureBoundary.jsx";
+import { installEnvironmentStorageNamespace } from "./storage/environmentStorage.js";
 import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
 import "./index.css";
 import "./portal/portal.css";
@@ -111,6 +112,7 @@ function Router() {
   return <MotionFrame routeKey="portal-home"><PortalHome /></MotionFrame>;
 }
 
+installEnvironmentStorageNamespace();
 document.body.setAttribute("spellcheck", "true");
 createRoot(document.getElementById("root")).render(
   <>
