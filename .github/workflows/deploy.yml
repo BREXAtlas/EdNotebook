@@ -43,6 +43,9 @@ jobs:
       - name: Test governed professor outline contract
         run: npm run test:ai-outline
 
+      - name: Test production and staging browser storage isolation
+        run: npm run test:environment-storage
+
       - name: Build production configuration
         run: npm run build
 
