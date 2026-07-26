@@ -1,8 +1,6 @@
 {
   "status": "success",
   "validation": "success",
-  "security_tests": "success",
-  "database_safety": "success",
   "package_pages": "success",
   "deploy": "success",
   "production_url": "https://ednotebook.com/",
@@ -10,7 +8,9 @@
   "page_url": "https://ednotebook.com/",
   "production_source_commit": "a89d3ba478b9a8abe024dba57d563498134069ed",
   "staging_source_commit": "fb476d4993960d63facd2e2b4d29d3d9d119aa21",
-  "trigger_commit": "fb476d4993960d63facd2e2b4d29d3d9d119aa21",
-  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30183682190",
-  "deployed_at": "2026-07-26T01:57:52Z"
+  "trigger_branch": "main",
+  "trigger_commit": "a89d3ba478b9a8abe024dba57d563498134069ed",
+  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30183664860",
+  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30183707642",
+  "deployed_at": "2026-07-26T01:58:56Z"
 }
