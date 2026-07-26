@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import AuthGate from "./AuthGate.jsx";
+import EnvironmentBanner from "./EnvironmentBanner.jsx";
 import MotionFrame from "./MotionFrame.jsx";
 import PortalHome from "./portal/PortalHome.jsx";
 import { FeatureBoundary, FeatureManifestProvider } from "./admin-control/FeatureBoundary.jsx";
@@ -111,4 +112,9 @@ function Router() {
 }
 
 document.body.setAttribute("spellcheck", "true");
-createRoot(document.getElementById("root")).render(<Suspense fallback={<RouteLoading />}><Router /></Suspense>);
+createRoot(document.getElementById("root")).render(
+  <>
+    <EnvironmentBanner />
+    <Suspense fallback={<RouteLoading />}><Router /></Suspense>
+  </>,
+);
