@@ -3,6 +3,11 @@ import { supabase } from "../supabaseClient.js";
 export const LEARNING_AI_API_VERSION = "2026-07-24";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const FUNCTION_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
+const configuredRouterFunction = String(import.meta.env.VITE_AI_ROUTER_FUNCTION || "").trim();
+const routerFunction = FUNCTION_SLUG_PATTERN.test(configuredRouterFunction)
+  ? configuredRouterFunction
+  : "ai-learning-router";
 
 async function messageFromInvocationError(error, data) {
   if (data?.message) return data.message;
@@ -23,7 +28,7 @@ export async function generateProfessorCourseOutline(input, { courseId } = {}) {
   if (!sessionData.session?.user) throw new Error("Sign in with an approved professor account before generating an outline.");
 
   const context = UUID_PATTERN.test(courseId || "") ? { courseId } : undefined;
-  const { data, error } = await supabase.functions.invoke("ai-learning-router", {
+  const { data, error } = await supabase.functions.invoke(routerFunction, {
     body: {
       apiVersion: LEARNING_AI_API_VERSION,
       taskType: "course_outline",
