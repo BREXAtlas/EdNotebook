@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
     "audit:bundle": "node scripts/check-bundle-split.mjs",
     "test:admin-control": "node --test src/admin-control/featureCatalog.test.js src/admin-control/studentDataSafety.test.js",
     "test:student-data-safety": "node --test src/admin-control/featureCatalog.test.js src/admin-control/studentDataSafety.test.js supabase/functions/deletion-workers.static.test.js supabase/functions/student-data-access.static.test.js",
