@@ -251,7 +251,7 @@ jobs:
       - name: Write deployment result
         shell: bash
         run: |
-          if [[ "${{ needs.validate.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.database_safety.result }}" == "success" && "${{ needs.package_pages.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
+          if [[ "${{ needs.validate.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.database-safety.result }}" == "success" && "${{ needs.package-pages.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
             status="success"
           else
             status="failure"
