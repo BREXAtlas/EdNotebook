@@ -1,22 +1,22 @@
-name: Build and deploy EdNotebook to GitHub Pages
+name: Build and deploy EdNotebook production and staging
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  group: ednotebook-pages-combined
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build Vite app
+  validate:
+    name: Validate current change
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -43,21 +43,17 @@ jobs:
       - name: Test governed professor outline contract
         run: npm run test:ai-outline
 
-      - name: Build production site
+      - name: Build production configuration
         run: npm run build
 
-      - name: Verify core and feature bundle split
+      - name: Verify production bundle split
         run: npm run audit:bundle
 
-      - name: Configure GitHub Pages
-        if: github.event_name != 'pull_request'
-        uses: actions/configure-pages@v6
+      - name: Build staging configuration
+        run: npm run build:staging
 
-      - name: Upload Pages artifact
-        if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
+      - name: Verify staging bundle split
+        run: npm run audit:bundle
 
   security-tests:
     name: Test security services
@@ -128,10 +124,99 @@ jobs:
         if: always()
         run: supabase stop --no-backup
 
-  deploy:
-    name: Deploy to GitHub Pages
+  package-pages:
+    name: Build production root and staging subsite
     if: github.event_name != 'pull_request'
-    needs: [build, security-tests, database-safety]
+    needs: [validate, security-tests, database-safety]
+    runs-on: ubuntu-latest
+    outputs:
+      production_sha: ${{ steps.refs.outputs.production_sha }}
+      staging_sha: ${{ steps.refs.outputs.staging_sha }}
+    steps:
+      - name: Checkout production source
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: production-source
+          fetch-depth: 1
+
+      - name: Checkout staging source
+        uses: actions/checkout@v6
+        with:
+          ref: staging
+          path: staging-source
+          fetch-depth: 1
+
+      - name: Use production source until staging receives the deployment foundation
+        shell: bash
+        run: |
+          if [[ ! -f staging-source/.env.staging ]]; then
+            rm -rf staging-source
+            cp -a production-source staging-source
+          fi
+
+      - name: Record source commits
+        id: refs
+        shell: bash
+        run: |
+          echo "production_sha=$(git -C production-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "staging_sha=$(git -C staging-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            production-source/package-lock.json
+            staging-source/package-lock.json
+
+      - name: Build production from main
+        working-directory: production-source
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run audit:bundle
+
+      - name: Build staging from staging
+        working-directory: staging-source
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:staging
+          npm run audit:bundle
+
+      - name: Assemble one GitHub Pages artifact
+        shell: bash
+        run: |
+          mkdir -p pages-root/staging
+          cp -a production-source/dist/. pages-root/
+          cp -a staging-source/dist/. pages-root/staging/
+          rm -f pages-root/staging/CNAME
+          cat > pages-root/staging/robots.txt <<'EOF'
+          User-agent: *
+          Disallow: /
+          EOF
+          cat > pages-root/staging/environment.json <<EOF
+          {
+            "environment": "staging",
+            "supabase_project_ref": "gfalgonektwdylsxsgzc",
+            "source_commit": "${{ steps.refs.outputs.staging_sha }}",
+            "production_source_commit": "${{ steps.refs.outputs.production_sha }}"
+          }
+          EOF
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: pages-root
+
+  deploy:
+    name: Deploy production and staging to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: [package-pages]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -148,9 +233,9 @@ jobs:
         uses: actions/deploy-pages@v5
 
   report:
-    name: Record production deployment status
+    name: Record production and staging deployment status
     if: ${{ always() && github.event_name != 'pull_request' }}
-    needs: [build, security-tests, database-safety, deploy]
+    needs: [validate, security-tests, database-safety, package-pages, deploy]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -164,7 +249,7 @@ jobs:
       - name: Write deployment result
         shell: bash
         run: |
-          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.database-safety.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
+          if [[ "${{ needs.validate.result }}" == "success" && "${{ needs.security-tests.result }}" == "success" && "${{ needs.database-safety.result }}" == "success" && "${{ needs.package-pages.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
             status="success"
           else
             status="failure"
@@ -174,13 +259,18 @@ jobs:
           cat > pages-status.json <<EOF
           {
             "status": "$status",
-            "build": "${{ needs.build.result }}",
+            "validation": "${{ needs.validate.result }}",
             "security_tests": "${{ needs.security-tests.result }}",
             "database_safety": "${{ needs.database-safety.result }}",
+            "package_pages": "${{ needs.package-pages.result }}",
             "deploy": "${{ needs.deploy.result }}",
+            "production_url": "https://ednotebook.com/",
+            "staging_url": "https://ednotebook.com/staging/",
             "page_url": "${{ needs.deploy.outputs.page_url }}",
+            "production_source_commit": "${{ needs.package-pages.outputs.production_sha }}",
+            "staging_source_commit": "${{ needs.package-pages.outputs.staging_sha }}",
+            "trigger_commit": "${GITHUB_SHA}",
             "run_url": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
-            "source_commit": "${GITHUB_SHA}",
             "deployed_at": "$deployed_at"
           }
           EOF
@@ -191,5 +281,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pages-status.json
-          git commit -m "Record Pages deployment ${GITHUB_RUN_ID} [skip ci]"
+          git diff --cached --quiet || git commit -m "Record Pages deployment ${GITHUB_RUN_ID} [skip ci]"
           git push origin HEAD:automation/pages-status
