@@ -2,15 +2,15 @@
   "status": "failure",
   "validation": "success",
   "security_tests": "success",
-  "database_safety": "success",
-  "package_pages": "success",
-  "deploy": "failure",
+  "database_safety": "cancelled",
+  "package_pages": "cancelled",
+  "deploy": "cancelled",
   "production_url": "https://ednotebook.com/",
   "staging_url": "https://ednotebook.com/staging/",
   "page_url": "",
-  "production_source_commit": "2743c4e427c03fa701a56b0863644176a1772ad0",
-  "staging_source_commit": "2743c4e427c03fa701a56b0863644176a1772ad0",
-  "trigger_commit": "2743c4e427c03fa701a56b0863644176a1772ad0",
-  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30182252010",
-  "deployed_at": "2026-07-26T01:09:06Z"
+  "production_source_commit": "",
+  "staging_source_commit": "",
+  "trigger_commit": "95a52efa603808d4336d05898ccd8a9d8071e046",
+  "run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30183394495",
+  "deployed_at": "2026-07-26T01:52:22Z"
 }
