@@ -40,6 +40,9 @@ jobs:
       - name: Test LTI data contracts
         run: npm run test:lti
 
+      - name: Test governed professor outline contract
+        run: npm run test:ai-outline
+
       - name: Build production site
         run: npm run build
 
