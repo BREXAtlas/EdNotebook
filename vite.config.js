@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
 function manualChunk(id) {
@@ -28,20 +28,23 @@ function assetFileName(assetInfo) {
   return "assets/static/[name]-[hash][extname]";
 }
 
-// The production site is served from the root of https://ednotebook.com.
-// Core account code and feature workspaces are emitted separately so the first
-// page does not download document/OCR/publishing tools until those routes open.
-export default defineConfig({
-  plugins: [react()],
-  base: "/",
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: manualChunk,
-        entryFileNames: "assets/core/[name]-[hash].js",
-        chunkFileNames: featureChunkFileName,
-        assetFileNames: assetFileName,
+// Production is served from https://ednotebook.com/ and staging from
+// https://ednotebook.com/staging/. Both builds use the same source shell while
+// Vite injects the correct public base and Supabase project for each mode.
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    plugins: [react()],
+    base: env.VITE_PUBLIC_BASE || "/",
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: manualChunk,
+          entryFileNames: "assets/core/[name]-[hash].js",
+          chunkFileNames: featureChunkFileName,
+          assetFileNames: assetFileName,
+        },
       },
     },
-  },
+  };
 });
