@@ -7,6 +7,10 @@ import {
   evaluateSyllabusRequirements,
   syllabusFieldDefinitions,
 } from "../syllabus/angeloState2026Profile.js";
+import {
+  saveCourseSyllabusDraft,
+  sourceTypeForSyllabus,
+} from "../syllabus/syllabusService.js";
 import { interpretUncertainSyllabusSections } from "./learningAiService.js";
 import { extractDeterministicSyllabus, mergeSyllabusExtraction } from "./syllabusExtractionContract.js";
 import "./syllabus-to-course.css";
@@ -89,6 +93,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
   const [status, setStatus] = useState("Paste or upload a syllabus. EdNotebook checks it against the Angelo State 2026 requirement profile before using AI.");
   const [error, setError] = useState("");
   const [approved, setApproved] = useState(false);
+  const [cloudRecord, setCloudRecord] = useState(null);
 
   const fields = result?.fields || {};
   const requirementReview = result?.requirementReview || evaluateSyllabusRequirements(fields, ANGELO_STATE_2026_PROFILE);
@@ -117,6 +122,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       const extracted = extractDeterministicSyllabus(sourceText, ANGELO_STATE_2026_PROFILE);
       setResult(extracted);
       setApproved(false);
+      setCloudRecord(null);
       setPhase("review");
       setStatus(
         `${extracted.requirementReview.requiredComplete} of ${extracted.requirementReview.requiredTotal} professor-managed required fields were found. ` +
@@ -188,9 +194,10 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       };
     });
     setApproved(false);
+    setCloudRecord(null);
   }
 
-  function acceptExtraction() {
+  async function acceptExtraction() {
     if (!approved || !result) return;
     const compliance = evaluateSyllabusRequirements(result.fields, ANGELO_STATE_2026_PROFILE);
     const record = {
@@ -220,14 +227,32 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       },
       extraction: result,
     };
+
     environmentStorage.setJson(SYLLABUS_RECORD_KEY, record);
     environmentStorage.setItem(STORAGE_KEYS.courseStep, "3");
-    setPhase("accepted");
-    setStatus(
-      compliance.readyForApproval
-        ? "Professor-reviewed structured syllabus saved. All professor-managed required fields are present; institutional blocks and final approval remain governed separately."
-        : `Structured syllabus draft saved with ${compliance.missingRequired.length} required field${compliance.missingRequired.length === 1 ? "" : "s"} still needing attention.`,
-    );
+    setPhase("saving");
+    setError("");
+    setStatus("Saving the professor-reviewed syllabus draft and immutable version record…");
+
+    const courseId = courseDraft.id || environmentStorage.getItem(STORAGE_KEYS.courseId) || "";
+    try {
+      const saved = await saveCourseSyllabusDraft(courseId, record, {
+        sourceType: sourceTypeForSyllabus(sourceLabel, Boolean(sourceText.trim())),
+        sourceName: sourceLabel.split(" · ")[0],
+        changeSummary: "Professor reviewed the ASU 2026 requirement extraction and structured syllabus shell.",
+      });
+      setCloudRecord(saved);
+      setPhase("accepted");
+      setStatus(
+        compliance.readyForApproval
+          ? `Cloud syllabus version ${saved.current_version} saved. All professor-managed required fields are present; institutional blocks and final approval remain governed separately.`
+          : `Cloud syllabus version ${saved.current_version} saved with ${compliance.missingRequired.length} required field${compliance.missingRequired.length === 1 ? "" : "s"} still needing attention.`,
+      );
+    } catch (saveError) {
+      setPhase("review");
+      setError(saveError.message || "The structured syllabus draft could not be saved to the course.");
+      setStatus("A local recovery copy remains on this device. The cloud version was not created, and no syllabus was published.");
+    }
   }
 
   return (
@@ -257,6 +282,8 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           <div><dt>Institution-managed blocks</dt><dd>{requirementReview.institutionManaged.length}</dd></div>
           <div><dt>Conditional review</dt><dd>{requirementReview.conditionalReview.length}</dd></div>
           <div><dt>Blackboard mapping</dt><dd>{fields.blackboardCourseId?.value ? "Draft mapped" : "Not mapped"}</dd></div>
+          <div><dt>Cloud version</dt><dd>{cloudRecord?.current_version || "Not saved"}</dd></div>
+          <div><dt>Publication</dt><dd>Not published</dd></div>
         </dl>
       </section>
 
@@ -269,7 +296,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         <div className="syllabus-course-actions">
           <button type="button" onClick={() => fileInput.current?.click()} disabled={phase === "reading"}>Upload PDF, DOCX, or text</button>
           <button type="button" className="primary" onClick={runDeterministicExtraction} disabled={!sourceText.trim() || phase === "reading"}>Extract and check requirements</button>
-          <button type="button" onClick={() => { setResult({ sourceText: "", fields: {}, requirementReview: evaluateSyllabusRequirements({}, ANGELO_STATE_2026_PROFILE), missingInformation: [], conflictingInformation: [], uncertainSections: [], proposedCourseOutline: null }); setPhase("review"); setStatus("Blank institutional syllabus shell opened. Complete required professor fields; institution-managed blocks remain locked."); }}>Start blank structured syllabus</button>
+          <button type="button" onClick={() => { setResult({ sourceText: "", fields: {}, requirementReview: evaluateSyllabusRequirements({}, ANGELO_STATE_2026_PROFILE), missingInformation: [], conflictingInformation: [], uncertainSections: [], proposedCourseOutline: null }); setPhase("review"); setCloudRecord(null); setStatus("Blank institutional syllabus shell opened. Complete required professor fields; institution-managed blocks remain locked."); }}>Start blank structured syllabus</button>
         </div>
         <textarea rows={14} value={sourceText} onChange={(event) => { setSourceText(event.target.value); setSourceLabel("Pasted syllabus text"); }} placeholder="Paste the complete syllabus here…" />
         {error ? <div className="syllabus-course-error" role="alert">{error}</div> : null}
@@ -334,7 +361,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
 
           <label className="syllabus-course-confirm"><input type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} /><span>I compared the structured fields, missing requirements, conditional items, conflicts, source excerpts, institution-managed blocks, and Blackboard mapping status.</span></label>
           <div className="syllabus-course-actions">
-            <button type="button" className="primary" disabled={!approved || phase === "ai"} onClick={acceptExtraction}>Save professor-reviewed structured syllabus draft</button>
+            <button type="button" className="primary" disabled={!approved || phase === "ai" || phase === "saving"} onClick={acceptExtraction}>{phase === "saving" ? "Saving versioned syllabus…" : "Save professor-reviewed structured syllabus draft"}</button>
             {phase === "accepted" ? <button type="button" onClick={onContinue}>Continue to course outline</button> : null}
           </div>
         </section>
