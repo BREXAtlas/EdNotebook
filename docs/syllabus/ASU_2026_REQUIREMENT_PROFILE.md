@@ -54,16 +54,23 @@ EdNotebook does not determine that a syllabus is legally compliant merely becaus
 7. Ignore AI-returned fields that are not defined in the active profile.
 8. Save the result as a professor-reviewed draft, not as an approved or published syllabus.
 
+## Cloud record and version boundary
+
+A professor-reviewed save creates or updates one `course_syllabi` record for the EdNotebook course and appends an immutable `course_syllabus_versions` record. The saved payload contains the active requirement profile, structured fields, compliance summary, extraction evidence, and LMS mapping status. RLS limits course syllabus access to authorized course managers, while a future published syllabus can be read only by users who can access the course.
+
+Institution approval and publication are deliberately excluded from the professor save function. Those states require a separate governed workflow and cannot be selected through the current professor interface.
+
 ## Blackboard shell boundary
 
-Phase 3 stores Blackboard mapping metadata separately from syllabus content. The initial shell records a Blackboard course identifier and mapping status. LTI 1.3 deep linking, course-context resolution, section-specific syllabus links, version notification, and SIS/OneRoster provisioning remain separate activation gates.
+Phase 3 stores Blackboard mapping metadata separately from syllabus content. The initial shell records a Blackboard course identifier and a `course_syllabus_lms_links` record. LTI 1.3 deep linking, course-context resolution, section-specific syllabus links, version notification, and SIS/OneRoster provisioning remain separate activation gates.
 
 ## Current implementation state
 
 - Requirement profile: implemented in the Phase 3 branch.
 - Deterministic extraction: implemented and tested against the profile.
 - Structured professor editor: implemented in the Phase 3 branch.
-- Institution-managed policy injection: shell implemented; institutional policy content store not yet implemented.
-- Cloud persistence and immutable syllabus versions: planned next within Phase 3.
-- TOS uncertain-section task: code path exists but remains disabled pending prompt/model approval.
-- Blackboard/LTI syllabus deep link: planned after cloud persistence and versioning.
+- Cloud persistence and immutable professor-reviewed syllabus versions: implemented in the Phase 3 branch.
+- Blackboard mapping record: implemented as a governed draft mapping; no Blackboard content link is published yet.
+- Institution-managed policy injection: shell and locked fields implemented; approved institutional policy content store not yet implemented.
+- TOS uncertain-section task: governed prompt PR created; task remains disabled pending merge, hash, model evaluation, and staging approval.
+- Blackboard/LTI syllabus deep link: planned after institutional policy injection and approval-state workflow.
