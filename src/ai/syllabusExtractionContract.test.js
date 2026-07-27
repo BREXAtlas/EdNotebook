@@ -291,3 +291,47 @@ test("AI merging accepts only known syllabus fields and recalculates requirement
     ),
   );
 });
+
+
+test("recovers office hours when the PDF puts the value on following lines", () => {
+  const result = extractDeterministicSyllabus(`
+Course Title: Test Course
+Course Code: TEST 1000
+Contact Information
+Instructor Title: Professor
+Instructor: Taylor Morgan
+Phone: 325-555-0100
+ASU Email: taylor.morgan@angelo.example.edu
+Office Location: Media Arts 318
+Office Hours
+Tuesday and Thursday, 3:00-5:00 p.m.; Wednesday, 10:00 a.m.-12:00 p.m.; and by
+appointment
+Other Contact: Blackboard course messages
+`);
+
+  assert.equal(
+    result.fields.officeHours.value,
+    "Tuesday and Thursday, 3:00-5:00 p.m.; Wednesday, 10:00 a.m.-12:00 p.m.; and by appointment",
+  );
+});
+
+test("recovers office hours when a PDF separates the plural suffix", () => {
+  const result = extractDeterministicSyllabus(`
+Course Title: Test Course
+Course Code: TEST 1000
+Contact Information
+Instructor Title: Professor
+Instructor: Taylor Morgan
+Phone: 325-555-0100
+ASU Email: taylor.morgan@angelo.example.edu
+Office Location: Media Arts 318
+Office Hour s
+Tuesday and Thursday, 3:00-5:00 p.m.; and by appointment
+Other Contact: Blackboard course messages
+`);
+
+  assert.equal(
+    result.fields.officeHours.value,
+    "Tuesday and Thursday, 3:00-5:00 p.m.; and by appointment",
+  );
+});
