@@ -12,15 +12,22 @@ import {
   sourceTypeForSyllabus,
 } from "../syllabus/syllabusService.js";
 import { interpretUncertainSyllabusSections } from "./learningAiService.js";
-import { extractDeterministicSyllabus, mergeSyllabusExtraction } from "./syllabusExtractionContract.js";
+import {
+  extractDeterministicSyllabus,
+  mergeSyllabusExtraction,
+  normalizeSyllabusSourceText,
+} from "./syllabusExtractionContract.js";
 import "./syllabus-to-course.css";
+import "./syllabus-to-course-fixes.css";
 
 const SYLLABUS_RECORD_KEY = "ednotebook-professor-syllabus-extraction";
 const AI_UNCERTAINTY_ENABLED = import.meta.env.VITE_SYLLABUS_AI_ENABLED === "true";
 
 function formatValue(value) {
   if (Array.isArray(value)) {
-    return value.map((item) => (item && typeof item === "object" ? JSON.stringify(item) : String(item))).join("\n");
+    return value
+      .map((item) => (item && typeof item === "object" ? JSON.stringify(item) : String(item)))
+      .join("\n");
   }
   if (value && typeof value === "object") return JSON.stringify(value, null, 2);
   return String(value ?? "");
@@ -81,23 +88,53 @@ function fieldStatusClass(item) {
   return `syllabus-field-status is-${item?.status || "review"}`;
 }
 
+function blankSyllabusResult() {
+  return {
+    sourceText: "",
+    fields: {},
+    requirementReview: evaluateSyllabusRequirements({}, ANGELO_STATE_2026_PROFILE),
+    missingInformation: [],
+    conflictingInformation: [],
+    uncertainSections: [],
+    proposedCourseOutline: null,
+  };
+}
+
 export default function SyllabusToCourse({ onBack, onContinue }) {
-  const courseDraft = useMemo(() => environmentStorage.getJson(STORAGE_KEYS.courseDraft, {}) || {}, []);
-  const definitions = useMemo(() => syllabusFieldDefinitions(ANGELO_STATE_2026_PROFILE), []);
+  const courseDraft = useMemo(
+    () => environmentStorage.getJson(STORAGE_KEYS.courseDraft, {}) || {},
+    [],
+  );
+  const definitions = useMemo(
+    () => syllabusFieldDefinitions(ANGELO_STATE_2026_PROFILE),
+    [],
+  );
   const groups = useMemo(() => groupDefinitions(definitions), [definitions]);
+  const institutionManagedDefinitions = useMemo(
+    () => definitions.filter((definition) => definition.managedBy === "institution"),
+    [definitions],
+  );
   const fileInput = useRef(null);
   const [sourceText, setSourceText] = useState("");
   const [sourceLabel, setSourceLabel] = useState("Pasted syllabus text");
   const [result, setResult] = useState(null);
   const [phase, setPhase] = useState("input");
-  const [status, setStatus] = useState("Paste or upload a syllabus. EdNotebook checks it against the Angelo State 2026 requirement profile before using AI.");
+  const [status, setStatus] = useState(
+    "Paste or upload a syllabus. EdNotebook checks it against the Angelo State 2026 requirement profile before using AI.",
+  );
   const [error, setError] = useState("");
   const [approved, setApproved] = useState(false);
   const [cloudRecord, setCloudRecord] = useState(null);
 
   const fields = result?.fields || {};
-  const requirementReview = result?.requirementReview || evaluateSyllabusRequirements(fields, ANGELO_STATE_2026_PROFILE);
-  const requirementByKey = new Map(requirementReview.items.map((item) => [item.key, item]));
+  const requirementReview = result?.requirementReview
+    || evaluateSyllabusRequirements(fields, ANGELO_STATE_2026_PROFILE);
+  const requirementByKey = new Map(
+    requirementReview.items.map((item) => [item.key, item]),
+  );
+  const institutionDetectedCount = institutionManagedDefinitions.filter(
+    (definition) => requirementByKey.get(definition.key)?.present,
+  ).length;
 
   async function readFile(file) {
     if (!file) return;
@@ -106,9 +143,15 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
     setStatus("Reading syllabus locally in your browser…");
     try {
       const extracted = await extractSyllabusFile(file, { onProgress: setStatus });
-      setSourceText(extracted.text);
+      const normalized = normalizeSyllabusSourceText(extracted.text);
+      setSourceText(normalized);
       setSourceLabel(`${file.name} · ${extracted.detail}`);
-      setStatus("Syllabus text is ready. Review it, then run the institutional requirement extraction.");
+      setResult(null);
+      setApproved(false);
+      setCloudRecord(null);
+      setStatus(
+        "Syllabus text is ready and PDF text artifacts were cleaned. Review it, then run the institutional requirement extraction.",
+      );
       setPhase("input");
     } catch (readError) {
       setError(readError.message || "The syllabus could not be read.");
@@ -119,14 +162,23 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
   function runDeterministicExtraction() {
     setError("");
     try {
-      const extracted = extractDeterministicSyllabus(sourceText, ANGELO_STATE_2026_PROFILE);
+      const extracted = extractDeterministicSyllabus(
+        sourceText,
+        ANGELO_STATE_2026_PROFILE,
+      );
+      setSourceText(extracted.sourceText);
       setResult(extracted);
       setApproved(false);
       setCloudRecord(null);
       setPhase("review");
+      const detectedInstitutionBlocks = institutionManagedDefinitions.filter(
+        (definition) => extracted.requirementReview.items.find(
+          (item) => item.key === definition.key,
+        )?.present,
+      ).length;
       setStatus(
-        `${extracted.requirementReview.requiredComplete} of ${extracted.requirementReview.requiredTotal} professor-managed required fields were found. ` +
-        `${extracted.requirementReview.institutionManaged.length} institution-managed fields remain attached to the template.`,
+        `${extracted.requirementReview.requiredComplete} of ${extracted.requirementReview.requiredTotal} professor-managed required fields were found. `
+        + `${institutionManagedDefinitions.length} institution-managed blocks remain locked; ${detectedInstitutionBlocks} were found in the source for institutional review.`,
       );
     } catch (extractError) {
       setError(extractError.message || "The syllabus could not be extracted.");
@@ -135,13 +187,17 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
 
   async function resolveUncertainty() {
     if (!AI_UNCERTAINTY_ENABLED) {
-      setError("Governed AI uncertainty extraction remains disabled until the ASU profile prompt, model, and task are approved in TOS.");
+      setError(
+        "Governed AI uncertainty extraction remains disabled until the ASU profile prompt, model, and task are approved in TOS.",
+      );
       return;
     }
     if (!result?.uncertainSections?.length) return;
     setPhase("ai");
     setError("");
-    setStatus("TOS is interpreting only the uncertain syllabus sections against the approved requirement profile…");
+    setStatus(
+      "TOS is interpreting only the uncertain syllabus sections against the approved requirement profile…",
+    );
     try {
       const response = await interpretUncertainSyllabusSections({
         uncertainSections: result.uncertainSections,
@@ -150,17 +206,35 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           _requirementProfile: {
             profileKey: ANGELO_STATE_2026_PROFILE.profileKey,
             version: ANGELO_STATE_2026_PROFILE.version,
-            fields: definitions.map(({ key, label, required, managedBy, sectionTitle }) => ({ key, label, required, managedBy, sectionTitle })),
+            fields: definitions.map(({
+              key,
+              label,
+              required,
+              managedBy,
+              sectionTitle,
+            }) => ({ key, label, required, managedBy, sectionTitle })),
           },
         },
       }, { courseId: courseDraft.id || "" });
-      setResult(mergeSyllabusExtraction(result, response.artifact, ANGELO_STATE_2026_PROFILE));
+      setResult(
+        mergeSyllabusExtraction(
+          result,
+          response.artifact,
+          ANGELO_STATE_2026_PROFILE,
+        ),
+      );
       setPhase("review");
-      setStatus("AI uncertainty review returned as an unpublished draft. Compare every field with the source text.");
+      setStatus(
+        "AI uncertainty review returned as an unpublished draft. Compare every field with the source text.",
+      );
     } catch (aiError) {
       setPhase("review");
-      setError(aiError.message || "The uncertain syllabus sections could not be interpreted.");
-      setStatus("Your deterministic extraction and structured shell remain available. No course was changed.");
+      setError(
+        aiError.message || "The uncertain syllabus sections could not be interpreted.",
+      );
+      setStatus(
+        "Your deterministic extraction and structured shell remain available. No course was changed.",
+      );
     }
   }
 
@@ -172,7 +246,9 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           ...(current?.fields?.[definition.key] || {}),
           value: parseValue(value, definition),
           confidence: 1,
-          sourceExcerpt: current?.fields?.[definition.key]?.sourceExcerpt || "Professor-entered structured syllabus content",
+          sourceExcerpt:
+            current?.fields?.[definition.key]?.sourceExcerpt
+            || "Professor-entered structured syllabus content",
           method: "professor_edited",
         },
       };
@@ -190,7 +266,10 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           proposedCourseOutline: null,
         }),
         fields: nextFields,
-        requirementReview: evaluateSyllabusRequirements(nextFields, ANGELO_STATE_2026_PROFILE),
+        requirementReview: evaluateSyllabusRequirements(
+          nextFields,
+          ANGELO_STATE_2026_PROFILE,
+        ),
       };
     });
     setApproved(false);
@@ -199,13 +278,16 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
 
   async function acceptExtraction() {
     if (!approved || !result) return;
-    const compliance = evaluateSyllabusRequirements(result.fields, ANGELO_STATE_2026_PROFILE);
+    const compliance = evaluateSyllabusRequirements(
+      result.fields,
+      ANGELO_STATE_2026_PROFILE,
+    );
     const record = {
       format: "EdNotebookStructuredSyllabus/1.0",
       reviewState: "professor_reviewed_draft",
       acceptedAt: new Date().toISOString(),
       sourceLabel,
-      sourceText,
+      sourceText: result.sourceText || sourceText,
       profile: {
         profileKey: ANGELO_STATE_2026_PROFILE.profileKey,
         version: ANGELO_STATE_2026_PROFILE.version,
@@ -217,13 +299,17 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         requiredTotal: compliance.requiredTotal,
         missingRequiredKeys: compliance.missingRequired.map((item) => item.key),
         conditionalReviewKeys: compliance.conditionalReview.map((item) => item.key),
-        institutionManagedKeys: compliance.institutionManaged.map((item) => item.key),
+        institutionManagedKeys: institutionManagedDefinitions.map(
+          (definition) => definition.key,
+        ),
         readyForApproval: compliance.readyForApproval,
       },
       lmsMapping: {
         platform: "blackboard",
         courseId: result.fields.blackboardCourseId?.value || null,
-        status: result.fields.blackboardCourseId?.value ? "mapped_draft" : "not_mapped",
+        status: result.fields.blackboardCourseId?.value
+          ? "mapped_draft"
+          : "not_mapped",
       },
       extraction: result,
     };
@@ -232,14 +318,22 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
     environmentStorage.setItem(STORAGE_KEYS.courseStep, "3");
     setPhase("saving");
     setError("");
-    setStatus("Saving the professor-reviewed syllabus draft and immutable version record…");
+    setStatus(
+      "Saving the professor-reviewed syllabus draft and immutable version record…",
+    );
 
-    const courseId = courseDraft.id || environmentStorage.getItem(STORAGE_KEYS.courseId) || "";
+    const courseId = courseDraft.id
+      || environmentStorage.getItem(STORAGE_KEYS.courseId)
+      || "";
     try {
       const saved = await saveCourseSyllabusDraft(courseId, record, {
-        sourceType: sourceTypeForSyllabus(sourceLabel, Boolean(sourceText.trim())),
+        sourceType: sourceTypeForSyllabus(
+          sourceLabel,
+          Boolean(sourceText.trim()),
+        ),
         sourceName: sourceLabel.split(" · ")[0],
-        changeSummary: "Professor reviewed the ASU 2026 requirement extraction and structured syllabus shell.",
+        changeSummary:
+          "Professor reviewed the ASU 2026 requirement extraction and structured syllabus shell.",
       });
       setCloudRecord(saved);
       setPhase("accepted");
@@ -250,8 +344,13 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       );
     } catch (saveError) {
       setPhase("review");
-      setError(saveError.message || "The structured syllabus draft could not be saved to the course.");
-      setStatus("A local recovery copy remains on this device. The cloud version was not created, and no syllabus was published.");
+      setError(
+        saveError.message
+        || "The structured syllabus draft could not be saved to the course.",
+      );
+      setStatus(
+        "A local recovery copy remains on this device. The cloud version was not created, and no syllabus was published.",
+      );
     }
   }
 
@@ -261,7 +360,11 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         <div>
           <span>PHASE 3 · INSTITUTIONAL SYLLABUS SHELL</span>
           <h1>Extract, create, validate, and map the syllabus before it reaches Blackboard.</h1>
-          <p>EdNotebook uses the Angelo State 2026 checklist as a versioned requirement profile. Professor content, institution-managed policy blocks, optional program content, and Blackboard mapping remain distinct.</p>
+          <p>
+            EdNotebook uses the Angelo State 2026 checklist as a versioned
+            requirement profile. Professor content, institution-managed policy
+            blocks, optional program content, and Blackboard mapping remain distinct.
+          </p>
         </div>
         <button type="button" onClick={onBack}>Back to course builder</button>
       </header>
@@ -271,57 +374,152 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         <p>{status}</p>
       </section>
 
-      <section className="syllabus-profile-summary" aria-labelledby="syllabus-profile-title">
+      <section
+        className="syllabus-profile-summary"
+        aria-labelledby="syllabus-profile-title"
+      >
         <div>
           <span>REQUIREMENT PROFILE</span>
           <h2 id="syllabus-profile-title">{ANGELO_STATE_2026_PROFILE.title}</h2>
-          <p>Version {ANGELO_STATE_2026_PROFILE.version} · effective {ANGELO_STATE_2026_PROFILE.effectiveFrom} through {ANGELO_STATE_2026_PROFILE.effectiveTo}</p>
+          <p>
+            Version {ANGELO_STATE_2026_PROFILE.version} · effective{" "}
+            {ANGELO_STATE_2026_PROFILE.effectiveFrom} through{" "}
+            {ANGELO_STATE_2026_PROFILE.effectiveTo}
+          </p>
         </div>
         <dl>
-          <div><dt>Professor-managed required</dt><dd>{requirementReview.requiredComplete}/{requirementReview.requiredTotal}</dd></div>
-          <div><dt>Institution-managed blocks</dt><dd>{requirementReview.institutionManaged.length}</dd></div>
-          <div><dt>Conditional review</dt><dd>{requirementReview.conditionalReview.length}</dd></div>
-          <div><dt>Blackboard mapping</dt><dd>{fields.blackboardCourseId?.value ? "Draft mapped" : "Not mapped"}</dd></div>
-          <div><dt>Cloud version</dt><dd>{cloudRecord?.current_version || "Not saved"}</dd></div>
-          <div><dt>Publication</dt><dd>Not published</dd></div>
+          <div>
+            <dt>Professor-managed required</dt>
+            <dd>{requirementReview.requiredComplete}/{requirementReview.requiredTotal}</dd>
+          </div>
+          <div>
+            <dt>Institution-managed blocks</dt>
+            <dd>{institutionDetectedCount}/{institutionManagedDefinitions.length} source-detected</dd>
+          </div>
+          <div>
+            <dt>Conditional review</dt>
+            <dd>{requirementReview.conditionalReview.length}</dd>
+          </div>
+          <div>
+            <dt>Blackboard mapping</dt>
+            <dd>{fields.blackboardCourseId?.value ? "Draft mapped" : "Not mapped"}</dd>
+          </div>
+          <div>
+            <dt>Cloud version</dt>
+            <dd>{cloudRecord?.current_version || "Not saved"}</dd>
+          </div>
+          <div>
+            <dt>Publication</dt>
+            <dd>Not published</dd>
+          </div>
         </dl>
       </section>
 
       <section className="syllabus-course-input">
         <div className="syllabus-course-heading">
-          <div><span>1 · SOURCE OR NEW SHELL</span><h2>Upload an existing syllabus or start completing the structured fields</h2></div>
+          <div>
+            <span>1 · SOURCE OR NEW SHELL</span>
+            <h2>Upload an existing syllabus or start completing the structured fields</h2>
+          </div>
           <small>{sourceLabel}</small>
         </div>
-        <input ref={fileInput} type="file" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" hidden onChange={(event) => readFile(event.target.files?.[0])} />
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv"
+          hidden
+          onChange={(event) => readFile(event.target.files?.[0])}
+        />
         <div className="syllabus-course-actions">
-          <button type="button" onClick={() => fileInput.current?.click()} disabled={phase === "reading"}>Upload PDF, DOCX, or text</button>
-          <button type="button" className="primary" onClick={runDeterministicExtraction} disabled={!sourceText.trim() || phase === "reading"}>Extract and check requirements</button>
-          <button type="button" onClick={() => { setResult({ sourceText: "", fields: {}, requirementReview: evaluateSyllabusRequirements({}, ANGELO_STATE_2026_PROFILE), missingInformation: [], conflictingInformation: [], uncertainSections: [], proposedCourseOutline: null }); setPhase("review"); setCloudRecord(null); setStatus("Blank institutional syllabus shell opened. Complete required professor fields; institution-managed blocks remain locked."); }}>Start blank structured syllabus</button>
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={phase === "reading"}
+          >
+            Upload PDF, DOCX, or text
+          </button>
+          <button
+            type="button"
+            className="primary"
+            onClick={runDeterministicExtraction}
+            disabled={!sourceText.trim() || phase === "reading"}
+          >
+            Extract and check requirements
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setResult(blankSyllabusResult());
+              setPhase("review");
+              setCloudRecord(null);
+              setStatus(
+                "Blank institutional syllabus shell opened. Complete required professor fields; institution-managed blocks remain locked.",
+              );
+            }}
+          >
+            Start blank structured syllabus
+          </button>
         </div>
-        <textarea rows={14} value={sourceText} onChange={(event) => { setSourceText(event.target.value); setSourceLabel("Pasted syllabus text"); }} placeholder="Paste the complete syllabus here…" />
-        {error ? <div className="syllabus-course-error" role="alert">{error}</div> : null}
+        <textarea
+          rows={14}
+          value={sourceText}
+          onChange={(event) => {
+            setSourceText(event.target.value);
+            setSourceLabel("Pasted syllabus text");
+          }}
+          placeholder="Paste the complete syllabus here…"
+        />
+        {error ? (
+          <div className="syllabus-course-error" role="alert">{error}</div>
+        ) : null}
       </section>
 
       {result ? (
         <section className="syllabus-course-review">
           <div className="syllabus-course-heading">
-            <div><span>2 · STRUCTURED REVIEW</span><h2>Compare source evidence and complete the requirement shell</h2></div>
-            <button type="button" onClick={resolveUncertainty} disabled={!AI_UNCERTAINTY_ENABLED || !result.uncertainSections?.length || phase === "ai"}>
-              {AI_UNCERTAINTY_ENABLED ? (phase === "ai" ? "Interpreting uncertainty…" : "Interpret uncertain sections") : "AI review pending TOS approval"}
+            <div>
+              <span>2 · STRUCTURED REVIEW</span>
+              <h2>Compare source evidence and complete the requirement shell</h2>
+            </div>
+            <button
+              type="button"
+              onClick={resolveUncertainty}
+              disabled={
+                !AI_UNCERTAINTY_ENABLED
+                || !result.uncertainSections?.length
+                || phase === "ai"
+              }
+            >
+              {AI_UNCERTAINTY_ENABLED
+                ? (phase === "ai"
+                  ? "Interpreting uncertainty…"
+                  : "Interpret uncertain sections")
+                : "AI review pending TOS approval"}
             </button>
           </div>
 
           <div className="syllabus-review-grid">
-            <div className="source-pane"><h3>Source syllabus</h3><pre>{sourceText || "No source document was supplied. This syllabus began as a blank structured shell."}</pre></div>
+            <div className="source-pane">
+              <h3>Source syllabus</h3>
+              <pre>
+                {sourceText
+                  || "No source document was supplied. This syllabus began as a blank structured shell."}
+              </pre>
+            </div>
             <div className="field-pane syllabus-shell-pane">
               <h3>Structured syllabus sections</h3>
               {groups.map((group) => {
                 const rows = fieldRows(group.definitions, fields);
-                const presentCount = rows.filter(({ definition }) => requirementByKey.get(definition.key)?.present).length;
+                const presentCount = rows.filter(({ definition }) => (
+                  requirementByKey.get(definition.key)?.present
+                )).length;
                 return (
                   <section className="syllabus-shell-section" key={group.sectionId}>
                     <header>
-                      <div><strong>{group.sectionTitle}</strong><small>{group.sectionRequirement.replaceAll("_", " ")}</small></div>
+                      <div>
+                        <strong>{group.sectionTitle}</strong>
+                        <small>{group.sectionRequirement.replaceAll("_", " ")}</small>
+                      </div>
                       <span>{presentCount}/{rows.length}</span>
                     </header>
                     {rows.map(({ definition, field }) => {
@@ -330,19 +528,52 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
                       return (
                         <article key={definition.key}>
                           <div className="syllabus-field-heading">
-                            <div><strong>{definition.label}</strong>{definition.guidance ? <small>{definition.guidance}</small> : null}</div>
-                            <span className={fieldStatusClass(item)}>{statusLabel(item)}</span>
+                            <div>
+                              <strong>{definition.label}</strong>
+                              {definition.guidance ? (
+                                <small>{definition.guidance}</small>
+                              ) : null}
+                            </div>
+                            <span className={fieldStatusClass(item)}>
+                              {statusLabel(item)}
+                            </span>
                           </div>
                           <textarea
-                            rows={["long_text", "structured_list"].includes(definition.valueKind) ? 5 : 2}
+                            rows={
+                              ["long_text", "structured_list"].includes(
+                                definition.valueKind,
+                              )
+                                ? 5
+                                : 2
+                            }
                             value={formatValue(field?.value)}
-                            placeholder={institutionManaged ? "Supplied and versioned by the institution template" : `Enter ${definition.label.toLowerCase()}`}
+                            placeholder={
+                              institutionManaged
+                                ? "Supplied and versioned by the institution template"
+                                : `Enter ${definition.label.toLowerCase()}`
+                            }
                             readOnly={institutionManaged}
-                            onChange={(event) => updateField(definition, event.target.value)}
+                            onChange={(event) => updateField(
+                              definition,
+                              event.target.value,
+                            )}
                           />
-                          {definition.condition ? <p className="syllabus-field-condition">{definition.condition}</p> : null}
-                          {definition.references?.length ? <p className="syllabus-field-references">Authority: {definition.references.join(" · ")}</p> : null}
-                          <blockquote>{field?.sourceExcerpt || (institutionManaged ? "Institution template source will be recorded here." : "No source excerpt recorded. Professor entry or review is required.")}</blockquote>
+                          {definition.condition ? (
+                            <p className="syllabus-field-condition">
+                              {definition.condition}
+                            </p>
+                          ) : null}
+                          {definition.references?.length ? (
+                            <p className="syllabus-field-references">
+                              Authority: {definition.references.join(" · ")}
+                            </p>
+                          ) : null}
+                          <blockquote>
+                            {field?.sourceExcerpt
+                              || (institutionManaged
+                                ? "Institution template source will be recorded here."
+                                : "No source excerpt recorded. Professor entry or review is required.")}
+                          </blockquote>
                         </article>
                       );
                     })}
@@ -353,16 +584,76 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           </div>
 
           <div className="syllabus-review-flags">
-            <article><h3>Required fields needing attention</h3>{requirementReview.missingRequired.length ? <ul>{requirementReview.missingRequired.map((item) => <li key={item.key}>{item.sectionTitle}: {item.label}</li>)}</ul> : <p>All professor-managed required fields are present.</p>}</article>
-            <article><h3>Conditional checks</h3>{requirementReview.conditionalReview.length ? <ul>{requirementReview.conditionalReview.map((item) => <li key={item.key}>{item.label}{item.condition ? ` — ${item.condition}` : ""}</li>)}</ul> : <p>No conditional fields need review.</p>}</article>
-            <article><h3>Institution-managed controls</h3><p>{requirementReview.institutionManaged.length} required policy or handbook blocks are locked for institutional versioning rather than professor editing.</p></article>
-            <article><h3>Conflicting information</h3>{result.conflictingInformation?.length ? <ul>{result.conflictingInformation.map((item) => <li key={item}>{item}</li>)}</ul> : <p>None identified.</p>}</article>
+            <article>
+              <h3>Required fields needing attention</h3>
+              {requirementReview.missingRequired.length ? (
+                <ul>
+                  {requirementReview.missingRequired.map((item) => (
+                    <li key={item.key}>{item.sectionTitle}: {item.label}</li>
+                  ))}
+                </ul>
+              ) : <p>All professor-managed required fields are present.</p>}
+            </article>
+            <article>
+              <h3>Conditional checks</h3>
+              {requirementReview.conditionalReview.length ? (
+                <ul>
+                  {requirementReview.conditionalReview.map((item) => (
+                    <li key={item.key}>
+                      {item.label}{item.condition ? ` — ${item.condition}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p>No conditional fields need review.</p>}
+            </article>
+            <article>
+              <h3>Institution-managed controls</h3>
+              <p>
+                {institutionManagedDefinitions.length} required policy or handbook
+                blocks are always locked for institutional versioning. {institutionDetectedCount}
+                were detected in this source for institutional comparison.
+              </p>
+            </article>
+            <article>
+              <h3>Conflicting information</h3>
+              {result.conflictingInformation?.length ? (
+                <ul>
+                  {result.conflictingInformation.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : <p>None identified.</p>}
+            </article>
           </div>
 
-          <label className="syllabus-course-confirm"><input type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} /><span>I compared the structured fields, missing requirements, conditional items, conflicts, source excerpts, institution-managed blocks, and Blackboard mapping status.</span></label>
+          <label className="syllabus-course-confirm">
+            <input
+              type="checkbox"
+              checked={approved}
+              onChange={(event) => setApproved(event.target.checked)}
+            />
+            <span>
+              I compared the structured fields, missing requirements, conditional
+              items, conflicts, source excerpts, institution-managed blocks, and
+              Blackboard mapping status.
+            </span>
+          </label>
           <div className="syllabus-course-actions">
-            <button type="button" className="primary" disabled={!approved || phase === "ai" || phase === "saving"} onClick={acceptExtraction}>{phase === "saving" ? "Saving versioned syllabus…" : "Save professor-reviewed structured syllabus draft"}</button>
-            {phase === "accepted" ? <button type="button" onClick={onContinue}>Continue to course outline</button> : null}
+            <button
+              type="button"
+              className="primary"
+              disabled={!approved || phase === "ai" || phase === "saving"}
+              onClick={acceptExtraction}
+            >
+              {phase === "saving"
+                ? "Saving versioned syllabus…"
+                : "Save professor-reviewed structured syllabus draft"}
+            </button>
+            {phase === "accepted" ? (
+              <button type="button" onClick={onContinue}>
+                Continue to course outline
+              </button>
+            ) : null}
           </div>
         </section>
       ) : null}
