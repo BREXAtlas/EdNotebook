@@ -14,7 +14,7 @@
     "test:lti": "node --test src/integrations/lti/ltiContract.test.js src/integrations/lti/ltiMigration.test.js",
     "test:tos-integration": "node --test src/integrations/tos/tosControlPlane.test.js src/integrations/tos/syntheticInstitutionPilot.test.js",
     "test:ai-outline": "node --test src/ai/courseOutlineContract.test.js",
-    "test:syllabus-extraction": "node --test src/ai/syllabusExtractionContract.test.js",
+    "test:syllabus-extraction": "node --test src/ai/syllabusExtractionContract.test.js src/syllabus/syllabusMigration.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },
