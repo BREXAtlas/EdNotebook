@@ -1,16 +1,16 @@
 {
-  "status": "failure",
-  "validation": "cancelled",
-  "package_pages": "skipped",
-  "deploy": "skipped",
+  "status": "success",
+  "validation": "success",
+  "package_pages": "success",
+  "deploy": "success",
   "production_url": "https://ednotebook.com/",
   "staging_url": "https://ednotebook.com/staging/",
-  "page_url": "",
-  "production_source_commit": "",
-  "staging_source_commit": "",
+  "page_url": "https://ednotebook.com/",
+  "production_source_commit": "11df6be1ddccf05dd89e15acd30f0919e045d230",
+  "staging_source_commit": "a79cbd8b92352f74f131255c1dded6a17008caf0",
   "trigger_branch": "staging",
-  "trigger_commit": "92739c2d8d090f059a48955966322a0933f2164f",
-  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30315436404",
-  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30315501102",
-  "deployed_at": "2026-07-27T23:51:48Z"
+  "trigger_commit": "a79cbd8b92352f74f131255c1dded6a17008caf0",
+  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30315472077",
+  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30315588550",
+  "deployed_at": "2026-07-27T23:54:23Z"
 }
