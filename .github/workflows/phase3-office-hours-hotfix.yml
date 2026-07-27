@@ -1,0 +1,160 @@
+name: Phase 3 office-hours hotfix
+
+on:
+  push:
+    branches: [fix/phase-3-office-hours-continuation]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/phase-3-office-hours-continuation
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Patch wrapped office-hours extraction and add regression coverage
+        shell: python
+        run: |
+          from pathlib import Path
+
+          contract_path = Path("src/ai/syllabusExtractionContract.js")
+          contract = contract_path.read_text(encoding="utf-8")
+
+          contract = contract.replace(
+              '  officeHours: [/^office\\s*hours?\\s*[:\\-]?\\s*(.+)$/i],',
+              '  officeHours: [/^office\\s*hour(?:\\s*s)?\\s*[:\\-]?\\s*(.+)$/i],',
+          )
+
+          old_function = '''function labeledValueWithContinuation(lines, labelPattern, stopPattern) {
+            const index = lines.findIndex((line) => labelPattern.test(line));
+            if (index < 0) return null;
+            const first = lines[index];
+            let value = clean(first.replace(labelPattern, ""));
+            let excerpt = first;
+            for (let cursor = index + 1; cursor < Math.min(lines.length, index + 4); cursor += 1) {
+              const next = lines[cursor];
+              if (stopPattern.test(next)) break;
+              const shouldContinue = /(?:and|or|by|through|excluding|,|;)$/i.test(value)
+                || /^[a-z(]/.test(next)
+                || next.length < 24;
+              if (!shouldContinue) break;
+              value = `${value} ${next}`.trim();
+              excerpt += ` | ${next}`;
+            }
+            return { value, excerpt };
+          }'''
+
+          new_function = '''function labeledValueWithContinuation(lines, labelPattern, stopPattern) {
+            const index = lines.findIndex((line) => labelPattern.test(line));
+            if (index < 0) return null;
+            const first = lines[index];
+            const initial = clean(first.replace(labelPattern, ""));
+            let value = /^s$/i.test(initial) ? "" : initial;
+            let excerpt = first;
+            for (let cursor = index + 1; cursor < Math.min(lines.length, index + 5); cursor += 1) {
+              const next = lines[cursor];
+              if (stopPattern.test(next)) break;
+              if (!value && /^s$/i.test(next)) {
+                excerpt += ` | ${next}`;
+                continue;
+              }
+              const shouldContinue = !value
+                || /(?:and|or|by|through|excluding|,|;)$/i.test(value)
+                || /^[a-z(]/.test(next)
+                || next.length < 24;
+              if (!shouldContinue) break;
+              value = `${value} ${next}`.trim();
+              excerpt += ` | ${next}`;
+            }
+            return { value, excerpt };
+          }'''
+
+          if old_function not in contract and new_function not in contract:
+              raise SystemExit("Expected labeledValueWithContinuation implementation was not found")
+          contract = contract.replace(old_function, new_function)
+          contract = contract.replace(
+              '    /^office\\s*hours?\\s*[:\\-]?\\s*/i,',
+              '    /^office\\s*hour(?:\\s*s)?\\s*[:\\-]?\\s*/i,',
+          )
+          contract_path.write_text(contract, encoding="utf-8")
+
+          test_path = Path("src/ai/syllabusExtractionContract.test.js")
+          tests = test_path.read_text(encoding="utf-8")
+          marker = 'test("recovers office hours when the PDF puts the value on following lines", () => {'
+          if marker not in tests:
+              tests += '''
+
+          test("recovers office hours when the PDF puts the value on following lines", () => {
+            const result = extractDeterministicSyllabus(`
+          Course Title: Test Course
+          Course Code: TEST 1000
+          Contact Information
+          Instructor Title: Professor
+          Instructor: Taylor Morgan
+          Phone: 325-555-0100
+          ASU Email: taylor.morgan@angelo.example.edu
+          Office Location: Media Arts 318
+          Office Hours
+          Tuesday and Thursday, 3:00-5:00 p.m.; Wednesday, 10:00 a.m.-12:00 p.m.; and by
+          appointment
+          Other Contact: Blackboard course messages
+          `);
+
+            assert.equal(
+              result.fields.officeHours.value,
+              "Tuesday and Thursday, 3:00-5:00 p.m.; Wednesday, 10:00 a.m.-12:00 p.m.; and by appointment",
+            );
+          });
+
+          test("recovers office hours when a PDF separates the plural suffix", () => {
+            const result = extractDeterministicSyllabus(`
+          Course Title: Test Course
+          Course Code: TEST 1000
+          Contact Information
+          Instructor Title: Professor
+          Instructor: Taylor Morgan
+          Phone: 325-555-0100
+          ASU Email: taylor.morgan@angelo.example.edu
+          Office Location: Media Arts 318
+          Office Hour s
+          Tuesday and Thursday, 3:00-5:00 p.m.; and by appointment
+          Other Contact: Blackboard course messages
+          `);
+
+            assert.equal(
+              result.fields.officeHours.value,
+              "Tuesday and Thursday, 3:00-5:00 p.m.; and by appointment",
+            );
+          });
+          '''
+              test_path.write_text(tests, encoding="utf-8")
+
+      - name: Run syllabus extraction tests
+        run: npm run test:syllabus-extraction
+
+      - name: Build staging
+        run: npm run build:staging
+
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ai/syllabusExtractionContract.js src/ai/syllabusExtractionContract.test.js
+          if git diff --cached --quiet; then
+            echo "Hotfix already applied."
+            exit 0
+          fi
+          git commit -m "Fix wrapped office-hours extraction"
+          git push origin HEAD:fix/phase-3-office-hours-continuation
