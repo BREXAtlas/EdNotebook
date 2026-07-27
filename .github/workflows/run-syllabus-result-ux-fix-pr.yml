@@ -16,40 +16,8 @@ jobs:
           ref: fix/phase-3-extraction-feedback
           fetch-depth: 0
 
-      - name: Run the checked-in focused fixer
-        id: fixer
-        continue-on-error: true
-        shell: bash
-        run: |
-          python - <<'PY' > fixer-report.txt 2>&1
-          from pathlib import Path
-          import traceback
-
-          try:
-              workflow = Path('.github/workflows/apply-syllabus-result-ux-fix.yml').read_text()
-              start_marker = "          python - <<'PY'\n"
-              end_marker = "\n          PY\n"
-              if start_marker not in workflow or end_marker not in workflow:
-                  raise RuntimeError('Could not find embedded fixer')
-              code = workflow.split(start_marker, 1)[1].split(end_marker, 1)[0]
-              code = '\n'.join(line[10:] if line.startswith('          ') else line for line in code.splitlines())
-              exec(compile(code, 'syllabus-ux-fix.py', 'exec'))
-              print('FIXER_COMPLETED')
-          except Exception:
-              traceback.print_exc()
-              raise
-          PY
-
-      - name: Upload fixer report
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: syllabus-ux-fixer-report
-          path: fixer-report.txt
-
-      - name: Fail when fixer failed
-        if: steps.fixer.outcome == 'failure'
-        run: exit 1
+      - name: Apply focused Phase 3 UX changes
+        run: python scripts/apply-syllabus-ux-fix.py
 
       - name: Commit focused changes
         shell: bash
