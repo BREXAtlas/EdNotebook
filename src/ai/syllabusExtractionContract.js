@@ -68,7 +68,7 @@ const DIRECT_PATTERNS = {
   instructorPhone: [/^(?:phone|telephone|office\s*phone)\s*[:\-]?\s*(\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4})\s*$/i],
   instructorEmail: [/^(?:email|e-mail|asu(?:-style)?\s*email)\s*[:\-]?\s*([^\s]+@[^\s]+)(?:\s.*)?$/i],
   officeLocation: [/^office(?!\s*hours?\b)(?:\s*location)?\s*[:\-]?\s*(.+)$/i],
-  officeHours: [/^office\s*hours?\s*[:\-]?\s*(.+)$/i],
+  officeHours: [/^office\s*hour(?:\s*s)?\s*[:\-]?\s*(.+)$/i],
   otherContact: [/^(?:other\s*contact|other\s*means\s*of\s*contact)\s*[:\-]?\s*(.+)$/i],
   deliveryModality: [/^(?:course\s*delivery|delivery|modality|course\s*format)\s*[:\-]?\s*(.+)$/i],
   meetingTimes: [/^(?:meeting\s*(?:days?\s*and\s*)?times?|meeting\s*pattern|class\s*time)\s*[:\-]?\s*(.+)$/i],
@@ -287,12 +287,18 @@ function labeledValueWithContinuation(lines, labelPattern, stopPattern) {
   const index = lines.findIndex((line) => labelPattern.test(line));
   if (index < 0) return null;
   const first = lines[index];
-  let value = clean(first.replace(labelPattern, ""));
+  const initial = clean(first.replace(labelPattern, ""));
+  let value = /^s$/i.test(initial) ? "" : initial;
   let excerpt = first;
-  for (let cursor = index + 1; cursor < Math.min(lines.length, index + 4); cursor += 1) {
+  for (let cursor = index + 1; cursor < Math.min(lines.length, index + 5); cursor += 1) {
     const next = lines[cursor];
     if (stopPattern.test(next)) break;
-    const shouldContinue = /(?:and|or|by|through|excluding|,|;)$/i.test(value)
+    if (!value && /^s$/i.test(next)) {
+      excerpt += ` | ${next}`;
+      continue;
+    }
+    const shouldContinue = !value
+      || /(?:and|or|by|through|excluding|,|;)$/i.test(value)
       || /^[a-z(]/.test(next)
       || next.length < 24;
     if (!shouldContinue) break;
@@ -340,7 +346,7 @@ function parseCourseIdentity(lines, fields, matchesByKey) {
 
   const officeHours = labeledValueWithContinuation(
     lines,
-    /^office\s*hours?\s*[:\-]?\s*/i,
+    /^office\s*hour(?:\s*s)?\s*[:\-]?\s*/i,
     /^(?:other\s*contact|response\s*time|course\s*delivery|texts?\s*and\s*materials|description|requisites?)\b/i,
   );
   if (officeHours) addField(fields, "officeHours", officeHours.value, 0.98, officeHours.excerpt, "labeled_continuation");
