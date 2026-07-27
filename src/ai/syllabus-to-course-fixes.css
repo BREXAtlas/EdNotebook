@@ -1,0 +1,61 @@
+/* Phase 3 extraction review refinements. Keep the source and structured shell aligned without horizontal overflow. */
+.syllabus-review-grid {
+  grid-template-columns: minmax(280px, 0.68fr) minmax(0, 1.32fr);
+  align-items: start;
+}
+
+.source-pane,
+.field-pane,
+.syllabus-shell-pane,
+.syllabus-shell-section,
+.syllabus-shell-section article {
+  min-width: 0;
+}
+
+.source-pane {
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+.source-pane pre {
+  max-height: calc(100vh - 115px);
+  margin-bottom: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.field-pane textarea,
+.syllabus-course-input > textarea {
+  min-width: 0;
+  max-width: 100%;
+  resize: vertical;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.field-pane blockquote,
+.syllabus-review-flags li,
+.syllabus-review-flags p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.syllabus-field-heading > div,
+.syllabus-shell-section > header > div {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .source-pane {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .source-pane pre {
+    max-height: 420px;
+  }
+}
