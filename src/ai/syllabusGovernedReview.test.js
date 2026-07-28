@@ -23,6 +23,11 @@ The final experience may be either a presentation or a written project. The exac
 Students may use generative AI for brainstorming when an assignment permits it, but the disclosure expectations are not clearly stated.
 `;
 
+const EXPECTED_RETURNED_SUMMARY = [
+  "Final assessment format: presentation versus written project",
+  "Generative AI disclosure expectations",
+];
+
 test("actual incomplete syllabus keeps the governed draft summary passage-scoped", () => {
   const deterministic = extractDeterministicSyllabus(
     INCOMPLETE_SYLLABUS_FIXTURE,
@@ -67,6 +72,14 @@ test("actual incomplete syllabus keeps the governed draft summary passage-scoped
     routerValidatedArtifact,
     ANGELO_STATE_2026_PROFILE,
   );
+
+  // SyllabusToCourse reads this exact object after merge. Verify the rendered
+  // summary path, not only the helper's direct return value.
+  assert.deepEqual(
+    routerValidatedArtifact.missingInformation,
+    EXPECTED_RETURNED_SUMMARY,
+  );
+
   const appliedFields = Object.entries(routerValidatedArtifact.fields)
     .filter(([key]) => merged.fields[key]?.method === "ai_uncertainty_resolution")
     .map(([key, field]) => ({ key, ...field }));
@@ -75,10 +88,7 @@ test("actual incomplete syllabus keeps the governed draft summary passage-scoped
     artifact: routerValidatedArtifact,
   });
 
-  assert.deepEqual(returnedDraft.missingInformation, [
-    "Final assessment format: presentation versus written project",
-    "Generative AI disclosure expectations",
-  ]);
+  assert.deepEqual(returnedDraft.missingInformation, EXPECTED_RETURNED_SUMMARY);
   assert.equal(returnedDraft.missingInformation.includes("Course description"), false);
   assert.equal(returnedDraft.missingInformation.includes("Instructor information"), false);
   assert.equal(returnedDraft.missingInformation.includes("Meeting times and location"), false);
