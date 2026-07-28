@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient.js";
+import { identifyGovernedUncertaintyFieldKeys } from "./syllabusGovernedReview.js";
 
 export const LEARNING_AI_API_VERSION = "2026-07-24";
 
@@ -20,6 +21,58 @@ async function messageFromInvocationError(error, data) {
     }
   }
   return error?.message || "The governed AI request could not be completed.";
+}
+
+function governedSyllabusInput(input) {
+  const uncertainFieldKeys = identifyGovernedUncertaintyFieldKeys(
+    input?.uncertainSections,
+  );
+  if (!uncertainFieldKeys.length) {
+    throw new Error(
+      "The uncertain syllabus passage could not be tied to an approved requirement field. No AI request was sent.",
+    );
+  }
+
+  const deterministicFields =
+    input?.deterministicFields &&
+    typeof input.deterministicFields === "object" &&
+    !Array.isArray(input.deterministicFields)
+      ? input.deterministicFields
+      : {};
+  const profile =
+    deterministicFields._requirementProfile &&
+    typeof deterministicFields._requirementProfile === "object" &&
+    !Array.isArray(deterministicFields._requirementProfile)
+      ? deterministicFields._requirementProfile
+      : null;
+  const definitions = Array.isArray(profile?.fields) ? profile.fields : [];
+  const uncertainKeySet = new Set(uncertainFieldKeys);
+  const approvedDefinitions = definitions.filter(
+    (definition) =>
+      definition &&
+      typeof definition === "object" &&
+      uncertainKeySet.has(definition.key),
+  );
+  const approvedKeys = new Set(
+    approvedDefinitions.map((definition) => definition.key),
+  );
+  if (uncertainFieldKeys.some((key) => !approvedKeys.has(key))) {
+    throw new Error(
+      "The uncertain syllabus passage referenced a field outside the approved requirement profile. No AI request was sent.",
+    );
+  }
+
+  return {
+    ...input,
+    deterministicFields: {
+      ...deterministicFields,
+      _requirementProfile: {
+        ...profile,
+        uncertainFieldKeys,
+        fields: approvedDefinitions,
+      },
+    },
+  };
 }
 
 async function invokeProfessorTask(taskType, input, { courseId } = {}) {
@@ -52,5 +105,9 @@ export function generateProfessorCourseOutline(input, options = {}) {
 }
 
 export function interpretUncertainSyllabusSections(input, options = {}) {
-  return invokeProfessorTask("syllabus_uncertain_extraction", input, options);
+  return invokeProfessorTask(
+    "syllabus_uncertain_extraction",
+    governedSyllabusInput(input),
+    options,
+  );
 }
