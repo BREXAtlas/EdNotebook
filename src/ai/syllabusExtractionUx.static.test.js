@@ -17,3 +17,13 @@ test("staging exposes governed uncertainty review without enabling production", 
   assert.match(source, /Human review required/);
   assert.match(source, /AI review unavailable outside staging/);
 });
+
+
+test("keeps operation feedback beside its source action and prevents duplicate AI calls", () => {
+  assert.match(source, /operationNotice\?\.scope === "input"/);
+  assert.match(source, /operationNotice\?\.scope === "review"/);
+  assert.match(source, /aiRequestInFlightRef/);
+  assert.match(source, /Governed AI review already running/);
+  assert.match(source, /Retry governed review/);
+  assert.doesNotMatch(source, /\.\.\.result\.fields/);
+});
