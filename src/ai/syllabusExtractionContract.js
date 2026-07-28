@@ -22,6 +22,9 @@ export function mergeSyllabusExtraction(deterministic, aiArtifact, profile) {
     artifact: aiArtifact,
   });
 
+  // The small Returned Governed Draft summary is derived only from fields
+  // actually accepted by this merge. The full requirement inventory remains
+  // independently available through requirementReview.missingRequired.
   if (aiArtifact && typeof aiArtifact === "object") {
     aiArtifact.missingInformation = governedDraft.missingInformation;
   }
