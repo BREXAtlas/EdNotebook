@@ -53,6 +53,11 @@ test("actual incomplete syllabus keeps the governed draft summary passage-scoped
     missingInformation: [
       "finalAssessmentType: Final assessment format: presentation versus written project",
       "aiUsePolicy: Generative AI disclosure expectations",
+      "courseDescription: Course description",
+      "instructorName: Instructor information",
+      "gradingScale: Grading scale and grade breakdown",
+      "meetingTimes: Meeting times and location",
+      "Accessibility language",
     ],
     conflictingInformation: [],
     proposedCourseOutline: null,
