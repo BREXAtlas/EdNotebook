@@ -27,7 +27,10 @@ const AI_UNCERTAINTY_ENABLED =
 
 function scrollToElement(ref) {
   requestAnimationFrame(() => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      ref.current?.focus?.({ preventScroll: true });
+    });
   });
 }
 
@@ -129,6 +132,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
   const fileInput = useRef(null);
   const statusRef = useRef(null);
   const reviewRef = useRef(null);
+  const aiRequestInFlightRef = useRef(false);
   const [sourceText, setSourceText] = useState("");
   const [sourceLabel, setSourceLabel] = useState("Pasted syllabus text");
   const [result, setResult] = useState(null);
@@ -185,6 +189,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
     setPhase("extracting");
     setStatus("Extracting syllabus fields and checking the institutional requirement profile…");
     setOperationNotice({
+      scope: "input",
       type: "progress",
       title: "Extraction in progress",
       message: "EdNotebook is reading the source, matching structured fields, and checking required and conditional items.",
@@ -210,6 +215,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         + `${institutionManagedDefinitions.length} institution-managed blocks remain locked; ${detectedInstitutionBlocks} were found in the source for institutional review.`;
       setStatus(summary);
       setOperationNotice({
+        scope: "review",
         type: "success",
         title: "Extraction complete",
         message: extracted.uncertainSections?.length
@@ -222,6 +228,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       const message = extractError.message || "The syllabus could not be extracted.";
       setError(message);
       setOperationNotice({
+        scope: "input",
         type: "error",
         title: "Extraction did not finish",
         message,
@@ -238,9 +245,21 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       return;
     }
     if (!result?.uncertainSections?.length) return;
+    if (aiRequestInFlightRef.current) {
+      setOperationNotice({
+        scope: "review",
+        type: "progress",
+        title: "Governed AI review already running",
+        message: "EdNotebook is keeping the first request active instead of sending a duplicate. Stay on this review section while it finishes.",
+      });
+      scrollToElement(reviewRef);
+      return;
+    }
+    aiRequestInFlightRef.current = true;
     setPhase("ai");
     setError("");
     setOperationNotice({
+      scope: "review",
       type: "progress",
       title: "Governed AI review in progress",
       message: "Only uncertain syllabus sections are being sent through the approved TOS router. Nothing will be saved or published automatically.",
@@ -250,10 +269,28 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       "TOS is interpreting only the uncertain syllabus sections against the approved requirement profile…",
     );
     try {
+      const compactContextKeys = new Set([
+        "courseTitle",
+        "courseCode",
+        "sectionNumber",
+        "term",
+        "creditHours",
+        "deliveryModality",
+        "finalAssessmentType",
+        "aiUsePolicy",
+      ]);
+      const compactDeterministicFields = Object.fromEntries(
+        Object.entries(result.fields)
+          .filter(([key]) => compactContextKeys.has(key))
+          .map(([key, field]) => [key, {
+            value: field?.value,
+            confidence: field?.confidence,
+          }]),
+      );
       const response = await interpretUncertainSyllabusSections({
         uncertainSections: result.uncertainSections,
         deterministicFields: {
-          ...result.fields,
+          ...compactDeterministicFields,
           _requirementProfile: {
             profileKey: ANGELO_STATE_2026_PROFILE.profileKey,
             version: ANGELO_STATE_2026_PROFILE.version,
@@ -280,6 +317,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         "AI uncertainty review returned as an unpublished draft. Compare every field with the source text.",
       );
       setOperationNotice({
+        scope: "review",
         type: "success",
         title: "Governed AI uncertainty review complete",
         message: "The returned draft is source-grounded and still requires professor review. It has not been saved, approved, mapped, or published.",
@@ -294,11 +332,14 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         "Your deterministic extraction and structured shell remain available. No course was changed.",
       );
       setOperationNotice({
+        scope: "review",
         type: "error",
         title: "Governed AI review did not finish",
-        message: aiError.message || "The uncertain syllabus sections could not be interpreted.",
+        message: `${aiError.message || "The uncertain syllabus sections could not be interpreted."} Your deterministic work is preserved. Select Retry governed review when you are ready.`,
       });
       scrollToElement(reviewRef);
+    } finally {
+      aiRequestInFlightRef.current = false;
     }
   }
 
@@ -438,17 +479,6 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         <p>{status}</p>
       </section>
 
-      {operationNotice ? (
-        <section
-          className={`syllabus-operation-notice is-${operationNotice.type}`}
-          role={operationNotice.type === "error" ? "alert" : "status"}
-          aria-live="polite"
-        >
-          <strong>{operationNotice.title}</strong>
-          <p>{operationNotice.message}</p>
-        </section>
-      ) : null}
-
       <section
         className="syllabus-profile-summary"
         aria-labelledby="syllabus-profile-title"
@@ -535,6 +565,16 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
             Start blank structured syllabus
           </button>
         </div>
+        {operationNotice?.scope === "input" ? (
+          <div
+            className={`syllabus-operation-notice is-${operationNotice.type}`}
+            role={operationNotice.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+          >
+            <strong>{operationNotice.title}</strong>
+            <p>{operationNotice.message}</p>
+          </div>
+        ) : null}
         <textarea
           rows={14}
           value={sourceText}
@@ -569,11 +609,24 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
                 ? (phase === "ai"
                   ? "Interpreting uncertainty…"
                   : result.uncertainSections?.length
-                    ? "Interpret uncertain sections"
+                    ? (operationNotice?.type === "error"
+                      ? "Retry governed review"
+                      : "Interpret uncertain sections")
                     : "No uncertain sections found")
                 : "AI review unavailable outside staging"}
             </button>
           </div>
+
+          {operationNotice?.scope === "review" ? (
+            <div
+              className={`syllabus-operation-notice is-${operationNotice.type}`}
+              role={operationNotice.type === "error" ? "alert" : "status"}
+              aria-live="polite"
+            >
+              <strong>{operationNotice.title}</strong>
+              <p>{operationNotice.message}</p>
+            </div>
+          ) : null}
 
           <div className={`syllabus-ai-availability ${AI_UNCERTAINTY_ENABLED ? "is-ready" : "is-disabled"}`}>
             <strong>

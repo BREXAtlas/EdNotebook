@@ -147,3 +147,16 @@
 .syllabus-review-flags {
   align-items: start;
 }
+
+
+/* Keep operation feedback beside the action that produced it. */
+.syllabus-course-input .syllabus-operation-notice,
+.syllabus-course-review .syllabus-operation-notice {
+  max-width: none;
+  margin: 0 0 20px;
+  box-shadow: none;
+}
+
+.syllabus-course-review:focus {
+  outline: none;
+}
