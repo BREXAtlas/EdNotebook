@@ -145,6 +145,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
   const [cloudRecord, setCloudRecord] = useState(null);
   const [operationNotice, setOperationNotice] = useState(null);
   const [aiProvenance, setAiProvenance] = useState(null);
+  const [aiReview, setAiReview] = useState(null);
 
   const fields = result?.fields || {};
   const requirementReview = result?.requirementReview
@@ -171,6 +172,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       setCloudRecord(null);
       setOperationNotice(null);
       setAiProvenance(null);
+      setAiReview(null);
       setStatus(
         "Syllabus text is ready and PDF text artifacts were cleaned. Review it, then run the institutional requirement extraction.",
       );
@@ -186,6 +188,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
     setApproved(false);
     setCloudRecord(null);
     setAiProvenance(null);
+    setAiReview(null);
     setPhase("extracting");
     setStatus("Extracting syllabus fields and checking the institutional requirement profile…");
     setOperationNotice({
@@ -304,23 +307,56 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           },
         },
       }, { courseId: courseDraft.id || "" });
-      setResult(
-        mergeSyllabusExtraction(
-          result,
-          response.artifact,
-          ANGELO_STATE_2026_PROFILE,
-        ),
+      const knownDefinitionByKey = new Map(
+        definitions.map((definition) => [definition.key, definition]),
       );
+      const acceptedAiFields = Object.entries(response.artifact?.fields || {})
+        .filter(([key, value]) => (
+          knownDefinitionByKey.has(key)
+          && value
+          && typeof value === "object"
+          && String(value.sourceExcerpt || "").trim()
+        ));
+      if (!acceptedAiFields.length) {
+        throw new Error(
+          "The AI provider returned no usable source-grounded syllabus fields. No draft was applied.",
+        );
+      }
+      const merged = mergeSyllabusExtraction(
+        result,
+        response.artifact,
+        ANGELO_STATE_2026_PROFILE,
+      );
+      const appliedFields = acceptedAiFields
+        .filter(([key]) => merged.fields?.[key]?.method === "ai_uncertainty_resolution")
+        .map(([key, value]) => ({
+          key,
+          label: knownDefinitionByKey.get(key)?.label || key,
+          value: value.value,
+          confidence: Number(value.confidence || 0),
+          sourceExcerpt: value.sourceExcerpt,
+        }));
+      if (!appliedFields.length) {
+        throw new Error(
+          "The AI provider returned fields, but none could be safely applied to the structured syllabus. No draft was changed.",
+        );
+      }
+      setResult({ ...merged, uncertainSections: [] });
+      setAiReview({
+        fields: appliedFields,
+        missingInformation: response.artifact?.missingInformation || [],
+        conflictingInformation: response.artifact?.conflictingInformation || [],
+      });
       setAiProvenance(response.provenance || null);
       setPhase("review");
       setStatus(
-        "AI uncertainty review returned as an unpublished draft. Compare every field with the source text.",
+        `AI uncertainty review returned ${appliedFields.length} source-grounded field${appliedFields.length === 1 ? "" : "s"} as an unpublished draft.`,
       );
       setOperationNotice({
         scope: "review",
         type: "success",
         title: "Governed AI uncertainty review complete",
-        message: "The returned draft is source-grounded and still requires professor review. It has not been saved, approved, mapped, or published.",
+        message: `Gemini returned ${appliedFields.length} source-grounded field${appliedFields.length === 1 ? "" : "s"}. Review the values and evidence below. Nothing has been saved, approved, mapped, or published.`,
       });
       scrollToElement(reviewRef);
     } catch (aiError) {
@@ -636,9 +672,11 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
             </strong>
             <p>
               {AI_UNCERTAINTY_ENABLED
-                ? result.uncertainSections?.length
-                  ? `${result.uncertainSections.length} uncertain section${result.uncertainSections.length === 1 ? " is" : "s are"} ready. Select Interpret uncertain sections to run the source-grounded review.`
-                  : "The deterministic extractor did not identify an uncertain section that needs AI interpretation."
+                ? aiReview
+                  ? "Uncertainty review completed. The returned fields are listed below and marked inside the structured syllabus."
+                  : result.uncertainSections?.length
+                    ? `${result.uncertainSections.length} uncertain section${result.uncertainSections.length === 1 ? " is" : "s are"} ready. Select Interpret uncertain sections to run the source-grounded review.`
+                    : "The deterministic extractor did not identify an uncertain section that needs AI interpretation."
                 : "Production remains disabled. Use the permanent staging environment for governed testing."}
             </p>
             {aiProvenance ? (
@@ -647,6 +685,36 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
               </small>
             ) : null}
           </div>
+
+          {aiReview ? (
+            <section className="syllabus-ai-returned-draft" aria-label="Returned governed AI draft">
+              <div className="syllabus-ai-returned-draft-heading">
+                <div>
+                  <span>RETURNED GOVERNED DRAFT</span>
+                  <h3>{aiReview.fields.length} source-grounded field{aiReview.fields.length === 1 ? "" : "s"}</h3>
+                </div>
+                <strong>Professor review required</strong>
+              </div>
+              <div className="syllabus-ai-returned-field-list">
+                {aiReview.fields.map((field) => (
+                  <article key={field.key}>
+                    <header>
+                      <strong>{field.label}</strong>
+                      <span>{Math.round(field.confidence * 100)}% confidence</span>
+                    </header>
+                    <p>{formatValue(field.value)}</p>
+                    <blockquote>{field.sourceExcerpt}</blockquote>
+                  </article>
+                ))}
+              </div>
+              {aiReview.missingInformation.length ? (
+                <p><strong>Still unresolved:</strong> {aiReview.missingInformation.join(" · ")}</p>
+              ) : null}
+              {aiReview.conflictingInformation.length ? (
+                <p><strong>Conflicts:</strong> {aiReview.conflictingInformation.join(" · ")}</p>
+              ) : null}
+            </section>
+          ) : null}
 
           <div className="syllabus-review-grid">
             <div className="source-pane">
@@ -684,9 +752,16 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
                                 <small>{definition.guidance}</small>
                               ) : null}
                             </div>
-                            <span className={fieldStatusClass(item)}>
-                              {statusLabel(item)}
-                            </span>
+                            <div className="syllabus-field-status-stack">
+                              {field?.method === "ai_uncertainty_resolution" ? (
+                                <span className="syllabus-ai-field-badge">
+                                  AI interpreted · {Math.round(Number(field.confidence || 0) * 100)}%
+                                </span>
+                              ) : null}
+                              <span className={fieldStatusClass(item)}>
+                                {statusLabel(item)}
+                              </span>
+                            </div>
                           </div>
                           <textarea
                             rows={
