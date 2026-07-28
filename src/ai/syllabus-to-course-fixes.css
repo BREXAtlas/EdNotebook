@@ -59,3 +59,91 @@
     max-height: 420px;
   }
 }
+
+
+/* Extraction progress, completion, and governed-AI visibility. */
+.syllabus-course-status,
+.syllabus-course-review {
+  scroll-margin-top: 24px;
+}
+
+.syllabus-operation-notice {
+  max-width: 1400px;
+  margin: 0 auto 24px;
+  border: 1px solid #cfd9eb;
+  border-radius: 18px;
+  padding: 18px 20px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(16, 33, 67, 0.08);
+}
+
+.syllabus-operation-notice strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.syllabus-operation-notice p {
+  margin: 6px 0 0;
+  color: #43516d;
+  line-height: 1.45;
+}
+
+.syllabus-operation-notice.is-progress {
+  border-color: #9bb4f5;
+  background: #eef3ff;
+}
+
+.syllabus-operation-notice.is-success {
+  border-color: #83d4a8;
+  background: #ecfbf3;
+}
+
+.syllabus-operation-notice.is-success strong {
+  color: #12653a;
+}
+
+.syllabus-operation-notice.is-error {
+  border-color: #efaca4;
+  background: #fff0f0;
+}
+
+.syllabus-operation-notice.is-error strong {
+  color: #9b1c1c;
+}
+
+.syllabus-ai-availability {
+  margin: 0 0 20px;
+  border: 1px solid #cfd9eb;
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: #f8faff;
+}
+
+.syllabus-ai-availability.is-ready {
+  border-color: #9bb4f5;
+  background: #eef3ff;
+}
+
+.syllabus-ai-availability.is-disabled {
+  border-color: #d9dee8;
+  background: #f4f5f8;
+}
+
+.syllabus-ai-availability strong,
+.syllabus-ai-availability small {
+  display: block;
+}
+
+.syllabus-ai-availability p {
+  margin: 6px 0;
+  color: #43516d;
+}
+
+.syllabus-ai-availability small {
+  color: #526078;
+  overflow-wrap: anywhere;
+}
+
+.syllabus-review-flags {
+  align-items: start;
+}
