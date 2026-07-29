@@ -29,8 +29,14 @@ test("selected-lesson generation is gated to staging and uses the canonical task
   assert.match(reviewSource, /if \(!IS_STAGING\) return null/);
   assert.doesNotMatch(reviewSource, /user_metadata/);
   assert.match(serviceSource, /invokeGovernedTask\("lesson", input, options\)/);
-  assert.match(serviceSource, /Lesson generation requires an approved institution/);
-  assert.match(serviceSource, /options\.courseId !== input\?\.course\?\.courseId/);
+  assert.match(
+    serviceSource,
+    /Lesson generation requires an approved institution/,
+  );
+  assert.match(
+    serviceSource,
+    /options\.courseId !== input\?\.course\?\.courseId/,
+  );
   assert.doesNotMatch(serviceSource, /invokeGovernedTask\("lesson_generation"/);
 });
 
@@ -42,7 +48,10 @@ test("professor review exposes the required unpublished controls", () => {
   assert.match(reviewSource, /Regenerate whole lesson/);
   assert.match(reviewSource, /Accept into course-package draft/);
   assert.match(reviewSource, /Compare before accepting/);
-  assert.match(reviewSource, /does not infer missing course-level requirements/);
+  assert.match(
+    reviewSource,
+    /does not infer missing course-level requirements/,
+  );
 });
 
 test("controlled content units require separate governed calls and professor apply", () => {
@@ -52,6 +61,12 @@ test("controlled content units require separate governed calls and professor app
   assert.match(contentUnitSource, /Regenerate discussion prompt/);
   assert.match(contentUnitSource, /Professor facilitation/);
   assert.match(contentUnitSource, /Regenerate selected check/);
+  assert.match(contentUnitSource, /Generate quiz for professor review/);
+  assert.match(contentUnitSource, /Quiz answer-key review/);
+  assert.match(contentUnitSource, /Generate rubric for professor review/);
+  assert.match(contentUnitSource, /Professor-only scoring guide/);
+  assert.match(contentUnitSource, /Improve only selected lesson text/);
+  assert.match(contentUnitSource, /Original text/);
   assert.match(contentUnitSource, /Apply to unpublished lesson draft/);
   assert.match(contentUnitSource, /reviewConfirmed/);
   assert.match(contentUnitSource, /reviewBlockCount > 0/);
@@ -65,11 +80,17 @@ test("controlled content units require separate governed calls and professor app
 });
 
 test("lesson review reuses Course Output Studio and keeps preview in the app", () => {
-  assert.match(studioSource, /lazy\(\(\) => import\("\.\.\/ai\/LessonDraftReview\.jsx"\)\)/);
+  assert.match(
+    studioSource,
+    /lazy\(\(\) => import\("\.\.\/ai\/LessonDraftReview\.jsx"\)\)/,
+  );
   assert.match(studioSource, /IS_STAGING && LessonDraftReview/);
   assert.match(studioSource, /<Suspense/);
   assert.match(studioSource, /<LessonDraftReview/);
-  assert.match(studioSource, /key=\{`\$\{activeCourse\.id\}:\$\{selectedLesson\.id\}`\}/);
+  assert.match(
+    studioSource,
+    /key=\{`\$\{activeCourse\.id\}:\$\{selectedLesson\.id\}`\}/,
+  );
   assert.match(studioSource, /setManifest\(nextManifest\)/);
   assert.match(reviewSource, /In-platform student preview/);
   assert.match(reviewSource, /Standalone course-package preview/);

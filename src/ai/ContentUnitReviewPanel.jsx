@@ -12,11 +12,16 @@ const TASK_LABELS = Object.freeze({
   activity: "lesson activity",
   discussion_prompt: "selected discussion prompt",
   knowledge_check: "selected knowledge check",
+  quiz: "connected quiz",
+  rubric_draft: "aligned assessment rubric",
+  improve_selected_text: "selected lesson text",
 });
 
 const clean = (value) => String(value ?? "").trim();
 const readableId = (value) =>
-  clean(value).replace(/^discussion-/, "").replaceAll("-", " ");
+  clean(value)
+    .replace(/^discussion-/, "")
+    .replaceAll("-", " ");
 
 function unitSummary(unit) {
   if (unit.taskType === "lesson_section") {
@@ -30,20 +35,38 @@ function unitSummary(unit) {
     return {
       title: unit.activity.title,
       body: unit.activity.instructions,
-      alignment: [
-        ...unit.activity.outcomeIds,
-        ...unit.activity.sourceIds,
-      ],
+      alignment: [...unit.activity.outcomeIds, ...unit.activity.sourceIds],
     };
   }
   if (unit.taskType === "discussion_prompt") {
     return {
       title: unit.discussion.title,
       body: `${unit.discussion.prompt} ${unit.discussion.learnerDirections}`,
-      alignment: [
-        ...unit.discussion.outcomeIds,
-        ...unit.discussion.sourceIds,
-      ],
+      alignment: [...unit.discussion.outcomeIds, ...unit.discussion.sourceIds],
+    };
+  }
+  if (unit.taskType === "quiz") {
+    return {
+      title: unit.quiz.title,
+      body: unit.quiz.instructions,
+      alignment: unit.quiz.items.flatMap((item) => [
+        ...item.outcomeIds,
+        ...item.sourceIds,
+      ]),
+    };
+  }
+  if (unit.taskType === "rubric_draft") {
+    return {
+      title: unit.rubric.title,
+      body: unit.rubric.learnerDirections,
+      alignment: [...unit.rubric.outcomeIds, ...unit.rubric.sourceIds],
+    };
+  }
+  if (unit.taskType === "improve_selected_text") {
+    return {
+      title: "Selected lesson-text revision",
+      body: unit.improvedText,
+      alignment: unit.sourceIds,
     };
   }
   return {
@@ -67,10 +90,18 @@ export default function ContentUnitReviewPanel({
 }) {
   const firstCheckId = clean(draft.knowledgeChecks?.[0]?.checkId);
   const firstDiscussionId = clean(draft.connections?.discussionIds?.[0]);
+  const firstQuizId = clean(draft.connections?.quizIds?.[0]);
+  const firstAssessmentId = clean(draft.alignment?.assessmentIds?.[0]);
   const [selectedCheckId, setSelectedCheckId] = useState(firstCheckId);
-  const [selectedDiscussionId, setSelectedDiscussionId] = useState(
-    firstDiscussionId,
+  const [selectedDiscussionId, setSelectedDiscussionId] =
+    useState(firstDiscussionId);
+  const [selectedQuizId, setSelectedQuizId] = useState(firstQuizId);
+  const [selectedAssessmentId, setSelectedAssessmentId] =
+    useState(firstAssessmentId);
+  const selectedSection = draft.sections?.find(
+    (section) => section.sectionId === selectedSectionId,
   );
+  const [selectedText, setSelectedText] = useState(selectedSection?.body || "");
   const [instruction, setInstruction] = useState("");
   const [phase, setPhase] = useState("ready");
   const [unitDraft, setUnitDraft] = useState(null);
@@ -80,7 +111,9 @@ export default function ContentUnitReviewPanel({
   const requestSequence = useRef(0);
 
   useEffect(() => {
-    const checkIds = (draft.knowledgeChecks || []).map((check) => check.checkId);
+    const checkIds = (draft.knowledgeChecks || []).map(
+      (check) => check.checkId,
+    );
     if (!checkIds.includes(selectedCheckId)) {
       setSelectedCheckId(clean(checkIds[0]));
       setUnitDraft(null);
@@ -96,6 +129,31 @@ export default function ContentUnitReviewPanel({
       setReviewConfirmed(false);
     }
   }, [draft.connections?.discussionIds, selectedDiscussionId]);
+
+  useEffect(() => {
+    const quizIds = draft.connections?.quizIds || [];
+    if (!quizIds.includes(selectedQuizId)) {
+      setSelectedQuizId(clean(quizIds[0]));
+      setUnitDraft(null);
+      setReviewConfirmed(false);
+    }
+  }, [draft.connections?.quizIds, selectedQuizId]);
+
+  useEffect(() => {
+    const assessmentIds = draft.alignment?.assessmentIds || [];
+    if (!assessmentIds.includes(selectedAssessmentId)) {
+      setSelectedAssessmentId(clean(assessmentIds[0]));
+      setUnitDraft(null);
+      setReviewConfirmed(false);
+    }
+  }, [draft.alignment?.assessmentIds, selectedAssessmentId]);
+
+  useEffect(() => {
+    const section = draft.sections?.find(
+      (item) => item.sectionId === selectedSectionId,
+    );
+    setSelectedText(section?.body || "");
+  }, [draft.sections, selectedSectionId]);
 
   useEffect(() => {
     requestSequence.current += 1;
@@ -125,9 +183,18 @@ export default function ContentUnitReviewPanel({
             ? selectedSectionId
             : taskType === "discussion_prompt"
               ? selectedDiscussionId
-            : taskType === "knowledge_check"
-              ? selectedCheckId
-              : null,
+              : taskType === "knowledge_check"
+                ? selectedCheckId
+                : taskType === "quiz"
+                  ? selectedQuizId
+                  : taskType === "rubric_draft"
+                    ? selectedAssessmentId
+                    : taskType === "improve_selected_text"
+                      ? {
+                          selectedSectionId,
+                          selectedText,
+                        }
+                      : null,
         instruction,
       });
       const result = await generateProfessorContentUnit(taskType, input, {
@@ -145,8 +212,8 @@ export default function ContentUnitReviewPanel({
       if (requestSequence.current !== sequence) return;
       setPhase("ready");
       setError(
-        generationError.message
-        || "The selected content unit could not be generated.",
+        generationError.message ||
+          "The selected content unit could not be generated.",
       );
       setMessage("The current lesson draft was preserved.");
     }
@@ -158,7 +225,9 @@ export default function ContentUnitReviewPanel({
     setReviewConfirmed(false);
     setPhase("ready");
     setError("");
-    setMessage("The content-unit revision was rejected. No lesson content changed.");
+    setMessage(
+      "The content-unit revision was rejected. No lesson content changed.",
+    );
   }
 
   function apply() {
@@ -183,9 +252,9 @@ export default function ContentUnitReviewPanel({
   const reviewBlockCount = unitDraft?.reviewBlocks?.length || 0;
   const issueCount = unitDraft
     ? ["sourceGaps", "uncertainties", "conflicts"].reduce(
-      (count, key) => count + (unitDraft[key]?.length || 0),
-      0,
-    )
+        (count, key) => count + (unitDraft[key]?.length || 0),
+        0,
+      )
     : 0;
   const busy = disabled || phase === "generating";
 
@@ -218,7 +287,10 @@ export default function ContentUnitReviewPanel({
         />
       </label>
 
-      <div className="phase5-content-unit-actions" aria-label="Content-unit actions">
+      <div
+        className="phase5-content-unit-actions"
+        aria-label="Content-unit actions"
+      >
         <button
           type="button"
           disabled={busy || !selectedSectionId}
@@ -287,8 +359,96 @@ export default function ContentUnitReviewPanel({
         </button>
       </div>
 
-      {message && <p className="phase5-status" role="status">{message}</p>}
-      {error && <p className="phase5-error" role="alert">{error}</p>}
+      <div
+        className="phase5-content-unit-actions"
+        aria-label="Final Phase 5 content-unit actions"
+      >
+        <label>
+          Connected quiz
+          <select
+            value={selectedQuizId}
+            disabled={busy || !draft.connections?.quizIds?.length}
+            onChange={(event) => {
+              requestSequence.current += 1;
+              setSelectedQuizId(event.target.value);
+              setUnitDraft(null);
+              setReviewConfirmed(false);
+            }}
+          >
+            {(draft.connections?.quizIds || []).map((quizId) => (
+              <option value={quizId} key={quizId}>
+                {readableId(quizId)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={busy || !selectedQuizId}
+          onClick={() => generate("quiz")}
+        >
+          Generate quiz for professor review
+        </button>
+        <label>
+          Aligned assessment
+          <select
+            value={selectedAssessmentId}
+            disabled={busy || !draft.alignment?.assessmentIds?.length}
+            onChange={(event) => {
+              requestSequence.current += 1;
+              setSelectedAssessmentId(event.target.value);
+              setUnitDraft(null);
+              setReviewConfirmed(false);
+            }}
+          >
+            {(draft.alignment?.assessmentIds || []).map((assessmentId) => (
+              <option value={assessmentId} key={assessmentId}>
+                {readableId(assessmentId)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={busy || !selectedAssessmentId}
+          onClick={() => generate("rubric_draft")}
+        >
+          Generate rubric for professor review
+        </button>
+        <label>
+          Exact text in selected section
+          <textarea
+            rows={4}
+            maxLength={8_000}
+            value={selectedText}
+            disabled={busy || !selectedSectionId}
+            onChange={(event) => {
+              requestSequence.current += 1;
+              setSelectedText(event.target.value);
+              setUnitDraft(null);
+              setReviewConfirmed(false);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={busy || !selectedSectionId || !selectedText}
+          onClick={() => generate("improve_selected_text")}
+        >
+          Improve only selected lesson text
+        </button>
+      </div>
+
+      {message && (
+        <p className="phase5-status" role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="phase5-error" role="alert">
+          {error}
+        </p>
+      )}
 
       {unitDraft && (
         <article className="phase5-content-unit-result">
@@ -304,7 +464,8 @@ export default function ContentUnitReviewPanel({
           <h4>{summary.title}</h4>
           <p>{summary.body}</p>
           <small>
-            Approved alignment: {Array.from(new Set(summary.alignment)).join(", ")}
+            Approved alignment:{" "}
+            {Array.from(new Set(summary.alignment)).join(", ")}
           </small>
           {unitDraft.taskType === "discussion_prompt" && (
             <div className="phase5-discussion-review-details">
@@ -342,10 +503,76 @@ export default function ContentUnitReviewPanel({
               </section>
             </div>
           )}
+          {unitDraft.taskType === "quiz" && (
+            <div className="phase5-discussion-review-details">
+              <section>
+                <h5>Quiz answer-key review</h5>
+                <ol>
+                  {unitDraft.quiz.items.map((item) => (
+                    <li key={item.itemId}>
+                      <strong>{item.question}</strong>
+                      <p>Answer: {item.answer}</p>
+                      <p>{item.explanation}</p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+              <section>
+                <h5>Recovery and access</h5>
+                <p>{unitDraft.quiz.recoveryGuidance.feedbackGuidance}</p>
+                <p>{unitDraft.quiz.recoveryGuidance.retryGuidance}</p>
+                <ul>
+                  {unitDraft.quiz.accessibilityNotes.map((item, index) => (
+                    <li key={`${index}:${item}`}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          )}
+          {unitDraft.taskType === "rubric_draft" && (
+            <div className="phase5-discussion-review-details">
+              <section>
+                <h5>Professor-only scoring guide</h5>
+                <p>{unitDraft.rubric.totalPoints} points possible</p>
+                {unitDraft.rubric.criteria.map((criterion) => (
+                  <article key={criterion.criterionId}>
+                    <h6>{criterion.title}</h6>
+                    <p>{criterion.description}</p>
+                    <ul>
+                      {criterion.levels.map((level) => (
+                        <li key={level.label}>
+                          {level.label}: {level.description} ({level.points})
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </section>
+            </div>
+          )}
+          {unitDraft.taskType === "improve_selected_text" && (
+            <div className="phase5-discussion-review-details">
+              <section>
+                <h5>Original text</h5>
+                <p>{unitDraft.originalText}</p>
+              </section>
+              <section>
+                <h5>What changed</h5>
+                <ul>
+                  {unitDraft.changes.map((item, index) => (
+                    <li key={`${index}:${item}`}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          )}
           <div className="phase5-content-unit-evidence">
-            <span>{issueCount} review item{issueCount === 1 ? "" : "s"}</span>
             <span>
-              {reviewBlockCount} blocking item{reviewBlockCount === 1 ? "" : "s"}
+              {issueCount} review item{issueCount === 1 ? "" : "s"}
+            </span>
+            <span>
+              {reviewBlockCount} blocking item
+              {reviewBlockCount === 1 ? "" : "s"}
             </span>
           </div>
           {reviewBlockCount > 0 && (
@@ -364,7 +591,9 @@ export default function ContentUnitReviewPanel({
             sources, outcomes, and course-version provenance.
           </label>
           <footer>
-            <button type="button" onClick={reject}>Reject revision</button>
+            <button type="button" onClick={reject}>
+              Reject revision
+            </button>
             <button
               className="primary"
               type="button"

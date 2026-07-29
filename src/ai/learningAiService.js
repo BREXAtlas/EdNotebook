@@ -3,9 +3,12 @@ import { identifyGovernedUncertaintyFieldKeys } from "./syllabusGovernedReview.j
 
 export const LEARNING_AI_API_VERSION = "2026-07-24";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FUNCTION_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
-const configuredRouterFunction = String(import.meta.env.VITE_AI_ROUTER_FUNCTION || "").trim();
+const configuredRouterFunction = String(
+  import.meta.env.VITE_AI_ROUTER_FUNCTION || "",
+).trim();
 const routerFunction = FUNCTION_SLUG_PATTERN.test(configuredRouterFunction)
   ? configuredRouterFunction
   : "ai-learning-router";
@@ -80,7 +83,8 @@ async function invokeGovernedTask(
   input,
   { courseId, institutionId, reviewer = "professor" } = {},
 ) {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
   if (sessionError) throw sessionError;
   if (!sessionData.session?.user) {
     throw new Error(
@@ -102,14 +106,20 @@ async function invokeGovernedTask(
   });
 
   if (error) throw new Error(await messageFromInvocationError(error, data));
-  if (!data || data.status !== "human_review_required" || data.humanReviewRequired !== true) {
+  if (
+    !data ||
+    data.status !== "human_review_required" ||
+    data.humanReviewRequired !== true
+  ) {
     throw new Error(
       data?.message ||
         `The AI router did not return a ${reviewer}-reviewable draft.`,
     );
   }
   if (!data.artifact || !data.provenance) {
-    throw new Error("The AI router response is missing its artifact or provenance record.");
+    throw new Error(
+      "The AI router response is missing its artifact or provenance record.",
+    );
   }
   return data;
 }
@@ -135,8 +145,8 @@ export function interpretStudentSemesterSections(input, options = {}) {
 
 export function generateProfessorLesson(input, options = {}) {
   if (
-    !UUID_PATTERN.test(options.institutionId || "")
-    || !UUID_PATTERN.test(options.courseId || "")
+    !UUID_PATTERN.test(options.institutionId || "") ||
+    !UUID_PATTERN.test(options.courseId || "")
   ) {
     throw new Error(
       "Lesson generation requires an approved institution and cloud course context.",
@@ -150,32 +160,31 @@ export function generateProfessorLesson(input, options = {}) {
   return invokeGovernedTask("lesson", input, options);
 }
 
-export function generateProfessorContentUnit(
-  taskType,
-  input,
-  options = {},
-) {
+export function generateProfessorContentUnit(taskType, input, options = {}) {
   if (
     ![
       "lesson_section",
       "activity",
       "discussion_prompt",
       "knowledge_check",
+      "quiz",
+      "rubric_draft",
+      "improve_selected_text",
     ].includes(taskType)
   ) {
     throw new Error("Select an approved lesson content-unit task.");
   }
   if (
-    !UUID_PATTERN.test(options.institutionId || "")
-    || !UUID_PATTERN.test(options.courseId || "")
+    !UUID_PATTERN.test(options.institutionId || "") ||
+    !UUID_PATTERN.test(options.courseId || "")
   ) {
     throw new Error(
       "Content-unit generation requires an approved institution and cloud course context.",
     );
   }
   if (
-    options.courseId !== input?.lessonContract?.course?.courseId
-    || options.courseId !== input?.currentLesson?.courseId
+    options.courseId !== input?.lessonContract?.course?.courseId ||
+    options.courseId !== input?.currentLesson?.courseId
   ) {
     throw new Error(
       "The selected content unit does not match the authorized cloud course context.",

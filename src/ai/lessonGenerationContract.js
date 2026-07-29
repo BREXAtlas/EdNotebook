@@ -14,10 +14,17 @@ export const LESSON_REQUESTED_ELEMENTS = Object.freeze([
 ]);
 
 const clean = (value, fallback = "") =>
-  String(value ?? fallback).replace(/\s+/g, " ").trim();
+  String(value ?? fallback)
+    .replace(/\s+/g, " ")
+    .trim();
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const list = (value) =>
-  (Array.isArray(value) ? value : value === undefined || value === null ? [] : [value])
+  (Array.isArray(value)
+    ? value
+    : value === undefined || value === null
+      ? []
+      : [value]
+  )
     .map((item) => clean(item))
     .filter(Boolean);
 const unique = (items) => Array.from(new Set(items.filter(Boolean)));
@@ -31,7 +38,11 @@ function fieldValue(syllabusRecord, key) {
 
 function fieldText(syllabusRecord, key) {
   const value = fieldValue(syllabusRecord, key);
-  if (Array.isArray(value)) return value.map((item) => clean(item)).filter(Boolean).join("; ");
+  if (Array.isArray(value))
+    return value
+      .map((item) => clean(item))
+      .filter(Boolean)
+      .join("; ");
   if (value && typeof value === "object") return JSON.stringify(value);
   return clean(value);
 }
@@ -68,7 +79,11 @@ function numericCreditHours(value) {
 }
 
 function selectedPath(manifest, pathId) {
-  return manifest?.paths?.find((path) => path.id === pathId) || manifest?.paths?.[0] || null;
+  return (
+    manifest?.paths?.find((path) => path.id === pathId) ||
+    manifest?.paths?.[0] ||
+    null
+  );
 }
 
 function selectedLesson(manifest, pathId, lessonId) {
@@ -76,9 +91,9 @@ function selectedLesson(manifest, pathId, lessonId) {
   return {
     path,
     lesson:
-      path?.nodes?.find((node) => node.id === lessonId)
-      || path?.nodes?.[0]
-      || null,
+      path?.nodes?.find((node) => node.id === lessonId) ||
+      path?.nodes?.[0] ||
+      null,
   };
 }
 
@@ -125,23 +140,28 @@ function outlineObjectives(outlineRecord) {
 
 function lessonPurpose(lesson) {
   const purpose = clean(
-    lesson?.purpose
-      || lesson?.openingNarrative
-      || lesson?.subtitle,
+    lesson?.purpose || lesson?.openingNarrative || lesson?.subtitle,
   );
   return (
-    purpose
-    || `Teach ${clean(lesson?.title) || "the selected lesson"} through explanation, application, and review.`
+    purpose ||
+    `Teach ${clean(lesson?.title) || "the selected lesson"} through explanation, application, and review.`
   ).slice(0, 1_000);
 }
 
 function normalizedModality(value) {
-  const normalized = clean(value).toLowerCase().replace(/[-\s]+/g, "_");
-  if (normalized.includes("hybrid") || normalized.includes("mixed")) return "hybrid";
+  const normalized = clean(value)
+    .toLowerCase()
+    .replace(/[-\s]+/g, "_");
+  if (normalized.includes("hybrid") || normalized.includes("mixed"))
+    return "hybrid";
   if (normalized.includes("in_person") || normalized.includes("face_to_face")) {
     return "in_person";
   }
-  if (normalized.includes("online") || normalized.includes("asynchronous") || normalized.includes("synchronous")) {
+  if (
+    normalized.includes("online") ||
+    normalized.includes("asynchronous") ||
+    normalized.includes("synchronous")
+  ) {
     return "online";
   }
   return "";
@@ -149,16 +169,22 @@ function normalizedModality(value) {
 
 function nextLessonId(path, lesson) {
   const currentIndex = path.nodes.findIndex((node) => node.id === lesson.id);
-  return identifier(
-    lesson.recommendedNextNodeId || path.nodes[currentIndex + 1]?.id,
-    "",
-  ) || null;
+  return (
+    identifier(
+      lesson.recommendedNextNodeId || path.nodes[currentIndex + 1]?.id,
+      "",
+    ) || null
+  );
 }
 
 function matchingOutlineLesson(outlineRecord, lesson) {
   return (outlineCourse(outlineRecord)?.acts || [])
     .flatMap((act) => act.episodes || [])
-    .find((episode) => episode.id === lesson.id || clean(episode.title) === clean(lesson.title));
+    .find(
+      (episode) =>
+        episode.id === lesson.id ||
+        clean(episode.title) === clean(lesson.title),
+    );
 }
 
 export function createLessonGenerationInput({
@@ -171,36 +197,47 @@ export function createLessonGenerationInput({
   professorInstruction = "",
 }) {
   const { path, lesson } = selectedLesson(manifest, pathId, lessonId);
-  if (!path || !lesson) throw new Error("Select one existing course lesson before generating.");
+  if (!path || !lesson)
+    throw new Error("Select one existing course lesson before generating.");
   if (!syllabusRecord?.structuredContent) {
-    throw new Error("Connect the professor-reviewed structured syllabus before generating.");
+    throw new Error(
+      "Connect the professor-reviewed structured syllabus before generating.",
+    );
   }
   if (!outlineRecord || !matchingOutlineLesson(outlineRecord, lesson)) {
-    throw new Error("Connect the professor-accepted outline for this selected lesson.");
+    throw new Error(
+      "Connect the professor-accepted outline for this selected lesson.",
+    );
   }
   const courseId = clean(
-    course.id
-      || manifest.course?.sourceEdNotebookCourseId
-      || manifest.course?.id,
+    course.id ||
+      manifest.course?.sourceEdNotebookCourseId ||
+      manifest.course?.id,
   );
   if (!UUID_PATTERN.test(courseId)) {
-    throw new Error("The selected lesson needs an authenticated cloud course ID.");
+    throw new Error(
+      "The selected lesson needs an authenticated cloud course ID.",
+    );
   }
   const creditHours = numericCreditHours(
-    fieldValue(syllabusRecord, "creditHours")
-      || course.creditHours
-      || course.settings?.creditHours,
+    fieldValue(syllabusRecord, "creditHours") ||
+      course.creditHours ||
+      course.settings?.creditHours,
   );
   if (!Number.isInteger(creditHours) || creditHours < 1 || creditHours > 12) {
-    throw new Error("Record 1–12 approved course credit hours before generating.");
+    throw new Error(
+      "Record 1–12 approved course credit hours before generating.",
+    );
   }
   const modality = normalizedModality(
-    fieldValue(syllabusRecord, "deliveryModality")
-      || course.settings?.modality
-      || course.modality,
+    fieldValue(syllabusRecord, "deliveryModality") ||
+      course.settings?.modality ||
+      course.modality,
   );
   if (!modality) {
-    throw new Error("Record the approved online, hybrid, or in-person modality before generating.");
+    throw new Error(
+      "Record the approved online, hybrid, or in-person modality before generating.",
+    );
   }
 
   const syllabusSectionId = "syllabus-selected-lesson";
@@ -210,29 +247,40 @@ export function createLessonGenerationInput({
     ...outlineObjectives(outlineRecord),
     ...(lesson.learningObjectives || []).map((item) => clean(item)),
   ]).slice(0, 30);
-  if (!outcomeTexts.length) throw new Error("Add at least one approved learning outcome.");
+  if (!outcomeTexts.length)
+    throw new Error("Add at least one approved learning outcome.");
   const outcomeIds = outcomeTexts.map((_, index) => `outcome-${index + 1}`);
   const assessmentTexts = unique([
     ...list(fieldValue(syllabusRecord, "outcomeAssessmentMethods")),
     ...list(fieldValue(syllabusRecord, "majorAssignments")),
     ...(lesson.knowledgeChecks || []).map((check) => clean(check?.question)),
   ]).slice(0, 30);
-  if (!assessmentTexts.length) throw new Error("Add an approved assessment method.");
-  const assessmentIds = assessmentTexts.map((_, index) => `assessment-${index + 1}`);
+  if (!assessmentTexts.length)
+    throw new Error("Add an approved assessment method.");
+  const assessmentIds = assessmentTexts.map(
+    (_, index) => `assessment-${index + 1}`,
+  );
   const requiredReadings = unique([
     ...list(fieldValue(syllabusRecord, "requiredReadings")),
     ...list(fieldValue(syllabusRecord, "recommendedReadings")),
   ]).slice(0, 30);
-  if (!requiredReadings.length) throw new Error("Add at least one approved course reading.");
+  if (!requiredReadings.length)
+    throw new Error("Add at least one approved course reading.");
   const readingIds = requiredReadings.map((_, index) => `reading-${index + 1}`);
-  const integrityText = fieldText(syllabusRecord, "institutionalAcademicIntegrity");
+  const integrityText = fieldText(
+    syllabusRecord,
+    "institutionalAcademicIntegrity",
+  );
   const aiPolicyText = fieldText(syllabusRecord, "aiUsePolicy");
   if (!integrityText || !aiPolicyText) {
-    throw new Error("Approve both academic-integrity and course AI-use policy sources before generating.");
+    throw new Error(
+      "Approve both academic-integrity and course AI-use policy sources before generating.",
+    );
   }
   const policyIds = ["policy-academic-integrity", "policy-ai-use"];
   const scheduleText = fieldText(syllabusRecord, "courseOutline");
-  if (!scheduleText) throw new Error("Connect the approved course outline/schedule.");
+  if (!scheduleText)
+    throw new Error("Connect the approved course outline/schedule.");
   const courseDescription = fieldText(syllabusRecord, "courseDescription");
   if (!courseDescription) {
     throw new Error(
@@ -245,7 +293,9 @@ export function createLessonGenerationInput({
     ...outcomeTexts,
     ...assessmentTexts,
     scheduleText,
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
   const outlineLesson = matchingOutlineLesson(outlineRecord, lesson);
   const manifestVersion = versionLabel(manifest.course?.contentVersion);
   const followingLessonId = nextLessonId(path, lesson);
@@ -322,48 +372,73 @@ export function createLessonGenerationInput({
           permittedUses: ["lesson_generation", "display", "link"],
           attributionRequired: true,
           accessibilityStatus: "needs_review",
-          license: "Course reading metadata; content rights require professor review.",
+          license:
+            "Course reading metadata; content rights require professor review.",
         },
-      })),
+      }),
+    ),
   ];
   let boundedInstruction = null;
   const instructionText = clean(professorInstruction).slice(0, 2_000);
   if (instructionText) {
     const sourceId = "source-professor-instruction";
-    acceptedSources.push(sourceRecord({
-      sourceId,
-      sourceType: "professor_instruction",
-      authorityRank: 6,
-      title: "Bounded professor instruction",
-      excerpt: instructionText,
-      references: [{ kind: "outline_lesson", id: identifier(lesson.id, "lesson") }],
-    }));
+    acceptedSources.push(
+      sourceRecord({
+        sourceId,
+        sourceType: "professor_instruction",
+        authorityRank: 6,
+        title: "Bounded professor instruction",
+        excerpt: instructionText,
+        references: [
+          { kind: "outline_lesson", id: identifier(lesson.id, "lesson") },
+        ],
+      }),
+    );
     boundedInstruction = { sourceId, text: instructionText };
   }
 
   const totalWorkloadMinutes = creditHours * 2_700;
-  const lessonMinutes = Math.max(5, Math.round(Number(lesson.estimatedMinutes) || 15));
+  const lessonMinutes = Math.max(
+    5,
+    Math.round(Number(lesson.estimatedMinutes) || 15),
+  );
   if (lessonMinutes > 600) {
-    throw new Error("Set the selected lesson workload between 5 and 600 minutes.");
+    throw new Error(
+      "Set the selected lesson workload between 5 and 600 minutes.",
+    );
   }
-  const usedMinutes = (manifest.paths || []).flatMap((item) => item.nodes || [])
+  const usedMinutes = (manifest.paths || [])
+    .flatMap((item) => item.nodes || [])
     .filter((node) => node.id !== lesson.id)
-    .reduce((sum, node) => sum + Math.max(0, Number(node.estimatedMinutes) || 0), 0);
-  const remainingWorkloadMinutes = Math.max(0, totalWorkloadMinutes - usedMinutes);
+    .reduce(
+      (sum, node) => sum + Math.max(0, Number(node.estimatedMinutes) || 0),
+      0,
+    );
+  const remainingWorkloadMinutes = Math.max(
+    0,
+    totalWorkloadMinutes - usedMinutes,
+  );
   if (remainingWorkloadMinutes < lessonMinutes) {
     throw new Error(
       "The selected lesson exceeds the remaining approved course workload.",
     );
   }
-  const courseTitle = clean(manifest.course?.title || course.title).slice(0, 180);
-  if (!courseTitle) throw new Error("Add the approved course title before generating.");
+  const courseTitle = clean(manifest.course?.title || course.title).slice(
+    0,
+    180,
+  );
+  if (!courseTitle)
+    throw new Error("Add the approved course title before generating.");
   const selectedLessonTitle = clean(lesson.title).slice(0, 180);
   if (!selectedLessonTitle) {
     throw new Error("Add the selected lesson title before generating.");
   }
-  const sequencePosition = path.nodes.findIndex((node) => node.id === lesson.id) + 1;
+  const sequencePosition =
+    path.nodes.findIndex((node) => node.id === lesson.id) + 1;
   if (sequencePosition < 1 || sequencePosition > 1_000) {
-    throw new Error("The selected lesson sequence position is outside the governed range.");
+    throw new Error(
+      "The selected lesson sequence position is outside the governed range.",
+    );
   }
 
   return {
@@ -375,10 +450,10 @@ export function createLessonGenerationInput({
       courseId,
       title: courseTitle,
       academicLevel: clean(
-        course.settings?.academicLevel
-          || course.academicLevel
-          || manifest.course?.audience
-          || "higher education",
+        course.settings?.academicLevel ||
+          course.academicLevel ||
+          manifest.course?.audience ||
+          "higher education",
       ).slice(0, 80),
       modality,
       creditHours,
@@ -426,7 +501,9 @@ export function createLessonGenerationInput({
     maximumWords: 1_500,
     unresolvedAuthoritativeConflicts: list(
       syllabusRecord?.extraction?.conflictingInformation,
-    ).slice(0, 20).map((item) => item.slice(0, 500)),
+    )
+      .slice(0, 20)
+      .map((item) => item.slice(0, 500)),
   };
 }
 
@@ -453,14 +530,18 @@ function requireBoundedText(value, maximum, message) {
 }
 
 function sameSet(left = [], right = []) {
-  return left.length === right.length
-    && new Set(left).size === left.length
-    && left.every((item) => right.includes(item));
+  return (
+    left.length === right.length &&
+    new Set(left).size === left.length &&
+    left.every((item) => right.includes(item))
+  );
 }
 
 function exactSetCheck(returned, approved, label) {
   if (!sameSet(returned || [], approved || [])) {
-    throw new Error(`The lesson draft changed its approved ${label} alignment.`);
+    throw new Error(
+      `The lesson draft changed its approved ${label} alignment.`,
+    );
   }
 }
 
@@ -504,19 +585,29 @@ export function validateLessonArtifact(artifact, requestInput) {
     throw new Error("The AI router returned the wrong academic artifact type.");
   }
   if (artifact.draftStatus !== "ai_draft_not_published") {
-    throw new Error("The selected lesson draft returned the wrong draft state.");
+    throw new Error(
+      "The selected lesson draft returned the wrong draft state.",
+    );
   }
   if (artifact.statusLabel !== LESSON_AI_DRAFT_LABEL) {
-    throw new Error("The lesson draft is missing its unpublished status label.");
+    throw new Error(
+      "The lesson draft is missing its unpublished status label.",
+    );
   }
   if (artifact.humanReviewRequired !== true) {
-    throw new Error("The lesson draft did not preserve mandatory human review.");
+    throw new Error(
+      "The lesson draft did not preserve mandatory human review.",
+    );
   }
   if (clean(artifact.courseId) !== clean(requestInput?.course?.courseId)) {
     throw new Error("The lesson draft returned for a different course.");
   }
-  if (clean(artifact.lessonId) !== clean(requestInput?.selectedLesson?.lessonId)) {
-    throw new Error("The lesson draft returned for a different selected lesson.");
+  if (
+    clean(artifact.lessonId) !== clean(requestInput?.selectedLesson?.lessonId)
+  ) {
+    throw new Error(
+      "The lesson draft returned for a different selected lesson.",
+    );
   }
   requireBoundedText(
     artifact.title,
@@ -535,18 +626,34 @@ export function validateLessonArtifact(artifact, requestInput) {
   );
   const minutes = Number(artifact.estimatedMinutes);
   if (
-    !Number.isInteger(minutes)
-    || minutes < 5
-    || minutes > Number(requestInput?.selectedLesson?.maxMinutes || 240)
+    !Number.isInteger(minutes) ||
+    minutes < 5 ||
+    minutes > Number(requestInput?.selectedLesson?.maxMinutes || 240)
   ) {
-    throw new Error("The selected lesson draft exceeds its approved time boundary.");
+    throw new Error(
+      "The selected lesson draft exceeds its approved time boundary.",
+    );
   }
-  requireArray(artifact.objectives, "The selected lesson draft needs measurable objectives.");
-  requireArray(artifact.sections, "The selected lesson draft needs readable teaching sections.");
-  requireArray(artifact.readings, "The selected lesson draft needs approved readings.");
-  requireArray(artifact.knowledgeChecks, "The selected lesson draft needs at least one formative knowledge check.");
+  requireArray(
+    artifact.objectives,
+    "The selected lesson draft needs measurable objectives.",
+  );
+  requireArray(
+    artifact.sections,
+    "The selected lesson draft needs readable teaching sections.",
+  );
+  requireArray(
+    artifact.readings,
+    "The selected lesson draft needs approved readings.",
+  );
+  requireArray(
+    artifact.knowledgeChecks,
+    "The selected lesson draft needs at least one formative knowledge check.",
+  );
   if (artifact.objectives.length > 12) {
-    throw new Error("The selected lesson draft exceeds 12 measurable objectives.");
+    throw new Error(
+      "The selected lesson draft exceeds 12 measurable objectives.",
+    );
   }
   if (artifact.sections.length > 12) {
     throw new Error("The selected lesson draft exceeds 12 teaching sections.");
@@ -557,9 +664,18 @@ export function validateLessonArtifact(artifact, requestInput) {
   if (artifact.knowledgeChecks.length > 20) {
     throw new Error("The selected lesson draft exceeds 20 formative checks.");
   }
-  requireObject(artifact.alignment, "The selected lesson draft is missing alignment evidence.");
-  requireObject(artifact.connections, "The selected lesson draft is missing course connections.");
-  requireObject(artifact.workload, "The selected lesson draft is missing workload evidence.");
+  requireObject(
+    artifact.alignment,
+    "The selected lesson draft is missing alignment evidence.",
+  );
+  requireObject(
+    artifact.connections,
+    "The selected lesson draft is missing course connections.",
+  );
+  requireObject(
+    artifact.workload,
+    "The selected lesson draft is missing workload evidence.",
+  );
   requireObject(
     artifact.accessibility,
     "The selected lesson draft is missing accessibility metadata.",
@@ -572,16 +688,13 @@ export function validateLessonArtifact(artifact, requestInput) {
     artifact.courseVersionProvenance,
     "The selected lesson draft is missing course-version provenance.",
   );
-  [
-    "sourceGaps",
-    "uncertainties",
-    "conflicts",
-    "reviewBlocks",
-  ].forEach((key) => requireArray(
-    artifact[key],
-    `The selected lesson draft is missing ${key}.`,
-    { allowEmpty: true },
-  ));
+  ["sourceGaps", "uncertainties", "conflicts", "reviewBlocks"].forEach((key) =>
+    requireArray(
+      artifact[key],
+      `The selected lesson draft is missing ${key}.`,
+      { allowEmpty: true },
+    ),
+  );
 
   artifact.objectives.forEach((objective) => {
     requireObject(objective, "A lesson objective is malformed.");
@@ -590,11 +703,18 @@ export function validateLessonArtifact(artifact, requestInput) {
       500,
       "A lesson objective must contain 1–500 characters.",
     );
-    requireArray(objective.outcomeIds, "A lesson objective is missing outcome alignment.");
-    requireArray(objective.sourceIds, "A lesson objective is missing source alignment.");
+    requireArray(
+      objective.outcomeIds,
+      "A lesson objective is missing outcome alignment.",
+    );
+    requireArray(
+      objective.sourceIds,
+      "A lesson objective is missing source alignment.",
+    );
   });
   artifact.sections.forEach((section) => {
-    if (!clean(section.sectionId)) throw new Error("A teaching section is missing its ID.");
+    if (!clean(section.sectionId))
+      throw new Error("A teaching section is missing its ID.");
     requireBoundedText(
       section.heading,
       500,
@@ -606,12 +726,18 @@ export function validateLessonArtifact(artifact, requestInput) {
       "Teaching-section text must contain 1–8,000 characters.",
     );
     if (![2, 3].includes(section.headingLevel)) {
-      throw new Error("A teaching section returned an invalid semantic heading level.");
+      throw new Error(
+        "A teaching section returned an invalid semantic heading level.",
+      );
     }
-    requireArray(section.sourceIds, "A teaching section is missing source alignment.");
+    requireArray(
+      section.sourceIds,
+      "A teaching section is missing source alignment.",
+    );
   });
   artifact.knowledgeChecks.forEach((check) => {
-    if (!clean(check.checkId)) throw new Error("A formative knowledge check is missing its ID.");
+    if (!clean(check.checkId))
+      throw new Error("A formative knowledge check is missing its ID.");
     requireBoundedText(
       check.question,
       1_000,
@@ -628,12 +754,10 @@ export function validateLessonArtifact(artifact, requestInput) {
       "Formative-check feedback must contain 1–2,000 characters.",
     );
     if (
-      check.type === "multiple_choice"
-      && (
-        !Array.isArray(check.options)
-        || check.options.length < 2
-        || !check.options.includes(check.answer)
-      )
+      check.type === "multiple_choice" &&
+      (!Array.isArray(check.options) ||
+        check.options.length < 2 ||
+        !check.options.includes(check.answer))
     ) {
       throw new Error("A multiple-choice check returned an invalid answer.");
     }
@@ -670,14 +794,25 @@ export function validateLessonArtifact(artifact, requestInput) {
     requestInput.authoritativeSources.map((source) => source.sourceId),
     "source references",
   );
-  if (clean(alignment.outlineLessonId) !== clean(requestInput.selectedLesson.lessonId)) {
-    throw new Error("The lesson draft returned alignment to a different outline lesson.");
+  if (
+    clean(alignment.outlineLessonId) !==
+    clean(requestInput.selectedLesson.lessonId)
+  ) {
+    throw new Error(
+      "The lesson draft returned alignment to a different outline lesson.",
+    );
   }
   const approvedSourceIds = requestInput.authoritativeSources.map(
     (source) => source.sourceId,
   );
-  if (sourceReferences(artifact).some((sourceId) => !approvedSourceIds.includes(sourceId))) {
-    throw new Error("The lesson draft invented an unapproved source reference.");
+  if (
+    sourceReferences(artifact).some(
+      (sourceId) => !approvedSourceIds.includes(sourceId),
+    )
+  ) {
+    throw new Error(
+      "The lesson draft invented an unapproved source reference.",
+    );
   }
   exactSetCheck(
     artifact.readings.map((reading) => reading.readingId),
@@ -685,17 +820,20 @@ export function validateLessonArtifact(artifact, requestInput) {
     "reading",
   );
   ["assignmentIds", "quizIds", "discussionIds", "calendarEventIds"].forEach(
-    (key) => exactSetCheck(
-      artifact.connections[key],
-      requestInput.connections[key],
-      `${key} connection`,
-    ),
+    (key) =>
+      exactSetCheck(
+        artifact.connections[key],
+        requestInput.connections[key],
+        `${key} connection`,
+      ),
   );
   if (
-    clean(artifact.connections.nextLessonId)
-    !== clean(requestInput.connections.nextLessonId)
+    clean(artifact.connections.nextLessonId) !==
+    clean(requestInput.connections.nextLessonId)
   ) {
-    throw new Error("The lesson draft changed the approved next-lesson connection.");
+    throw new Error(
+      "The lesson draft changed the approved next-lesson connection.",
+    );
   }
   const expectedProvenance = {
     syllabusVersion: requestInput.course.syllabusVersion,
@@ -708,7 +846,9 @@ export function validateLessonArtifact(artifact, requestInput) {
   };
   Object.entries(expectedProvenance).forEach(([key, value]) => {
     if (artifact.courseVersionProvenance[key] !== value) {
-      throw new Error("The lesson draft returned incorrect course-version provenance.");
+      throw new Error(
+        "The lesson draft returned incorrect course-version provenance.",
+      );
     }
   });
   return artifact;
@@ -717,10 +857,13 @@ export function validateLessonArtifact(artifact, requestInput) {
 export function assessLessonAlignment(artifact, requestInput) {
   const checks = [];
   const returnedAlignment = artifact?.alignment || {};
-  const hasSyllabusContext = requestInput.alignments.syllabusSectionIds.length > 0;
-  const syllabusAligned = hasSyllabusContext
-    && requestInput.alignments.syllabusSectionIds.every((id) =>
-      (returnedAlignment.syllabusSectionIds || []).includes(id));
+  const hasSyllabusContext =
+    requestInput.alignments.syllabusSectionIds.length > 0;
+  const syllabusAligned =
+    hasSyllabusContext &&
+    requestInput.alignments.syllabusSectionIds.every((id) =>
+      (returnedAlignment.syllabusSectionIds || []).includes(id),
+    );
   checks.push({
     key: "syllabus",
     label: "Approved syllabus",
@@ -728,16 +871,17 @@ export function assessLessonAlignment(artifact, requestInput) {
     detail: hasSyllabusContext
       ? syllabusAligned
         ? "Every supplied lesson-applicable syllabus section is referenced."
-        : `Missing supplied syllabus IDs: ${
-          requestInput.alignments.syllabusSectionIds
-            .filter((id) => !(returnedAlignment.syllabusSectionIds || []).includes(id))
-            .join(", ")
-        }.`
+        : `Missing supplied syllabus IDs: ${requestInput.alignments.syllabusSectionIds
+            .filter(
+              (id) =>
+                !(returnedAlignment.syllabusSectionIds || []).includes(id),
+            )
+            .join(", ")}.`
       : "No approved structured syllabus was connected to this course draft.",
   });
   const outlineAligned =
-    clean(returnedAlignment.outlineLessonId)
-    === clean(requestInput.selectedLesson.lessonId);
+    clean(returnedAlignment.outlineLessonId) ===
+    clean(requestInput.selectedLesson.lessonId);
   checks.push({
     key: "outline",
     label: "Professor outline",
@@ -747,27 +891,29 @@ export function assessLessonAlignment(artifact, requestInput) {
       : "Confirm this draft belongs to the selected outline lesson.",
   });
   const requiredOutcomes = requestInput.alignments.outcomeIds;
-  const outcomesAligned = requiredOutcomes.length > 0
-    && requiredOutcomes.every((id) => (returnedAlignment.outcomeIds || []).includes(id));
+  const outcomesAligned =
+    requiredOutcomes.length > 0 &&
+    requiredOutcomes.every((id) =>
+      (returnedAlignment.outcomeIds || []).includes(id),
+    );
   checks.push({
     key: "outcomes",
     label: "Learning outcomes",
     status: outcomesAligned ? "aligned" : "review",
     detail: outcomesAligned
       ? "All supplied outcome identifiers are represented."
-      : `Missing supplied outcome IDs: ${
-        requiredOutcomes
+      : `Missing supplied outcome IDs: ${requiredOutcomes
           .filter((id) => !(returnedAlignment.outcomeIds || []).includes(id))
-          .join(", ")
-      }.`,
+          .join(", ")}.`,
   });
   const approvedSourceIds = new Set(
     requestInput.authoritativeSources.map((source) => source.sourceId),
   );
   const usedSources = sourceReferences(artifact);
-  const sourcesAligned = usedSources.length > 0
-    && usedSources.every((id) => approvedSourceIds.has(id))
-    && (artifact.sourceGaps || []).length === 0;
+  const sourcesAligned =
+    usedSources.length > 0 &&
+    usedSources.every((id) => approvedSourceIds.has(id)) &&
+    (artifact.sourceGaps || []).length === 0;
   checks.push({
     key: "sources",
     label: "Approved sources",
@@ -778,7 +924,10 @@ export function assessLessonAlignment(artifact, requestInput) {
   });
   const qualityEvidence = [
     [(artifact.objectives || []).length > 0, "measurable objectives"],
-    [(returnedAlignment.assessmentIds || []).length > 0, "assessment alignment"],
+    [
+      (returnedAlignment.assessmentIds || []).length > 0,
+      "assessment alignment",
+    ],
     [(artifact.sections || []).length > 0, "teaching sections"],
     [Boolean(artifact.activity), "learner activity"],
     [(artifact.knowledgeChecks || []).length > 0, "formative checks"],
@@ -807,11 +956,15 @@ export function createEditableLessonDraft(
   previousDraft = null,
   generatedAt = new Date().toISOString(),
 ) {
-  const artifact = clone(validateLessonArtifact(routerResult?.artifact, requestInput));
+  const artifact = clone(
+    validateLessonArtifact(routerResult?.artifact, requestInput),
+  );
   const revisionHistory = [
     ...(previousDraft?.revisionHistory || []),
     {
-      action: previousDraft ? "whole_lesson_regenerated" : "whole_lesson_generated",
+      action: previousDraft
+        ? "whole_lesson_regenerated"
+        : "whole_lesson_generated",
       at: generatedAt,
       provider: clean(routerResult?.provenance?.provider),
       model: clean(routerResult?.provenance?.model),
@@ -867,7 +1020,10 @@ function mappedCheck(check, index, lessonId) {
   return {
     id: clean(check?.checkId, `${lessonId}-check-${index + 1}`),
     question: clean(check?.question),
-    type: clean(check?.type, options.length ? "multiple_choice" : "short_answer"),
+    type: clean(
+      check?.type,
+      options.length ? "multiple_choice" : "short_answer",
+    ),
     options,
     correctAnswer: answer,
     explanation: clean(check?.explanation),
@@ -882,14 +1038,21 @@ export function lessonDraftToManifestLesson(
 ) {
   validateLessonArtifact(draft, draft.requestInput);
   if ((draft.reviewBlocks || []).length) {
-    throw new Error("Resolve every lesson review block before accepting the draft.");
+    throw new Error(
+      "Resolve every lesson review block before accepting the draft.",
+    );
   }
   const sections = draft.sections || [];
   const opening = matchingSection(sections, ["opening", "overview", "orient"]);
   const what = matchingSection(sections, ["what", "concept", "understand"]);
   const why = matchingSection(sections, ["why"]);
   const how = matchingSection(sections, ["how", "apply", "practice"]);
-  const limits = matchingSection(sections, ["limit", "risk", "cost", "tradeoff"]);
+  const limits = matchingSection(sections, [
+    "limit",
+    "risk",
+    "cost",
+    "tradeoff",
+  ]);
   const verify = matchingSection(sections, ["verify", "source", "check"]);
   const example = draft.examples?.[0];
   const sourceIds = sourceReferences(draft);
@@ -905,14 +1068,16 @@ export function lessonDraftToManifestLesson(
     subtitle: clean(draft.subtitle, currentLesson.subtitle),
     purpose: clean(draft.purpose),
     estimatedMinutes: Number(draft.estimatedMinutes),
-    learningObjectives: draft.objectives.map((objective) => clean(objective.text)),
+    learningObjectives: draft.objectives.map((objective) =>
+      clean(objective.text),
+    ),
     prerequisites: list(draft.prerequisites),
     vocabulary: clone(draft.vocabulary || []),
     openingNarrative: sectionBody(opening) || clean(draft.purpose),
     realWorldExample:
-      sectionBody(example)
-      || clean(example?.description)
-      || clean(currentLesson.realWorldExample),
+      sectionBody(example) ||
+      clean(example?.description) ||
+      clean(currentLesson.realWorldExample),
     concept: {
       ...currentLesson.concept,
       what: sectionBody(what) || currentLesson.concept?.what,
@@ -933,22 +1098,22 @@ export function lessonDraftToManifestLesson(
     discussionPrompts: clone(
       draft.discussionPrompts || currentLesson.discussionPrompts || [],
     ),
+    quizDrafts: clone(draft.quizDrafts || currentLesson.quizDrafts || []),
+    rubricDrafts: clone(draft.rubricDrafts || currentLesson.rubricDrafts || []),
     knowledgeChecks: (draft.knowledgeChecks || [])
       .map((check, index) => mappedCheck(check, index, currentLesson.id))
       .filter((check) => check.question && check.correctAnswer),
     recoveryPath:
       clean(
-        draft.recovery?.nextAction
-          || draft.recovery?.retryGuidance
-          || draft.recovery?.feedbackGuidance,
-      )
-      || currentLesson.recoveryPath,
+        draft.recovery?.nextAction ||
+          draft.recovery?.retryGuidance ||
+          draft.recovery?.feedbackGuidance,
+      ) || currentLesson.recoveryPath,
     connections: clone(draft.connections || {}),
     workload: clone(draft.workload),
-    accessibilitySummary:
-      draft.accessibility.unresolvedItems.length
-        ? `Accessibility review required: ${draft.accessibility.unresolvedItems.join("; ")}`
-        : "Logical headings, keyboard operation, screen-reader support, and non-color-dependent instructions were returned for professor review.",
+    accessibilitySummary: draft.accessibility.unresolvedItems.length
+      ? `Accessibility review required: ${draft.accessibility.unresolvedItems.join("; ")}`
+      : "Logical headings, keyboard operation, screen-reader support, and non-color-dependent instructions were returned for professor review.",
     academicIntegrity: clone(draft.academicIntegrity),
     sourceIds,
     builderStatus: "written",
@@ -982,7 +1147,8 @@ export function acceptLessonDraftIntoManifest(
 ) {
   const next = cloneManifest(manifest);
   const path = next.paths.find((item) => item.id === pathId);
-  const lessonIndex = path?.nodes?.findIndex((item) => item.id === lessonId) ?? -1;
+  const lessonIndex =
+    path?.nodes?.findIndex((item) => item.id === lessonId) ?? -1;
   if (!path || lessonIndex < 0) {
     throw new Error("The selected course lesson no longer exists.");
   }
