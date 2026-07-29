@@ -75,10 +75,18 @@ function governedSyllabusInput(input) {
   };
 }
 
-async function invokeProfessorTask(taskType, input, { courseId } = {}) {
+async function invokeGovernedTask(
+  taskType,
+  input,
+  { courseId, reviewer = "professor" } = {},
+) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError) throw sessionError;
-  if (!sessionData.session?.user) throw new Error("Sign in with an approved professor account before using governed AI.");
+  if (!sessionData.session?.user) {
+    throw new Error(
+      `Sign in with an approved ${reviewer} account before using governed AI.`,
+    );
+  }
 
   const context = UUID_PATTERN.test(courseId || "") ? { courseId } : undefined;
   const { data, error } = await supabase.functions.invoke(routerFunction, {
@@ -92,7 +100,10 @@ async function invokeProfessorTask(taskType, input, { courseId } = {}) {
 
   if (error) throw new Error(await messageFromInvocationError(error, data));
   if (!data || data.status !== "human_review_required" || data.humanReviewRequired !== true) {
-    throw new Error(data?.message || "The AI router did not return a professor-reviewable draft.");
+    throw new Error(
+      data?.message ||
+        `The AI router did not return a ${reviewer}-reviewable draft.`,
+    );
   }
   if (!data.artifact || !data.provenance) {
     throw new Error("The AI router response is missing its artifact or provenance record.");
@@ -101,13 +112,20 @@ async function invokeProfessorTask(taskType, input, { courseId } = {}) {
 }
 
 export function generateProfessorCourseOutline(input, options = {}) {
-  return invokeProfessorTask("course_outline", input, options);
+  return invokeGovernedTask("course_outline", input, options);
 }
 
 export function interpretUncertainSyllabusSections(input, options = {}) {
-  return invokeProfessorTask(
+  return invokeGovernedTask(
     "syllabus_uncertain_extraction",
     governedSyllabusInput(input),
     options,
   );
+}
+
+export function interpretStudentSemesterSections(input, options = {}) {
+  return invokeGovernedTask("student_semester_extraction", input, {
+    ...options,
+    reviewer: "student",
+  });
 }

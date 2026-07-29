@@ -81,7 +81,7 @@ function DemoWorkspace({ personaId }) {
         <main className="workspace-main" data-tour-section={`panel-${tab}`}>
           {tab === "today" && <TodayPanel persona={persona} assignments={assignments} setAssignments={setAssignments} features={features} onlineStatus={onlineStatus} statusLine={statusLine} />}
           {tab === "homework" && <HomeworkPanel persona={persona} assignments={assignments} setAssignments={setAssignments} reminders={reminders} setReminders={setReminders} />}
-          {tab === "calendar" && <CalendarPanel persona={persona} assignments={assignments} />}
+          {tab === "calendar" && <CalendarPanel persona={persona} assignments={assignments} setAssignments={setAssignments} calendarScope={`ednotebook-demo-calendar-${persona.id}`} role={professor ? "professor" : "student"} />}
           {tab === "syllabus" && <SyllabusPanel persona={persona} assignments={assignments} setAssignments={setAssignments} />}
           {tab === "library" && <SourcesPanel persona={persona} />}
           {tab === "chat" && <ChatPanel persona={persona} assignments={assignments} accountSettings={accountSettings} settingsScope={settingsScope} />}

@@ -1,40 +1,74 @@
-import { useState } from "react";
-import { cx, dateKey, formatDate, formatDateTime, iconForType, NotebookLabel } from "./demoShared.jsx";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  applyPersonalCalendarEdit,
+  approveCalendarCandidate,
+  buildCalendarIcs,
+  buildDueNotificationCandidates,
+  deriveCalendarWorkflow,
+  parseCalendarIcs,
+  resetPersonalCalendarEdit,
+} from "../ai/syllabusCalendarContract.js";
+import {
+  cx,
+  dateKey,
+  formatDate,
+  formatDateTime,
+  iconForType,
+  NotebookLabel,
+} from "./demoShared.jsx";
 
-function buildIcs(assignments, persona) {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const events = assignments.map((item) => {
-    const start = new Date(item.due);
-    if (Number.isNaN(start.getTime())) return "";
-    const end = new Date(start.getTime() + 30 * 60 * 1000);
-    const format = (date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    return [
-      "BEGIN:VEVENT",
-      `UID:${item.id}@ednotebook.com`,
-      `DTSTAMP:${stamp}`,
-      `DTSTART:${format(start)}`,
-      `DTEND:${format(end)}`,
-      `SUMMARY:${item.course} — ${item.title}`,
-      `DESCRIPTION:${String(item.description || "Reviewed in EdNotebook").replaceAll("\n", " ")}`,
-      "END:VEVENT",
-    ].join("\r\n");
-  }).filter(Boolean);
-  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EdNotebook//Demo Calendar//EN", `X-WR-CALNAME:${persona.shortName} EdNotebook Demo`, ...events, "END:VCALENDAR"].join("\r\n");
+const DEFAULT_REMINDERS = Object.freeze({
+  week: true,
+  twoDays: true,
+  twoHours: true,
+  rescue: true,
+});
+
+function readCalendarSettings(scope) {
+  if (typeof window === "undefined") {
+    return { version: 1, reminders: { ...DEFAULT_REMINDERS } };
+  }
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(`${scope}-settings`) || "{}",
+    );
+    return {
+      version: 1,
+      reminders: {
+        ...DEFAULT_REMINDERS,
+        ...(parsed.version === 1 ? parsed.reminders : parsed),
+      },
+    };
+  } catch {
+    return { version: 1, reminders: { ...DEFAULT_REMINDERS } };
+  }
 }
 
 function localDateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return `${date.getFullYear()}-${
+    String(date.getMonth() + 1).padStart(2, "0")
+  }-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function dateKeyInTimeZone(value, timeZone) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return dateKey(value);
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date).reduce(
+    (result, part) => ({ ...result, [part.type]: part.value }),
+    {},
+  );
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function timeSortValue(value = "") {
-  const match = String(value).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  const match = String(value).trim().match(
+    /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i,
+  );
   if (!match) return Number.MAX_SAFE_INTEGER;
   let hour = Number(match[1]);
   const minute = Number(match[2] || 0);
@@ -49,11 +83,28 @@ function monthStart(value) {
 }
 
 function shiftMonth(value, amount) {
-  return new Date(value.getFullYear(), value.getMonth() + amount, 1, 12, 0, 0);
+  return new Date(
+    value.getFullYear(),
+    value.getMonth() + amount,
+    1,
+    12,
+    0,
+    0,
+  );
 }
 
 function monthLabel(value) {
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(value);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(value);
+}
+
+function dateTimeInputValue(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 function MonthCalendar({ events, visibleMonth }) {
@@ -71,61 +122,760 @@ function MonthCalendar({ events, visibleMonth }) {
   const todayKey = localDateKey(new Date());
   return (
     <div className="month-calendar">
-      <div className="month-calendar-weekdays">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <span key={day}>{day}</span>)}</div>
-      <div className="month-calendar-grid">{dates.map((date) => {
-        const key = localDateKey(date);
-        const dayEvents = eventMap[key] || [];
-        const today = key === todayKey;
-        return <article aria-current={today ? "date" : undefined} aria-label={`${formatDate(`${key}T12:00:00`, { year: true })}${today ? ", today" : ""}`} className={cx(date.getMonth() !== visibleMonth.getMonth() && "is-muted", dayEvents.length && "has-events", today && "is-today")} key={key}><strong>{date.getDate()}</strong>{today && <em>Today</em>}{dayEvents.slice(0, 3).map((event) => <span className={`is-${event.type}`} key={`${event.title}-${event.time}`}>{event.title}</span>)}{dayEvents.length > 3 && <small>+{dayEvents.length - 3} more</small>}</article>;
-      })}</div>
+      <div className="month-calendar-weekdays">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="month-calendar-grid">
+        {dates.map((date) => {
+          const key = localDateKey(date);
+          const dayEvents = eventMap[key] || [];
+          const today = key === todayKey;
+          return (
+            <article
+              aria-current={today ? "date" : undefined}
+              aria-label={`${formatDate(`${key}T12:00:00`, { year: true })}${
+                today ? ", today" : ""
+              }`}
+              className={cx(
+                date.getMonth() !== visibleMonth.getMonth() && "is-muted",
+                dayEvents.length && "has-events",
+                today && "is-today",
+              )}
+              key={key}
+            >
+              <strong>{date.getDate()}</strong>
+              {today ? <em>Today</em> : null}
+              {dayEvents.slice(0, 3).map((event) => (
+                <span
+                  className={`is-${event.type}`}
+                  key={`${event.title}-${event.time}`}
+                >
+                  {event.title}
+                </span>
+              ))}
+              {dayEvents.length > 3
+                ? <small>+{dayEvents.length - 3} more</small>
+                : null}
+            </article>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function CalendarPanel({ persona, assignments }) {
+function CalendarItemEditor({
+  assignments,
+  setAssignments,
+  timeZone,
+  role,
+  now,
+  onNotice,
+}) {
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState({ title: "", due: "", hours: 1 });
+  const sorted = useMemo(
+    () =>
+      [...assignments].sort(
+        (first, second) =>
+          deriveCalendarWorkflow(first, now).rank -
+            deriveCalendarWorkflow(second, now).rank ||
+          new Date(first.due).getTime() - new Date(second.due).getTime(),
+      ),
+    [assignments, now],
+  );
+
+  function beginEdit(item) {
+    setEditingId(item.id);
+    setDraft({
+      title: item.title,
+      due: dateTimeInputValue(item.due),
+      hours: Number(item.hours) || 1,
+    });
+  }
+
+  function saveEdit(item) {
+    try {
+      const due = new Date(draft.due);
+      if (Number.isNaN(due.getTime())) {
+        throw new Error("Choose a valid personal calendar date and time.");
+      }
+      setAssignments((current) =>
+        current.map((candidate) =>
+          candidate.id === item.id
+            ? applyPersonalCalendarEdit(candidate, {
+              ...draft,
+              due: due.toISOString(),
+            })
+            : candidate
+        )
+      );
+      setEditingId(null);
+      onNotice(
+        "Personal calendar edit saved. The syllabus source title and deadline were preserved separately.",
+      );
+    } catch (error) {
+      onNotice(error.message);
+    }
+  }
+
+  if (!assignments.length) {
+    return (
+      <p className="calendar-empty">
+        No approved calendar items yet. Review a syllabus or import a calendar
+        file, then approve only the dates you trust.
+      </p>
+    );
+  }
+
+  return (
+    <div className="calendar-edit-list">
+      {sorted.map((item) => {
+        const workflow = deriveCalendarWorkflow(item, now);
+        const editing = item.id === editingId;
+        const sourceChanged = Boolean(
+          item.personalDueOverride || item.personalTitleOverride,
+        );
+        return (
+          <article className={`is-${workflow.stage}`} key={item.id}>
+            <div className="calendar-item-heading">
+              <span>{item.course}</span>
+              <strong>{item.title}</strong>
+              <em>{workflow.label}</em>
+            </div>
+            {editing
+              ? (
+                <div className="calendar-edit-fields">
+                  <label>
+                    Personal calendar title
+                    <input
+                      value={draft.title}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          title: event.target.value,
+                        }))}
+                    />
+                  </label>
+                  <label>
+                    Personal date and time
+                    <input
+                      type="datetime-local"
+                      value={draft.due}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          due: event.target.value,
+                        }))}
+                    />
+                  </label>
+                  <label>
+                    Planned hours
+                    <input
+                      type="number"
+                      min="0.25"
+                      max="100"
+                      step="0.25"
+                      value={draft.hours}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          hours: Number(event.target.value),
+                        }))}
+                    />
+                  </label>
+                </div>
+              )
+              : (
+                <>
+                  <time dateTime={item.due}>
+                    {formatDateTime(item.due, timeZone)}
+                  </time>
+                  <p>{workflow.nextAction}</p>
+                  <small>
+                    {sourceChanged
+                      ? `Personal plan differs from syllabus source: ${
+                        formatDateTime(item.sourceDue, timeZone)
+                      }.`
+                      : "Matches the approved syllabus source date."}
+                  </small>
+                </>
+              )}
+            <div className="calendar-item-actions">
+              {editing
+                ? (
+                  <>
+                    <button type="button" onClick={() => saveEdit(item)}>
+                      Save personal edit
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)}>
+                      Cancel
+                    </button>
+                  </>
+                )
+                : (
+                  <>
+                    <button type="button" onClick={() => beginEdit(item)}>
+                      Edit personal plan
+                    </button>
+                    {sourceChanged
+                      ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAssignments((current) =>
+                              current.map((candidate) =>
+                                candidate.id === item.id
+                                  ? resetPersonalCalendarEdit(candidate)
+                                  : candidate
+                              )
+                            );
+                            onNotice(
+                              "Personal edits cleared. The approved syllabus source date is active again.",
+                            );
+                          }}
+                        >
+                          Restore source
+                        </button>
+                      )
+                      : null}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAssignments((current) =>
+                          current.map((candidate) =>
+                            candidate.id === item.id
+                              ? {
+                                ...candidate,
+                                status: candidate.status === "complete"
+                                  ? "not-started"
+                                  : "complete",
+                              }
+                              : candidate
+                          )
+                        )}
+                    >
+                      {item.status === "complete" ? "Reopen" : "Mark complete"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAssignments((current) =>
+                          current.filter((candidate) =>
+                            candidate.id !== item.id
+                          )
+                        )}
+                    >
+                      Remove
+                    </button>
+                  </>
+                )}
+            </div>
+            <footer>
+              {role === "professor"
+                ? "Calendar edits are personal until the syllabus is revised and re-synced."
+                : "A personal edit never changes the professor’s official deadline."}
+            </footer>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function CalendarPanel({
+  persona,
+  assignments = [],
+  setAssignments,
+  calendarScope = `ednotebook-calendar-${persona?.id || "workspace"}`,
+  role = persona?.id === "professor" ? "professor" : "student",
+}) {
   const [timeZone, setTimeZone] = useState("America/Chicago");
   const [hour12, setHour12] = useState(true);
+  const [now, setNow] = useState(() => new Date());
   const [notice, setNotice] = useState("");
-  const [visibleMonth, setVisibleMonth] = useState(() => monthStart(new Date()));
-  const assignmentEvents = assignments.map((item) => ({ date: dateKeyInTimeZone(item.due, timeZone), time: formatDateTime(item.due, timeZone, hour12).split(", ").pop(), title: item.title, type: "assignment" }));
-  const events = [...persona.calendarEvents, ...assignmentEvents.filter((item) => !persona.calendarEvents.some((event) => event.title === item.title))];
-  const visiblePrefix = `${visibleMonth.getFullYear()}-${String(visibleMonth.getMonth() + 1).padStart(2, "0")}`;
-  const visibleEventCount = events.filter((event) => event.date.startsWith(visiblePrefix)).length;
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    monthStart(new Date())
+  );
+  const [settings, setSettings] = useState(() =>
+    readCalendarSettings(calendarScope)
+  );
+  const [pendingImports, setPendingImports] = useState([]);
+  const [approvedImports, setApprovedImports] = useState([]);
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return "unsupported";
+    }
+    return window.Notification.permission;
+  });
+  const importRef = useRef(null);
+  const reminders = settings.reminders;
+  const canEdit = typeof setAssignments === "function";
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      `${calendarScope}-settings`,
+      JSON.stringify(settings),
+    );
+  }, [calendarScope, settings]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (notificationPermission !== "granted") return undefined;
+    const sentKey = `${calendarScope}-sent-alerts`;
+    function notifyDueItems() {
+      let sent = [];
+      try {
+        const parsed = JSON.parse(
+          window.localStorage.getItem(sentKey) || "[]",
+        );
+        sent = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        sent = [];
+      }
+      const sentIds = new Set(sent);
+      const candidates = buildDueNotificationCandidates(
+        assignments,
+        reminders,
+      ).filter((candidate) => !sentIds.has(candidate.id)).slice(0, 3);
+      for (const candidate of candidates) {
+        new window.Notification(candidate.title, {
+          body: candidate.body,
+          tag: candidate.id,
+        });
+        sentIds.add(candidate.id);
+      }
+      if (candidates.length) {
+        window.localStorage.setItem(
+          sentKey,
+          JSON.stringify([...sentIds].slice(-250)),
+        );
+      }
+    }
+    notifyDueItems();
+    const timer = window.setInterval(notifyDueItems, 60_000);
+    return () => window.clearInterval(timer);
+  }, [assignments, calendarScope, notificationPermission, reminders]);
+
+  const assignmentEvents = assignments.map((item) => ({
+    date: dateKeyInTimeZone(item.due, timeZone),
+    time: formatDateTime(item.due, timeZone, hour12).split(", ").pop(),
+    title: item.title,
+    type: "assignment",
+    workflow: deriveCalendarWorkflow(item, now),
+  }));
+  const personaEvents = Array.isArray(persona?.calendarEvents)
+    ? persona.calendarEvents
+    : [];
+  const events = [
+    ...personaEvents,
+    ...assignmentEvents.filter((item) =>
+      !personaEvents.some((event) => event.title === item.title)
+    ),
+  ];
+  const visiblePrefix = `${visibleMonth.getFullYear()}-${
+    String(visibleMonth.getMonth() + 1).padStart(2, "0")
+  }`;
+  const visibleEventCount = events.filter((event) =>
+    event.date.startsWith(visiblePrefix)
+  ).length;
   const todayKey = localDateKey(new Date());
-  const sortedEvents = [...events].sort((a, b) => a.date.localeCompare(b.date) || timeSortValue(a.time) - timeSortValue(b.time));
-  const upcomingEvents = sortedEvents.filter((event) => event.date >= todayKey);
-  const agendaEvents = (upcomingEvents.length ? upcomingEvents : sortedEvents).slice(0, 10);
+  const sortedEvents = [...events].sort(
+    (first, second) =>
+      first.date.localeCompare(second.date) ||
+      timeSortValue(first.time) - timeSortValue(second.time),
+  );
+  const upcomingEvents = sortedEvents.filter((event) =>
+    event.date >= todayKey
+  );
+  const agendaEvents = (upcomingEvents.length
+    ? upcomingEvents
+    : sortedEvents).slice(0, 10);
+  const workflowItems = assignments
+    .map((item) => ({ item, workflow: deriveCalendarWorkflow(item, now) }))
+    .filter(({ item }) => item.status !== "complete")
+    .sort(
+      (first, second) =>
+        first.workflow.rank - second.workflow.rank ||
+        new Date(first.item.due).getTime() -
+          new Date(second.item.due).getTime(),
+    );
+  const currentFocus = workflowItems[0] || null;
+
+  function updateReminder(key) {
+    setSettings((current) => ({
+      version: 1,
+      reminders: {
+        ...current.reminders,
+        [key]: !current.reminders[key],
+      },
+    }));
+  }
 
   function downloadCalendar() {
-    const blob = new Blob([buildIcs(assignments, persona)], { type: "text/calendar;charset=utf-8" });
+    const blob = new Blob([
+      buildCalendarIcs(assignments, {
+        calendarName: `${
+          persona?.shortName || persona?.name || "My"
+        } EdNotebook calendar`,
+        reminders,
+      }),
+    ], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${persona.shortName.toLowerCase()}-ednotebook-calendar.ics`;
+    link.download = `${
+      String(persona?.shortName || role).toLowerCase()
+    }-ednotebook-calendar.ics`;
     link.click();
-    URL.revokeObjectURL(url);
-    setNotice("Calendar file created. It can be imported into Apple Calendar, Google Calendar, or Outlook.");
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    setNotice(
+      "Calendar file created with your alert plan. Import it into Apple Calendar, Google Calendar, Outlook, or another calendar that accepts .ics.",
+    );
+  }
+
+  async function requestNotifications() {
+    if (!("Notification" in window)) {
+      setNotice(
+        "This browser does not support desktop notifications. Calendar export alerts still work after import.",
+      );
+      return;
+    }
+    const permission = await window.Notification.requestPermission();
+    setNotificationPermission(permission);
+    setNotice(
+      permission === "granted"
+        ? "Browser alerts are enabled while EdNotebook is open. Exported calendar alerts can run through your calendar provider."
+        : "Browser alerts remain off. You can still use in-app time-left status and .ics calendar alerts.",
+    );
+  }
+
+  async function importCalendar(file) {
+    if (!file) return;
+    if (file.size > 2_000_000) {
+      setNotice("Choose an .ics file smaller than 2 MB.");
+      return;
+    }
+    const candidates = parseCalendarIcs(await file.text(), {
+      sourceId: `ics-${file.name}-${file.lastModified}`,
+    });
+    setPendingImports(candidates);
+    setApprovedImports([]);
+    setNotice(
+      candidates.length
+        ? `${candidates.length} calendar item${
+          candidates.length === 1 ? "" : "s"
+        } ready for review. Nothing was added automatically.`
+        : "No supported dated events were found in that calendar file.",
+    );
+  }
+
+  function addApprovedImports() {
+    const selected = pendingImports.filter((item) =>
+      approvedImports.includes(item.id)
+    ).map((item) => approveCalendarCandidate(item));
+    setAssignments((current) => {
+      const existing = new Set(
+        current.map((item) =>
+          `${item.importSourceId}:${item.importItemKey}:${item.course}:${item.sourceDue || item.due}`
+        ),
+      );
+      return [
+        ...current,
+        ...selected.filter((item) => {
+          const key =
+            `${item.importSourceId}:${item.importItemKey}:${item.course}:${item.sourceDue}`;
+          if (existing.has(key)) return false;
+          existing.add(key);
+          return true;
+        }),
+      ];
+    });
+    setPendingImports([]);
+    setApprovedImports([]);
+    setNotice(
+      `${selected.length} reviewed calendar item${
+        selected.length === 1 ? "" : "s"
+      } approved.`,
+    );
   }
 
   return (
     <div className="workspace-panel-stack">
       <section className="paper-card calendar-control-card">
-        <div className="dashboard-card-heading"><div><NotebookLabel>DATE & TIME SYNC</NotebookLabel><h1>One calendar across every class.</h1><p>Due dates are built from reviewed syllabus extractions and can be exported after approval.</p></div><button className="primary-paper-button" type="button" onClick={downloadCalendar}>Download .ics calendar</button></div>
-        <div className="calendar-control-grid">
-          <label>Time zone<select value={timeZone} onChange={(event) => setTimeZone(event.target.value)}><option value="America/Chicago">Central Time</option><option value="America/New_York">Eastern Time</option><option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option><option value="UTC">UTC</option></select></label>
-          <label>Time display<select value={hour12 ? "12" : "24"} onChange={(event) => setHour12(event.target.value === "12")}><option value="12">12-hour</option><option value="24">24-hour</option></select></label>
-          <button type="button" onClick={() => setNotice("Google Calendar connection is shown as a product demonstration. Production sync requires an authenticated calendar connection.")}>Connect Google Calendar</button>
-          <button type="button" onClick={() => setNotice("Outlook connection is shown as a product demonstration. Production sync requires an authenticated Microsoft connection.")}>Connect Outlook</button>
+        <div className="dashboard-card-heading">
+          <div>
+            <NotebookLabel>SYLLABUS-SYNCED DATE & TIME</NotebookLabel>
+            <h1>One editable calendar across every class.</h1>
+            <p>
+              Approved syllabus dates share one contract on professor and
+              student screens. Personal edits remain separate from the source
+              deadline.
+            </p>
+          </div>
+          <div className="calendar-export-actions">
+            <button
+              className="primary-paper-button"
+              type="button"
+              disabled={!assignments.length}
+              onClick={downloadCalendar}
+            >
+              Download .ics calendar
+            </button>
+            {canEdit
+              ? (
+                <>
+                  <button type="button" onClick={() => importRef.current?.click()}>
+                    Import .ics for review
+                  </button>
+                  <input
+                    ref={importRef}
+                    className="sr-only"
+                    type="file"
+                    tabIndex={-1}
+                    accept=".ics,text/calendar"
+                    aria-label="Choose an ICS calendar file to review"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      importCalendar(file);
+                    }}
+                  />
+                </>
+              )
+              : null}
+          </div>
         </div>
-        {notice && <p className="inline-notice" role="status">{notice}</p>}
+        <div className="calendar-control-grid">
+          <label>
+            Time zone
+            <select
+              value={timeZone}
+              onChange={(event) => setTimeZone(event.target.value)}
+            >
+              <option value="America/Chicago">Central Time</option>
+              <option value="America/New_York">Eastern Time</option>
+              <option value="America/Denver">Mountain Time</option>
+              <option value="America/Los_Angeles">Pacific Time</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </label>
+          <label>
+            Time display
+            <select
+              value={hour12 ? "12" : "24"}
+              onChange={(event) => setHour12(event.target.value === "12")}
+            >
+              <option value="12">12-hour</option>
+              <option value="24">24-hour</option>
+            </select>
+          </label>
+          <button type="button" onClick={requestNotifications}>
+            {notificationPermission === "granted"
+              ? "Browser alerts enabled"
+              : "Enable browser alerts"}
+          </button>
+        </div>
+        <div className="calendar-reminder-controls">
+          {[
+            ["week", "7 days"],
+            ["twoDays", "48 hours"],
+            ["twoHours", "2 hours"],
+            ["rescue", "Overdue rescue"],
+          ].map(([key, label]) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={Boolean(reminders[key])}
+                onChange={() => updateReminder(key)}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+        <small className="calendar-alert-boundary">
+          Browser alerts run while EdNotebook is open. Exported .ics alerts are
+          handled by the calendar app you import them into. No calendar account
+          is connected without an authenticated provider connection.
+        </small>
+        {notice ? <p className="inline-notice" role="status">{notice}</p> : null}
       </section>
+
+      {currentFocus
+        ? (
+          <section
+            className={`paper-card calendar-workflow-card is-${currentFocus.workflow.stage}`}
+            aria-live="polite"
+          >
+            <div>
+              <NotebookLabel>
+                {role === "student" ? "CURRENT STUDENT WORKFLOW" : "CURRENT CALENDAR PRIORITY"}
+              </NotebookLabel>
+              <h2>
+                {currentFocus.item.course} · {currentFocus.item.title}
+              </h2>
+              <p>{currentFocus.workflow.nextAction}</p>
+            </div>
+            <strong>{currentFocus.workflow.label}</strong>
+          </section>
+        )
+        : null}
+
+      {pendingImports.length
+        ? (
+          <section className="paper-card calendar-import-review">
+            <div className="dashboard-card-heading">
+              <div>
+                <NotebookLabel>CALENDAR IMPORT REVIEW</NotebookLabel>
+                <h2>Approve imported events one by one.</h2>
+                <p>
+                  Professor exports and outside calendar files use this same
+                  review boundary. Imported dates start unchecked.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!approvedImports.length}
+                onClick={addApprovedImports}
+              >
+                Add approved imports
+              </button>
+            </div>
+            <div>
+              {pendingImports.map((item) => (
+                <label key={item.id}>
+                  <input
+                    type="checkbox"
+                    checked={approvedImports.includes(item.id)}
+                    onChange={() =>
+                      setApprovedImports((current) =>
+                        current.includes(item.id)
+                          ? current.filter((id) => id !== item.id)
+                          : [...current, item.id]
+                      )}
+                  />
+                  <span>
+                    <strong>{item.course} · {item.title}</strong>
+                    <small>{formatDateTime(item.due, timeZone)}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
+        )
+        : null}
+
       <section className="paper-card calendar-full-card">
-        <div className="dashboard-card-heading"><div><NotebookLabel>{monthLabel(visibleMonth).toUpperCase()}</NotebookLabel><h2>Assignments and class events share the same view.</h2></div><div className="calendar-month-navigation"><span>{visibleEventCount} item{visibleEventCount === 1 ? "" : "s"} this month</span><button type="button" aria-label="Previous month" onClick={() => setVisibleMonth((current) => shiftMonth(current, -1))}>←</button><button type="button" onClick={() => setVisibleMonth(monthStart(new Date()))}>Today</button><button type="button" aria-label="Next month" onClick={() => setVisibleMonth((current) => shiftMonth(current, 1))}>→</button></div></div>
+        <div className="dashboard-card-heading">
+          <div>
+            <NotebookLabel>{monthLabel(visibleMonth).toUpperCase()}</NotebookLabel>
+            <h2>Assignments and class events share the same view.</h2>
+          </div>
+          <div className="calendar-month-navigation">
+            <span>
+              {visibleEventCount} item{visibleEventCount === 1 ? "" : "s"} this
+              month
+            </span>
+            <button
+              type="button"
+              aria-label="Previous month"
+              onClick={() =>
+                setVisibleMonth((current) => shiftMonth(current, -1))}
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleMonth(monthStart(new Date()))}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() =>
+                setVisibleMonth((current) => shiftMonth(current, 1))}
+            >
+              →
+            </button>
+          </div>
+        </div>
         <MonthCalendar events={events} visibleMonth={visibleMonth} />
       </section>
+
+      {canEdit
+        ? (
+          <section className="paper-card calendar-edit-card">
+            <div className="dashboard-card-heading">
+              <div>
+                <NotebookLabel>EDITABLE CALENDAR PLAN</NotebookLabel>
+                <h2>Plan around a deadline without rewriting it.</h2>
+              </div>
+              <strong>{assignments.length} approved</strong>
+            </div>
+            <CalendarItemEditor
+              assignments={assignments}
+              setAssignments={setAssignments}
+              timeZone={timeZone}
+              role={role}
+              now={now}
+              onNotice={setNotice}
+            />
+          </section>
+        )
+        : null}
+
       <section className="calendar-agenda-grid">
-        <article className="paper-card"><NotebookLabel>UPCOMING AGENDA</NotebookLabel><div className="calendar-agenda is-full">{agendaEvents.map((event) => <div key={`${event.date}-${event.title}-${event.time}`}><span className={cx("agenda-icon", `is-${event.type}`)}>{iconForType(event.type)}</span><div><strong>{event.title}</strong><span>{formatDate(`${event.date}T12:00:00`, { year: true })} · {event.time}</span></div></div>)}</div></article>
-        <article className="paper-card calendar-legend-card"><NotebookLabel>SYNC RULES</NotebookLabel><h2>Review first. Sync second.</h2><ul><li>Extracted dates remain drafts until the student or professor approves them.</li><li>A time zone is stored with each course or inherited from the account.</li><li>Changes show the original source line and editable calendar output.</li><li>The current date is highlighted and the Today button returns to it.</li></ul></article>
+        <article className="paper-card">
+          <NotebookLabel>UPCOMING AGENDA</NotebookLabel>
+          <div className="calendar-agenda is-full">
+            {agendaEvents.map((event) => (
+              <div key={`${event.date}-${event.title}-${event.time}`}>
+                <span className={cx("agenda-icon", `is-${event.type}`)}>
+                  {iconForType(event.type)}
+                </span>
+                <div>
+                  <strong>{event.title}</strong>
+                  <span>
+                    {formatDate(`${event.date}T12:00:00`, { year: true })} ·{" "}
+                    {event.time}
+                  </span>
+                </div>
+                {event.workflow
+                  ? <i>{event.workflow.label}</i>
+                  : null}
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className="paper-card calendar-legend-card">
+          <NotebookLabel>SYNC RULES</NotebookLabel>
+          <h2>Review first. Sync second.</h2>
+          <ul>
+            <li>
+              Extracted and imported dates remain drafts until a student or
+              professor approves them.
+            </li>
+            <li>
+              Professor exports and student imports use the same versioned
+              calendar contract.
+            </li>
+            <li>
+              A personal date or title edit never overwrites the syllabus
+              source value.
+            </li>
+            <li>
+              Time remaining determines the visible workflow stage and the
+              reminder phase.
+            </li>
+          </ul>
+        </article>
       </section>
     </div>
   );
