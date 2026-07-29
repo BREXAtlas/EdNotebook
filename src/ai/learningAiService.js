@@ -156,7 +156,12 @@ export function generateProfessorContentUnit(
   options = {},
 ) {
   if (
-    !["lesson_section", "activity", "knowledge_check"].includes(taskType)
+    ![
+      "lesson_section",
+      "activity",
+      "discussion_prompt",
+      "knowledge_check",
+    ].includes(taskType)
   ) {
     throw new Error("Select an approved lesson content-unit task.");
   }

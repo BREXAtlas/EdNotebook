@@ -10,10 +10,13 @@ import {
 const TASK_LABELS = Object.freeze({
   lesson_section: "selected section",
   activity: "lesson activity",
+  discussion_prompt: "selected discussion prompt",
   knowledge_check: "selected knowledge check",
 });
 
 const clean = (value) => String(value ?? "").trim();
+const readableId = (value) =>
+  clean(value).replace(/^discussion-/, "").replaceAll("-", " ");
 
 function unitSummary(unit) {
   if (unit.taskType === "lesson_section") {
@@ -30,6 +33,16 @@ function unitSummary(unit) {
       alignment: [
         ...unit.activity.outcomeIds,
         ...unit.activity.sourceIds,
+      ],
+    };
+  }
+  if (unit.taskType === "discussion_prompt") {
+    return {
+      title: unit.discussion.title,
+      body: `${unit.discussion.prompt} ${unit.discussion.learnerDirections}`,
+      alignment: [
+        ...unit.discussion.outcomeIds,
+        ...unit.discussion.sourceIds,
       ],
     };
   }
@@ -53,7 +66,11 @@ export default function ContentUnitReviewPanel({
   onApply,
 }) {
   const firstCheckId = clean(draft.knowledgeChecks?.[0]?.checkId);
+  const firstDiscussionId = clean(draft.connections?.discussionIds?.[0]);
   const [selectedCheckId, setSelectedCheckId] = useState(firstCheckId);
+  const [selectedDiscussionId, setSelectedDiscussionId] = useState(
+    firstDiscussionId,
+  );
   const [instruction, setInstruction] = useState("");
   const [phase, setPhase] = useState("ready");
   const [unitDraft, setUnitDraft] = useState(null);
@@ -70,6 +87,15 @@ export default function ContentUnitReviewPanel({
       setReviewConfirmed(false);
     }
   }, [draft.knowledgeChecks, selectedCheckId]);
+
+  useEffect(() => {
+    const discussionIds = draft.connections?.discussionIds || [];
+    if (!discussionIds.includes(selectedDiscussionId)) {
+      setSelectedDiscussionId(clean(discussionIds[0]));
+      setUnitDraft(null);
+      setReviewConfirmed(false);
+    }
+  }, [draft.connections?.discussionIds, selectedDiscussionId]);
 
   useEffect(() => {
     requestSequence.current += 1;
@@ -97,6 +123,8 @@ export default function ContentUnitReviewPanel({
         targetId:
           taskType === "lesson_section"
             ? selectedSectionId
+            : taskType === "discussion_prompt"
+              ? selectedDiscussionId
             : taskType === "knowledge_check"
               ? selectedCheckId
               : null,
@@ -206,6 +234,32 @@ export default function ContentUnitReviewPanel({
           Regenerate activity
         </button>
         <label>
+          Connected discussion
+          <select
+            value={selectedDiscussionId}
+            disabled={busy || !draft.connections?.discussionIds?.length}
+            onChange={(event) => {
+              requestSequence.current += 1;
+              setSelectedDiscussionId(event.target.value);
+              setUnitDraft(null);
+              setReviewConfirmed(false);
+            }}
+          >
+            {(draft.connections?.discussionIds || []).map((discussionId) => (
+              <option value={discussionId} key={discussionId}>
+                {readableId(discussionId)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={busy || !selectedDiscussionId}
+          onClick={() => generate("discussion_prompt")}
+        >
+          Regenerate discussion prompt
+        </button>
+        <label>
           Selected check
           <select
             value={selectedCheckId}
@@ -252,6 +306,42 @@ export default function ContentUnitReviewPanel({
           <small>
             Approved alignment: {Array.from(new Set(summary.alignment)).join(", ")}
           </small>
+          {unitDraft.taskType === "discussion_prompt" && (
+            <div className="phase5-discussion-review-details">
+              <section>
+                <h5>Initial post</h5>
+                <ul>
+                  {unitDraft.discussion.initialPostRequirements.map(
+                    (item, index) => (
+                      <li key={`${index}:${item}`}>{item}</li>
+                    ),
+                  )}
+                </ul>
+              </section>
+              <section>
+                <h5>Peer response</h5>
+                <ul>
+                  {unitDraft.discussion.peerResponseRequirements.map(
+                    (item, index) => (
+                      <li key={`${index}:${item}`}>{item}</li>
+                    ),
+                  )}
+                </ul>
+              </section>
+              <section>
+                <h5>Student safeguards</h5>
+                <ul>
+                  <li>{unitDraft.discussion.safetyGuidance.privacy}</li>
+                  <li>{unitDraft.discussion.safetyGuidance.civility}</li>
+                  <li>{unitDraft.discussion.safetyGuidance.aiUse}</li>
+                </ul>
+              </section>
+              <section>
+                <h5>Professor facilitation</h5>
+                <p>{unitDraft.discussion.facilitatorGuidance}</p>
+              </section>
+            </div>
+          )}
           <div className="phase5-content-unit-evidence">
             <span>{issueCount} review item{issueCount === 1 ? "" : "s"}</span>
             <span>

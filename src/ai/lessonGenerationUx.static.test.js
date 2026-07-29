@@ -49,6 +49,8 @@ test("controlled content units require separate governed calls and professor app
   assert.match(reviewSource, /<ContentUnitReviewPanel/);
   assert.match(contentUnitSource, /Regenerate selected section/);
   assert.match(contentUnitSource, /Regenerate activity/);
+  assert.match(contentUnitSource, /Regenerate discussion prompt/);
+  assert.match(contentUnitSource, /Professor facilitation/);
   assert.match(contentUnitSource, /Regenerate selected check/);
   assert.match(contentUnitSource, /Apply to unpublished lesson draft/);
   assert.match(contentUnitSource, /reviewConfirmed/);
@@ -56,7 +58,7 @@ test("controlled content units require separate governed calls and professor app
   assert.match(serviceSource, /generateProfessorContentUnit/);
   assert.match(
     serviceSource,
-    /\["lesson_section", "activity", "knowledge_check"\]/,
+    /"lesson_section",[\s\S]*"activity",[\s\S]*"discussion_prompt",[\s\S]*"knowledge_check"/,
   );
   assert.match(serviceSource, /invokeGovernedTask\(taskType, input, options\)/);
   assert.doesNotMatch(contentUnitSource, /window\.open/);

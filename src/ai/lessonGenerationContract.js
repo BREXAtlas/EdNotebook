@@ -474,6 +474,9 @@ function sourceReferences(artifact) {
   const checkSources = (artifact.knowledgeChecks || []).flatMap(
     (check) => check?.sourceIds || check?.sourceReferences || [],
   );
+  const discussionSources = (artifact.discussionPrompts || []).flatMap(
+    (discussion) => discussion?.sourceIds || [],
+  );
   const objectiveSources = (artifact.objectives || []).flatMap(
     (objective) => objective?.sourceIds || [],
   );
@@ -485,6 +488,7 @@ function sourceReferences(artifact) {
     ...sectionSources,
     ...exampleSources,
     ...checkSources,
+    ...discussionSources,
     ...objectiveSources,
     ...vocabularySources,
     ...(artifact.readings || []).map((reading) => reading?.sourceId),
@@ -926,6 +930,9 @@ export function lessonDraftToManifestLesson(
     })),
     readings: clone(draft.readings || []),
     activity: clone(draft.activity || null),
+    discussionPrompts: clone(
+      draft.discussionPrompts || currentLesson.discussionPrompts || [],
+    ),
     knowledgeChecks: (draft.knowledgeChecks || [])
       .map((check, index) => mappedCheck(check, index, currentLesson.id))
       .filter((check) => check.question && check.correctAnswer),
