@@ -6,11 +6,11 @@
   "production_url": "https://ednotebook.com/",
   "staging_url": "https://ednotebook.com/staging/",
   "page_url": "https://ednotebook.com/",
-  "production_source_commit": "589b9d0d1f9b8fbfeb51ce76f09d69db2b1c7ddd",
+  "production_source_commit": "e02e85871ac0cd0ec44b865c4739b1c57a2c890b",
   "staging_source_commit": "bd1df7a726dde2b4493fde8e07cb462f2a8b1555",
   "trigger_branch": "main",
-  "trigger_commit": "589b9d0d1f9b8fbfeb51ce76f09d69db2b1c7ddd",
-  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30494414250",
-  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30494538466",
-  "deployed_at": "2026-07-29T22:01:53Z"
+  "trigger_commit": "e02e85871ac0cd0ec44b865c4739b1c57a2c890b",
+  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30495785635",
+  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30495885623",
+  "deployed_at": "2026-07-29T22:23:16Z"
 }
