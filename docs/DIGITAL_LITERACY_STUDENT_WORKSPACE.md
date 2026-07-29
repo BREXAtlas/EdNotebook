@@ -21,9 +21,11 @@ The JSON manifest can be restored later. Restore appends records and creates a n
 
 ## Storage and no-lock-in behavior
 
-- **This browser (default):** all learning records are saved to the environment-namespaced browser workspace. Device files use the existing IndexedDB vault.
-- **Private cloud + browser (optional):** a signed-in student can append the same record to `student_learning_records`. A cloud error never removes the browser copy.
+- **This browser (default):** all learning records are saved to the environment-namespaced browser workspace. Device files use the existing IndexedDB vault. This mode does not query or merge private cloud learning records.
+- **Private cloud + browser (optional):** selecting this mode is the explicit action that loads the signed-in student's private cloud records and merges them into the browser without overwriting local versions. New saves can then append the same record to `student_learning_records`. A cloud error never removes the browser copy.
 - **Portable device export:** HTML and JSON remain readable outside EdNotebook.
+
+Live course choices use the course record's unique ID, not its display code. This keeps two sections with the same course code distinct. If the dashboard first renders the synthetic Digital Literacy practice option and an enrolled Digital Literacy course arrives asynchronously, the workspace reconciles to the real course ID before saving. A live course row without a stable ID cannot become a save target; the clearly labeled synthetic practice fixture remains available instead.
 
 The cloud table is append-only for authenticated clients:
 
@@ -79,8 +81,10 @@ The focused gate checks:
 - readable packet and restore manifest generation;
 - restore without overwrite;
 - one-time, non-destructive migration of existing student notes;
+- device mode performing no private-cloud load or merge;
+- unique-ID course selection, including duplicate display codes and synthetic-to-live reconciliation;
 - actual signed-in student dashboard integration;
-- own-student RLS, absence of authenticated update/delete access, and inclusion in the version 2.2 / 45-domain student-data inventory.
+- own-student RLS, absence of authenticated update/delete access, and inclusion in the version 2.3 / 47-domain student-data inventory.
 
 Before enabling cloud sync in staging, apply the migration to the existing staging project only and test with two synthetic student accounts:
 

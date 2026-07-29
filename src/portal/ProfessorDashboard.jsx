@@ -17,7 +17,7 @@ const ProfessorSemesterCalendar = lazy(() =>
 
 const TABS = [
   ["overview", "Overview"], ["classes", "Classes"], ["semester", "Syllabus & calendar"], ["templates", "Assignment templates"], ["students", "Students & rosters"], ["rewards", "Social learning"], ["grades", "Grades"],
-  ["attendance", "Attendance & SIS"], ["announcements", "Course communication"], ["profile", "Educator page"],
+  ["attendance", "Attendance & SIS"], ["announcements", "Faculty & announcements"], ["communication", "Course communication"], ["profile", "Educator page"],
   ["verification", "School verification"], ["security", "Security"], ["settings", "Settings"],
 ];
 
@@ -109,7 +109,7 @@ function AnnouncementsPanel() {
   return <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">EDUCATOR ANNOUNCEMENTS</span><h1>Reach the right group.</h1><p>University and K–12 social spaces never share an audience.</p></div></div><form className="professor-announcement-form" onSubmit={publish}><label>Audience<select value={audience} onChange={(event) => setAudience(event.target.value)}><option>SCI 101</option><option>ENG 10</option><option>Example University followers</option><option>Example High School followers</option></select></label><label>Announcement<textarea rows={5} value={body} onChange={(event) => setBody(event.target.value)} /></label><button type="submit">Publish announcement</button></form><div className="professor-announcement-list">{posts.map((post) => <article key={post.id}><span>{post.audience}</span><p>{post.body}</p><small>{new Date(post.createdAt).toLocaleString()}</small></article>)}</div></section>;
 }
 
-function FacultyFeedPanel({ accountSettings, storageScope }) {
+function FacultyFeedPanel({ accountSettings, storageScope, onOpenCourseCommunication }) {
   const guide = getDefaultConnection("professor");
   const storageKey = `ednotebook-${storageScope}-professor-social-posts`;
   const reactionStorageKey = `${storageKey}-reactions`;
@@ -123,7 +123,9 @@ function FacultyFeedPanel({ accountSettings, storageScope }) {
   const [storyNow, setStoryNow] = useState(() => new Date());
   useEffect(() => { const timer = window.setInterval(() => setStoryNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
   const storyPosts = useMemo(() => generateStoryFeed({ persona: "professor", now: storyNow, newestFirst: true }), [storyNow]);
-  const feed = [...localPosts, ...storyPosts].filter((post) => feedAudience === "all" || post.audience === feedAudience);
+  const feed = [...localPosts, ...storyPosts]
+    .filter((post) => post.audience !== "class")
+    .filter((post) => feedAudience === "all" || post.audience === feedAudience);
   function publish(event) {
     event.preventDefault();
     if (!body.trim()) return;
@@ -135,7 +137,69 @@ function FacultyFeedPanel({ accountSettings, storageScope }) {
   }
   function react(postId, reactionId) { const next = { ...reactions, [postId]: reactions[postId] === reactionId ? null : reactionId }; setReactions(next); window.localStorage.setItem(reactionStorageKey, JSON.stringify(next)); }
   function toggleSaved(postId) { const next = savedPosts.includes(postId) ? savedPosts.filter((id) => id !== postId) : [...savedPosts, postId]; setSavedPosts(next); window.localStorage.setItem(savedStorageKey, JSON.stringify(next)); }
-  return <div className="professor-panel-stack"><section className="dashboard-card faculty-feed-guide"><img src={guide.image} alt="" /><div><span className="portal-kicker">FIRST FACULTY CONNECTION</span><h1>{guide.name}</h1><p>Atlas shares a new teaching chapter each Sunday and welcomes new educator accounts.</p></div><button type="button">Following Atlas</button></section><section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">FACULTY & SCHOOL COMMUNITY</span><h2>Choose the room before posting.</h2><p>The faculty feed is for educators. The school feed can carry announcements to the matching school community.</p></div><label>Show<select value={feedAudience} onChange={(event) => setFeedAudience(event.target.value)}><option value="all">All feeds</option><option value="faculty">Faculty</option><option value="school">School</option><option value="class">Class</option></select></label></div><form className="professor-announcement-form" onSubmit={publish}><label>Audience<select value={audience} onChange={(event) => setAudience(event.target.value)}><option value="faculty">Faculty</option><option value="school">School</option><option value="class">Class</option></select></label><label>Post<textarea rows={4} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Share an announcement, teaching idea, or course highlight…" /></label><button type="submit">Publish</button></form><div className="faculty-story-feed">{feed.map((post, index) => { const isStory = Boolean(post.personaId); const items = post.reactions?.types || STORY_REACTION_TYPES.map((item) => ({ ...item, count: 0 })); return <article key={post.id || index}><header><img src={isStory ? STORY_GUIDES.professor.image : guide.image} alt="" /><div><strong>{isStory ? STORY_GUIDES.professor.name : post.author}</strong><span>{post.date} · {post.timeLabel} · {post.audience}</span></div></header><p>{post.body}</p>{post.snapshot && <div className="portal-story-snapshot"><span>{post.snapshot.feedbackCompleted} feedback items</span><span>{post.snapshot.responseRate}% response rate</span></div>}<footer>{items.map((reaction) => <button type="button" className={reactions[post.id] === reaction.id ? "is-active" : ""} key={reaction.id} onClick={() => react(post.id, reaction.id)}>{reaction.symbol} {reaction.count + (reactions[post.id] === reaction.id ? 1 : 0)}</button>)}<button type="button" className={savedPosts.includes(post.id) ? "is-active" : ""} onClick={() => toggleSaved(post.id)}>{savedPosts.includes(post.id) ? "Saved" : "Save"}</button></footer></article>; })}</div></section></div>;
+  return (
+    <div className="professor-panel-stack">
+      <section className="dashboard-card faculty-feed-guide">
+        <img src={guide.image} alt="" />
+        <div><span className="portal-kicker">FIRST FACULTY CONNECTION</span><h1>{guide.name}</h1><p>Atlas shares a new teaching chapter each Sunday and welcomes new educator accounts.</p></div>
+        <button type="button">Following Atlas</button>
+      </section>
+      <section className="dashboard-card">
+        <div className="dashboard-card-heading">
+          <div>
+            <span className="portal-kicker">FACULTY &amp; SCHOOL COMMUNITY</span>
+            <h2>Choose the educator community before posting.</h2>
+            <p>This social preview is for faculty peers and school staff. Student-delivered class announcements use the governed course room.</p>
+          </div>
+          <div>
+            <label>
+              Show
+              <select value={feedAudience} onChange={(event) => setFeedAudience(event.target.value)}>
+                <option value="all">All educator feeds</option>
+                <option value="faculty">Faculty peers</option>
+                <option value="school">School staff</option>
+              </select>
+            </label>
+            <button type="button" onClick={onOpenCourseCommunication}>Open course communication</button>
+          </div>
+        </div>
+        <div className="portal-form-notice" role="note">
+          Social posts here are saved only on this device. They are not delivered to a class.
+        </div>
+        <form className="professor-announcement-form" onSubmit={publish}>
+          <label>
+            Educator social audience
+            <select value={audience} onChange={(event) => setAudience(event.target.value)}>
+              <option value="faculty">Faculty peers</option>
+              <option value="school">School staff</option>
+            </select>
+          </label>
+          <label>
+            Social post
+            <textarea rows={4} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Share a teaching idea or educator-community highlight…" />
+          </label>
+          <button type="submit">Save device-only social post</button>
+        </form>
+        <div className="faculty-story-feed">
+          {feed.map((post, index) => {
+            const isStory = Boolean(post.personaId);
+            const items = post.reactions?.types || STORY_REACTION_TYPES.map((item) => ({ ...item, count: 0 }));
+            return (
+              <article key={post.id || index}>
+                <header><img src={isStory ? STORY_GUIDES.professor.image : guide.image} alt="" /><div><strong>{isStory ? STORY_GUIDES.professor.name : post.author}</strong><span>{post.date} · {post.timeLabel} · {post.audience}</span></div></header>
+                <p>{post.body}</p>
+                {post.snapshot && <div className="portal-story-snapshot"><span>{post.snapshot.feedbackCompleted} feedback items</span><span>{post.snapshot.responseRate}% response rate</span></div>}
+                <footer>
+                  {items.map((reaction) => <button type="button" className={reactions[post.id] === reaction.id ? "is-active" : ""} key={reaction.id} onClick={() => react(post.id, reaction.id)}>{reaction.symbol} {reaction.count + (reactions[post.id] === reaction.id ? 1 : 0)}</button>)}
+                  <button type="button" className={savedPosts.includes(post.id) ? "is-active" : ""} onClick={() => toggleSaved(post.id)}>{savedPosts.includes(post.id) ? "Saved" : "Save"}</button>
+                </footer>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function EducatorProfile({ profile }) {
@@ -159,7 +223,7 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
   useEffect(() => { setAccountSettings(readAccountSettings(settingsScope, { accountType: "professor", name: profile?.full_name || "Educator", email: session?.user?.email || "" })); }, [settingsScope, profile?.full_name, session?.user?.email]);
   useEffect(() => { if (!unlockedUntil) return undefined; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [unlockedUntil]);
   function unlock() { setUnlockedUntil(Date.now() + 5 * 60 * 1000); } function lock() { setUnlockedUntil(0); }
-  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={onStudentPortal}>View student portal</button><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={onBuild}>Course builder</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>Educator workspace</small></div></div><nav aria-label="Educator dashboard">{TABS.map(([id, label]) => <button className={tab === id ? "is-active" : ""} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && <i>3</i>}</button>)}</nav></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
+  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={onStudentPortal}>View student portal</button><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={onBuild}>Course builder</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>Educator workspace</small></div></div><nav aria-label="Educator dashboard">{TABS.map(([id, label]) => <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && <i>3</i>}</button>)}</nav></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
   const protectedContent = tab === "students"
     ? <StudentsPanel />
     : tab === "rewards"
@@ -181,7 +245,7 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
       <div className="student-dashboard-shell professor-dashboard-shell">
         <aside className="student-dashboard-sidebar professor-sidebar">
           <div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>Educator workspace</small></div></div>
-          <nav aria-label="Educator dashboard">{TABS.map(([id, label]) => <button className={tab === id ? "is-active" : ""} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && <i>3</i>}</button>)}</nav>
+          <nav aria-label="Educator dashboard">{TABS.map(([id, label]) => <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && <i>3</i>}</button>)}</nav>
           <div className="professor-lock-summary"><strong>{unlocked ? "Sensitive areas unlocked" : "Sensitive areas locked"}</strong><span>{unlocked ? "Locks in less than five minutes" : "Password required for rosters and grades"}</span>{unlocked && <button type="button" onClick={lock}>Lock now</button>}</div>
         </aside>
         <main className="student-dashboard-main professor-dashboard-main">
@@ -191,7 +255,8 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} classes={EDUCATOR_CLASSES} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel />}
-          {tab === "announcements" && <CourseCommunicationPanel key={`course-communication-${settingsScope}`} role="professor" session={session} educationDivision="both" />}
+          {tab === "announcements" && <FacultyFeedPanel accountSettings={accountSettings} storageScope={settingsScope} onOpenCourseCommunication={() => setTab("communication")} />}
+          {tab === "communication" && <CourseCommunicationPanel key={`course-communication-${settingsScope}`} role="professor" session={session} educationDivision="both" />}
           {tab === "profile" && <EducatorProfile profile={profile} />}
           {tab === "verification" && <VerificationPanel session={session} />}
           {tab === "security" && <SecurityPanel unlocked={unlocked} onLock={lock} />}

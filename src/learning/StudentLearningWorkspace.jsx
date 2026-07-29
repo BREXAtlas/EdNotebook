@@ -14,10 +14,11 @@ import {
   checkCitationFormat,
 } from "./citationTools.js";
 import {
-  DIGITAL_LITERACY_SYNTHETIC_CONTEXT,
   appendRecord,
   buildDeviceFileName,
   buildLearningPacket,
+  courseContext,
+  courseSelectionKey,
   createVersionedRecord,
   downloadLearningPacket,
   latestRecordFor,
@@ -25,22 +26,15 @@ import {
   migrateLegacyStudentNotes,
   mergeRestoreManifest,
   readDeviceWorkspace,
+  reconcileCourseContext,
   recordMatchesQuery,
+  selectableCourseContexts,
+  shouldLoadPrivateCloudRecords,
   writeDeviceWorkspace,
 } from "./studentLearningWorkspace.js";
 import { appendCloudLearningRecord, loadCloudLearningRecords } from "./studentLearningService.js";
 import { downloadDeviceFile, listDeviceFiles, saveDeviceFile } from "../studio/localVault.js";
 import "./student-learning-workspace.css";
-
-function courseContext(course) {
-  return {
-    synthetic: Boolean(course.synthetic),
-    courseId: course.courseId || course.id || null,
-    courseCode: course.courseCode || course.code || "DIGL-101",
-    courseTitle: course.courseTitle || course.title || "Digital Literacy",
-    lessons: course.lessons || [],
-  };
-}
 
 function combineAppendOnly(left, right) {
   const byId = new Map();
@@ -71,20 +65,39 @@ async function copyCitation(output, onNotice) {
   }
 }
 
+function useReconciledCourseContext(courses) {
+  const [context, setContext] = useState(
+    () => reconcileCourseContext(null, courses),
+  );
+  useEffect(() => {
+    setContext((current) => reconcileCourseContext(current, courses));
+  }, [courses]);
+  return [context, setContext];
+}
+
 function ContextFields({ context, setContext, courses, sourceOptions = [], showSource = false }) {
-  const selectedCourse = courses.find((course) => course.courseCode === context.courseCode) || courses[0];
+  const contextKey = courseSelectionKey(context);
+  const selectedCourse = courses.find(
+    (course) => courseSelectionKey(course) === contextKey,
+  ) || courses[0];
+  const selectedKey = courseSelectionKey(selectedCourse);
   return (
     <div className="learning-context-grid">
       <label>
         Course
         <select
-          value={context.courseCode}
+          value={selectedKey}
           onChange={(event) => {
-            const selected = courses.find((course) => course.courseCode === event.target.value);
+            const selected = courses.find(
+              (course) => courseSelectionKey(course) === event.target.value,
+            );
             setContext({ ...courseContext(selected), lessonId: "", lessonTitle: "" });
           }}
         >
-          {courses.map((course) => <option key={`${course.courseCode}-${course.courseId || "sample"}`} value={course.courseCode}>{course.courseCode} · {course.courseTitle}{course.synthetic ? " (practice)" : ""}</option>)}
+          {courses.map((course) => {
+            const key = courseSelectionKey(course);
+            return <option key={key} value={key}>{course.courseCode} · {course.courseTitle}{course.synthetic ? " (practice)" : ""}</option>;
+          })}
         </select>
       </label>
       <label>
@@ -135,7 +148,7 @@ function StorageChoice({ mode, setMode, signedIn }) {
 function NoteWorkspace({ records, courses, onSave, storageMode, notice }) {
   const sources = latestRecords(records, "source");
   const [query, setQuery] = useState("");
-  const [context, setContext] = useState(courseContext(courses[0]));
+  const [context, setContext] = useReconciledCourseContext(courses);
   const [draft, setDraft] = useState({ title: "", body: "" });
   const [editingRootId, setEditingRootId] = useState(null);
   const visible = latestRecords(records, "note").filter((record) => recordMatchesQuery(record, query));
@@ -143,13 +156,15 @@ function NoteWorkspace({ records, courses, onSave, storageMode, notice }) {
   function save(event) {
     event.preventDefault();
     if (!draft.title.trim() || !draft.body.trim()) return;
+    const saveContext = reconcileCourseContext(context, courses);
     const previous = editingRootId ? latestRecordFor(records, editingRootId) : null;
     const record = createVersionedRecord({
       kind: "note",
-      content: { ...draft, sourceRootId: context.sourceRootId || null },
-      context,
+      content: { ...draft, sourceRootId: saveContext.sourceRootId || null },
+      context: saveContext,
       previous,
     });
+    setContext(saveContext);
     onSave(record);
     setDraft({ title: "", body: "" });
     setEditingRootId(null);
@@ -157,7 +172,8 @@ function NoteWorkspace({ records, courses, onSave, storageMode, notice }) {
 
   function revise(record) {
     setEditingRootId(record.rootId);
-    setContext({
+    setContext(reconcileCourseContext({
+      synthetic: !record.courseId,
       courseId: record.courseId,
       courseCode: record.courseCode,
       courseTitle: record.courseTitle,
@@ -165,7 +181,7 @@ function NoteWorkspace({ records, courses, onSave, storageMode, notice }) {
       lessonTitle: record.lessonTitle,
       sourceRootId: record.sourceRootId,
       lessons: courses.find((course) => course.courseCode === record.courseCode)?.lessons || [],
-    });
+    }, courses));
     setDraft({ title: record.title, body: record.content.body || "" });
   }
 
@@ -226,7 +242,7 @@ function PersonEditor({ label, people, onChange, onAdd, onRemove, includeRole = 
 }
 
 function CitationBuilder({ records, courses, onSave, storageMode, notice }) {
-  const [context, setContext] = useState(courseContext(courses[0]));
+  const [context, setContext] = useReconciledCourseContext(courses);
   const [draft, setDraft] = useState(() => createSourceDraft(courseContext(courses[0])));
   const [editingRootId, setEditingRootId] = useState(null);
   const [copyNotice, setCopyNotice] = useState("");
@@ -253,8 +269,9 @@ function CitationBuilder({ records, courses, onSave, storageMode, notice }) {
   function save(event) {
     event.preventDefault();
     if (!draft.title.trim() || !draft.authors.some((author) => author.literal.trim() || author.family.trim() || author.given.trim())) return;
+    const saveContext = reconcileCourseContext(context, courses);
     const previous = editingRootId ? latestRecordFor(records, editingRootId) : null;
-    const source = { ...draft, ...context };
+    const source = { ...draft, ...saveContext };
     const formatted = formatCitationOutput(source);
     const record = createVersionedRecord({
       kind: "source",
@@ -267,25 +284,27 @@ function CitationBuilder({ records, courses, onSave, storageMode, notice }) {
         inTextCitation: formatInTextCitation(source),
         note: draft.note.trim(),
       },
-      context,
+      context: saveContext,
       previous,
     });
+    setContext(saveContext);
     onSave(record);
-    setDraft(createSourceDraft(context));
+    setDraft(createSourceDraft(saveContext));
     setEditingRootId(null);
   }
 
   function revise(record) {
     const source = record.content.source || {};
     setEditingRootId(record.rootId);
-    setContext({
+    setContext(reconcileCourseContext({
+      synthetic: !record.courseId,
       courseId: record.courseId,
       courseCode: record.courseCode,
       courseTitle: record.courseTitle,
       lessonId: record.lessonId,
       lessonTitle: record.lessonTitle,
       lessons: courses.find((course) => course.courseCode === record.courseCode)?.lessons || [],
-    });
+    }, courses));
     setDraft({ ...createSourceDraft(record), ...source, rootId: record.rootId });
   }
 
@@ -365,7 +384,7 @@ function PacketWorkspace({ records, setRecords, courses, storageScope, onSave, n
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [files, setFiles] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [context, setContext] = useState(courseContext(courses[0]));
+  const [context, setContext] = useReconciledCourseContext(courses);
   const [feedback, setFeedback] = useState({ title: "", body: "" });
   const [file, setFile] = useState(null);
   const [fileTitle, setFileTitle] = useState("");
@@ -386,27 +405,31 @@ function PacketWorkspace({ records, setRecords, courses, storageScope, onSave, n
   function saveFeedback(event) {
     event.preventDefault();
     if (!feedback.title.trim() || !feedback.body.trim()) return;
-    onSave(createVersionedRecord({ kind: "feedback", content: feedback, context }));
+    const saveContext = reconcileCourseContext(context, courses);
+    setContext(saveContext);
+    onSave(createVersionedRecord({ kind: "feedback", content: feedback, context: saveContext }));
     setFeedback({ title: "", body: "" });
   }
 
   async function saveFile(event) {
     event.preventDefault();
     if (!file) return;
-    const safeName = buildDeviceFileName(file, { courseCode: context.courseCode, title: fileTitle || file.name });
+    const saveContext = reconcileCourseContext(context, courses);
+    const safeName = buildDeviceFileName(file, { courseCode: saveContext.courseCode, title: fileTitle || file.name });
     try {
       await saveDeviceFile(file, {
         safeName,
         title: fileTitle.trim() || file.name,
-        courseId: context.courseId,
-        courseCode: context.courseCode,
-        courseTitle: context.courseTitle,
-        lessonId: context.lessonId,
-        lessonTitle: context.lessonTitle,
+        courseId: saveContext.courseId,
+        courseCode: saveContext.courseCode,
+        courseTitle: saveContext.courseTitle,
+        lessonId: saveContext.lessonId,
+        lessonTitle: saveContext.lessonTitle,
         version: 1,
         namingConvention: "digital-literacy-v1",
         workspaceScope: storageScope,
       });
+      setContext(saveContext);
       setFile(null);
       setFileTitle("");
       setPacketNotice(`${safeName} is saved in this browser's device vault.`);
@@ -431,7 +454,9 @@ function PacketWorkspace({ records, setRecords, courses, storageScope, onSave, n
 
   function exportPacket() {
     const selectedFileRecords = files.filter((item) => selectedFiles.includes(item.id));
-    const packet = buildLearningPacket({ course: context, records, selectedRecordIds: selectedRecords, files: selectedFileRecords });
+    const exportContext = reconcileCourseContext(context, courses);
+    setContext(exportContext);
+    const packet = buildLearningPacket({ course: exportContext, records, selectedRecordIds: selectedRecords, files: selectedFileRecords });
     downloadLearningPacket(packet);
     setPacketNotice("Downloaded a readable HTML packet and a JSON restore manifest. Device files remain separate so you control where they go.");
   }
@@ -487,11 +512,10 @@ function PacketWorkspace({ records, setRecords, courses, storageScope, onSave, n
 }
 
 export default function StudentLearningWorkspace({ classes = [], session, storageScope = "student", track = "university" }) {
-  const courseOptions = useMemo(() => {
-    const live = classes.map((course) => courseContext(course));
-    const hasDigitalLiteracy = live.some((course) => /digital literacy/iu.test(course.courseTitle));
-    return hasDigitalLiteracy ? live : [...live, DIGITAL_LITERACY_SYNTHETIC_CONTEXT];
-  }, [classes]);
+  const courseOptions = useMemo(
+    () => selectableCourseContexts(classes),
+    [classes],
+  );
   const [section, setSection] = useState("notes");
   const [storageMode, setStorageMode] = useState("device");
   const [records, setRecords] = useState(() => {
@@ -511,17 +535,29 @@ export default function StudentLearningWorkspace({ classes = [], session, storag
   }, [storageScope, track]);
 
   useEffect(() => {
+    if (!shouldLoadPrivateCloudRecords(storageMode, studentId)) {
+      return undefined;
+    }
     let active = true;
     loadCloudLearningRecords(studentId).then((result) => {
-      if (!active || !result.data?.length) return;
+      if (!active) return;
+      if (result.error || result.source !== "cloud") {
+        setNotice("Private cloud records could not be loaded. Device records remain available in this browser.");
+        return;
+      }
+      if (!result.data?.length) {
+        setNotice("Private cloud sync is on. No earlier cloud records were found.");
+        return;
+      }
       setRecords((current) => {
         const merged = combineAppendOnly(current, result.data);
         writeDeviceWorkspace(window.localStorage, storageScope, merged);
         return merged;
       });
+      setNotice("Private cloud records were merged into this browser without overwriting local versions.");
     });
     return () => { active = false; };
-  }, [studentId, storageScope]);
+  }, [studentId, storageMode, storageScope]);
 
   async function saveRecord(record) {
     let next;
@@ -536,7 +572,7 @@ export default function StudentLearningWorkspace({ classes = [], session, storag
     }
     if (storageMode !== "cloud") return;
     const result = await appendCloudLearningRecord(record, studentId);
-    if (result.error) {
+    if (result.error || result.source !== "cloud") {
       setNotice(`${record.filename} is safe on this browser. Private cloud sync is not enabled in this environment yet.`);
       return;
     }

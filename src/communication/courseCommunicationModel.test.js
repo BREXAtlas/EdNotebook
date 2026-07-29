@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   DIGITAL_LITERACY_COMMUNICATION_FIXTURE,
   audienceLabel,
+  communicationModeAfterKey,
   countUnreadCommunication,
+  courseDeviceNotesKey,
   groupCourseThreads,
   isUuid,
   validateCommunicationBody,
@@ -82,4 +84,29 @@ test("unread count follows per-course preferences without hiding readable record
     messageIds: [messages[1].id],
     announcementIds: [announcements[0].id],
   });
+});
+
+test("communication view navigation and device notes remain course scoped", () => {
+  const firstCourseId = DIGITAL_LITERACY_COMMUNICATION_FIXTURE.course.id;
+  const secondCourseId = "d1817a90-b3cf-4c2d-a7b0-cf3f5cf91c05";
+  const firstKey = courseDeviceNotesKey({
+    educationDivision: "university",
+    role: "student",
+    userId: "learner-1",
+    courseId: firstCourseId,
+  });
+  const secondKey = courseDeviceNotesKey({
+    educationDivision: "university",
+    role: "student",
+    userId: "learner-1",
+    courseId: secondCourseId,
+  });
+
+  assert.match(firstKey, new RegExp(firstCourseId, "u"));
+  assert.notEqual(firstKey, secondKey);
+  assert.equal(communicationModeAfterKey("cloud", "ArrowRight"), "device");
+  assert.equal(communicationModeAfterKey("device", "ArrowRight"), "cloud");
+  assert.equal(communicationModeAfterKey("cloud", "End"), "device");
+  assert.equal(communicationModeAfterKey("device", "Home"), "cloud");
+  assert.equal(communicationModeAfterKey("cloud", "Enter"), null);
 });

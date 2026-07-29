@@ -11,7 +11,7 @@ function StatusBadge({ active }) {
   return <span className={`research-gate-status ${active ? "is-active" : "is-blocked"}`}>{active ? "ACTIVE" : "NOT ACTIVATED"}</span>;
 }
 
-function GateCard({ project }) {
+function projectGateState(project) {
   const serverBlockers = Array.isArray(project.blockers) ? project.blockers : [];
   const evaluation = project.fixture ? evaluateResearchGate({
     ...project,
@@ -23,7 +23,11 @@ function GateCard({ project }) {
   }) : { blockers: [] };
   const blockers = [...new Set([...evaluation.blockers, ...serverBlockers])];
   const active = project.status === "active" && blockers.length === 0;
+  return { active, blockers };
+}
 
+function GateCard({ project }) {
+  const { active, blockers } = projectGateState(project);
   return (
     <article className="research-gate-card">
       <div className="research-gate-card__heading">
@@ -96,6 +100,7 @@ export default function ResearchPilotGatePanel({ institutionId = null, instituti
         ...DIGITAL_LITERACY_RESEARCH_FIXTURE,
         institution: institutionName || DIGITAL_LITERACY_RESEARCH_FIXTURE.institution,
       }];
+  const hasActiveProject = projects.some((project) => projectGateState(project).active);
 
   return (
     <section className="ac-panel research-gate-panel">
@@ -105,7 +110,7 @@ export default function ResearchPilotGatePanel({ institutionId = null, instituti
           <h2>Digital Literacy pilot research gate</h2>
           <p>Plan the pilot without collecting research data. Product feedback, usability reports, feature voting, and course-improvement feedback remain available in their ordinary modes.</p>
         </div>
-        <StatusBadge active={false} />
+        <StatusBadge active={hasActiveProject} />
       </div>
       <div className="ac-callout ac-callout--warning">
         <strong>Fail-closed by design.</strong> Pre/post assessments, qualitative interviews, open-ended research surveys, learning-effectiveness analysis, and research exports stay off until a written Angelo State IRB/HRPP determination is recorded for the exact version and scope.

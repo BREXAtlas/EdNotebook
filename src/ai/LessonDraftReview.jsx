@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { generateProfessorLesson } from "./learningAiService.js";
 import {
@@ -48,13 +48,59 @@ function recordMatchesCourse(record, course, manifest) {
 
 function DraftPreview({ draft, manifest, onClose }) {
   const [mode, setMode] = useState("platform");
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
   const conceptSections = (draft.sections || []).slice(0, 4);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previouslyFocused = document.activeElement;
+    if (!dialog) return undefined;
+
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = [...dialog.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => !element.hasAttribute("hidden"));
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    dialog.addEventListener("keydown", handleKeyDown);
+    return () => {
+      dialog.removeEventListener("keydown", handleKeyDown);
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, [onClose]);
+
   return (
     <div
+      ref={dialogRef}
       className="course-preview-overlay phase5-lesson-preview"
       role="dialog"
       aria-modal="true"
       aria-labelledby="phase5-preview-title"
+      tabIndex={-1}
     >
       <div className={mode === "standalone" ? "is-standalone-preview" : ""}>
         <header>
@@ -81,7 +127,7 @@ function DraftPreview({ draft, manifest, onClose }) {
             >
               Standalone
             </button>
-            <button type="button" onClick={onClose}>Close</button>
+            <button ref={closeButtonRef} type="button" onClick={onClose}>Close</button>
           </div>
         </header>
         {mode === "platform" && (

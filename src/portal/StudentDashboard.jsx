@@ -143,7 +143,7 @@ function FriendsPanel({ track, userId }) {
   return <section className="dashboard-card friend-finder"><span className="portal-kicker">FIND YOUR PEOPLE</span><h1>Find friends by name.</h1><p>Search shows only students who turned on name discovery. Hidden and private profiles never appear.</p><form onSubmit={search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Student name" aria-label="Student name" /><button type="submit">Search</button></form>{status && <p role="status" className="friend-search-status">{status}</p>}<div className="friend-result-grid">{results.map((person) => <article key={person.user_id}><span>{person.display_name.slice(0, 1).toUpperCase()}</span><div><strong>{person.display_name}</strong><small>{person.school_name || (track === "k12" ? "K–12 student" : "University student")}{person.graduation_year ? ` · ${person.graduation_year}` : ""}</small><p>{person.bio || "Learning with EdNotebook."}</p></div></article>)}</div></section>;
 }
 
-function FriendsPanelV2({ track, userId, storageScope }) {
+function FriendsPanelV2({ track, userId, storageScope, onOpenCourseCommunication }) {
   const personaId = track === "k12" ? "k12" : "student";
   const guide = getDefaultConnection(personaId);
   const followingKey = `ednotebook-${track}-${storageScope}-following-guides`;
@@ -153,7 +153,6 @@ function FriendsPanelV2({ track, userId, storageScope }) {
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [selected, setSelected] = useState({ user_id: `guide-${personaId}`, display_name: guide.name, school_name: guide.role, bio: personaId === "k12" ? "Accounting, college prep, training, and school life." : "Business classes, art, campus life, and honest study updates.", online: true, image: guide.image, guide: true });
   const [following, setFollowing] = useState(() => readStorage(window.localStorage, followingKey, []).includes(personaId));
-  const [message, setMessage] = useState("");
   async function search(event) {
     event.preventDefault();
     if (query.trim().length < 2) { setStatus("Enter at least two letters."); return; }
@@ -164,18 +163,9 @@ function FriendsPanelV2({ track, userId, storageScope }) {
     setResults(data);
     setStatus(data.length ? `${data.length} visible profile${data.length === 1 ? "" : "s"} found.` : "No visible profiles matched that name.");
   }
-  function sendMessage(event) {
-    event.preventDefault();
-    if (!message.trim()) return;
-    const key = `ednotebook-${track}-${storageScope}-session-messages`;
-    const current = readStorage(window.sessionStorage, key, []);
-    window.sessionStorage.setItem(key, JSON.stringify([...current, { id: crypto.randomUUID(), body: message.trim(), createdAt: new Date().toISOString(), sender: "You", recipient: selected.display_name }]));
-    setMessage("");
-    setStatus(`Message saved for ${selected.display_name}.`);
-  }
   function toggleGuideFollow() { const next = !following; setFollowing(next); window.localStorage.setItem(followingKey, JSON.stringify(next ? [personaId] : [])); }
   const people = [{ user_id: `guide-${personaId}`, display_name: guide.name, school_name: guide.role, bio: selected.guide ? selected.bio : "Weekly EdNotebook guide.", online: true, image: guide.image, guide: true }, ...results].filter((person) => !onlineOnly || person.online);
-  return <div className="portal-friends-layout"><section className="dashboard-card friend-finder"><span className="portal-kicker">FIND YOUR PEOPLE</span><h1>Friends and followers</h1><p>Search visible profiles, filter who is online, and open a profile before messaging.</p><form onSubmit={search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Student or professor name" aria-label="Student or professor name" /><button type="submit">Search</button></form><label className="friends-online-toggle"><input type="checkbox" checked={onlineOnly} onChange={(event) => setOnlineOnly(event.target.checked)} />Online now</label>{status && <p role="status" className="friend-search-status">{status}</p>}<div className="friend-result-grid">{people.map((person) => <button type="button" className={selected?.user_id === person.user_id ? "is-active" : ""} key={person.user_id} onClick={() => setSelected(person)}>{person.image ? <img src={person.image} alt="" /> : <span>{person.display_name.slice(0, 1).toUpperCase()}</span>}<div><strong>{person.display_name}</strong><small>{person.role ? `${person.role} · ${person.school_name || "School profile"}` : person.school_name || (track === "k12" ? "School student" : "University student")} · {person.online ? "Online" : "Status unavailable"}</small><p>{person.bio || "Learning with EdNotebook."}</p></div></button>)}</div></section><aside className="dashboard-card portal-friend-profile">{selected && <><div className="portal-friend-profile-hero">{selected.image ? <img src={selected.image} alt="" /> : <span>{selected.display_name.slice(0, 1)}</span>}<div><span className="portal-kicker">PROFILE</span><h2>{selected.display_name}</h2><p>{selected.bio}</p></div></div>{selected.guide && <button type="button" onClick={toggleGuideFollow}>{following ? `Following ${guide.shortName}` : `Follow ${guide.shortName}`}</button>}<form onSubmit={sendMessage}><label>Message<textarea rows={4} value={message} onChange={(event) => setMessage(event.target.value)} /></label><button type="submit">Send message</button></form></>}</aside></div>;
+  return <div className="portal-friends-layout"><section className="dashboard-card friend-finder"><span className="portal-kicker">FIND YOUR PEOPLE</span><h1>Friends and followers</h1><p>Search visible profiles, filter who is online, and open a profile before following or visiting the course room.</p><form onSubmit={search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Student or professor name" aria-label="Student or professor name" /><button type="submit">Search</button></form><label className="friends-online-toggle"><input type="checkbox" checked={onlineOnly} onChange={(event) => setOnlineOnly(event.target.checked)} />Online now</label>{status && <p role="status" className="friend-search-status">{status}</p>}<div className="friend-result-grid">{people.map((person) => <button type="button" className={selected?.user_id === person.user_id ? "is-active" : ""} key={person.user_id} onClick={() => setSelected(person)}>{person.image ? <img src={person.image} alt="" /> : <span>{person.display_name.slice(0, 1).toUpperCase()}</span>}<div><strong>{person.display_name}</strong><small>{person.role ? `${person.role} · ${person.school_name || "School profile"}` : person.school_name || (track === "k12" ? "School student" : "University student")} · {person.online ? "Online" : "Status unavailable"}</small><p>{person.bio || "Learning with EdNotebook."}</p></div></button>)}</div></section><aside className="dashboard-card portal-friend-profile">{selected && <><div className="portal-friend-profile-hero">{selected.image ? <img src={selected.image} alt="" /> : <span>{selected.display_name.slice(0, 1)}</span>}<div><span className="portal-kicker">PROFILE</span><h2>{selected.display_name}</h2><p>{selected.bio}</p></div></div>{selected.guide && <button type="button" onClick={toggleGuideFollow}>{following ? `Following ${guide.shortName}` : `Follow ${guide.shortName}`}</button>}<div className="course-communication-route"><strong>Messages belong to an enrolled course.</strong><p>Profiles do not create private direct-message threads. Open the synced course room to choose a current class and contact the professor or class there.</p><button type="button" onClick={onOpenCourseCommunication}>Open course communication</button></div></>}</aside></div>;
 }
 
 function StudentPagePanel({ name, track, userId, storageScope, accountSettings, onSettingsChange }) {
@@ -279,7 +269,7 @@ export default function StudentDashboard({ profile, session, track = "university
       setTab("overview");
       return;
     }
-    if (nextTab === "settings") setDemoMode(false);
+    if (nextTab === "settings" || nextTab === "messages") setDemoMode(false);
     setTab(nextTab);
   }
 
@@ -330,7 +320,7 @@ export default function StudentDashboard({ profile, session, track = "university
       <div className="student-dashboard-shell">
         <aside className="student-dashboard-sidebar">
           <div className="student-sidebar-profile"><span>{(demoMode ? "B" : displayName.slice(0, 1)).toUpperCase()}</span><div><strong>{demoMode ? "Brooke" : displayName}</strong><small>{demoMode ? "Demonstration student" : liveClasses.length ? `${liveClasses.length} linked class${liveClasses.length === 1 ? "" : "es"}` : "New student workspace"}</small></div></div>
-          <nav aria-label={`${copy.shortLabel} student dashboard`}>{TABS.map(([id, label]) => <button className={(id === "demo" ? demoMode : tab === id && !demoMode) ? "is-active" : ""} type="button" key={id} onClick={() => chooseTab(id)}>{label}{id === "grades" && classes.length > 0 && <i>{rows.filter((row) => row.status !== "final").length}</i>}</button>)}</nav>
+          <nav aria-label={`${copy.shortLabel} student dashboard`}>{TABS.map(([id, label]) => <button className={(id === "demo" ? demoMode : tab === id && !demoMode) ? "is-active" : ""} aria-current={(id === "demo" ? demoMode : tab === id && !demoMode) ? "page" : undefined} type="button" key={id} onClick={() => chooseTab(id)}>{label}{id === "grades" && classes.length > 0 && <i>{rows.filter((row) => row.status !== "final").length}</i>}</button>)}</nav>
           <div className="student-sidebar-points"><span>SOCIAL EDUCATION LEARNING</span><strong>{rewardSummary.totalPoints} points</strong><div><i style={{ width: `${rewardSummary.progressPercent}%` }} /></div><small>{rewardSummary.nextMilestone ? `${rewardSummary.pointsToNext} to ${rewardSummary.nextMilestone.badge_name}` : "Current path complete"}</small></div>
         </aside>
         <main className="student-dashboard-main">
@@ -343,7 +333,7 @@ export default function StudentDashboard({ profile, session, track = "university
           {tab === "rewards" && <StudentSocialLearningPanel userId={session?.user?.id} demo={demoMode} onSummary={setRewardSummary} />}
           {tab === "notes" && <StudentLearningWorkspace key={`learning-${settingsScope}-${track}`} classes={classes} session={session} track={track} storageScope={settingsScope} />}
           {tab === "life" && <StudentLifePanelV2 key={`life-${settingsScope}-${track}`} groups={groups} initialPosts={posts} track={track} accountSettings={accountSettings} storageScope={settingsScope} />}
-          {tab === "friends" && <FriendsPanelV2 key={`friends-${settingsScope}-${track}`} track={track} userId={session?.user?.id} storageScope={settingsScope} />}
+          {tab === "friends" && <FriendsPanelV2 key={`friends-${settingsScope}-${track}`} track={track} userId={session?.user?.id} storageScope={settingsScope} onOpenCourseCommunication={() => chooseTab("messages")} />}
           {tab === "messages" && <CourseCommunicationPanel key={`messages-${settingsScope}-${track}`} role="student" session={session} educationDivision={track} />}
           {tab === "page" && <StudentPagePanel key={`page-${settingsScope}-${track}`} name={accountSettings.displayName || profile?.full_name || displayName} track={track} userId={session?.user?.id} storageScope={settingsScope} accountSettings={accountSettings} onSettingsChange={applyAccountSettings} />}
           {tab === "opportunities" && <OpportunitiesPanel track={track} />}

@@ -7,6 +7,7 @@ export const COURSE_COMMUNICATION_LIMITS = Object.freeze({
 });
 
 export const COURSE_MESSAGE_KINDS = Object.freeze(["question", "reply", "course_note"]);
+export const COURSE_COMMUNICATION_MODES = Object.freeze(["cloud", "device"]);
 
 const EMAIL_PATTERN = /[\w.%+-]+@[\w.-]+\.[a-z]{2,}/iu;
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/iu;
@@ -47,6 +48,28 @@ export const DIGITAL_LITERACY_COMMUNICATION_FIXTURE = Object.freeze({
 
 export function isUuid(value) {
   return UUID_VALUE_PATTERN.test(String(value || ""));
+}
+
+export function courseDeviceNotesKey({
+  educationDivision = "university",
+  role = "student",
+  userId = "guest",
+  courseId = "no-course",
+} = {}) {
+  return `ednotebook-${educationDivision}-${role}-${userId || "guest"}-${courseId || "no-course"}-session-device-notes`;
+}
+
+export function communicationModeAfterKey(currentMode, key) {
+  const currentIndex = Math.max(COURSE_COMMUNICATION_MODES.indexOf(currentMode), 0);
+  if (key === "Home") return COURSE_COMMUNICATION_MODES[0];
+  if (key === "End") return COURSE_COMMUNICATION_MODES.at(-1);
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    return COURSE_COMMUNICATION_MODES[(currentIndex + 1) % COURSE_COMMUNICATION_MODES.length];
+  }
+  if (key === "ArrowLeft" || key === "ArrowUp") {
+    return COURSE_COMMUNICATION_MODES[(currentIndex - 1 + COURSE_COMMUNICATION_MODES.length) % COURSE_COMMUNICATION_MODES.length];
+  }
+  return null;
 }
 
 export function validateCommunicationBody(value, { label = "Message", maximum = COURSE_COMMUNICATION_LIMITS.messageCharacters } = {}) {

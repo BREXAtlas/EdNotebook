@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   COURSE_COMMUNICATION_LIMITS,
   audienceLabel,
+  communicationModeAfterKey,
   countUnreadCommunication,
+  courseDeviceNotesKey,
   groupCourseThreads,
   visibleReadTargets,
 } from "./courseCommunicationModel.js";
@@ -16,6 +18,21 @@ import {
   subscribeCourseCommunication,
 } from "./courseCommunicationService.js";
 import "./course-communication.css";
+
+const DEFAULT_PREFERENCES = Object.freeze({
+  notifyAnnouncements: true,
+  notifyReplies: true,
+});
+
+function emptyCommunicationSnapshot() {
+  return {
+    messages: [],
+    announcements: [],
+    reads: [],
+    preferences: { ...DEFAULT_PREFERENCES },
+    resources: [],
+  };
+}
 
 function readDeviceNotes(key) {
   try {
@@ -114,16 +131,15 @@ export default function CourseCommunicationPanel({
   headingLevel = "h1",
 }) {
   const Heading = headingLevel;
+  const modeTabRefs = useRef({});
+  const currentCourseIdRef = useRef(initialCourseId || "");
+  const refreshGenerationRef = useRef(0);
+  const refreshRequestRef = useRef(0);
+  const preferencesDirtyRef = useRef(false);
   const [mode, setMode] = useState("cloud");
   const [courses, setCourses] = useState([]);
   const [courseId, setCourseId] = useState(initialCourseId || "");
-  const [snapshot, setSnapshot] = useState({
-    messages: [],
-    announcements: [],
-    reads: [],
-    preferences: { notifyAnnouncements: true, notifyReplies: true },
-    resources: [],
-  });
+  const [snapshot, setSnapshot] = useState(emptyCommunicationSnapshot);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -134,10 +150,16 @@ export default function CourseCommunicationPanel({
   const [attachmentResourceId, setAttachmentResourceId] = useState("");
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementBody, setAnnouncementBody] = useState("");
-  const [preferences, setPreferences] = useState({ notifyAnnouncements: true, notifyReplies: true });
+  const [preferences, setPreferences] = useState({ ...DEFAULT_PREFERENCES });
   const activeCourse = courses.find((course) => course.id === courseId) || null;
   const deviceDivision = activeCourse?.education_division || educationDivision;
-  const deviceStorageKey = `ednotebook-${deviceDivision}-${role}-${session?.user?.id || "guest"}-session-device-notes`;
+  const deviceStorageKey = courseDeviceNotesKey({
+    educationDivision: deviceDivision,
+    role,
+    userId: session?.user?.id,
+    courseId,
+  });
+  currentCourseIdRef.current = courseId;
 
   useEffect(() => {
     let active = true;
@@ -158,21 +180,54 @@ export default function CourseCommunicationPanel({
   }, [educationDivision, initialCourseId, role, session?.user?.id]);
 
   const refresh = useCallback(async ({ quiet = false } = {}) => {
-    if (!courseId) return;
+    const requestedCourseId = courseId;
+    const requestGeneration = refreshGenerationRef.current;
+    const requestId = refreshRequestRef.current + 1;
+    refreshRequestRef.current = requestId;
+    if (!requestedCourseId) return false;
     if (!quiet) setLoading(true);
-    const result = await loadCourseCommunication(courseId);
+    const result = await loadCourseCommunication(requestedCourseId);
+    if (
+      requestGeneration !== refreshGenerationRef.current
+      || requestId !== refreshRequestRef.current
+      || requestedCourseId !== currentCourseIdRef.current
+    ) {
+      return false;
+    }
     if (result.error) {
       setError("Synced course communication is unavailable. Device-only notes remain separate and are not delivered.");
     } else {
       setSnapshot(result.data);
-      setPreferences(result.data.preferences);
+      if (!preferencesDirtyRef.current) {
+        setPreferences(result.data.preferences);
+      }
       setError("");
     }
-    if (!quiet) setLoading(false);
+    setLoading(false);
+    return true;
   }, [courseId]);
 
   useEffect(() => {
-    if (!courseId) return undefined;
+    const effectGeneration = refreshGenerationRef.current + 1;
+    refreshGenerationRef.current = effectGeneration;
+    setReplyTo(null);
+    setAttachmentResourceId("");
+    setMessageBody("");
+    setAnnouncementTitle("");
+    setAnnouncementBody("");
+    setNotice("");
+    setRealtimeStatus("CONNECTING");
+    preferencesDirtyRef.current = false;
+    if (!courseId) {
+      setSnapshot(emptyCommunicationSnapshot());
+      setPreferences({ ...DEFAULT_PREFERENCES });
+      setLoading(false);
+      return () => {
+        if (refreshGenerationRef.current === effectGeneration) {
+          refreshGenerationRef.current += 1;
+        }
+      };
+    }
     let active = true;
     refresh();
     const unsubscribe = subscribeCourseCommunication(
@@ -186,10 +241,36 @@ export default function CourseCommunicationPanel({
     );
     return () => {
       active = false;
+      if (refreshGenerationRef.current === effectGeneration) {
+        refreshGenerationRef.current += 1;
+      }
       unsubscribe();
       window.clearInterval(fallbackTimer);
     };
   }, [courseId, refresh]);
+
+  function chooseCourse(nextCourseId) {
+    if (nextCourseId === courseId) return;
+    refreshGenerationRef.current += 1;
+    setSnapshot(emptyCommunicationSnapshot());
+    setPreferences({ ...DEFAULT_PREFERENCES });
+    setLoading(true);
+    setError("");
+    setCourseId(nextCourseId);
+  }
+
+  function changePreference(key, checked) {
+    preferencesDirtyRef.current = true;
+    setPreferences((current) => ({ ...current, [key]: checked }));
+  }
+
+  function handleModeKeyDown(event) {
+    const nextMode = communicationModeAfterKey(mode, event.key);
+    if (!nextMode) return;
+    event.preventDefault();
+    setMode(nextMode);
+    modeTabRefs.current[nextMode]?.focus();
+  }
 
   const grouped = useMemo(() => groupCourseThreads(snapshot.messages), [snapshot.messages]);
   const unread = useMemo(() => countUnreadCommunication({
@@ -258,7 +339,11 @@ export default function CourseCommunicationPanel({
     setBusy(true);
     const result = await saveCourseCommunicationPreferences({ courseId, ...preferences });
     if (result.error) setError(result.error.message || "Notification preferences could not be saved.");
-    else setNotice("In-app notification preferences saved for this course.");
+    else {
+      refreshRequestRef.current += 1;
+      preferencesDirtyRef.current = false;
+      setNotice("In-app notification preferences saved for this course.");
+    }
     setBusy(false);
   }
 
@@ -276,24 +361,51 @@ export default function CourseCommunicationPanel({
         </div>
       </header>
 
-      <div className="course-communication-mode" role="tablist" aria-label="Communication storage">
-        <button type="button" role="tab" aria-selected={mode === "cloud"} className={mode === "cloud" ? "is-active" : ""} onClick={() => setMode("cloud")}>
+      <div className="course-communication-mode" role="tablist" aria-label="Communication storage" onKeyDown={handleModeKeyDown}>
+        <button
+          id="course-communication-cloud-tab"
+          ref={(element) => { modeTabRefs.current.cloud = element; }}
+          type="button"
+          role="tab"
+          aria-controls="course-communication-cloud-panel"
+          aria-selected={mode === "cloud"}
+          tabIndex={mode === "cloud" ? 0 : -1}
+          className={mode === "cloud" ? "is-active" : ""}
+          onClick={() => setMode("cloud")}
+        >
           Synced course room
           <small>Authorized cloud delivery</small>
         </button>
-        <button type="button" role="tab" aria-selected={mode === "device"} className={mode === "device" ? "is-active" : ""} onClick={() => setMode("device")}>
+        <button
+          id="course-communication-device-tab"
+          ref={(element) => { modeTabRefs.current.device = element; }}
+          type="button"
+          role="tab"
+          aria-controls="course-communication-device-panel"
+          aria-selected={mode === "device"}
+          tabIndex={mode === "device" ? 0 : -1}
+          className={mode === "device" ? "is-active" : ""}
+          onClick={() => setMode("device")}
+        >
           Device-only notes
           <small>Private · not sent · not synced</small>
         </button>
       </div>
 
-      {mode === "device" ? <DeviceNotes key={deviceStorageKey} storageKey={deviceStorageKey} /> : (
-        <div className="course-communication-cloud">
+      <div
+        id="course-communication-cloud-panel"
+        role="tabpanel"
+        aria-labelledby="course-communication-cloud-tab"
+        tabIndex={0}
+        hidden={mode !== "cloud"}
+      >
+        {mode === "cloud" && (
+          <div className="course-communication-cloud">
           {courses.length > 0 && (
             <div className="course-communication-toolbar">
               <label>
                 Course
-                <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+                <select value={courseId} onChange={(event) => chooseCourse(event.target.value)} disabled={busy}>
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.education_division === "k12" ? "K–12" : "University"} · {course.course_code || "COURSE"} · {course.title}
@@ -429,14 +541,24 @@ export default function CourseCommunicationPanel({
 
               <form className="course-notification-preferences" onSubmit={savePreferences}>
                 <div><span>IN-APP NOTIFICATIONS</span><strong>Choose badges without hiding the course record.</strong></div>
-                <label><input type="checkbox" checked={preferences.notifyAnnouncements} onChange={(event) => setPreferences((current) => ({ ...current, notifyAnnouncements: event.target.checked }))} />Count new announcements</label>
-                <label><input type="checkbox" checked={preferences.notifyReplies} onChange={(event) => setPreferences((current) => ({ ...current, notifyReplies: event.target.checked }))} />Count new questions and replies</label>
+                <label><input type="checkbox" checked={preferences.notifyAnnouncements} onChange={(event) => changePreference("notifyAnnouncements", event.target.checked)} />Count new announcements</label>
+                <label><input type="checkbox" checked={preferences.notifyReplies} onChange={(event) => changePreference("notifyReplies", event.target.checked)} />Count new questions and replies</label>
                 <button type="submit" className="is-secondary" disabled={busy}>Save preferences</button>
               </form>
             </>
           )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+      <div
+        id="course-communication-device-panel"
+        role="tabpanel"
+        aria-labelledby="course-communication-device-tab"
+        tabIndex={0}
+        hidden={mode !== "device"}
+      >
+        {mode === "device" && <DeviceNotes key={deviceStorageKey} storageKey={deviceStorageKey} />}
+      </div>
     </section>
   );
 }

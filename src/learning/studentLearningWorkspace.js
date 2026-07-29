@@ -26,6 +26,85 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
+function courseContext(course = DIGITAL_LITERACY_SYNTHETIC_CONTEXT) {
+  const source = course || DIGITAL_LITERACY_SYNTHETIC_CONTEXT;
+  const synthetic = source.synthetic === true;
+  return {
+    synthetic,
+    courseId: synthetic
+      ? null
+      : cleanText(source.courseId || source.id) || null,
+    courseCode: cleanText(source.courseCode || source.code) || "DIGL-101",
+    courseTitle: cleanText(source.courseTitle || source.title) || "Digital Literacy",
+    lessons: Array.isArray(source.lessons) ? source.lessons : [],
+  };
+}
+
+function courseSelectionKey(course) {
+  if (!course) return "";
+  const context = courseContext(course);
+  if (context.courseId) return `course:${context.courseId}`;
+  if (!context.synthetic) return "";
+  return `synthetic:${context.courseCode.toLowerCase()}::${context.courseTitle.toLowerCase()}`;
+}
+
+function selectableCourseContexts(classes = []) {
+  const live = (Array.isArray(classes) ? classes : [])
+    .map((course) => courseContext(course))
+    .filter((course) => course.courseId || course.synthetic);
+  const hasDigitalLiteracy = live.some(
+    (course) => !course.synthetic && /digital literacy/iu.test(course.courseTitle),
+  );
+  const candidates = hasDigitalLiteracy
+    ? live.filter((course) => !course.synthetic)
+    : [...live, courseContext(DIGITAL_LITERACY_SYNTHETIC_CONTEXT)];
+  const bySelectionKey = new Map();
+  candidates.forEach((course) => {
+    const key = courseSelectionKey(course);
+    if (key && !bySelectionKey.has(key)) bySelectionKey.set(key, course);
+  });
+  return [...bySelectionKey.values()];
+}
+
+function reconcileCourseContext(current, courses = []) {
+  const options = (Array.isArray(courses) ? courses : [])
+    .map((course) => courseContext(course))
+    .filter((course) => courseSelectionKey(course));
+  const safeOptions = options.length
+    ? options
+    : selectableCourseContexts([]);
+  const currentKey = courseSelectionKey(current);
+  let selected = safeOptions.find(
+    (course) => courseSelectionKey(course) === currentKey,
+  );
+  if (!selected && current?.synthetic) {
+    const currentTitle = cleanText(current.courseTitle).toLowerCase();
+    selected = safeOptions.find(
+      (course) => !course.synthetic
+        && cleanText(course.courseTitle).toLowerCase() === currentTitle,
+    );
+  }
+  selected ||= safeOptions[0];
+  const selectedKey = courseSelectionKey(selected);
+  const sameCourse = Boolean(currentKey && currentKey === selectedKey);
+  const selectedLesson = sameCourse
+    ? selected.lessons.find((lesson) => lesson.id === current?.lessonId)
+    : null;
+  const keepsFreeformLesson = sameCourse && selected.lessons.length === 0;
+  return {
+    ...selected,
+    lessonId: selectedLesson?.id
+      || (keepsFreeformLesson ? cleanText(current?.lessonId) : ""),
+    lessonTitle: selectedLesson?.title
+      || (keepsFreeformLesson ? cleanText(current?.lessonTitle) : ""),
+    sourceRootId: sameCourse ? current?.sourceRootId || null : null,
+  };
+}
+
+function shouldLoadPrivateCloudRecords(storageMode, studentId) {
+  return storageMode === "cloud" && Boolean(cleanText(studentId));
+}
+
 function toIso(value = new Date()) {
   const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
@@ -351,6 +430,11 @@ export {
   WORKSPACE_SCHEMA,
   PACKET_SCHEMA,
   DIGITAL_LITERACY_SYNTHETIC_CONTEXT,
+  courseContext,
+  courseSelectionKey,
+  selectableCourseContexts,
+  reconcileCourseContext,
+  shouldLoadPrivateCloudRecords,
   workspaceStorageKey,
   emptyWorkspace,
   readDeviceWorkspace,

@@ -1,4 +1,4 @@
-export const STUDENT_DATA_SNAPSHOT_VERSION = "2.2";
+export const STUDENT_DATA_SNAPSHOT_VERSION = "2.3";
 
 export const STUDENT_DATA_DOMAINS = Object.freeze([
   "profile",
@@ -17,6 +17,8 @@ export const STUDENT_DATA_DOMAINS = Object.freeze([
   "studentGrades",
   "gradeShareLinks",
   "learningMessages",
+  "courseCommunicationReads",
+  "courseCommunicationPreferences",
   "learningResources",
   "studentLearningRecords",
   "studentPublicProfile",

@@ -165,6 +165,8 @@ test("the disposable database harness covers approval, tenant, consent, minimiza
 test("the admin planning surface stays visibly inactive and separates ordinary feedback", async () => {
   const source = await readFile(new URL("./ResearchPilotGatePanel.jsx", import.meta.url), "utf8");
   assert.match(source, /NOT ACTIVATED/u);
+  assert.match(source, /active=\{hasActiveProject\}/u);
+  assert.doesNotMatch(source, /<StatusBadge active=\{false\}/u);
   assert.match(source, /Product feedback, usability reports, feature voting, and course-improvement feedback remain available/u);
   assert.match(source, /Enrollment, an EdNotebook account, course work, or acceptance of account terms never counts as research participation/u);
   assert.doesNotMatch(source, /Activate research/u);

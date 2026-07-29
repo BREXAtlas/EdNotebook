@@ -51,6 +51,9 @@ test("selected-section regeneration remains visibly deferred behind its own gate
 });
 
 test("lesson review reuses Course Output Studio and keeps preview in the app", () => {
+  assert.match(studioSource, /lazy\(\(\) => import\("\.\.\/ai\/LessonDraftReview\.jsx"\)\)/);
+  assert.match(studioSource, /IS_STAGING && LessonDraftReview/);
+  assert.match(studioSource, /<Suspense/);
   assert.match(studioSource, /<LessonDraftReview/);
   assert.match(studioSource, /key=\{`\$\{activeCourse\.id\}:\$\{selectedLesson\.id\}`\}/);
   assert.match(studioSource, /setManifest\(nextManifest\)/);
@@ -58,6 +61,9 @@ test("lesson review reuses Course Output Studio and keeps preview in the app", (
   assert.match(reviewSource, /Standalone course-package preview/);
   assert.doesNotMatch(reviewSource, /window\.open/);
   assert.doesNotMatch(reviewSource, /target="_blank"/);
+  assert.match(reviewSource, /event\.key === "Escape"/);
+  assert.match(reviewSource, /dialog\.querySelectorAll/);
+  assert.match(reviewSource, /previouslyFocused instanceof HTMLElement/);
   assert.match(outlineBuilderSource, /courseId:[\s\S]*existingCourse\.id/);
 });
 

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { communicationModeAfterKey } from "../communication/courseCommunicationModel.js";
 import CloudCourseRoom from "./CloudCourseRoom.jsx";
 import DeviceNotebook from "./DeviceNotebook.jsx";
 import { readCourseDraft } from "./storageService.js";
@@ -26,8 +27,16 @@ function downloadTranscript(courseTitle, messages, mode) {
 export default function CommunicationRoom() {
   const course = useMemo(readCourseDraft, []);
   const [mode, setMode] = useState("cloud");
+  const modeTabRefs = useRef({});
 
   const download = (messages, storageMode) => downloadTranscript(course.name, messages, storageMode);
+  function handleModeKeyDown(event) {
+    const nextMode = communicationModeAfterKey(mode, event.key);
+    if (!nextMode) return;
+    event.preventDefault();
+    setMode(nextMode);
+    modeTabRefs.current[nextMode]?.focus();
+  }
 
   return (
     <section className="studio-workspace" aria-labelledby="communication-title">
@@ -41,11 +50,15 @@ export default function CommunicationRoom() {
         </div>
       </div>
 
-      <div className="studio-room-mode" role="tablist" aria-label="Communication storage mode">
+      <div className="studio-room-mode" role="tablist" aria-label="Communication storage mode" onKeyDown={handleModeKeyDown}>
         <button
+          id="studio-course-room-tab"
+          ref={(element) => { modeTabRefs.current.cloud = element; }}
           type="button"
           role="tab"
+          aria-controls="studio-course-room-panel"
           aria-selected={mode === "cloud"}
+          tabIndex={mode === "cloud" ? 0 : -1}
           className={mode === "cloud" ? "is-active" : ""}
           onClick={() => setMode("cloud")}
         >
@@ -53,9 +66,13 @@ export default function CommunicationRoom() {
           <div><strong>Course room</strong><small>Authenticated, course-scoped cloud record</small></div>
         </button>
         <button
+          id="studio-device-notebook-tab"
+          ref={(element) => { modeTabRefs.current.device = element; }}
           type="button"
           role="tab"
+          aria-controls="studio-device-notebook-panel"
           aria-selected={mode === "device"}
+          tabIndex={mode === "device" ? 0 : -1}
           className={mode === "device" ? "is-active" : ""}
           onClick={() => setMode("device")}
         >
@@ -64,11 +81,24 @@ export default function CommunicationRoom() {
         </button>
       </div>
 
-      {mode === "cloud" ? (
-        <CloudCourseRoom course={course} onDownload={download} />
-      ) : (
-        <DeviceNotebook onDownload={download} />
-      )}
+      <div
+        id="studio-course-room-panel"
+        role="tabpanel"
+        aria-labelledby="studio-course-room-tab"
+        tabIndex={0}
+        hidden={mode !== "cloud"}
+      >
+        {mode === "cloud" && <CloudCourseRoom course={course} onDownload={download} />}
+      </div>
+      <div
+        id="studio-device-notebook-panel"
+        role="tabpanel"
+        aria-labelledby="studio-device-notebook-tab"
+        tabIndex={0}
+        hidden={mode !== "device"}
+      >
+        {mode === "device" && <DeviceNotebook onDownload={download} />}
+      </div>
     </section>
   );
 }
