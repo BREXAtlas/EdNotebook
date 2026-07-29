@@ -20,7 +20,7 @@ import {
 import "./syllabus-to-course.css";
 import "./syllabus-to-course-fixes.css";
 
-const SYLLABUS_RECORD_KEY = "ednotebook-professor-syllabus-extraction";
+const SYLLABUS_RECORD_KEY = STORAGE_KEYS.structuredSyllabus;
 const IS_STAGING = import.meta.env.VITE_APP_ENVIRONMENT === "staging";
 const AI_UNCERTAINTY_ENABLED =
   IS_STAGING && import.meta.env.VITE_SYLLABUS_AI_ENABLED !== "false";
@@ -427,6 +427,10 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
       format: "EdNotebookStructuredSyllabus/1.0",
       reviewState: "professor_reviewed_draft",
       acceptedAt: new Date().toISOString(),
+      courseId:
+        courseDraft.id
+        || environmentStorage.getItem(STORAGE_KEYS.courseId)
+        || null,
       sourceLabel,
       sourceText: result.sourceText || sourceText,
       profile: {
