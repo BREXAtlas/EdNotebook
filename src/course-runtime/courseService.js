@@ -4,7 +4,7 @@ const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a
 
 export async function listManageableCourses() {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
-  const { data, error } = await supabase.from("courses").select("id,title,course_code,subject,audience,teaching_window,status,education_division,settings,updated_at").order("updated_at", { ascending: false });
+  const { data, error } = await supabase.from("courses").select("id,institution_id,title,course_code,subject,audience,teaching_window,status,education_division,settings,updated_at").order("updated_at", { ascending: false });
   return { data: data || [], error, source: error ? "device" : "cloud" };
 }
 

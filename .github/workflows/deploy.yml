@@ -49,6 +49,21 @@ jobs:
       - name: Test governed student semester calendar workflow
         run: npm run test:student-semester
 
+      - name: Test governed selected-lesson review workflow
+        run: npm run test:lesson-generation
+
+      - name: Test fail-closed Digital Literacy research governance
+        run: npm run test:research-gate
+
+      - name: Test Digital Literacy student learning workspace
+        run: npm run test:student-learning
+
+      - name: Test Social Education Learning rewards
+        run: npm run test:social-learning
+
+      - name: Test professor-student course communication sync
+        run: npm run test:course-communication
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 
@@ -128,6 +143,15 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/institution_student_data_safety.sql
+
+      - name: Run fail-closed Digital Literacy research gates
+        env:
+          PGCONNECT_TIMEOUT: '10'
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/digital_literacy_research_gate.sql
 
       - name: Stop the disposable local database
         if: always()

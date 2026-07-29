@@ -78,7 +78,7 @@ function governedSyllabusInput(input) {
 async function invokeGovernedTask(
   taskType,
   input,
-  { courseId, reviewer = "professor" } = {},
+  { courseId, institutionId, reviewer = "professor" } = {},
 ) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError) throw sessionError;
@@ -88,13 +88,16 @@ async function invokeGovernedTask(
     );
   }
 
-  const context = UUID_PATTERN.test(courseId || "") ? { courseId } : undefined;
+  const context = {
+    ...(UUID_PATTERN.test(institutionId || "") ? { institutionId } : {}),
+    ...(UUID_PATTERN.test(courseId || "") ? { courseId } : {}),
+  };
   const { data, error } = await supabase.functions.invoke(routerFunction, {
     body: {
       apiVersion: LEARNING_AI_API_VERSION,
       taskType,
       input,
-      ...(context ? { context } : {}),
+      ...(Object.keys(context).length ? { context } : {}),
     },
   });
 
@@ -128,4 +131,21 @@ export function interpretStudentSemesterSections(input, options = {}) {
     ...options,
     reviewer: "student",
   });
+}
+
+export function generateProfessorLesson(input, options = {}) {
+  if (
+    !UUID_PATTERN.test(options.institutionId || "")
+    || !UUID_PATTERN.test(options.courseId || "")
+  ) {
+    throw new Error(
+      "Lesson generation requires an approved institution and cloud course context.",
+    );
+  }
+  if (options.courseId !== input?.course?.courseId) {
+    throw new Error(
+      "The selected lesson does not match the authorized cloud course context.",
+    );
+  }
+  return invokeGovernedTask("lesson", input, options);
 }
