@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { generateProfessorLesson } from "./learningAiService.js";
+import ContentUnitReviewPanel from "./ContentUnitReviewPanel.jsx";
 import {
   LESSON_AI_DRAFT_LABEL,
   acceptLessonDraftIntoManifest,
@@ -405,6 +406,18 @@ function StagingLessonDraftReview({
     });
   }
 
+  function applyContentUnit(nextDraft, taskType) {
+    setDraft(nextDraft);
+    setPhase("review");
+    setReviewConfirmed(false);
+    setResolutions({});
+    setPreview(false);
+    setError("");
+    setMessage(
+      `Professor-applied ${taskType.replaceAll("_", " ")} revision. Recheck the whole unpublished lesson before accepting it.`,
+    );
+  }
+
   function toggleResolution(issueKey, issue) {
     setResolutions((current) => {
       if (current[issueKey]) {
@@ -694,15 +707,6 @@ function StagingLessonDraftReview({
                 </article>
               );
             })}
-            <div className="phase5-section-regeneration">
-              <button type="button" disabled>
-                Regenerate selected section
-              </button>
-              <span>
-                Deferred until the separate <code>lesson_section</code> task,
-                schema, provider evaluation, and route are approved.
-              </span>
-            </div>
           </section>
 
           <section className="phase5-check-editor">
@@ -742,6 +746,20 @@ function StagingLessonDraftReview({
               </article>
             ))}
           </section>
+
+          <ContentUnitReviewPanel
+            draft={draft}
+            lessonContract={requestInput}
+            selectedSectionId={selectedSection}
+            courseId={course.id}
+            institutionId={institutionId}
+            disabled={
+              !LESSON_AI_ENABLED
+              || phase === "generating"
+              || phase === "accepted"
+            }
+            onApply={applyContentUnit}
+          />
 
           <ReviewIssues
             draft={draft}

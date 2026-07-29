@@ -10,6 +10,10 @@ const serviceSource = readFileSync(
   new URL("./learningAiService.js", import.meta.url),
   "utf8",
 );
+const contentUnitSource = readFileSync(
+  new URL("./ContentUnitReviewPanel.jsx", import.meta.url),
+  "utf8",
+);
 const outlineBuilderSource = readFileSync(
   new URL("./CourseOutlineBuilder.jsx", import.meta.url),
   "utf8",
@@ -41,13 +45,21 @@ test("professor review exposes the required unpublished controls", () => {
   assert.match(reviewSource, /does not infer missing course-level requirements/);
 });
 
-test("selected-section regeneration remains visibly deferred behind its own gate", () => {
+test("controlled content units require separate governed calls and professor apply", () => {
+  assert.match(reviewSource, /<ContentUnitReviewPanel/);
+  assert.match(contentUnitSource, /Regenerate selected section/);
+  assert.match(contentUnitSource, /Regenerate activity/);
+  assert.match(contentUnitSource, /Regenerate selected check/);
+  assert.match(contentUnitSource, /Apply to unpublished lesson draft/);
+  assert.match(contentUnitSource, /reviewConfirmed/);
+  assert.match(contentUnitSource, /reviewBlockCount > 0/);
+  assert.match(serviceSource, /generateProfessorContentUnit/);
   assert.match(
-    reviewSource,
-    /Regenerate selected section[\s\S]*Deferred until the separate/,
+    serviceSource,
+    /\["lesson_section", "activity", "knowledge_check"\]/,
   );
-  assert.match(reviewSource, /lesson_section/);
-  assert.doesNotMatch(serviceSource, /generateProfessorLessonSection/);
+  assert.match(serviceSource, /invokeGovernedTask\(taskType, input, options\)/);
+  assert.doesNotMatch(contentUnitSource, /window\.open/);
 });
 
 test("lesson review reuses Course Output Studio and keeps preview in the app", () => {

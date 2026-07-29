@@ -16,7 +16,7 @@
     "test:ai-outline": "node --test src/ai/courseOutlineContract.test.js",
     "test:syllabus-extraction": "node --test src/ai/syllabusExtractionContract.test.js src/ai/syllabusGovernedReview.test.js src/ai/syllabusExtractionUx.static.test.js src/ai/syllabusAiReturnedDraft.static.test.js src/syllabus/syllabusMigration.test.js",
     "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js",
-    "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
+    "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/contentUnitGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
     "test:research-gate": "node --test src/research/researchGateModel.test.js",
     "test:student-learning": "node --test src/learning/citationTools.test.js src/learning/studentLearningWorkspace.test.js src/learning/studentLearningMigration.test.js src/learning/studentLearningUx.static.test.js",
     "test:social-learning": "node --test src/social-learning/socialLearningModel.test.js src/social-learning/socialLearningMigration.test.js src/social-learning/socialLearningUx.static.test.js",

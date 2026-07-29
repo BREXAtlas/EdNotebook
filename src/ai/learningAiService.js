@@ -149,3 +149,32 @@ export function generateProfessorLesson(input, options = {}) {
   }
   return invokeGovernedTask("lesson", input, options);
 }
+
+export function generateProfessorContentUnit(
+  taskType,
+  input,
+  options = {},
+) {
+  if (
+    !["lesson_section", "activity", "knowledge_check"].includes(taskType)
+  ) {
+    throw new Error("Select an approved lesson content-unit task.");
+  }
+  if (
+    !UUID_PATTERN.test(options.institutionId || "")
+    || !UUID_PATTERN.test(options.courseId || "")
+  ) {
+    throw new Error(
+      "Content-unit generation requires an approved institution and cloud course context.",
+    );
+  }
+  if (
+    options.courseId !== input?.lessonContract?.course?.courseId
+    || options.courseId !== input?.currentLesson?.courseId
+  ) {
+    throw new Error(
+      "The selected content unit does not match the authorized cloud course context.",
+    );
+  }
+  return invokeGovernedTask(taskType, input, options);
+}
