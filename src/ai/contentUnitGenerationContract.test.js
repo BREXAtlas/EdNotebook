@@ -71,7 +71,13 @@ function lessonDraft() {
       hints: [],
       nextAction: "Complete the assignment.",
     },
-    connections: {},
+    connections: {
+      discussionIds: ["discussion-credible-information"],
+    },
+    discussionPrompts: [{
+      discussionId: "discussion-credible-information",
+      title: "Existing discussion prompt",
+    }],
     workload: {},
     accessibility: {},
     academicIntegrity: {},
@@ -215,6 +221,89 @@ test("activity application preserves the whole-lesson schema and review metadata
   );
 });
 
+test("discussion application replaces only the exact connected prompt", () => {
+  const current = lessonDraft();
+  const input = createContentUnitGenerationInput({
+    taskType: "discussion_prompt",
+    lessonContract: lessonContract(),
+    editableDraft: current,
+    targetId: "discussion-credible-information",
+  });
+  const artifact = {
+    ...commonArtifact("discussion_prompt"),
+    targetDiscussionId: "discussion-credible-information",
+    discussion: {
+      discussionId: "discussion-credible-information",
+      title: "Which evidence makes a source credible?",
+      prompt:
+        "Explain which approved evidence strengthens or weakens one claim.",
+      learnerDirections:
+        "Post an evidence-based response and reply to one classmate.",
+      initialPostRequirements: [
+        "State the claim and identify evidence from the approved source.",
+      ],
+      peerResponseRequirements: [
+        "Compare one piece of evidence and ask one source-grounded question.",
+      ],
+      estimatedMinutes: 20,
+      outcomeIds: ["outcome-evaluate"],
+      sourceIds: ["source-reading"],
+      accessibilityNotes: ["Use descriptive links and text-readable sources."],
+      safetyGuidance: {
+        privacy: "Do not disclose private personal information.",
+        civility: "Respond to claims and evidence respectfully.",
+        aiUse: "Follow the approved course AI-use policy.",
+      },
+      facilitatorGuidance:
+        "Redirect unsupported claims to the approved source.",
+    },
+  };
+  const inventedSource = structuredClone(artifact);
+  inventedSource.discussion.sourceIds = ["invented-source"];
+  assert.throws(
+    () => validateContentUnitArtifact(
+      inventedSource,
+      "discussion_prompt",
+      input,
+    ),
+    /target, safety, workload, or alignment gate/,
+  );
+
+  const unit = createEditableContentUnitDraft(
+    routerResult(artifact),
+    "discussion_prompt",
+    input,
+  );
+  const next = applyContentUnitDraft(
+    current,
+    unit,
+    "2026-07-29T20:00:00.000Z",
+  );
+
+  assert.equal(next.discussionPrompts.length, 1);
+  assert.equal(
+    next.discussionPrompts[0].title,
+    "Which evidence makes a source credible?",
+  );
+  assert.equal(next.activity.title, current.activity.title);
+  assert.equal(
+    next.knowledgeChecks[0].question,
+    current.knowledgeChecks[0].question,
+  );
+  assert.equal(
+    next.contentUnitReviews.at(-1).target,
+    "discussion-credible-information",
+  );
+  assert.equal(
+    next.contentUnitReviews.at(-1).safetyGuidance.privacy,
+    "Do not disclose private personal information.",
+  );
+  assert.equal(
+    next.revisionHistory.at(-1).action,
+    "discussion_prompt_regenerated_and_professor_applied",
+  );
+});
+
 test("knowledge-check application replaces exact IDs and updates recovery guidance", () => {
   const current = lessonDraft();
   const input = createContentUnitGenerationInput({
@@ -291,5 +380,15 @@ test("invented sources, changed IDs, and router review blocks fail closed", () =
   assert.throws(
     () => applyContentUnitDraft(current, unit),
     /review blocks/,
+  );
+
+  assert.throws(
+    () => createContentUnitGenerationInput({
+      taskType: "discussion_prompt",
+      lessonContract: lessonContract(),
+      editableDraft: current,
+      targetId: "invented-discussion",
+    }),
+    /existing connected discussion/,
   );
 });

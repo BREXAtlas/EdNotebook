@@ -3,6 +3,7 @@ import { LESSON_AI_DRAFT_LABEL } from "./lessonGenerationContract.js";
 export const CONTENT_UNIT_TASK_TYPES = Object.freeze([
   "lesson_section",
   "activity",
+  "discussion_prompt",
   "knowledge_check",
 ]);
 
@@ -86,6 +87,16 @@ function targetFor(taskType, currentLesson, targetId) {
     return {
       targetActivityId: `${clean(currentLesson.lessonId)}-activity`,
     };
+  }
+  if (taskType === "discussion_prompt") {
+    const targetDiscussionId = clean(targetId);
+    const discussionIds = currentLesson.connections?.discussionIds || [];
+    if (!targetDiscussionId || !discussionIds.includes(targetDiscussionId)) {
+      throw new Error(
+        "Select an existing connected discussion before regenerating.",
+      );
+    }
+    return { targetDiscussionId };
   }
   const selectedCheckIds = unique(
     (Array.isArray(targetId) ? targetId : [targetId]).map(clean),
@@ -215,6 +226,46 @@ export function validateContentUnitArtifact(artifact, taskType, input) {
     ) {
       throw new Error("The returned activity failed its target, workload, or alignment gate.");
     }
+  } else if (taskType === "discussion_prompt") {
+    const discussion = artifact.discussion;
+    if (
+      artifact.targetDiscussionId !== input.targetDiscussionId
+      || discussion?.discussionId !== input.targetDiscussionId
+      || !clean(discussion?.title)
+      || !clean(discussion?.prompt)
+      || !clean(discussion?.learnerDirections)
+      || !Number.isInteger(discussion?.estimatedMinutes)
+      || discussion.estimatedMinutes < 5
+      || discussion.estimatedMinutes > input.currentLesson.estimatedMinutes
+      || !Array.isArray(discussion?.initialPostRequirements)
+      || discussion.initialPostRequirements.length < 1
+      || discussion.initialPostRequirements.length > 10
+      || discussion.initialPostRequirements.some((item) => !clean(item))
+      || !Array.isArray(discussion?.peerResponseRequirements)
+      || discussion.peerResponseRequirements.length < 1
+      || discussion.peerResponseRequirements.length > 10
+      || discussion.peerResponseRequirements.some((item) => !clean(item))
+      || !Array.isArray(discussion?.accessibilityNotes)
+      || discussion.accessibilityNotes.some((item) => !clean(item))
+      || !Array.isArray(discussion?.sourceIds)
+      || !discussion.sourceIds.length
+      || discussion.sourceIds.some(
+        (sourceId) => !approved.sources.has(sourceId),
+      )
+      || !Array.isArray(discussion?.outcomeIds)
+      || !discussion.outcomeIds.length
+      || discussion.outcomeIds.some(
+        (outcomeId) => !approved.outcomes.has(outcomeId),
+      )
+      || !clean(discussion?.safetyGuidance?.privacy)
+      || !clean(discussion?.safetyGuidance?.civility)
+      || !clean(discussion?.safetyGuidance?.aiUse)
+      || !clean(discussion?.facilitatorGuidance)
+    ) {
+      throw new Error(
+        "The returned discussion failed its target, safety, workload, or alignment gate.",
+      );
+    }
   } else {
     const returnedIds = (artifact.items || []).map((item) => item.checkId);
     if (
@@ -323,6 +374,18 @@ export function applyContentUnitDraft(
       outcomeIds: clone(activity.outcomeIds),
       sourceIds: clone(activity.sourceIds),
     };
+  } else if (taskType === "discussion_prompt") {
+    const discussion = clone(contentUnitDraft.discussion);
+    const existing = Array.isArray(next.discussionPrompts)
+      ? next.discussionPrompts
+      : [];
+    const hasTarget = existing.some(
+      (item) => item.discussionId === discussion.discussionId,
+    );
+    next.discussionPrompts = hasTarget
+      ? existing.map((item) =>
+        item.discussionId === discussion.discussionId ? discussion : item)
+      : [...existing, discussion];
   } else {
     const replacements = new Map(
       contentUnitDraft.items.map((item) => [item.checkId, clone(item)]),
@@ -345,6 +408,7 @@ export function applyContentUnitDraft(
       target:
         contentUnitDraft.selectedSectionId
         || contentUnitDraft.targetActivityId
+        || contentUnitDraft.targetDiscussionId
         || clone(contentUnitDraft.selectedCheckIds),
       acceptedAt,
       provider: contentUnitDraft.provenance.provider,
@@ -354,9 +418,18 @@ export function applyContentUnitDraft(
       materials: taskType === "activity"
         ? clone(contentUnitDraft.activity.materials || [])
         : [],
-      accessibilityNotes: taskType === "activity"
-        ? clone(contentUnitDraft.activity.accessibilityNotes || [])
-        : [],
+      accessibilityNotes:
+        taskType === "activity"
+          ? clone(contentUnitDraft.activity.accessibilityNotes || [])
+          : taskType === "discussion_prompt"
+            ? clone(contentUnitDraft.discussion.accessibilityNotes || [])
+            : [],
+      safetyGuidance: taskType === "discussion_prompt"
+        ? clone(contentUnitDraft.discussion.safetyGuidance)
+        : null,
+      facilitatorGuidance: taskType === "discussion_prompt"
+        ? contentUnitDraft.discussion.facilitatorGuidance
+        : null,
     },
   ];
   next.revisionHistory = [

@@ -239,7 +239,7 @@
 
 .phase5-content-unit-actions {
   display: grid;
-  grid-template-columns: auto auto minmax(240px, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -293,6 +293,29 @@
   padding: 6px 9px;
   border-radius: 999px;
   background: #e9effc;
+}
+
+.phase5-discussion-review-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.phase5-discussion-review-details section {
+  padding: 11px;
+  border: 1px solid #d8e1f4;
+  border-radius: 10px;
+  background: #f8faff;
+}
+
+.phase5-discussion-review-details h5,
+.phase5-discussion-review-details p,
+.phase5-discussion-review-details ul {
+  margin: 0;
+}
+
+.phase5-discussion-review-details ul {
+  padding-left: 18px;
 }
 
 .phase5-alignment-report h3,

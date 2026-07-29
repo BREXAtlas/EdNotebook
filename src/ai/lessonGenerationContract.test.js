@@ -136,6 +136,24 @@ test("professor acceptance adapts the existing EdNotebookCourse lesson only", ()
     null,
     "2026-07-28T23:00:00.000Z",
   );
+  draft.discussionPrompts = [{
+    discussionId: "discussion-credible-information",
+    title: "Which evidence makes a source credible?",
+    prompt: "Explain which approved evidence changed your judgment.",
+    learnerDirections: "Post once and respond to one classmate.",
+    initialPostRequirements: ["Use one approved source."],
+    peerResponseRequirements: ["Compare evidence respectfully."],
+    estimatedMinutes: 20,
+    outcomeIds: ["outcome-evaluate-information"],
+    sourceIds: ["source-evaluation-reading"],
+    accessibilityNotes: ["Use descriptive links."],
+    safetyGuidance: {
+      privacy: "Do not disclose private personal information.",
+      civility: "Respond to claims and evidence respectfully.",
+      aiUse: "Follow the approved course AI-use policy.",
+    },
+    facilitatorGuidance: "Redirect unsupported claims to approved sources.",
+  }];
   const accepted = acceptLessonDraftIntoManifest(
     manifest,
     "foundations",
@@ -157,6 +175,11 @@ test("professor acceptance adapts the existing EdNotebookCourse lesson only", ()
   );
   assert.equal(lesson.aiDraft.status, "professor_accepted_lesson");
   assert.equal(lesson.aiDraft.publicationState, "not_published");
+  assert.equal(
+    lesson.discussionPrompts[0].discussionId,
+    "discussion-credible-information",
+  );
+  assert.ok(lesson.sourceIds.includes("source-evaluation-reading"));
   assert.equal(accepted.phase5.publicationState, "draft");
 });
 
