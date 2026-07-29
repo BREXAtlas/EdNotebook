@@ -44,33 +44,39 @@ function digitalLiteracyManifest() {
     },
     template: { family: "ram-ready-digital-literacy", version: "1.0" },
     preset: { id: "guided-reader", version: "1.0" },
-    paths: [{
-      id: "foundations",
-      groups: [{
-        id: "unit-information-literacy",
-        nodeIds: ["lesson-evaluating-online-information"],
-      }],
-      nodes: [{
-        id: "lesson-evaluating-online-information",
-        groupId: "unit-information-literacy",
-        title: "Evaluating Online Information",
-        subtitle: "Existing professor lesson",
-        estimatedMinutes: 60,
-        learningObjectives: ["Evaluate one source."],
-        openingNarrative: "Existing content remains until acceptance.",
-        realWorldExample: "Existing example.",
-        concept: {
-          what: "Existing what.",
-          why: "Existing why.",
-          how: "Existing how.",
-          cost: "Existing limitation.",
-          risks: "Existing risk.",
-          verifyNote: "Existing verification.",
-        },
-        knowledgeChecks: [],
-        sourceIds: [],
-      }],
-    }],
+    paths: [
+      {
+        id: "foundations",
+        groups: [
+          {
+            id: "unit-information-literacy",
+            nodeIds: ["lesson-evaluating-online-information"],
+          },
+        ],
+        nodes: [
+          {
+            id: "lesson-evaluating-online-information",
+            groupId: "unit-information-literacy",
+            title: "Evaluating Online Information",
+            subtitle: "Existing professor lesson",
+            estimatedMinutes: 60,
+            learningObjectives: ["Evaluate one source."],
+            openingNarrative: "Existing content remains until acceptance.",
+            realWorldExample: "Existing example.",
+            concept: {
+              what: "Existing what.",
+              why: "Existing why.",
+              how: "Existing how.",
+              cost: "Existing limitation.",
+              risks: "Existing risk.",
+              verifyNote: "Existing verification.",
+            },
+            knowledgeChecks: [],
+            sourceIds: [],
+          },
+        ],
+      },
+    ],
     sources: [],
   };
 }
@@ -80,17 +86,29 @@ test("Digital Literacy is the exact first Phase 5 selected-lesson fixture", () =
     DIGITAL_LITERACY_PHASE5_FIXTURE.reference.repository,
     "BREXAtlas/Digital-Literacy-Course",
   );
-  assert.equal(DIGITAL_LITERACY_PHASE5_FIXTURE.researchBoundary.status, "not_activated");
+  assert.equal(
+    DIGITAL_LITERACY_PHASE5_FIXTURE.researchBoundary.status,
+    "not_activated",
+  );
   assert.equal(
     DIGITAL_LITERACY_PHASE5_FIXTURE.researchBoundary.collectsHumanSubjectData,
     false,
   );
-  assert.equal(DIGITAL_LITERACY_LESSON_INPUT.qualityProfile.profileKey, "angelo_state_online_course_quality");
-  assert.equal(DIGITAL_LITERACY_LESSON_ARTIFACT.statusLabel, LESSON_AI_DRAFT_LABEL);
-  assert.equal(validateLessonArtifact(
+  assert.equal(
+    DIGITAL_LITERACY_LESSON_INPUT.qualityProfile.profileKey,
+    "angelo_state_online_course_quality",
+  );
+  assert.equal(
+    DIGITAL_LITERACY_LESSON_ARTIFACT.statusLabel,
+    LESSON_AI_DRAFT_LABEL,
+  );
+  assert.equal(
+    validateLessonArtifact(
+      DIGITAL_LITERACY_LESSON_ARTIFACT,
+      DIGITAL_LITERACY_LESSON_INPUT,
+    ),
     DIGITAL_LITERACY_LESSON_ARTIFACT,
-    DIGITAL_LITERACY_LESSON_INPUT,
-  ), DIGITAL_LITERACY_LESSON_ARTIFACT);
+  );
 });
 
 test("router result becomes an editable unpublished lesson with provenance", () => {
@@ -115,7 +133,10 @@ test("whole-lesson regeneration appends revision history without publishing", ()
     "2026-07-28T23:00:00.000Z",
   );
   const second = createEditableLessonDraft(
-    { ...routerResult, provenance: { ...routerResult.provenance, provider: "groq" } },
+    {
+      ...routerResult,
+      provenance: { ...routerResult.provenance, provider: "groq" },
+    },
     DIGITAL_LITERACY_LESSON_INPUT,
     first,
     "2026-07-28T23:05:00.000Z",
@@ -136,24 +157,61 @@ test("professor acceptance adapts the existing EdNotebookCourse lesson only", ()
     null,
     "2026-07-28T23:00:00.000Z",
   );
-  draft.discussionPrompts = [{
-    discussionId: "discussion-credible-information",
-    title: "Which evidence makes a source credible?",
-    prompt: "Explain which approved evidence changed your judgment.",
-    learnerDirections: "Post once and respond to one classmate.",
-    initialPostRequirements: ["Use one approved source."],
-    peerResponseRequirements: ["Compare evidence respectfully."],
-    estimatedMinutes: 20,
-    outcomeIds: ["outcome-evaluate-information"],
-    sourceIds: ["source-evaluation-reading"],
-    accessibilityNotes: ["Use descriptive links."],
-    safetyGuidance: {
-      privacy: "Do not disclose private personal information.",
-      civility: "Respond to claims and evidence respectfully.",
-      aiUse: "Follow the approved course AI-use policy.",
+  draft.discussionPrompts = [
+    {
+      discussionId: "discussion-credible-information",
+      title: "Which evidence makes a source credible?",
+      prompt: "Explain which approved evidence changed your judgment.",
+      learnerDirections: "Post once and respond to one classmate.",
+      initialPostRequirements: ["Use one approved source."],
+      peerResponseRequirements: ["Compare evidence respectfully."],
+      estimatedMinutes: 20,
+      outcomeIds: ["outcome-evaluate-information"],
+      sourceIds: ["source-evaluation-reading"],
+      accessibilityNotes: ["Use descriptive links."],
+      safetyGuidance: {
+        privacy: "Do not disclose private personal information.",
+        civility: "Respond to claims and evidence respectfully.",
+        aiUse: "Follow the approved course AI-use policy.",
+      },
+      facilitatorGuidance: "Redirect unsupported claims to approved sources.",
     },
-    facilitatorGuidance: "Redirect unsupported claims to approved sources.",
-  }];
+  ];
+  draft.quizDrafts = [
+    {
+      quizId: "quiz-evaluating-sources",
+      title: "Evaluate online information",
+      instructions: "Answer each item, then submit the lesson quiz.",
+      estimatedMinutes: 15,
+      pointsPossible: 10,
+      items: [
+        {
+          itemId: "quiz-evaluating-sources-item-1",
+          question: "Does page appearance establish authority?",
+          type: "true_false",
+          options: [],
+          answer: "false",
+          explanation: "Authority requires evidence and context.",
+          points: 10,
+          outcomeIds: ["outcome-evaluate-information"],
+          sourceIds: ["source-evaluation-reading"],
+        },
+      ],
+      recoveryGuidance: {
+        feedbackGuidance: "Return to the source-check routine.",
+        retryGuidance: "Review the approved reading before another attempt.",
+        hints: [],
+      },
+      accessibilityNotes: ["Use text labels."],
+      academicIntegrityGuidance: "Follow the approved AI-use policy.",
+    },
+  ];
+  draft.rubricDrafts = [
+    {
+      rubricId: "assessment-source-check-rubric",
+      gradingAuthority: "professor_only",
+    },
+  ];
   const accepted = acceptLessonDraftIntoManifest(
     manifest,
     "foundations",
@@ -179,6 +237,10 @@ test("professor acceptance adapts the existing EdNotebookCourse lesson only", ()
     lesson.discussionPrompts[0].discussionId,
     "discussion-credible-information",
   );
+  assert.equal(lesson.endQuiz[0].id, "quiz-evaluating-sources-item-1");
+  assert.deepEqual(lesson.endQuiz[0].options, ["true", "false"]);
+  assert.equal(lesson.endQuiz[0].correctAnswer, "false");
+  assert.equal(lesson.rubricDrafts[0].gradingAuthority, "professor_only");
   assert.ok(lesson.sourceIds.includes("source-evaluation-reading"));
   assert.equal(accepted.phase5.publicationState, "draft");
 });
@@ -229,27 +291,32 @@ test("professor edits remain inside the governed lesson bounds", () => {
 
 test("review blocks prevent acceptance into the course package", () => {
   const blockedResult = structuredClone(routerResult);
-  blockedResult.artifact.reviewBlocks = [{
-    code: "source_gap",
-    message: "A required source is unresolved.",
-    relatedIds: ["reading-source-evaluation-guide"],
-  }];
-  blockedResult.artifact.sourceGaps = [{
-    code: "missing-source",
-    description: "A required source is unresolved.",
-    relatedIds: ["reading-source-evaluation-guide"],
-  }];
+  blockedResult.artifact.reviewBlocks = [
+    {
+      code: "source_gap",
+      message: "A required source is unresolved.",
+      relatedIds: ["reading-source-evaluation-guide"],
+    },
+  ];
+  blockedResult.artifact.sourceGaps = [
+    {
+      code: "missing-source",
+      description: "A required source is unresolved.",
+      relatedIds: ["reading-source-evaluation-guide"],
+    },
+  ];
   const draft = createEditableLessonDraft(
     blockedResult,
     DIGITAL_LITERACY_LESSON_INPUT,
   );
   assert.throws(
-    () => acceptLessonDraftIntoManifest(
-      digitalLiteracyManifest(),
-      "foundations",
-      "lesson-evaluating-online-information",
-      draft,
-    ),
+    () =>
+      acceptLessonDraftIntoManifest(
+        digitalLiteracyManifest(),
+        "foundations",
+        "lesson-evaluating-online-information",
+        draft,
+      ),
     /resolve every lesson review block/i,
   );
 });
@@ -264,12 +331,18 @@ test("course context builder emits the exact governed input envelope", () => {
     structuredContent: {
       creditHours: { value: "3" },
       deliveryModality: { value: "Online asynchronous" },
-      courseDescription: { value: "A first-year digital and information literacy course." },
+      courseDescription: {
+        value: "A first-year digital and information literacy course.",
+      },
       courseOutcomes: { value: ["Evaluate source credibility."] },
       outcomeAssessmentMethods: { value: ["Source evaluation activity"] },
       requiredReadings: { value: ["Digital source-evaluation guide"] },
-      institutionalAcademicIntegrity: { value: "Submit your own source evaluation and disclose assistance." },
-      aiUsePolicy: { value: "AI use requires professor permission and disclosure." },
+      institutionalAcademicIntegrity: {
+        value: "Submit your own source evaluation and disclose assistance.",
+      },
+      aiUsePolicy: {
+        value: "AI use requires professor permission and disclosure.",
+      },
       courseOutline: { value: ["Week 2: evaluating sources"] },
     },
     extraction: { conflictingInformation: [] },
@@ -278,15 +351,19 @@ test("course context builder emits the exact governed input envelope", () => {
     version: "1.0.0",
     course: {
       learningObjectives: ["Evaluate source credibility."],
-      acts: [{
-        title: "Information literacy",
-        episodes: [{
-          id: lesson.id,
-          title: lesson.title,
-          type: "Story",
-          minutes: 60,
-        }],
-      }],
+      acts: [
+        {
+          title: "Information literacy",
+          episodes: [
+            {
+              id: lesson.id,
+              title: lesson.title,
+              type: "Story",
+              minutes: 60,
+            },
+          ],
+        },
+      ],
     },
   };
   const input = createLessonGenerationInput({
@@ -309,11 +386,20 @@ test("course context builder emits the exact governed input envelope", () => {
     "activity",
     "knowledge_checks",
   ]);
-  assert.equal(input.qualityProfile.profileKey, "angelo_state_online_course_quality");
+  assert.equal(
+    input.qualityProfile.profileKey,
+    "angelo_state_online_course_quality",
+  );
   assert.equal(input.course.totalWorkloadMinutes, 8_100);
   assert.ok(input.authoritativeSources.length >= 7);
-  assert.equal(input.professorInstruction.sourceId, "source-professor-instruction");
-  assert.equal(input.professorInstruction.text, "Keep the source check practical.");
+  assert.equal(
+    input.professorInstruction.sourceId,
+    "source-professor-instruction",
+  );
+  assert.equal(
+    input.professorInstruction.text,
+    "Keep the source check practical.",
+  );
   assert.equal(input.maximumWords, 1_500);
   assert.deepEqual(input.unresolvedAuthoritativeConflicts, []);
 });
