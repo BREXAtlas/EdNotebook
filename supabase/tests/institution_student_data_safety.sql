@@ -446,6 +446,173 @@ begin
 end $$;
 do $$
 declare
+  v_message public.learning_messages;
+  v_sensitive_payload_denied boolean:=false;
+begin
+  select * into v_message
+  from public.send_course_message(
+    '40000000-0000-4000-8000-000000000001',
+    'How do I trace a claim to the earliest source?',
+    'question',
+    null,
+    null
+  );
+  if v_message.sender_id is distinct from (select auth.uid())
+     or v_message.sender_label<>'Student A'
+     or v_message.recipient_id is not null
+     or v_message.message_kind<>'question' then
+    raise exception 'COMMUNICATION TEST FAILED: server-derived course question identity or audience is wrong';
+  end if;
+  begin
+    perform public.send_course_message(
+      '40000000-0000-4000-8000-000000000001',
+      'grade: 99',
+      'question',
+      null,
+      null
+    );
+  exception when raise_exception then v_sensitive_payload_denied:=true; end;
+  if not v_sensitive_payload_denied then
+    raise exception 'COMMUNICATION TEST FAILED: grade details entered the message payload';
+  end if;
+  insert into public.course_communication_preferences(
+    course_id,user_id,notify_announcements,notify_replies
+  ) values (
+    '40000000-0000-4000-8000-000000000001',(select auth.uid()),true,true
+  );
+  raise notice 'PASS student course-question identity, payload minimization, and notification preference gate';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_question_id uuid;
+  v_announcement public.professor_announcements;
+  v_cross_course_publish_denied boolean:=false;
+begin
+  select id into v_question_id
+  from public.learning_messages
+  where course_id='40000000-0000-4000-8000-000000000001'
+    and body='How do I trace a claim to the earliest source?';
+  if v_question_id is null then
+    raise exception 'COMMUNICATION TEST FAILED: professor could not see the current learner question';
+  end if;
+  select * into v_announcement
+  from public.publish_course_announcement(
+    '40000000-0000-4000-8000-000000000001',
+    'Digital literacy source check',
+    'The source-check practice is ready for the current course.'
+  );
+  if v_announcement.professor_id is distinct from (select auth.uid())
+     or v_announcement.audience<>'course'
+     or not v_announcement.is_published
+     or v_announcement.education_division<>'university' then
+    raise exception 'COMMUNICATION TEST FAILED: course announcement identity, audience, or division is wrong';
+  end if;
+  perform public.send_course_message(
+    '40000000-0000-4000-8000-000000000001',
+    'Start with the claim, follow each citation, and compare publication dates.',
+    'reply',
+    v_question_id,
+    null
+  );
+  begin
+    perform public.publish_course_announcement(
+      '40000000-0000-4000-8000-000000000002',
+      'Wrong course',
+      'This cross-institution publish must fail.'
+    );
+  exception when insufficient_privilege or raise_exception then
+    v_cross_course_publish_denied:=true;
+  end;
+  if not v_cross_course_publish_denied then
+    raise exception 'COMMUNICATION TEST FAILED: professor published into another institution course';
+  end if;
+  raise notice 'PASS professor announcement and course-reply authorization gate';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_reply_ids uuid[];
+  v_announcement_ids uuid[];
+begin
+  if (select count(*) from public.learning_messages
+      where course_id='40000000-0000-4000-8000-000000000001'
+        and recipient_id is null
+        and message_kind in ('question','reply'))<>2 then
+    raise exception 'COMMUNICATION TEST FAILED: student and professor do not see the same course thread';
+  end if;
+  if (select count(*) from public.professor_announcements
+      where course_id='40000000-0000-4000-8000-000000000001'
+        and audience='course' and is_published)<>1 then
+    raise exception 'COMMUNICATION TEST FAILED: enrolled student could not see the course announcement';
+  end if;
+  select array_agg(id) into v_reply_ids
+  from public.learning_messages
+  where course_id='40000000-0000-4000-8000-000000000001'
+    and recipient_id is null and sender_id<>(select auth.uid());
+  select array_agg(id) into v_announcement_ids
+  from public.professor_announcements
+  where course_id='40000000-0000-4000-8000-000000000001'
+    and audience='course' and is_published;
+  perform public.mark_course_communication_read(
+    '40000000-0000-4000-8000-000000000001',
+    coalesce(v_reply_ids,'{}'::uuid[]),
+    coalesce(v_announcement_ids,'{}'::uuid[])
+  );
+  if (select count(*) from public.course_communication_reads
+      where user_id=(select auth.uid())
+        and course_id='40000000-0000-4000-8000-000000000001')<>2 then
+    raise exception 'COMMUNICATION TEST FAILED: per-user read state did not reconcile';
+  end if;
+  raise notice 'PASS enrolled student announcement, shared thread, and read-state sync gate';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000012',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare v_cross_course_send_denied boolean:=false;
+begin
+  if (select count(*) from public.learning_messages
+      where course_id='40000000-0000-4000-8000-000000000001')<>0
+     or (select count(*) from public.professor_announcements
+         where course_id='40000000-0000-4000-8000-000000000001')<>0
+     or (select count(*) from public.course_communication_reads
+         where course_id='40000000-0000-4000-8000-000000000001')<>0 then
+    raise exception 'COMMUNICATION TEST FAILED: another institution read course communication state';
+  end if;
+  begin
+    perform public.send_course_message(
+      '40000000-0000-4000-8000-000000000001',
+      'This cross-institution question must fail.',
+      'question',
+      null,
+      null
+    );
+  exception when insufficient_privilege or raise_exception then
+    v_cross_course_send_denied:=true;
+  end;
+  if not v_cross_course_send_denied then
+    raise exception 'COMMUNICATION TEST FAILED: another institution wrote to the course room';
+  end if;
+  raise notice 'PASS cross-institution communication, receipt, and write denial';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
   v_lesson_write_denied boolean:=false;
   v_course_write_denied boolean:=false;
   v_fake_rpc_denied boolean:=false;

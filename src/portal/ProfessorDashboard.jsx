@@ -9,6 +9,7 @@ import AccountSettings, { LiveDateTime, readAccountSettings } from "../AccountSe
 import { STORY_GUIDES, STORY_REACTION_TYPES, generateStoryFeed, getDefaultConnection, localCalendarDate } from "../demo/storyEngine.js";
 import BlackboardExportWorkspace from "../integrations/blackboard/BlackboardExportWorkspace.jsx";
 import { ProfessorSocialLearningPanel } from "../social-learning/SocialLearningPanels.jsx";
+import CourseCommunicationPanel from "../communication/CourseCommunicationPanel.jsx";
 
 const ProfessorSemesterCalendar = lazy(() =>
   import("../ai/ProfessorSemesterCalendar.jsx")
@@ -16,7 +17,7 @@ const ProfessorSemesterCalendar = lazy(() =>
 
 const TABS = [
   ["overview", "Overview"], ["classes", "Classes"], ["semester", "Syllabus & calendar"], ["templates", "Assignment templates"], ["students", "Students & rosters"], ["rewards", "Social learning"], ["grades", "Grades"],
-  ["attendance", "Attendance & SIS"], ["announcements", "Faculty & school feed"], ["profile", "Educator page"],
+  ["attendance", "Attendance & SIS"], ["announcements", "Course communication"], ["profile", "Educator page"],
   ["verification", "School verification"], ["security", "Security"], ["settings", "Settings"],
 ];
 
@@ -190,7 +191,7 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} classes={EDUCATOR_CLASSES} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel />}
-          {tab === "announcements" && <FacultyFeedPanel key={`faculty-feed-${settingsScope}`} accountSettings={accountSettings} storageScope={settingsScope} />}
+          {tab === "announcements" && <CourseCommunicationPanel key={`course-communication-${settingsScope}`} role="professor" session={session} educationDivision="both" />}
           {tab === "profile" && <EducatorProfile profile={profile} />}
           {tab === "verification" && <VerificationPanel session={session} />}
           {tab === "security" && <SecurityPanel unlocked={unlocked} onLock={lock} />}

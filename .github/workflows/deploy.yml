@@ -58,6 +58,12 @@ jobs:
       - name: Test Digital Literacy student learning workspace
         run: npm run test:student-learning
 
+      - name: Test Social Education Learning rewards
+        run: npm run test:social-learning
+
+      - name: Test professor-student course communication sync
+        run: npm run test:course-communication
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 
