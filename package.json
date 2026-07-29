@@ -18,6 +18,7 @@
     "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js",
     "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
     "test:research-gate": "node --test src/research/researchGateModel.test.js",
+    "test:student-learning": "node --test src/learning/citationTools.test.js src/learning/studentLearningWorkspace.test.js src/learning/studentLearningMigration.test.js src/learning/studentLearningUx.static.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },

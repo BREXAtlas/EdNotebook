@@ -55,6 +55,9 @@ jobs:
       - name: Test fail-closed Digital Literacy research governance
         run: npm run test:research-gate
 
+      - name: Test Digital Literacy student learning workspace
+        run: npm run test:student-learning
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 
