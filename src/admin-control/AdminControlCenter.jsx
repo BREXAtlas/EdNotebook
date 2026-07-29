@@ -7,6 +7,7 @@ import {
   getConnectionStatusDetails,
   serializeReportToCsv,
 } from "./controlModel.js";
+import ResearchPilotGatePanel from "../research/ResearchPilotGatePanel.jsx";
 import "./admin-control-center.css";
 
 const TABS = Object.freeze([
@@ -15,6 +16,7 @@ const TABS = Object.freeze([
   ["professor", "Professor"],
   ["publisher", "Publisher"],
   ["connections", "Connections"],
+  ["research-pilot", "Research pilot"],
   ["accounts", "Accounts & courses"],
   ["institutions", "Institutions"],
   ["platform-access", "Platform access"],
@@ -1060,6 +1062,9 @@ export default function AdminControlCenter({ onExit }) {
     if (id === "connections") {
       return Boolean(access.platform_owner || access.can_view_integrations || access.can_test_integrations || access.can_manage_integrations);
     }
+    if (id === "research-pilot") {
+      return Boolean(access.platform_owner || access.can_view_audit || access.can_view_feature_controls || access.can_control_features);
+    }
     if (id === "accounts") return Boolean(access.platform_owner || access.can_view_accounts);
     if (id === "institutions") return Boolean(access.platform_owner || (institutionId && access.can_manage_affiliations));
     if (id === "platform-access") return Boolean(access.platform_owner);
@@ -1248,6 +1253,13 @@ export default function AdminControlCenter({ onExit }) {
             actionBusy={actionBusy}
             recordTest={recordConnectionTest}
             updateStatus={updateConnectionStatus}
+          />
+        ) : null}
+
+        {activeTab === "research-pilot" ? (
+          <ResearchPilotGatePanel
+            institutionId={institutionId}
+            institutionName={selectedWorkspace?.name || ""}
           />
         ) : null}
 
