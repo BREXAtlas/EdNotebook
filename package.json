@@ -19,6 +19,7 @@
     "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
     "test:research-gate": "node --test src/research/researchGateModel.test.js",
     "test:student-learning": "node --test src/learning/citationTools.test.js src/learning/studentLearningWorkspace.test.js src/learning/studentLearningMigration.test.js src/learning/studentLearningUx.static.test.js",
+    "test:social-learning": "node --test src/social-learning/socialLearningModel.test.js src/social-learning/socialLearningMigration.test.js src/social-learning/socialLearningUx.static.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },

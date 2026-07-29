@@ -8,13 +8,14 @@ import AssignmentTemplateWorkspace from "./AssignmentTemplateWorkspace.jsx";
 import AccountSettings, { LiveDateTime, readAccountSettings } from "../AccountSettings.jsx";
 import { STORY_GUIDES, STORY_REACTION_TYPES, generateStoryFeed, getDefaultConnection, localCalendarDate } from "../demo/storyEngine.js";
 import BlackboardExportWorkspace from "../integrations/blackboard/BlackboardExportWorkspace.jsx";
+import { ProfessorSocialLearningPanel } from "../social-learning/SocialLearningPanels.jsx";
 
 const ProfessorSemesterCalendar = lazy(() =>
   import("../ai/ProfessorSemesterCalendar.jsx")
 );
 
 const TABS = [
-  ["overview", "Overview"], ["classes", "Classes"], ["semester", "Syllabus & calendar"], ["templates", "Assignment templates"], ["students", "Students & rosters"], ["grades", "Grades"],
+  ["overview", "Overview"], ["classes", "Classes"], ["semester", "Syllabus & calendar"], ["templates", "Assignment templates"], ["students", "Students & rosters"], ["rewards", "Social learning"], ["grades", "Grades"],
   ["attendance", "Attendance & SIS"], ["announcements", "Faculty & school feed"], ["profile", "Educator page"],
   ["verification", "School verification"], ["security", "Security"], ["settings", "Settings"],
 ];
@@ -153,12 +154,16 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
   const [tab, setTab] = useState("overview"); const [tourStep, setTourStep] = useState(null); const [unlockedUntil, setUnlockedUntil] = useState(0); const [, setClock] = useState(Date.now());
   const settingsScope = `professor-${session?.user?.id || "guest"}`;
   const [accountSettings, setAccountSettings] = useState(() => readAccountSettings(settingsScope, { accountType: "professor", name: profile?.full_name || "Educator", email: session?.user?.email || "" }));
-  const unlocked = unlockedUntil > Date.now(); const sensitive = tab === "students" || tab === "grades"; const displayName = useMemo(() => accountSettings.displayName || profile?.full_name || "Educator", [accountSettings.displayName, profile?.full_name]);
+  const unlocked = unlockedUntil > Date.now(); const sensitive = tab === "students" || tab === "rewards" || tab === "grades"; const displayName = useMemo(() => accountSettings.displayName || profile?.full_name || "Educator", [accountSettings.displayName, profile?.full_name]);
   useEffect(() => { setAccountSettings(readAccountSettings(settingsScope, { accountType: "professor", name: profile?.full_name || "Educator", email: session?.user?.email || "" })); }, [settingsScope, profile?.full_name, session?.user?.email]);
   useEffect(() => { if (!unlockedUntil) return undefined; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [unlockedUntil]);
   function unlock() { setUnlockedUntil(Date.now() + 5 * 60 * 1000); } function lock() { setUnlockedUntil(0); }
   if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={onStudentPortal}>View student portal</button><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={onBuild}>Course builder</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>Educator workspace</small></div></div><nav aria-label="Educator dashboard">{TABS.map(([id, label]) => <button className={tab === id ? "is-active" : ""} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && <i>3</i>}</button>)}</nav></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
-  const protectedContent = tab === "students" ? <StudentsPanel /> : <GradesPanel onLock={lock} />;
+  const protectedContent = tab === "students"
+    ? <StudentsPanel />
+    : tab === "rewards"
+      ? <ProfessorSocialLearningPanel />
+      : <GradesPanel onLock={lock} />;
   return (
     <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}>
       <header className="dashboard-topbar professor-topbar">
