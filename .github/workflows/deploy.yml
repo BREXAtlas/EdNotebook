@@ -43,6 +43,12 @@ jobs:
       - name: Test governed professor outline contract
         run: npm run test:ai-outline
 
+      - name: Test ASU syllabus requirement extraction
+        run: npm run test:syllabus-extraction
+
+      - name: Test governed student semester calendar workflow
+        run: npm run test:student-semester
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 

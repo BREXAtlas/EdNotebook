@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import BrandLogo from "../Brand.jsx";
 import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
 import { uploadCloudFile } from "../studio/storageService.js";
@@ -9,8 +9,12 @@ import AccountSettings, { LiveDateTime, readAccountSettings } from "../AccountSe
 import { STORY_GUIDES, STORY_REACTION_TYPES, generateStoryFeed, getDefaultConnection, localCalendarDate } from "../demo/storyEngine.js";
 import BlackboardExportWorkspace from "../integrations/blackboard/BlackboardExportWorkspace.jsx";
 
+const ProfessorSemesterCalendar = lazy(() =>
+  import("../ai/ProfessorSemesterCalendar.jsx")
+);
+
 const TABS = [
-  ["overview", "Overview"], ["classes", "Classes"], ["templates", "Assignment templates"], ["students", "Students & rosters"], ["grades", "Grades"],
+  ["overview", "Overview"], ["classes", "Classes"], ["semester", "Syllabus & calendar"], ["templates", "Assignment templates"], ["students", "Students & rosters"], ["grades", "Grades"],
   ["attendance", "Attendance & SIS"], ["announcements", "Faculty & school feed"], ["profile", "Educator page"],
   ["verification", "School verification"], ["security", "Security"], ["settings", "Settings"],
 ];
@@ -177,6 +181,7 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
         <main className="student-dashboard-main professor-dashboard-main">
           {tab === "overview" && <Overview setTab={setTab} />}
           {tab === "classes" && <Classes onBuild={onBuild} />}
+          {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={EDUCATOR_CLASSES} /></Suspense>}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} classes={EDUCATOR_CLASSES} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel />}

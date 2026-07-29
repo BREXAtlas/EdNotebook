@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import BrandLogo from "../Brand.jsx";
 import {
   COMMUNITY_POSTS,
@@ -23,8 +23,10 @@ import {
   searchStudentProfiles,
 } from "./portalService.js";
 
+const OwnYourSemester = lazy(() => import("../ai/OwnYourSemester.jsx"));
+
 const TABS = [
-  ["overview", "Overview"], ["classes", "Classes"], ["assignments", "Assignments"], ["grades", "Grades"], ["notes", "Notes"],
+  ["overview", "Overview"], ["semester", "Own your semester"], ["classes", "Classes"], ["assignments", "Assignments"], ["grades", "Grades"], ["notes", "Notes"],
   ["life", "Student life"], ["friends", "Find friends"], ["messages", "Messages"], ["page", "My page"], ["opportunities", "Opportunities"],
   ["demo", "Brooke's demo"],
   ["settings", "Settings"],
@@ -338,6 +340,7 @@ export default function StudentDashboard({ profile, session, track = "university
         <main className="student-dashboard-main">
           {demoMode && <div className="brooke-demo-banner"><div><span aria-hidden="true">B</span><div><strong>You're exploring Brooke's demonstration workspace.</strong><p>Nothing here belongs to your account. Use it to safely explore how classes, grades, assignments, and student life will work.</p></div></div><button type="button" onClick={exitDemo}>Back to my workspace</button></div>}
           {tab === "overview" && <OverviewPanel name={demoMode ? "Brooke" : displayName} onTab={chooseTab} classes={classes} track={track} />}
+          {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening Own Your Semester…</section>}><OwnYourSemester profile={profile} session={session} track={track} classes={classes} /></Suspense>}
           {tab === "classes" && <ClassesPanel classes={classes} track={track} />}
           {tab === "assignments" && (classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">ASSIGNMENTS</span><h1>No assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>)}
           {tab === "grades" && <GradesPanel classes={classes} rows={rows} track={track} />}

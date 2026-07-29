@@ -1,0 +1,59 @@
+.own-semester-page {
+  display: grid;
+  gap: 18px;
+}
+
+.own-semester-intro > div {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #c89a44;
+  border-radius: 12px;
+  background: #fff8df;
+  color: #594111;
+}
+
+.own-semester-intro > div span {
+  line-height: 1.5;
+}
+
+.own-semester-calendar-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.own-semester-calendar-list article {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.6fr) minmax(180px, 2fr) minmax(170px, 1fr) minmax(200px, 1.4fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #ddd4c5;
+  border-radius: 10px;
+  background: #fffdfa;
+}
+
+.own-semester-calendar-list article > span,
+.own-semester-calendar-list article > small {
+  color: #6b6256;
+}
+
+.own-semester-calendar-list article button {
+  min-height: 40px;
+}
+
+.own-semester-empty {
+  margin: 18px 0 0;
+  padding: 18px;
+  border: 1px dashed #cfc5b4;
+  border-radius: 10px;
+  color: #655d52;
+}
+
+@media (max-width: 980px) {
+  .own-semester-calendar-list article {
+    grid-template-columns: 1fr;
+  }
+}

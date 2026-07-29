@@ -2,9 +2,21 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import FullscreenSurface from "../FullscreenSurface.jsx";
 import { dateKey, formatDateTime, NotebookLabel } from "./demoShared.jsx";
 import { extractSyllabusFile, MAX_EXTRACTED_CHARACTERS } from "./syllabusFileExtractors.js";
+import { interpretStudentSemesterSections } from "../ai/learningAiService.js";
+import {
+  buildStudentSemesterInput,
+  studentArtifactCalendarItems,
+} from "../ai/studentSemesterContract.js";
+import {
+  approveCalendarCandidate,
+  synchronizeCalendarSourceItem,
+} from "../ai/syllabusCalendarContract.js";
 import "./syllabus-review.css";
 
 const SyllabusScanner = lazy(() => import("./SyllabusScanner.jsx"));
+const IS_STAGING = import.meta.env.MODE === "staging";
+const STUDENT_SEMESTER_AI_ENABLED =
+  IS_STAGING && import.meta.env.VITE_STUDENT_SEMESTER_AI_ENABLED !== "false";
 
 const MONTH_TOKENS = {
   jan: 0, january: 0,
@@ -317,6 +329,66 @@ function ExtractionReview({ extraction, setExtraction, approved, setApproved, pa
   );
 }
 
+function StudentSemesterDraft({ draft, provenance }) {
+  if (!draft) return null;
+  const sections = [
+    ["Required books", draft.requiredBooks],
+    ["Reminder suggestions", draft.reminderSuggestions],
+    ["Major policy notes", draft.majorPolicyNotes],
+    ["Questions to verify", draft.questionsToVerify],
+    ["Conflicts or uncertain dates", draft.conflicts],
+  ];
+  return (
+    <section className="student-semester-ai-draft" aria-label="Governed student semester draft">
+      <header>
+        <div>
+          <span>GOVERNED TOS RESULT</span>
+          <h3>Draft extracted from syllabus — verify before saving</h3>
+        </div>
+        <strong>Not official</strong>
+      </header>
+      <p>
+        This draft cannot change a deadline, create a grade, predict a final
+        grade, or make an academic decision. AI dates remain unconfirmed until
+        you select their calendar rows.
+      </p>
+      <dl className="student-semester-ai-facts">
+        <div><dt>Course</dt><dd>{draft.courseName}</dd></div>
+        <div><dt>Professor contact</dt><dd>{draft.professorContact || "Not found — verify"}</dd></div>
+        <div><dt>Office hours</dt><dd>{draft.officeHours || "Not found — verify"}</dd></div>
+        <div><dt>Estimated workload</dt><dd>{draft.estimatedWorkload || "Not estimated — verify"}</dd></div>
+      </dl>
+      <div className="student-semester-ai-sections">
+        <article>
+          <strong>Grading weights</strong>
+          {draft.gradingWeights?.length
+            ? <ul>{draft.gradingWeights.map((item, index) => <li key={`${item.category}-${index}`}>{item.category}: {item.weight} <small>{Math.round(item.confidence * 100)}% confidence</small></li>)}</ul>
+            : <p>None found.</p>}
+        </article>
+        <article>
+          <strong>Weekly schedule</strong>
+          {draft.weeklySchedule?.length
+            ? <ul>{draft.weeklySchedule.map((item, index) => <li key={`${item.heading}-${index}`}><span>{item.heading}</span>: {item.details}</li>)}</ul>
+            : <p>None found.</p>}
+        </article>
+        {sections.map(([title, values]) => (
+          <article key={title}>
+            <strong>{title}</strong>
+            {values?.length
+              ? <ul>{values.map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}</ul>
+              : <p>None found.</p>}
+          </article>
+        ))}
+      </div>
+      {provenance && (
+        <footer>
+          Model route: {provenance.provider} · {provenance.model} · prompt {provenance.promptVersion}
+        </footer>
+      )}
+    </section>
+  );
+}
+
 function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
   const [stage, setStage] = useState("Source detection");
   const [issue, setIssue] = useState("");
@@ -358,7 +430,12 @@ function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
   );
 }
 
-function SyllabusPanel({ persona, assignments, setAssignments }) {
+function SyllabusPanel({
+  persona,
+  assignments,
+  setAssignments,
+  enableGovernedStudentAi = false,
+}) {
   const [text, setTextState] = useState(() => defaultSyllabusText(persona));
   const [parameters, setParameters] = useState(() => defaultParameters(persona));
   const [fileName, setFileName] = useState("");
@@ -373,6 +450,10 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
   const [readError, setReadError] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanArtifact, setScanArtifact] = useState(null);
+  const [studentAiDraft, setStudentAiDraft] = useState(null);
+  const [studentAiProvenance, setStudentAiProvenance] = useState(null);
+  const [studentAiStatus, setStudentAiStatus] = useState("");
+  const [studentAiError, setStudentAiError] = useState("");
   const [sourceId, setSourceId] = useState(() => syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
   const inputRef = useRef(null);
   const readControllerRef = useRef(null);
@@ -396,6 +477,10 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     setReadError("");
     setScannerOpen(false);
     setScanArtifact(null);
+    setStudentAiDraft(null);
+    setStudentAiProvenance(null);
+    setStudentAiStatus("");
+    setStudentAiError("");
     setSourceId(syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
     return () => {
       readControllerRef.current?.abort();
@@ -407,7 +492,11 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     const next = value.length > MAX_EXTRACTED_CHARACTERS ? value.slice(0, MAX_EXTRACTED_CHARACTERS) : value;
     setTextState(next);
     if (value.length > MAX_EXTRACTED_CHARACTERS) setNotice("The course text was limited to 250,000 characters so review stays responsive. Split a larger syllabus into sections.");
-    if (extraction) setReviewStale(true);
+    if (extraction) {
+      setReviewStale(true);
+      setStudentAiDraft(null);
+      setStudentAiProvenance(null);
+    }
   }
 
   function commitSyllabusSource({ text: sourceText, name, detail, warnings = [], artifact = null }) {
@@ -419,6 +508,10 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     setReviewStale(false);
     setReadError("");
     setScanArtifact(artifact);
+    setStudentAiDraft(null);
+    setStudentAiProvenance(null);
+    setStudentAiStatus("");
+    setStudentAiError("");
     const warningNote = warnings.length ? ` Review the source carefully because ${warnings.length} reading warning${warnings.length === 1 ? " was" : "s were"} reported.` : "";
     setNotice(`${name} is ready from ${detail}. Review the highlighted source before conversion.${warningNote}`);
     setSurfacePage("source");
@@ -470,17 +563,74 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
   function runExtraction() {
     const next = extractSyllabus(text, persona, parameters, sourceId);
     setExtraction(next);
-    setApproved(next.assignments.map((item) => item.id));
+    setApproved([]);
     setReviewStale(false);
+    setStudentAiDraft(null);
+    setStudentAiProvenance(null);
+    setStudentAiStatus("");
+    setStudentAiError("");
     setNotice(`Review ready: ${next.assignments.length} calendar item${next.assignments.length === 1 ? "" : "s"}, ${next.objectives.length} objective${next.objectives.length === 1 ? "" : "s"}, and ${next.books.length} material entr${next.books.length === 1 ? "y" : "ies"}.`);
     return next;
+  }
+
+  async function runStudentAiReview() {
+    const baseExtraction =
+      extraction && !reviewStale ? extraction : runExtraction();
+    setStudentAiError("");
+    setStudentAiStatus("Preparing only the unstructured syllabus passages…");
+    try {
+      const input = buildStudentSemesterInput({
+        text,
+        analysis,
+        extraction: baseExtraction,
+        timeZone: parameters.timeZone,
+      });
+      if (!input.uncertainSections.length) {
+        throw new Error(
+          "No unstructured syllabus passages remain for governed AI review. Use the deterministic draft and verify each date.",
+        );
+      }
+
+      setStudentAiStatus(
+        "TOS is reviewing the remaining passages. Nothing will be saved automatically…",
+      );
+      const response = await interpretStudentSemesterSections(input);
+      const artifact = response.artifact;
+      const aiItems = studentArtifactCalendarItems(artifact, {
+        course: parameters.course,
+        sourceId,
+        defaultHours: parameters.defaultHours,
+        parseDate: (value) => parseDateFromLine(value, parameters),
+      });
+      setExtraction((current) => ({
+        ...(current || baseExtraction),
+        assignments: [
+          ...(current || baseExtraction).assignments.filter(
+            (item) => item.origin !== "governed-ai",
+          ),
+          ...aiItems,
+        ],
+      }));
+      setApproved([]);
+      setStudentAiDraft(artifact);
+      setStudentAiProvenance(response.provenance);
+      setStudentAiStatus("");
+      setNotice(
+        `Governed review returned ${artifact.assignments.length} assignment${artifact.assignments.length === 1 ? "" : "s"} and ${artifact.exams.length} exam${artifact.exams.length === 1 ? "" : "s"}. Every calendar row remains unchecked.`,
+      );
+    } catch (aiError) {
+      setStudentAiStatus("");
+      setStudentAiError(
+        aiError?.message ||
+          "The governed student-semester draft could not be created.",
+      );
+    }
   }
 
   function addMissingAssignment() {
     const id = `manual-${Date.now()}`;
     const due = withTimeZoneOffset(`${parameters.defaultYear}-09-01T${parameters.defaultTime}`, parameters.timeZone);
     setExtraction((current) => ({ ...current, assignments: [...current.assignments, { id, importSourceId: sourceId, importItemKey: id, course: parameters.course, title: "Untitled calendar item", due, hours: parameters.defaultHours, status: "not-started", priority: "medium", description: "Added during extraction review.", sourceLine: null }] }));
-    setApproved((current) => [...current, id]);
   }
 
   function addApproved() {
@@ -496,9 +646,16 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     let updated = 0;
     const synchronizedSource = selected.map((item) => {
       const prior = priorByKey.get(item.importItemKey);
-      if (!prior) return item;
-      if (["course", "title", "due", "hours"].some((field) => prior[field] !== item[field])) updated += 1;
-      return { ...prior, ...item, id: prior.id };
+      if (!prior) return approveCalendarCandidate(item);
+      const next = synchronizeCalendarSourceItem(prior, item);
+      if (
+        ["course", "sourceTitle", "sourceDue", "hours"].some(
+          (field) => prior[field] !== next[field],
+        )
+      ) {
+        updated += 1;
+      }
+      return next;
     });
     const preserved = assignments.filter((item) => item.importSourceId !== sourceId);
     const existing = new Set(preserved.map((item) => `${item.course}-${item.title}-${dateKey(item.due)}`));
@@ -526,9 +683,10 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
     );
     return (
       <section className="syllabus-fullscreen-page">
-        <div className="syllabus-fullscreen-heading"><div><NotebookLabel>EDITABLE OUTPUT</NotebookLabel><h1>Correct the calendar rows before saving.</h1><p>Titles, courses, dates, times, effort, objectives, and materials can all be fixed here.</p></div><div><button type="button" onClick={() => setReportOpen(true)}>Report a problem</button><button className="primary-paper-button" type="button" disabled={!extraction || reviewStale} onClick={addApproved}>Add approved dates</button></div></div>
+        <div className="syllabus-fullscreen-heading"><div><NotebookLabel>EDITABLE OUTPUT</NotebookLabel><h1>Correct the calendar rows before saving.</h1><p>Draft extracted from syllabus — verify before saving</p></div><div><button type="button" onClick={() => setReportOpen(true)}>Report a problem</button><button className="primary-paper-button" type="button" disabled={!extraction || reviewStale || approved.length === 0} onClick={addApproved}>Add approved dates</button></div></div>
         {notice && <p className="inline-notice" role="status">{notice}</p>}
         {reviewStale && <div className="syllabus-stale-warning" role="status"><span>The source or extraction settings changed.</span><button type="button" onClick={runExtraction}>Refresh review from latest source</button></div>}
+        <StudentSemesterDraft draft={studentAiDraft} provenance={studentAiProvenance} />
         <ExtractionReview extraction={extraction} setExtraction={setExtraction} approved={approved} setApproved={setApproved} parameters={parameters} onAddAssignment={addMissingAssignment} />
       </section>
     );
@@ -537,18 +695,21 @@ function SyllabusPanel({ persona, assignments, setAssignments }) {
   return (
     <div className="workspace-panel-stack">
       <section className="paper-card syllabus-upload-card" aria-busy={isReading}>
-        <div className="dashboard-card-heading"><div><NotebookLabel>SYLLABUS REVIEW</NotebookLabel><h1>Upload the syllabus. Check every conversion.</h1><p>Edit the course text and highlighted lines before any date reaches the calendar.</p></div><div className="syllabus-upload-actions"><button type="button" disabled={isReading} onClick={() => setScannerOpen(true)}>Scan paper syllabus</button><button className="primary-paper-button" type="button" disabled={isReading} onClick={() => inputRef.current?.click()}>{isReading ? "Reading syllabus…" : "Upload syllabus"}</button></div></div>
+        <div className="dashboard-card-heading"><div><NotebookLabel>{enableGovernedStudentAi ? "OWN YOUR SEMESTER" : "SYLLABUS REVIEW"}</NotebookLabel><h1>Upload the syllabus. Check every conversion.</h1><p>Edit the course text and highlighted lines before any date reaches the calendar.</p></div><div className="syllabus-upload-actions"><button type="button" disabled={isReading} onClick={() => setScannerOpen(true)}>Scan paper syllabus</button><button className="primary-paper-button" type="button" disabled={isReading} onClick={() => inputRef.current?.click()}>{isReading ? "Reading syllabus…" : "Upload syllabus"}</button></div></div>
         <input ref={inputRef} className="sr-only" type="file" tabIndex={-1} aria-label="Choose a PDF, Word DOCX, TXT, Markdown, or CSV syllabus" disabled={isReading} accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; handleFile(file); }} />
         {isReading && <div className="syllabus-read-progress" role="status" aria-live="polite"><span aria-hidden="true" /><strong>{readProgress || "Reading syllabus…"}</strong><button type="button" onClick={() => readControllerRef.current?.abort()}>Cancel</button></div>}
         {readError && <p className="syllabus-read-error" role="alert">{readError}</p>}
         <div className="syllabus-editor-grid">
-          <div><label>Course text<textarea spellCheck disabled={isReading} value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>PDF · Word DOCX · TXT · MD · CSV · read on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download scanned image copy (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button><button type="button" disabled={isReading} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
+          <div><label>Course text<textarea spellCheck disabled={isReading} value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>PDF · Word DOCX · TXT · MD · CSV · read on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download scanned image copy (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button>{enableGovernedStudentAi && <button type="button" disabled={isReading || !STUDENT_SEMESTER_AI_ENABLED || Boolean(studentAiStatus)} onClick={runStudentAiReview}>{studentAiStatus ? "Governed review in progress…" : "Review unstructured sections with TOS"}</button>}<button type="button" disabled={isReading} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
           <DetectedLinePreview analysis={analysis} />
         </div>
+        {enableGovernedStudentAi && !STUDENT_SEMESTER_AI_ENABLED && <p className="syllabus-read-error" role="status">Governed student-semester AI is available only in the existing staging environment. Deterministic extraction remains available here.</p>}
+        {studentAiStatus && <p className="syllabus-read-progress" role="status">{studentAiStatus}</p>}
+        {studentAiError && <p className="syllabus-read-error" role="alert">{studentAiError} Your deterministic review is preserved.</p>}
         {reviewStale && <div className="syllabus-stale-warning" role="status"><span>The course text or extraction settings changed. Refresh the review before saving dates.</span><button type="button" onClick={runExtraction}>Refresh review</button></div>}
         {notice && <p className="inline-notice" role="status">{notice}</p>}
       </section>
-      {extraction && <section className="paper-card extraction-result-card"><div className="dashboard-card-heading"><div><NotebookLabel>EXTRACTION REVIEW</NotebookLabel><h2>{extraction.title}</h2><p>Detected source lines: {extraction.detectedLines.join(", ") || "none"}</p></div><div className="syllabus-heading-actions"><button type="button" onClick={() => setSurfacePage("review")}>Review full screen</button><button type="button" disabled={reviewStale} onClick={addApproved}>Add approved dates to calendar</button></div></div><ExtractionReview extraction={extraction} setExtraction={setExtraction} approved={approved} setApproved={setApproved} parameters={parameters} onAddAssignment={addMissingAssignment} /></section>}
+      {extraction && <section className="paper-card extraction-result-card"><div className="dashboard-card-heading"><div><NotebookLabel>EXTRACTION REVIEW</NotebookLabel><h2>{extraction.title}</h2><p>Draft extracted from syllabus — verify before saving</p><small>Detected source lines: {extraction.detectedLines.join(", ") || "none"}</small></div><div className="syllabus-heading-actions"><button type="button" onClick={() => setSurfacePage("review")}>Review full screen</button><button type="button" disabled={reviewStale || approved.length === 0} onClick={addApproved}>Add approved dates to calendar</button></div></div><StudentSemesterDraft draft={studentAiDraft} provenance={studentAiProvenance} /><ExtractionReview extraction={extraction} setExtraction={setExtraction} approved={approved} setApproved={setApproved} parameters={parameters} onAddAssignment={addMissingAssignment} /></section>}
       {surfacePage && <FullscreenSurface key={surfacePage} title="Syllabus review" pages={REVIEW_PAGES} initialPage={surfacePage} addressPrefix="ednotebook://syllabus" onClose={() => setSurfacePage(null)} renderPage={renderReviewPage} />}
       {reportOpen && <IssueReportDialog persona={persona} fileName={fileName} onClose={() => setReportOpen(false)} onSaved={setNotice} />}
       {scannerOpen && <Suspense fallback={<div className="syllabus-scanner-loading" role="status">Opening the paper scanner…</div>}><SyllabusScanner onClose={() => setScannerOpen(false)} onComplete={(result) => { commitSyllabusSource(result); setScannerOpen(false); }} /></Suspense>}
