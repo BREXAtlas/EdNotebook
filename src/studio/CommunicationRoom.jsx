@@ -10,7 +10,7 @@ function downloadTranscript(courseTitle, messages, mode) {
     `Exported: ${new Date().toISOString()}`,
     "",
     ...messages.map((message) => (
-      `[${new Date(message.created_at || message.createdAt).toLocaleString()}] ${message.sender_label || message.senderLabel || "Member"}: ${message.body}`
+      `[${new Date(message.created_at || message.createdAt).toLocaleString()}] ${message.own ? "You" : message.sender_label || message.senderLabel || "Member"}: ${message.body}`
     )),
   ];
   const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain" }));

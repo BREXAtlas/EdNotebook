@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient.js";
+import {
+  loadCourseCommunication,
+  sendCourseMessage,
+  subscribeCourseCommunication,
+} from "../communication/courseCommunicationService.js";
+import { COURSE_COMMUNICATION_LIMITS } from "../communication/courseCommunicationModel.js";
 import { currentCourseId } from "./storageService.js";
 
 export default function CloudCourseRoom({ course, onDownload }) {
@@ -8,8 +13,6 @@ export default function CloudCourseRoom({ course, onDownload }) {
   const [resources, setResources] = useState([]);
   const [body, setBody] = useState("");
   const [attachmentId, setAttachmentId] = useState("");
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -19,25 +22,13 @@ export default function CloudCourseRoom({ course, onDownload }) {
       return;
     }
     setLoading(true);
-    const userResult = await supabase.auth.getUser();
-    setUser(userResult.data.user || null);
-    const [{ data: profileData }, { data: messageData, error: messageError }, { data: resourceData }] = await Promise.all([
-      supabase.from("profiles").select("id,full_name,email").eq("id", userResult.data.user?.id).maybeSingle(),
-      supabase
-        .from("learning_messages")
-        .select("*,learning_resources(title,resource_type)")
-        .eq("course_id", courseId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("learning_resources")
-        .select("id,title,resource_type")
-        .eq("course_id", courseId)
-        .order("created_at", { ascending: false }),
-    ]);
-    setProfile(profileData || null);
-    if (messageError) setError(messageError.message);
-    else setMessages(messageData || []);
-    setResources(resourceData || []);
+    const result = await loadCourseCommunication(courseId);
+    if (result.error) setError(result.error.message);
+    else {
+      setMessages(result.data.messages || []);
+      setResources(result.data.resources || []);
+      setError("");
+    }
     setLoading(false);
   }
 
@@ -45,21 +36,12 @@ export default function CloudCourseRoom({ course, onDownload }) {
     loadRoom();
     if (!courseId) return undefined;
 
-    const channel = supabase
-      .channel(`course-room-${courseId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "learning_messages", filter: `course_id=eq.${courseId}` },
-        (payload) => {
-          setMessages((items) => (
-            items.some((item) => item.id === payload.new.id) ? items : [...items, payload.new]
-          ));
-        }
-      )
-      .subscribe();
+    const unsubscribe = subscribeCourseCommunication(courseId, () => loadRoom());
+    const refreshTimer = window.setInterval(loadRoom, COURSE_COMMUNICATION_LIMITS.refreshMilliseconds);
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
+      window.clearInterval(refreshTimer);
     };
   }, [courseId]);
 
@@ -69,17 +51,16 @@ export default function CloudCourseRoom({ course, onDownload }) {
     if (!body.trim()) return;
     try {
       if (!courseId) throw new Error("Save the course shell before opening its cloud room.");
-      const senderLabel = profile?.full_name || profile?.email || user?.email || "Course member";
-      const { error: sendError } = await supabase.from("learning_messages").insert({
-        course_id: courseId,
-        sender_id: user.id,
-        sender_label: senderLabel,
-        body: body.trim(),
-        attachment_resource_id: attachmentId || null,
+      const { error: sendError } = await sendCourseMessage({
+        courseId,
+        body,
+        kind: "course_note",
+        attachmentResourceId: attachmentId || null,
       });
       if (sendError) throw sendError;
       setBody("");
       setAttachmentId("");
+      await loadRoom();
     } catch (sendError) {
       setError(sendError.message || "The message could not be sent.");
     }
@@ -100,13 +81,12 @@ export default function CloudCourseRoom({ course, onDownload }) {
           ) : messages.length === 0 ? (
             <p className="studio-tool-empty">No messages yet. Start with a question, instruction, or course update.</p>
           ) : messages.map((message) => {
-            const own = message.sender_id === user?.id;
             return (
-              <article className={own ? "is-own" : ""} key={message.id}>
-                <div><strong>{own ? "You" : message.sender_label || "Course member"}</strong><time>{new Date(message.created_at).toLocaleString()}</time></div>
+              <article className={message.own ? "is-own" : ""} key={message.id}>
+                <div><strong>{message.own ? "You" : message.senderLabel || "Course member"}</strong><time>{new Date(message.createdAt).toLocaleString()}</time></div>
                 <p>{message.body}</p>
-                {message.learning_resources && (
-                  <span className="studio-message-attachment"><span aria-hidden="true">📎</span>{message.learning_resources.title}</span>
+                {message.attachment && (
+                  <span className="studio-message-attachment"><span aria-hidden="true">📎</span>{message.attachment.title}</span>
                 )}
               </article>
             );

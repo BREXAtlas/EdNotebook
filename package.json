@@ -16,6 +16,7 @@
     "test:ai-outline": "node --test src/ai/courseOutlineContract.test.js",
     "test:syllabus-extraction": "node --test src/ai/syllabusExtractionContract.test.js src/ai/syllabusGovernedReview.test.js src/ai/syllabusExtractionUx.static.test.js src/ai/syllabusAiReturnedDraft.static.test.js src/syllabus/syllabusMigration.test.js",
     "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js",
+    "test:course-communication": "node --test src/communication/courseCommunicationModel.test.js src/communication/courseCommunicationUx.static.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },
