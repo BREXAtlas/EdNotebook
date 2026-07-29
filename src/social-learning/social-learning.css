@@ -1,0 +1,675 @@
+.social-learning-workspace {
+  --social-learning-violet: #6657b8;
+  --social-learning-violet-dark: #30245f;
+  --social-learning-gold: #f4c85f;
+  --social-learning-mint: #dff5e8;
+}
+
+.social-learning-professor-hero,
+.social-learning-celebration {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(270px, .6fr);
+  gap: 24px;
+  align-items: center;
+  padding: 30px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(244, 200, 95, .34), transparent 28%),
+    linear-gradient(135deg, #201947, var(--social-learning-violet));
+  border-radius: 20px;
+  box-shadow: 0 18px 45px rgba(48, 36, 95, .18);
+}
+
+.social-learning-professor-hero > div > span,
+.social-learning-celebration-copy > span,
+.social-learning-preview > span {
+  color: var(--social-learning-gold);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.social-learning-professor-hero h1,
+.social-learning-celebration h1 {
+  margin: 8px 0;
+  font: 700 clamp(30px, 4vw, 48px)/1.05 "Zilla Slab", Georgia, serif;
+}
+
+.social-learning-professor-hero p,
+.social-learning-celebration p {
+  margin: 0;
+  color: #ebe7ff;
+  line-height: 1.6;
+}
+
+.social-learning-boundary {
+  padding: 18px;
+  color: #35304b;
+  background: #fff8e7;
+  border: 1px solid #ead18d;
+  border-radius: 14px;
+}
+
+.social-learning-professor-hero .social-learning-boundary {
+  color: #fff;
+  background: rgba(255, 255, 255, .12);
+  border-color: rgba(255, 255, 255, .22);
+}
+
+.social-learning-boundary strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.social-learning-boundary p,
+.social-learning-professor-hero .social-learning-boundary p {
+  margin: 0;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.social-learning-professor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.social-learning-award-form,
+.social-learning-award-form label,
+.social-learning-correction,
+.social-learning-correction label {
+  display: grid;
+  gap: 8px;
+}
+
+.social-learning-award-form {
+  gap: 18px;
+}
+
+.social-learning-award-form > div > p,
+.social-learning-correction > div > p {
+  margin: 0;
+  color: var(--portal-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.social-learning-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.social-learning-award-form label,
+.social-learning-correction label {
+  color: #4e5870;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.social-learning-award-form input,
+.social-learning-award-form select,
+.social-learning-award-form textarea,
+.social-learning-correction input,
+.social-learning-correction select,
+.social-learning-correction textarea {
+  width: 100%;
+  padding: 11px;
+  color: #1f2940;
+  background: #fff;
+  border: 1px solid var(--portal-line);
+  border-radius: 9px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.social-learning-award-form small,
+.social-learning-correction small {
+  color: var(--portal-muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.social-learning-wide-field,
+.social-learning-visual-picker {
+  grid-column: 1 / -1;
+}
+
+.social-learning-visual-picker {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(54px, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.social-learning-visual-picker legend {
+  grid-column: 1 / -1;
+  margin-bottom: 5px;
+  color: #4e5870;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.social-learning-visual-picker label {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 9px 5px;
+  background: #f7f5ff;
+  border: 1px solid #ded8f3;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.social-learning-visual-picker label.is-selected {
+  color: #fff;
+  background: var(--social-learning-violet);
+  border-color: var(--social-learning-violet);
+}
+
+.social-learning-visual-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.social-learning-visual-picker span {
+  font-size: 24px;
+}
+
+.social-learning-visual-picker small {
+  color: inherit;
+}
+
+.social-learning-award-form > button,
+.social-learning-correction button,
+.social-learning-ledger-points button {
+  padding: 10px 14px;
+  color: #fff;
+  background: var(--social-learning-violet);
+  border: 0;
+  border-radius: 9px;
+  font-weight: 850;
+}
+
+.social-learning-award-form > button {
+  justify-self: start;
+}
+
+.social-learning-award-form button:disabled,
+.social-learning-correction button:disabled {
+  opacity: .58;
+}
+
+.social-learning-preview {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  padding: 30px 24px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at top, rgba(244, 200, 95, .34), transparent 42%),
+    var(--social-learning-violet-dark);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.social-learning-preview h2 {
+  margin: 4px 0 0;
+  font: 700 30px/1.05 "Zilla Slab", Georgia, serif;
+}
+
+.social-learning-preview > strong {
+  color: var(--social-learning-gold);
+  font-size: 28px;
+}
+
+.social-learning-preview p {
+  color: #eeeaff;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.social-learning-preview footer,
+.social-learning-preview > small {
+  color: #cbc4ec;
+  font-size: 9px;
+}
+
+.social-learning-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  color: #fff;
+  background: var(--social-learning-violet);
+  border: 3px solid #e5defc;
+  border-radius: 50%;
+  font-size: 23px;
+  box-shadow: 0 8px 18px rgba(48, 36, 95, .18);
+}
+
+.social-learning-mark.is-large {
+  width: 112px;
+  height: 112px;
+  color: var(--social-learning-violet-dark);
+  background: var(--social-learning-gold);
+  border: 8px solid rgba(255, 255, 255, .28);
+  font-size: 54px;
+  box-shadow: 0 16px 35px rgba(0, 0, 0, .2);
+}
+
+.social-learning-mark.is-book { background: #317b77; }
+.social-learning-mark.is-lightbulb { background: #c27c2a; }
+.social-learning-mark.is-compass { background: #3567a5; }
+.social-learning-mark.is-shield { background: #965272; }
+.social-learning-mark.is-growth { background: #3e7a4d; }
+
+.social-learning-correction {
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(180px, .4fr));
+  align-items: end;
+  gap: 14px;
+  border-left: 6px solid var(--social-learning-gold);
+}
+
+.social-learning-correction > div:last-child {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.social-learning-correction > div:last-child button:first-child {
+  color: #4c5670;
+  background: #eceff5;
+}
+
+.social-learning-ledger {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.social-learning-ledger-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: start;
+  padding: 15px;
+  background: #fbfaff;
+  border: 1px solid #e3def2;
+  border-radius: 13px;
+}
+
+.social-learning-ledger-row.is-adjustment,
+.social-learning-ledger-row.is-reversal {
+  background: #fffaf0;
+  border-style: dashed;
+}
+
+.social-learning-ledger-row.is-reversed {
+  opacity: .68;
+}
+
+.social-learning-ledger-row > div:nth-child(2) {
+  display: grid;
+  gap: 4px;
+}
+
+.social-learning-ledger-row > div:nth-child(2) > span {
+  color: var(--social-learning-violet);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.social-learning-ledger-row p {
+  margin: 3px 0;
+  color: #4f5b73;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.social-learning-ledger-row small {
+  color: var(--portal-muted);
+  font-size: 9px;
+}
+
+.social-learning-ledger-points {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 72px;
+}
+
+.social-learning-ledger-points > strong {
+  color: var(--social-learning-violet-dark);
+  font-size: 24px;
+}
+
+.social-learning-ledger-points > span {
+  color: var(--portal-muted);
+  font-size: 9px;
+}
+
+.social-learning-ledger-points button {
+  margin-top: 7px;
+  padding: 6px 8px;
+  font-size: 9px;
+}
+
+.social-learning-empty {
+  margin-top: 14px;
+  padding: 28px;
+  color: var(--portal-muted);
+  background: #f7f6fa;
+  border: 1px dashed #d7d1e5;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.social-learning-celebration {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.social-learning-celebration-copy small {
+  display: block;
+  margin-top: 12px;
+  color: #d7d1ef;
+}
+
+.social-learning-celebration-mark {
+  display: grid;
+  justify-items: center;
+}
+
+.social-learning-celebration-mark > strong {
+  margin-top: 8px;
+  color: var(--social-learning-gold);
+  font-size: 34px;
+}
+
+.social-learning-celebration-mark > span:last-child {
+  color: #e6e1f7;
+  font-size: 10px;
+}
+
+.social-learning-progress-card {
+  display: grid;
+  grid-template-columns: minmax(220px, .35fr) minmax(0, .65fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.social-learning-progress-card p {
+  margin: 0;
+  color: var(--portal-muted);
+  font-size: 11px;
+}
+
+.social-learning-progress-track {
+  height: 18px;
+  overflow: hidden;
+  background: #ece9f6;
+  border-radius: 999px;
+}
+
+.social-learning-progress-track i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--social-learning-violet), var(--social-learning-gold));
+  border-radius: inherit;
+  transition: width .45s ease;
+}
+
+.social-learning-shelf {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  background: linear-gradient(180deg, #fff, #f7f4ff);
+  border: 1px solid #dfd8f2;
+  border-radius: 16px;
+}
+
+.social-learning-shelf > div:first-child > p,
+.social-learning-unlocks .dashboard-card-heading p {
+  margin: 0;
+  color: var(--portal-muted);
+  font-size: 11px;
+}
+
+.social-learning-badges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.social-learning-badges article {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 18px 12px;
+  color: #7c8090;
+  background: #f0eef4;
+  border: 1px dashed #cfc9da;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.social-learning-badges article.is-earned {
+  color: var(--social-learning-violet-dark);
+  background: #fff7dc;
+  border: 1px solid #e4ca79;
+  box-shadow: 0 10px 24px rgba(104, 79, 20, .09);
+}
+
+.social-learning-badges article > span {
+  font-size: 30px;
+}
+
+.social-learning-badges article small {
+  font-size: 9px;
+}
+
+.social-learning-badges article p {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.social-learning-path {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.social-learning-path article {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  padding: 13px;
+  background: #f6f5f9;
+  border: 1px solid #e0dce9;
+  border-radius: 12px;
+}
+
+.social-learning-path article.is-earned {
+  background: var(--social-learning-mint);
+  border-color: #a8d6b9;
+}
+
+.social-learning-path article > span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: #fff;
+  background: #878397;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.social-learning-path article.is-earned > span {
+  background: #397a50;
+}
+
+.social-learning-path article p {
+  margin: 4px 0;
+  color: #586278;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.social-learning-path article small {
+  color: var(--portal-muted);
+  font-size: 8px;
+}
+
+.social-learning-path article button {
+  margin-top: 8px;
+  padding: 6px 8px;
+  color: #fff;
+  background: var(--social-learning-violet);
+  border: 0;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.social-learning-path article button:disabled {
+  color: #858190;
+  background: #e1dee8;
+}
+
+.social-learning-workspace.is-focus-palette .social-learning-celebration {
+  background: #243c4a;
+  box-shadow: none;
+}
+
+.social-learning-workspace.is-focus-palette .social-learning-mark.is-large {
+  color: #243c4a;
+  background: #e8d9a6;
+  box-shadow: none;
+}
+
+.social-learning-unlocked-aid {
+  border-left: 6px solid var(--social-learning-violet);
+}
+
+.social-learning-unlocked-aid > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.social-learning-unlocked-aid article {
+  padding: 13px;
+  background: #f7f5ff;
+  border-radius: 10px;
+}
+
+.social-learning-unlocked-aid p,
+.social-learning-unlocked-aid li {
+  color: #556078;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.social-learning-private-display {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 18px;
+  color: #29503a;
+  background: var(--social-learning-mint);
+  border: 1px solid #a8d6b9;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.student-sidebar-points {
+  display: grid;
+  gap: 6px;
+  margin: 10px 4px;
+  padding: 13px;
+  color: #fff;
+  background: linear-gradient(135deg, #30245f, #6657b8);
+  border-radius: 11px;
+}
+
+.student-sidebar-points > span,
+.student-sidebar-points > small {
+  color: #e5dffc;
+  font-size: 9px;
+}
+
+.student-sidebar-points > strong {
+  color: #f4c85f;
+  font-size: 17px;
+}
+
+.student-sidebar-points > div {
+  height: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .18);
+  border-radius: 999px;
+}
+
+.student-sidebar-points i {
+  display: block;
+  height: 100%;
+  background: #f4c85f;
+  border-radius: inherit;
+}
+
+@media (max-width: 980px) {
+  .social-learning-professor-grid,
+  .social-learning-professor-hero,
+  .social-learning-celebration {
+    grid-template-columns: 1fr;
+  }
+  .social-learning-preview { position: static; }
+  .social-learning-badges,
+  .social-learning-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .social-learning-form-grid,
+  .social-learning-progress-card,
+  .social-learning-correction {
+    grid-template-columns: 1fr;
+  }
+  .social-learning-correction > div:last-child,
+  .social-learning-wide-field,
+  .social-learning-visual-picker { grid-column: auto; }
+  .social-learning-visual-picker { grid-template-columns: repeat(4, minmax(52px, 1fr)); }
+  .social-learning-badges,
+  .social-learning-path { grid-template-columns: 1fr; }
+  .social-learning-unlocked-aid > div { grid-template-columns: 1fr; }
+  .social-learning-ledger-row { grid-template-columns: auto minmax(0, 1fr); }
+  .social-learning-ledger-points {
+    grid-column: 2;
+    justify-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-learning-progress-track i {
+    transition: none;
+  }
+}
