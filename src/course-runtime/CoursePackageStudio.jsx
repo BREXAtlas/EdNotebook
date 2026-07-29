@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AssignmentTemplateWorkspace from "../portal/AssignmentTemplateWorkspace.jsx";
+import LessonDraftReview from "../ai/LessonDraftReview.jsx";
+import { environmentStorage, STORAGE_KEYS } from "../storage/environmentStorage.js";
 import { addLessonToManifest, cloneManifest, COURSE_PRESETS, createStarterManifest, flattenLessons, removeLessonFromManifest, validateCourseManifest } from "./courseManifest.js";
 import { adaptBuilderCourseToManifest, readBuilderCourseDraft } from "./builderCourseAdapter.js";
 import { gradeCourseProgress, listManageableCourses, listProgressOverview, loadPublicationForCourse, publishCoursePackage, saveCoursePackageDraft, setPublicationState } from "./courseService.js";
@@ -53,6 +55,12 @@ export default function CoursePackageStudio({ session, onBack, onOpenStudentCour
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [syllabusRecord] = useState(
+    () => environmentStorage.getJson(STORAGE_KEYS.structuredSyllabus, null),
+  );
+  const [outlineRecord] = useState(
+    () => environmentStorage.getJson(STORAGE_KEYS.aiCourseOutline, null),
+  );
   const validation = useMemo(() => validateCourseManifest(manifest), [manifest]);
   const selectedLesson = selected && manifest?.paths.find((path) => path.id === selected.pathId)?.nodes.find((lesson) => lesson.id === selected.lessonId);
 
@@ -122,6 +130,25 @@ export default function CoursePackageStudio({ session, onBack, onOpenStudentCour
 
     {tab === "lessons" && <div className="studio-lesson-layout"><aside className="studio-card"><div className="studio-section-heading"><div><span className="studio-kicker">COURSE MAP</span><h2>{manifest.paths[0].label}</h2></div><button type="button" onClick={() => setManifest(addLessonToManifest(manifest, manifest.paths[0].id, manifest.paths[0].groups[0].id))}>Add lesson</button></div>{manifest.paths[0].nodes.map((lesson, index) => <button className={selected?.lessonId === lesson.id ? "is-active" : ""} type="button" onClick={() => setSelected({ pathId: manifest.paths[0].id, lessonId: lesson.id })} key={lesson.id}><span>{index + 1}</span><strong>{lesson.title}</strong><small>~{lesson.estimatedMinutes} min</small></button>)}</aside><section className="studio-card lesson-editor">{!selectedLesson ? <div className="studio-empty"><strong>Select a lesson.</strong><p>Edit its narrative, concepts, choices, checks, and sources.</p></div> : <><div className="studio-section-heading"><div><span className="studio-kicker">LESSON EDITOR</span><h1>{selectedLesson.title}</h1></div><button type="button" disabled={manifest.paths[0].nodes.length <= 1} onClick={() => { setManifest(removeLessonFromManifest(manifest, selected.pathId, selected.lessonId)); setSelected(null); }}>Remove lesson</button></div><label>Lesson title<input value={selectedLesson.title} onChange={(event) => setManifest(updateLesson(manifest, selected.pathId, selected.lessonId, { title: event.target.value }))} /></label><label>Subtitle<input value={selectedLesson.subtitle} onChange={(event) => setManifest(updateLesson(manifest, selected.pathId, selected.lessonId, { subtitle: event.target.value }))} /></label><label>Estimated minutes<input type="number" min="1" max="240" value={selectedLesson.estimatedMinutes} onChange={(event) => setManifest(updateLesson(manifest, selected.pathId, selected.lessonId, { estimatedMinutes: Number(event.target.value) }))} /></label><label>What is happening<textarea rows="4" value={selectedLesson.openingNarrative} onChange={(event) => setManifest(updateLesson(manifest, selected.pathId, selected.lessonId, { openingNarrative: event.target.value }))} /></label><label>Real-world example<textarea rows="3" value={selectedLesson.realWorldExample} onChange={(event) => setManifest(updateLesson(manifest, selected.pathId, selected.lessonId, { realWorldExample: event.target.value }))} /></label><div className="studio-field-grid">{[["what","What it is"],["why","Why it exists"],["how","How it may help"],["whoMayBenefit","Who may benefit"],["cost","What it may cost"],["risks","Risks or limitations"],["whoMayNotBenefit","Who may not benefit"],["misunderstandingRisk","When misunderstood"],["verifyNote","What to verify"]].map(([key,label]) => <label key={key}>{label}<textarea rows="3" value={selectedLesson.concept?.[key] || ""} onChange={(event) => setManifest(updateConcept(manifest, selected.pathId, selected.lessonId, key, event.target.value))} /></label>)}</div><label>Scenario question<textarea rows="2" value={selectedLesson.scenario?.prompt || ""} onChange={(event) => setManifest(updateLesson(manifest, selected.pathId, selected.lessonId, { scenario: { ...selectedLesson.scenario, prompt: event.target.value } }))} /></label><section className="lesson-check-preview"><span>KNOWLEDGE CHECK</span><strong>{selectedLesson.knowledgeChecks?.[0]?.question}</strong><small>Correct answer: {selectedLesson.knowledgeChecks?.[0]?.correctAnswer}</small></section></>}</section></div>}
 
+    {tab === "lessons" && selectedLesson && (
+      <div className="phase5-studio-slot">
+        <LessonDraftReview
+          key={`${activeCourse.id}:${selectedLesson.id}`}
+          manifest={manifest}
+          pathId={selected.pathId}
+          lesson={selectedLesson}
+          course={activeCourse}
+          syllabusRecord={syllabusRecord}
+          outlineRecord={outlineRecord}
+          onAccept={(nextManifest) => {
+            setManifest(nextManifest);
+            setNotice(
+              "Professor-accepted lesson added to the existing unpublished course-package draft. Save draft when ready.",
+            );
+          }}
+        />
+      </div>
+    )}
     {tab === "assignments" && <AssignmentTemplateWorkspace mode="professor" session={session} track={activeCourse.education_division || "university"} classes={classes} />}
     {tab === "progress" && <ProgressTable courseId={courseId} publicationId={publication?.id} />}
 

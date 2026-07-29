@@ -49,6 +49,9 @@ jobs:
       - name: Test governed student semester calendar workflow
         run: npm run test:student-semester
 
+      - name: Test governed selected-lesson review workflow
+        run: npm run test:lesson-generation
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 

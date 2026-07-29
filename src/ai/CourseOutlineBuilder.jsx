@@ -246,6 +246,10 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
         format: "EdNotebookProfessorOutline/1.0",
         reviewState: "professor_accepted",
         acceptedAt: builderCourse.aiDraft.acceptedAt,
+        courseId:
+          existingCourse.id
+          || window.localStorage.getItem("ednotebook-course-id")
+          || null,
         course: builderCourse,
         syncSource: syncResult.source || "device",
       };
