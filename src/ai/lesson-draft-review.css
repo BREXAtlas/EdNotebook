@@ -218,9 +218,81 @@
 .phase5-alignment-report,
 .phase5-section-editor,
 .phase5-check-editor,
+.phase5-content-unit-review,
 .phase5-review-issues {
   display: grid;
   gap: 12px;
+}
+
+.phase5-content-unit-review {
+  display: grid;
+  gap: 14px;
+  border-color: #9eb6ec;
+  background: #f4f7ff;
+}
+
+.phase5-content-unit-review .studio-section-heading p {
+  max-width: 700px;
+  margin: 5px 0 0;
+  color: #566277;
+}
+
+.phase5-content-unit-actions {
+  display: grid;
+  grid-template-columns: auto auto minmax(240px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.phase5-content-unit-result {
+  display: grid;
+  gap: 11px;
+  padding: 16px;
+  border: 1px solid #94aedf;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.phase5-content-unit-result > header,
+.phase5-content-unit-result > footer,
+.phase5-content-unit-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.phase5-content-unit-result > header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.phase5-content-unit-result > header span,
+.phase5-content-unit-evidence span {
+  color: #586783;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.phase5-content-unit-result h4,
+.phase5-content-unit-result p {
+  margin: 0;
+}
+
+.phase5-content-unit-result > small {
+  color: #657086;
+}
+
+.phase5-content-unit-evidence {
+  justify-content: flex-start;
+}
+
+.phase5-content-unit-evidence span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #e9effc;
 }
 
 .phase5-alignment-report h3,
@@ -455,6 +527,10 @@
   .phase5-generate-panel {
     grid-template-columns: 1fr;
   }
+
+  .phase5-content-unit-actions {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 650px) {
@@ -472,8 +548,9 @@
 
   .phase5-context-grid,
   .phase5-alignment-report > div:last-child,
-  .phase5-edit-grid,
-  .phase5-check-editor > article {
+    .phase5-edit-grid,
+    .phase5-content-unit-actions,
+    .phase5-check-editor > article {
     grid-template-columns: 1fr;
   }
 
