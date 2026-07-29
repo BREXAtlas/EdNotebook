@@ -23,7 +23,7 @@ No blank, inferred, parsed-only, or untested evidence field is treated as a pass
 
 | Gate | Repository evidence | Database/external evidence | Decision |
 | --- | --- | --- | --- |
-| Restore and reconciliation | PASS - version 2.1 fail-closed snapshot model covers the current 44-domain linked-record contract; SQL retains exact canonical JSON, row counts, and SHA-256 digests and rehearses a non-cascading representative row restore | NOT RUN - fresh-database SQL execution, provider database/PITR restore, and a separate versioned Storage-object restore and reconciliation are required | HOLD |
+| Restore and reconciliation | PASS - version 2.2 fail-closed snapshot model covers the current 45-domain linked-record contract, including student learning records; SQL retains exact canonical JSON, row counts, and SHA-256 digests and rehearses a non-cascading representative row restore | NOT RUN - fresh-database SQL execution, provider database/PITR restore, and a separate versioned Storage-object restore and reconciliation are required | HOLD |
 | Access control | PASS - local policy tests deny cross-institution and former-institution access; browser grade writes are revoked; messages, files, profiles, groups, grades, and admin capabilities are resource- and tenant-bound in the candidate migration | NOT RUN - authenticated SQL harness execution and hosted disposable-environment RLS rehearsal are required | HOLD |
 | Export and reconciliation | PASS - 32 Blackboard tests pass; the real confirmation RPC is exercised in SQL with wrong-row, wrong-column, stale-source, score, duplicate, scaling, and output-hash negatives | NOT RUN - the SQL harness and an institution-controlled Blackboard import, REST, or LTI AGS reconciliation round trip are required | HOLD |
 | File deletion, retention, and legal hold | PASS - Node/static checks, seven Deno tests, Edge Function type checks, and SQL worker lifecycle assertions cover claims, token/worker fencing, retries, normal and partial completion, late holds/retention, quota release, and atomic audit records | NOT RUN - the SQL harness and real disposable Storage-object removal/preservation tests are required; full account/data-subject deletion and retention is not implemented | HOLD |
@@ -69,7 +69,7 @@ SQL parsing proves syntax only. It does not prove migrations apply cleanly, poli
 
 ## Scope limits that block intake
 
-The 44-domain contract is the current student/learner linked-record contract, not a complete account or data-subject inventory. It does not yet classify every person-associated record, including Auth identities/sessions/logs, learner-created professor or publisher content, Stripe webhook payloads, and unlinked portal-interest forms. Those records must be excluded from student intake or added to an institution-approved delete/anonymize/retain/block matrix.
+The 45-domain contract is the current student/learner linked-record contract, not a complete account or data-subject inventory. It does not yet classify every person-associated record, including Auth identities/sessions/logs, learner-created professor or publisher content, Stripe webhook payloads, and unlinked portal-interest forms. Those records must be excluded from student intake or added to an institution-approved delete/anonymize/retain/block matrix.
 
 Supabase database backups restore database records and Storage metadata; they do not by themselves prove restoration of the underlying Storage objects. Database/PITR recovery and versioned or off-site object recovery therefore require separate rehearsals.
 

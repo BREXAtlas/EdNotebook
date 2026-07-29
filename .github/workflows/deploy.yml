@@ -49,6 +49,9 @@ jobs:
       - name: Test governed student semester calendar workflow
         run: npm run test:student-semester
 
+      - name: Test Digital Literacy student learning workspace
+        run: npm run test:student-learning
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 

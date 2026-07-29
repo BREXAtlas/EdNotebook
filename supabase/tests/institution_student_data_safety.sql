@@ -232,6 +232,7 @@ as $capture$
   union all select 'gradeShareLinks',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.grade_share_links where student_id=p_student or viewer_id=p_student) t),'[]'::jsonb)
   union all select 'learningMessages',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.learning_messages where sender_id=p_student or recipient_id=p_student) t),'[]'::jsonb)
   union all select 'learningResources',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.learning_resources where owner_id=p_student) t),'[]'::jsonb)
+  union all select 'studentLearningRecords',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_learning_records where student_id=p_student) t),'[]'::jsonb)
   union all select 'studentPublicProfile',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_public_profiles where user_id=p_student) t),'[]'::jsonb)
   union all select 'studentGroups',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_groups where created_by=p_student) t),'[]'::jsonb)
   union all select 'studentGroupMemberships',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_group_memberships where user_id=p_student) t),'[]'::jsonb)
@@ -263,10 +264,21 @@ $capture$;
 
 create temporary table safety_expected_restore_domains(domain text primary key);
 insert into safety_expected_restore_domains(domain) values
-  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('learningResources'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('auditEvents');
+  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('learningResources'),('studentLearningRecords'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('auditEvents');
+
+insert into public.student_learning_records(
+  student_id,record_id,root_id,version,record_kind,course_code,course_title,
+  lesson_id,lesson_title,title,filename,content,created_at
+) values (
+  '10000000-0000-4000-8000-000000000011','safety-learning-note-v1','safety-learning-note',1,'note',
+  'SAFE-101','Synthetic safety course','source-check','Check a source','Safety learning note',
+  '2026-07-29_safe-101_note_safety-learning-note_v01.md',
+  '{"title":"Safety learning note","body":"Synthetic restore evidence only."}'::jsonb,
+  '2026-07-29T04:00:00Z'
+);
 
 create temporary table safety_restore_inventory_before as
-select '2.1'::text contract_version,domain,true captured,
+select '2.2'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -277,10 +289,10 @@ begin
     select 1 from safety_expected_restore_domains e
     full join safety_restore_inventory_before b using(domain)
     where e.domain is null or b.domain is null or not b.captured
-  ) or (select count(*) from safety_restore_inventory_before)<>44 then
+  ) or (select count(*) from safety_restore_inventory_before)<>45 then
     raise exception 'RESTORE TEST FAILED: canonical student-data inventory is incomplete';
   end if;
-  raise notice 'PASS canonical 44-domain capture inventory is complete';
+  raise notice 'PASS canonical 45-domain capture inventory is complete';
 end $$;
 
 create temporary table safety_incomplete_restore_inventory as
@@ -309,6 +321,8 @@ create temporary table safety_backup_assignment_drafts as
   select * from public.assignment_drafts where student_id='10000000-0000-4000-8000-000000000011';
 create temporary table safety_backup_messages as
   select * from public.learning_messages where sender_id='10000000-0000-4000-8000-000000000011';
+create temporary table safety_backup_student_learning_records as
+  select * from public.student_learning_records where student_id='10000000-0000-4000-8000-000000000011';
 create temporary table safety_backup_entitlements as
   select * from public.user_entitlements where user_id='10000000-0000-4000-8000-000000000011';
 create temporary table safety_backup_grade_shares as
@@ -332,6 +346,7 @@ delete from public.student_group_memberships
 where user_id='10000000-0000-4000-8000-000000000011'
   and group_id in(select group_id from safety_backup_group_memberships);
 delete from public.learning_messages where id in(select id from safety_backup_messages);
+delete from public.student_learning_records where id in(select id from safety_backup_student_learning_records);
 delete from public.grade_share_links where id in(select id from safety_backup_grade_shares);
 delete from public.assignment_drafts where id in(select id from safety_backup_assignment_drafts);
 delete from public.file_previews where id in(select id from safety_backup_previews);
@@ -344,7 +359,7 @@ delete from public.course_memberships where user_id='10000000-0000-4000-8000-000
 delete from public.institution_memberships where user_id='10000000-0000-4000-8000-000000000011';
 
 create temporary table safety_restore_inventory_damaged as
-select '2.1'::text contract_version,domain,true captured,
+select '2.2'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -369,6 +384,7 @@ insert into public.user_entitlements select * from safety_backup_entitlements;
 insert into public.file_previews select * from safety_backup_previews;
 insert into public.upload_quota_reservations select * from safety_backup_quota;
 insert into public.assignment_drafts select * from safety_backup_assignment_drafts;
+insert into public.student_learning_records select * from safety_backup_student_learning_records;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.learning_messages select * from safety_backup_messages;
@@ -381,7 +397,7 @@ insert into public.course_lesson_progress select * from safety_backup_lesson_pro
 insert into public.course_progress select * from safety_backup_course_progress;
 
 create temporary table safety_restore_inventory_after as
-select '2.1'::text contract_version,domain,true captured,
+select '2.2'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -398,7 +414,7 @@ begin
   ) then
     raise exception 'RESTORE TEST FAILED: restored student bundle did not reconcile';
   end if;
-  raise notice 'PASS representative logical restore reconciles within the canonical 44-domain inventory';
+  raise notice 'PASS representative logical restore reconciles within the canonical 45-domain inventory';
 end $$;
 
 -- GATE 2: cross-institution RLS denial for student, professor, and admin data.

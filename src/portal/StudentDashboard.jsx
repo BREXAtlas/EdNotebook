@@ -13,6 +13,7 @@ import {
 } from "./demoData.js";
 import { educationTrack as getTrack } from "./educationTracks.js";
 import AssignmentTemplateWorkspace from "./AssignmentTemplateWorkspace.jsx";
+import StudentLearningWorkspace from "../learning/StudentLearningWorkspace.jsx";
 import AccountSettings, { LiveDateTime, readAccountSettings, saveAccountSettings } from "../AccountSettings.jsx";
 import { STORY_GUIDES, STORY_REACTION_TYPES, generateStoryFeed, getDefaultConnection, localCalendarDate } from "../demo/storyEngine.js";
 import {
@@ -26,7 +27,7 @@ import {
 const OwnYourSemester = lazy(() => import("../ai/OwnYourSemester.jsx"));
 
 const TABS = [
-  ["overview", "Overview"], ["semester", "Own your semester"], ["classes", "Classes"], ["assignments", "Assignments"], ["grades", "Grades"], ["notes", "Notes"],
+  ["overview", "Overview"], ["semester", "Own your semester"], ["classes", "Classes"], ["assignments", "Assignments"], ["grades", "Grades"], ["notes", "Learning workspace"],
   ["life", "Student life"], ["friends", "Find friends"], ["messages", "Messages"], ["page", "My page"], ["opportunities", "Opportunities"],
   ["demo", "Brooke's demo"],
   ["settings", "Settings"],
@@ -79,16 +80,6 @@ function GradesPanel({ classes, rows, track }) {
   if (!classes.some((course) => Number.isFinite(course.grade))) return <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">REPORT CARD</span><h1>No grades have been published.</h1><p>Your classes are linked. Scores, status, and the educator's grade scale will appear here after publishing.</p></section>;
   const overallGrade = (classes.filter((course) => Number.isFinite(course.grade)).reduce((sum, course) => sum + course.grade, 0) / classes.filter((course) => Number.isFinite(course.grade)).length).toFixed(1);
   return <div className="student-panel-stack"><section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">REPORT CARD</span><h1>Your grades</h1><p>Educators see only classes they manage. You see your full {track === "k12" ? "school" : "university"} report.</p></div><button type="button" onClick={createShareLink}>Set up report sharing</button></div><div className="report-card-summary"><div><span>Overall</span><strong>{overallGrade}%</strong></div>{classes.map((course) => <div key={course.id}><span>{course.code}</span><strong>{Number.isFinite(course.grade) ? `${course.grade}%` : "—"}</strong><small>{course.professor}</small></div>)}</div><div className="grade-table" role="table" aria-label="Student grades"><div className="grade-table-row is-head" role="row"><span>Class / item</span><span>Category</span><span>Weight</span><span>Score</span><span>Status</span></div>{rows.map((grade) => <div className="grade-table-row" role="row" key={grade.id}><span><strong>{grade.course}</strong>{grade.item}</span><span>{grade.category}</span><span>{grade.weight}%</span><span>{grade.score === null ? "—" : `${grade.score}%`}</span><GradeStatus status={grade.status} /></div>)}</div>{shareNotice && <div className="report-share-box"><strong>Secure sharing setup</strong><span>{shareNotice}</span></div>}</section><section className="grade-calculator-grid"><article className="dashboard-card"><span className="portal-kicker">GRADE CALCULATOR</span><h2>What do I need?</h2><label>Current grade<input type="number" value={current} onChange={(event) => setCurrent(Number(event.target.value))} /></label><label>Remaining class weight<input type="number" value={remainingWeight} onChange={(event) => setRemainingWeight(Number(event.target.value))} /></label><label>Target grade<input type="number" value={target} onChange={(event) => setTarget(Number(event.target.value))} /></label><div className="calculator-result"><span>Average needed on remaining work</span><strong>{needed}%</strong></div></article><article className="dashboard-card"><span className="portal-kicker">PUBLISHED SCALE</span><h2>{classes[0].code} weights</h2>{[["Projects", 25], ["Checks", 15], ["Quizzes", 25], ["Practice", 25], ["Participation", 10]].map(([label, weight]) => <div className="weight-row" key={label}><span>{label}</span><div><i style={{ width: `${weight * 3}%` }} /></div><strong>{weight}%</strong></div>)}<p className="weight-note">This mirrors the educator's published gradebook.</p></article></section></div>;
-}
-
-function NotesPanel({ classes, track, storageScope }) {
-  const storageKey = `ednotebook-${track}-${storageScope}-student-notes`;
-  const [notes, setNotes] = useState(() => readStorage(window.localStorage, storageKey, []));
-  const [course, setCourse] = useState(classes[0]?.code || "General");
-  const [body, setBody] = useState("");
-  function save(next) { setNotes(next); window.localStorage.setItem(storageKey, JSON.stringify(next)); }
-  function add(event) { event.preventDefault(); if (!body.trim()) return; save([{ id: crypto.randomUUID(), course, body: body.trim(), createdAt: new Date().toISOString() }, ...notes]); setBody(""); }
-  return <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">MY NOTES</span><h1>Keep the thought beside the class.</h1><p>These notes stay on this device until signed-in sync is connected.</p></div></div><form className="student-note-form" onSubmit={add}>{classes.length ? <select value={course} onChange={(event) => setCourse(event.target.value)}>{classes.map((item) => <option key={item.id}>{item.code}</option>)}</select> : <input value="General" readOnly aria-label="General notes" />}<textarea rows={4} spellCheck="true" lang="en" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write a study note, question, or reminder…" /><button type="submit">Save note</button></form><div className="student-note-list">{notes.length === 0 ? <p>No notes yet.</p> : notes.map((note) => <article key={note.id}><span>{note.course} · {new Date(note.createdAt).toLocaleDateString()}</span><p>{note.body}</p><button type="button" onClick={() => save(notes.filter((item) => item.id !== note.id))}>Delete</button></article>)}</div></section>;
 }
 
 function StudentLifePanel({ groups, initialPosts, track }) {
@@ -344,7 +335,7 @@ export default function StudentDashboard({ profile, session, track = "university
           {tab === "classes" && <ClassesPanel classes={classes} track={track} />}
           {tab === "assignments" && (classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">ASSIGNMENTS</span><h1>No assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>)}
           {tab === "grades" && <GradesPanel classes={classes} rows={rows} track={track} />}
-          {tab === "notes" && <NotesPanel key={`notes-${settingsScope}-${track}`} classes={classes} track={track} storageScope={settingsScope} />}
+          {tab === "notes" && <StudentLearningWorkspace key={`learning-${settingsScope}-${track}`} classes={classes} session={session} track={track} storageScope={settingsScope} />}
           {tab === "life" && <StudentLifePanelV2 key={`life-${settingsScope}-${track}`} groups={groups} initialPosts={posts} track={track} accountSettings={accountSettings} storageScope={settingsScope} />}
           {tab === "friends" && <FriendsPanelV2 key={`friends-${settingsScope}-${track}`} track={track} userId={session?.user?.id} storageScope={settingsScope} />}
           {tab === "messages" && <MessagesPanel key={`messages-${settingsScope}-${track}`} track={track} storageScope={settingsScope} />}
