@@ -1031,6 +1031,28 @@ function mappedCheck(check, index, lessonId) {
   };
 }
 
+function mappedQuizCheck(item, quiz, index, lessonId) {
+  const type = clean(item?.type, "multiple_choice");
+  return {
+    id: clean(
+      item?.itemId,
+      `${clean(quiz?.quizId, lessonId)}-item-${index + 1}`,
+    ),
+    quizId: clean(quiz?.quizId),
+    quizTitle: clean(quiz?.title, "Lesson quiz"),
+    instructions: clean(quiz?.instructions),
+    question: clean(item?.question),
+    type,
+    options: type === "true_false" ? ["true", "false"] : list(item?.options),
+    correctAnswer: clean(item?.answer),
+    explanation: clean(item?.explanation),
+    points: Number(item?.points) || 0,
+    sourceIds: list(item?.sourceIds || item?.sourceReferences),
+    outcomeIds: list(item?.outcomeIds),
+    recoveryGuidance: clone(quiz?.recoveryGuidance || {}),
+  };
+}
+
 export function lessonDraftToManifestLesson(
   draft,
   currentLesson,
@@ -1100,6 +1122,12 @@ export function lessonDraftToManifestLesson(
     ),
     quizDrafts: clone(draft.quizDrafts || currentLesson.quizDrafts || []),
     rubricDrafts: clone(draft.rubricDrafts || currentLesson.rubricDrafts || []),
+    endQuiz: (draft.quizDrafts || currentLesson.quizDrafts || []).flatMap(
+      (quiz) =>
+        (quiz?.items || []).map((item, index) =>
+          mappedQuizCheck(item, quiz, index, currentLesson.id),
+        ),
+    ),
     knowledgeChecks: (draft.knowledgeChecks || [])
       .map((check, index) => mappedCheck(check, index, currentLesson.id))
       .filter((check) => check.question && check.correctAnswer),

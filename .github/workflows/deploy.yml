@@ -52,6 +52,9 @@ jobs:
       - name: Test governed selected-lesson review workflow
         run: npm run test:lesson-generation
 
+      - name: Test in-platform student course acceptance
+        run: npm run test:student-experience
+
       - name: Test fail-closed Digital Literacy research governance
         run: npm run test:research-gate
 
@@ -89,7 +92,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: services/document-security-worker/requirements.txt
 
@@ -137,7 +140,7 @@ jobs:
 
       - name: Run rollback-safe student-data safety gates
         env:
-          PGCONNECT_TIMEOUT: '10'
+          PGCONNECT_TIMEOUT: "10"
         run: >-
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
           --set=ON_ERROR_STOP=1
@@ -146,7 +149,7 @@ jobs:
 
       - name: Run fail-closed Digital Literacy research gates
         env:
-          PGCONNECT_TIMEOUT: '10'
+          PGCONNECT_TIMEOUT: "10"
         run: >-
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
           --set=ON_ERROR_STOP=1
