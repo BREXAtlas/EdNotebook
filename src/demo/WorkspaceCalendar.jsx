@@ -9,6 +9,11 @@ import {
   resetPersonalCalendarEdit,
 } from "../ai/syllabusCalendarContract.js";
 import {
+  CALENDAR_REMINDER_SETTINGS_EVENT,
+  calendarReminderSettingsKey,
+  readCalendarReminderSettings,
+} from "../course-runtime/courseNotificationModel.js";
+import {
   cx,
   dateKey,
   formatDate,
@@ -17,33 +22,6 @@ import {
   NotebookLabel,
 } from "./demoShared.jsx";
 import "./workspace-calendar.css";
-
-const DEFAULT_REMINDERS = Object.freeze({
-  week: true,
-  twoDays: true,
-  twoHours: true,
-  rescue: true,
-});
-
-function readCalendarSettings(scope) {
-  if (typeof window === "undefined") {
-    return { version: 1, reminders: { ...DEFAULT_REMINDERS } };
-  }
-  try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(`${scope}-settings`) || "{}",
-    );
-    return {
-      version: 1,
-      reminders: {
-        ...DEFAULT_REMINDERS,
-        ...(parsed.version === 1 ? parsed.reminders : parsed),
-      },
-    };
-  } catch {
-    return { version: 1, reminders: { ...DEFAULT_REMINDERS } };
-  }
-}
 
 function localDateKey(date) {
   return `${date.getFullYear()}-${
@@ -101,6 +79,20 @@ function monthLabel(value) {
   }).format(value);
 }
 
+function monthInputValue(value) {
+  return `${value.getFullYear()}-${
+    String(value.getMonth() + 1).padStart(2, "0")
+  }`;
+}
+
+function monthFromInput(value) {
+  const match = String(value).match(/^(\d{4,})-(\d{2})$/u);
+  if (!match) return null;
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+  return new Date(Number(match[1]), month - 1, 1, 12, 0, 0);
+}
+
 function dateTimeInputValue(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -108,7 +100,7 @@ function dateTimeInputValue(value) {
   return local.toISOString().slice(0, 16);
 }
 
-function MonthCalendar({ events, visibleMonth }) {
+function MonthCalendar({ events, visibleMonth, onSelectEvent }) {
   const firstVisible = monthStart(visibleMonth);
   firstVisible.setDate(firstVisible.getDate() - firstVisible.getDay());
   const dates = Array.from({ length: 42 }, (_, index) => {
@@ -168,15 +160,17 @@ function MonthCalendar({ events, visibleMonth }) {
                   <strong>{date.getDate()}</strong>
                   {today ? <em>Today</em> : null}
                   {dayEvents.slice(0, 3).map((event) => (
-                    <span
+                    <button
+                      type="button"
                       className={`is-${event.type}`}
-                      key={`${event.title}-${event.time}`}
+                      key={event.id || `${event.title}-${event.time}`}
                       title={`${event.title}${
                         event.time ? ` · ${event.time}` : ""
                       }`}
+                      onClick={() => onSelectEvent(event)}
                     >
                       {event.title}
-                    </span>
+                    </button>
                   ))}
                   {dayEvents.length > 3
                     ? <small>+{dayEvents.length - 3} more</small>
@@ -420,6 +414,7 @@ function CalendarPanel({
   setAssignments,
   calendarScope = `ednotebook-calendar-${persona?.id || "workspace"}`,
   role = persona?.id === "professor" ? "professor" : "student",
+  onOpenAssignment,
 }) {
   const [timeZone, setTimeZone] = useState("America/Chicago");
   const [hour12, setHour12] = useState(true);
@@ -428,8 +423,9 @@ function CalendarPanel({
   const [visibleMonth, setVisibleMonth] = useState(() =>
     monthStart(new Date())
   );
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [settings, setSettings] = useState(() =>
-    readCalendarSettings(calendarScope)
+    readCalendarReminderSettings(calendarScope)
   );
   const [pendingImports, setPendingImports] = useState([]);
   const [approvedImports, setApprovedImports] = useState([]);
@@ -440,13 +436,23 @@ function CalendarPanel({
     return window.Notification.permission;
   });
   const importRef = useRef(null);
+  const onOpenAssignmentRef = useRef(onOpenAssignment);
   const reminders = settings.reminders;
   const canEdit = typeof setAssignments === "function";
 
   useEffect(() => {
+    onOpenAssignmentRef.current = onOpenAssignment;
+  }, [onOpenAssignment]);
+
+  useEffect(() => {
     window.localStorage.setItem(
-      `${calendarScope}-settings`,
+      calendarReminderSettingsKey(calendarScope),
       JSON.stringify(settings),
+    );
+    window.dispatchEvent(
+      new CustomEvent(CALENDAR_REMINDER_SETTINGS_EVENT, {
+        detail: { scope: calendarScope, settings },
+      }),
     );
   }, [calendarScope, settings]);
 
@@ -474,10 +480,15 @@ function CalendarPanel({
         reminders,
       ).filter((candidate) => !sentIds.has(candidate.id)).slice(0, 3);
       for (const candidate of candidates) {
-        new window.Notification(candidate.title, {
+        const notification = new window.Notification(candidate.title, {
           body: candidate.body,
           tag: candidate.id,
         });
+        notification.onclick = () => {
+          window.focus();
+          onOpenAssignmentRef.current?.(candidate.route.workId);
+          notification.close();
+        };
         sentIds.add(candidate.id);
       }
       if (candidates.length) {
@@ -490,12 +501,24 @@ function CalendarPanel({
     notifyDueItems();
     const timer = window.setInterval(notifyDueItems, 60_000);
     return () => window.clearInterval(timer);
-  }, [assignments, calendarScope, notificationPermission, reminders]);
+  }, [
+    assignments,
+    calendarScope,
+    notificationPermission,
+    reminders,
+  ]);
 
   const assignmentEvents = assignments.map((item) => ({
+    id: item.id,
+    sourceWorkId: item.sourceWorkId,
     date: dateKeyInTimeZone(item.due, timeZone),
     time: formatDateTime(item.due, timeZone, hour12).split(", ").pop(),
+    due: item.due,
+    course: item.course,
     title: item.title,
+    description:
+      item.description ||
+      "Open the assignment for its professor-published details.",
     type: "assignment",
     workflow: deriveCalendarWorkflow(item, now),
   }));
@@ -811,6 +834,17 @@ function CalendarPanel({
             <p>Assignments and class events at a glance.</p>
           </div>
           <div>
+            <label className="calendar-month-search">
+              Go to month and year
+              <input
+                type="month"
+                value={monthInputValue(visibleMonth)}
+                onChange={(event) => {
+                  const selectedMonth = monthFromInput(event.target.value);
+                  if (selectedMonth) setVisibleMonth(selectedMonth);
+                }}
+              />
+            </label>
             <span className="calendar-month-count">
               {visibleEventCount} item{visibleEventCount === 1 ? "" : "s"} this
               month
@@ -845,7 +879,52 @@ function CalendarPanel({
             </div>
           </div>
         </div>
-        <MonthCalendar events={events} visibleMonth={visibleMonth} />
+        <MonthCalendar
+          events={events}
+          visibleMonth={visibleMonth}
+          onSelectEvent={setSelectedEvent}
+        />
+        {selectedEvent
+          ? (
+            <section
+              className="calendar-event-detail"
+              aria-labelledby="calendar-event-detail-title"
+            >
+              <div>
+                <NotebookLabel>CALENDAR ITEM</NotebookLabel>
+                <h3 id="calendar-event-detail-title">
+                  {selectedEvent.title}
+                </h3>
+                <p>
+                  {selectedEvent.description ||
+                    "No additional description has been added."}
+                </p>
+                <span>
+                  {formatDate(`${selectedEvent.date}T12:00:00`, {
+                    year: true,
+                  })}
+                  {selectedEvent.time ? ` · ${selectedEvent.time}` : ""}
+                </span>
+              </div>
+              <div>
+                {selectedEvent.sourceWorkId && onOpenAssignment
+                  ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenAssignment(selectedEvent.sourceWorkId)}
+                    >
+                      Open assignment details
+                    </button>
+                  )
+                  : null}
+                <button type="button" onClick={() => setSelectedEvent(null)}>
+                  Close
+                </button>
+              </div>
+            </section>
+          )
+          : null}
       </section>
 
       {canEdit

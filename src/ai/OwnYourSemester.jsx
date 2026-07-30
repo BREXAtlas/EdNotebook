@@ -23,10 +23,13 @@ export default function OwnYourSemester({
   classes = [],
   officialAssignments = [],
   officialCalendarScope = "",
+  calendarScope = "",
+  onOpenAssignment,
   initialSyllabusText = "",
   syllabusSourceName = "",
 }) {
   const storageKey = `ednotebook-own-semester-${session?.user?.id || "student"}-${track}`;
+  const resolvedCalendarScope = calendarScope || `${storageKey}-calendar`;
   const officialAssignmentSignature = JSON.stringify(
     officialAssignments.map((item) => [
       item.id,
@@ -120,8 +123,9 @@ export default function OwnYourSemester({
         persona={persona}
         assignments={assignments}
         setAssignments={setAssignments}
-        calendarScope={`${storageKey}-calendar`}
+        calendarScope={resolvedCalendarScope}
         role="student"
+        onOpenAssignment={onOpenAssignment}
       />
     </div>
   );
