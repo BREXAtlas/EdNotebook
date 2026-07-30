@@ -209,6 +209,8 @@ test("professor-published due work reaches one synchronized student calendar", (
   });
   assert.equal(calendarItems.length, 1);
   assert.equal(calendarItems[0].course, "UNIV 1101");
+  assert.equal(calendarItems[0].sourceWorkId, "assignment-1");
+  assert.equal(calendarItems[0].workType, "assignment");
   assert.equal(calendarItems[0].dateConfirmed, true);
   assert.equal(
     calendarItems[0].sourceDue,

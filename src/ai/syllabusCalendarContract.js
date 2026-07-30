@@ -216,6 +216,18 @@ export function buildDueNotificationCandidates(
     const due = validDate(item?.due);
     if (!due) return [];
     const remaining = due.getTime() - currentTime;
+    const notificationContext = {
+      calendarItemId: item.id,
+      dueAt: due.toISOString(),
+      description: cleanText(
+        item.description,
+        "Open the assignment for its professor-published details.",
+      ),
+      route: {
+        view: "assignments",
+        workId: item.sourceWorkId || item.id,
+      },
+    };
     if (remaining < 0) {
       if (!reminders?.rescue) return [];
       return [{
@@ -223,6 +235,7 @@ export function buildDueNotificationCandidates(
         title: `${cleanText(item.course, "Course")} · ${item.title}`,
         body: `${durationLabel(Math.abs(remaining))} overdue. Open EdNotebook to make a recovery plan.`,
         phase: "rescue",
+        ...notificationContext,
       }];
     }
     const phase = REMINDER_PHASES.find(
@@ -235,6 +248,7 @@ export function buildDueNotificationCandidates(
       title: `${cleanText(item.course, "Course")} · ${item.title}`,
       body: `${phase.label}. ${deriveCalendarWorkflow(item, now).nextAction}`,
       phase: phase.key,
+      ...notificationContext,
     }];
   });
 }
