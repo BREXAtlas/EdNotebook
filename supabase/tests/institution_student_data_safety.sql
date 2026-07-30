@@ -231,7 +231,10 @@ as $capture$
   union all select 'studentGrades',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_grades where student_id=p_student) t),'[]'::jsonb)
   union all select 'gradeShareLinks',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.grade_share_links where student_id=p_student or viewer_id=p_student) t),'[]'::jsonb)
   union all select 'learningMessages',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.learning_messages where sender_id=p_student or recipient_id=p_student) t),'[]'::jsonb)
+  union all select 'courseCommunicationReads',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.course_communication_reads where user_id=p_student) t),'[]'::jsonb)
+  union all select 'courseCommunicationPreferences',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.course_communication_preferences where user_id=p_student) t),'[]'::jsonb)
   union all select 'learningResources',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.learning_resources where owner_id=p_student) t),'[]'::jsonb)
+  union all select 'studentLearningRecords',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_learning_records where student_id=p_student) t),'[]'::jsonb)
   union all select 'studentPublicProfile',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_public_profiles where user_id=p_student) t),'[]'::jsonb)
   union all select 'studentGroups',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_groups where created_by=p_student) t),'[]'::jsonb)
   union all select 'studentGroupMemberships',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_group_memberships where user_id=p_student) t),'[]'::jsonb)
@@ -263,10 +266,21 @@ $capture$;
 
 create temporary table safety_expected_restore_domains(domain text primary key);
 insert into safety_expected_restore_domains(domain) values
-  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('learningResources'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('auditEvents');
+  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('courseCommunicationReads'),('courseCommunicationPreferences'),('learningResources'),('studentLearningRecords'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('auditEvents');
+
+insert into public.student_learning_records(
+  student_id,record_id,root_id,version,record_kind,course_code,course_title,
+  lesson_id,lesson_title,title,filename,content,created_at
+) values (
+  '10000000-0000-4000-8000-000000000011','safety-learning-note-v1','safety-learning-note',1,'note',
+  'SAFE-101','Synthetic safety course','source-check','Check a source','Safety learning note',
+  '2026-07-29_safe-101_note_safety-learning-note_v01.md',
+  '{"title":"Safety learning note","body":"Synthetic restore evidence only."}'::jsonb,
+  '2026-07-29T04:00:00Z'
+);
 
 create temporary table safety_restore_inventory_before as
-select '2.1'::text contract_version,domain,true captured,
+select '2.3'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -277,10 +291,10 @@ begin
     select 1 from safety_expected_restore_domains e
     full join safety_restore_inventory_before b using(domain)
     where e.domain is null or b.domain is null or not b.captured
-  ) or (select count(*) from safety_restore_inventory_before)<>44 then
+  ) or (select count(*) from safety_restore_inventory_before)<>47 then
     raise exception 'RESTORE TEST FAILED: canonical student-data inventory is incomplete';
   end if;
-  raise notice 'PASS canonical 44-domain capture inventory is complete';
+  raise notice 'PASS canonical 47-domain capture inventory is complete';
 end $$;
 
 create temporary table safety_incomplete_restore_inventory as
@@ -309,6 +323,8 @@ create temporary table safety_backup_assignment_drafts as
   select * from public.assignment_drafts where student_id='10000000-0000-4000-8000-000000000011';
 create temporary table safety_backup_messages as
   select * from public.learning_messages where sender_id='10000000-0000-4000-8000-000000000011';
+create temporary table safety_backup_student_learning_records as
+  select * from public.student_learning_records where student_id='10000000-0000-4000-8000-000000000011';
 create temporary table safety_backup_entitlements as
   select * from public.user_entitlements where user_id='10000000-0000-4000-8000-000000000011';
 create temporary table safety_backup_grade_shares as
@@ -332,6 +348,7 @@ delete from public.student_group_memberships
 where user_id='10000000-0000-4000-8000-000000000011'
   and group_id in(select group_id from safety_backup_group_memberships);
 delete from public.learning_messages where id in(select id from safety_backup_messages);
+delete from public.student_learning_records where id in(select id from safety_backup_student_learning_records);
 delete from public.grade_share_links where id in(select id from safety_backup_grade_shares);
 delete from public.assignment_drafts where id in(select id from safety_backup_assignment_drafts);
 delete from public.file_previews where id in(select id from safety_backup_previews);
@@ -344,7 +361,7 @@ delete from public.course_memberships where user_id='10000000-0000-4000-8000-000
 delete from public.institution_memberships where user_id='10000000-0000-4000-8000-000000000011';
 
 create temporary table safety_restore_inventory_damaged as
-select '2.1'::text contract_version,domain,true captured,
+select '2.3'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -369,6 +386,7 @@ insert into public.user_entitlements select * from safety_backup_entitlements;
 insert into public.file_previews select * from safety_backup_previews;
 insert into public.upload_quota_reservations select * from safety_backup_quota;
 insert into public.assignment_drafts select * from safety_backup_assignment_drafts;
+insert into public.student_learning_records select * from safety_backup_student_learning_records;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.learning_messages select * from safety_backup_messages;
@@ -381,7 +399,7 @@ insert into public.course_lesson_progress select * from safety_backup_lesson_pro
 insert into public.course_progress select * from safety_backup_course_progress;
 
 create temporary table safety_restore_inventory_after as
-select '2.1'::text contract_version,domain,true captured,
+select '2.3'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -398,7 +416,7 @@ begin
   ) then
     raise exception 'RESTORE TEST FAILED: restored student bundle did not reconcile';
   end if;
-  raise notice 'PASS representative logical restore reconciles within the canonical 44-domain inventory';
+  raise notice 'PASS representative logical restore reconciles within the canonical 47-domain inventory';
 end $$;
 
 -- GATE 2: cross-institution RLS denial for student, professor, and admin data.
@@ -428,6 +446,173 @@ begin
   end if;
   raise notice 'PASS auth.uid, same-tenant, and student cross-institution access-control test';
 end $$;
+do $$
+declare
+  v_message public.learning_messages;
+  v_sensitive_payload_denied boolean:=false;
+begin
+  select * into v_message
+  from public.send_course_message(
+    '40000000-0000-4000-8000-000000000001',
+    'How do I trace a claim to the earliest source?',
+    'question',
+    null,
+    null
+  );
+  if v_message.sender_id is distinct from (select auth.uid())
+     or v_message.sender_label<>'Student A'
+     or v_message.recipient_id is not null
+     or v_message.message_kind<>'question' then
+    raise exception 'COMMUNICATION TEST FAILED: server-derived course question identity or audience is wrong';
+  end if;
+  begin
+    perform public.send_course_message(
+      '40000000-0000-4000-8000-000000000001',
+      'grade: 99',
+      'question',
+      null,
+      null
+    );
+  exception when raise_exception then v_sensitive_payload_denied:=true; end;
+  if not v_sensitive_payload_denied then
+    raise exception 'COMMUNICATION TEST FAILED: grade details entered the message payload';
+  end if;
+  insert into public.course_communication_preferences(
+    course_id,user_id,notify_announcements,notify_replies
+  ) values (
+    '40000000-0000-4000-8000-000000000001',(select auth.uid()),true,true
+  );
+  raise notice 'PASS student course-question identity, payload minimization, and notification preference gate';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_question_id uuid;
+  v_announcement public.professor_announcements;
+  v_cross_course_publish_denied boolean:=false;
+begin
+  select id into v_question_id
+  from public.learning_messages
+  where course_id='40000000-0000-4000-8000-000000000001'
+    and body='How do I trace a claim to the earliest source?';
+  if v_question_id is null then
+    raise exception 'COMMUNICATION TEST FAILED: professor could not see the current learner question';
+  end if;
+  select * into v_announcement
+  from public.publish_course_announcement(
+    '40000000-0000-4000-8000-000000000001',
+    'Digital literacy source check',
+    'The source-check practice is ready for the current course.'
+  );
+  if v_announcement.professor_id is distinct from (select auth.uid())
+     or v_announcement.audience<>'course'
+     or not v_announcement.is_published
+     or v_announcement.education_division<>'university' then
+    raise exception 'COMMUNICATION TEST FAILED: course announcement identity, audience, or division is wrong';
+  end if;
+  perform public.send_course_message(
+    '40000000-0000-4000-8000-000000000001',
+    'Start with the claim, follow each citation, and compare publication dates.',
+    'reply',
+    v_question_id,
+    null
+  );
+  begin
+    perform public.publish_course_announcement(
+      '40000000-0000-4000-8000-000000000002',
+      'Wrong course',
+      'This cross-institution publish must fail.'
+    );
+  exception when insufficient_privilege or raise_exception then
+    v_cross_course_publish_denied:=true;
+  end;
+  if not v_cross_course_publish_denied then
+    raise exception 'COMMUNICATION TEST FAILED: professor published into another institution course';
+  end if;
+  raise notice 'PASS professor announcement and course-reply authorization gate';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_reply_ids uuid[];
+  v_announcement_ids uuid[];
+begin
+  if (select count(*) from public.learning_messages
+      where course_id='40000000-0000-4000-8000-000000000001'
+        and recipient_id is null
+        and message_kind in ('question','reply'))<>2 then
+    raise exception 'COMMUNICATION TEST FAILED: student and professor do not see the same course thread';
+  end if;
+  if (select count(*) from public.professor_announcements
+      where course_id='40000000-0000-4000-8000-000000000001'
+        and audience='course' and is_published)<>1 then
+    raise exception 'COMMUNICATION TEST FAILED: enrolled student could not see the course announcement';
+  end if;
+  select array_agg(id) into v_reply_ids
+  from public.learning_messages
+  where course_id='40000000-0000-4000-8000-000000000001'
+    and recipient_id is null and sender_id<>(select auth.uid());
+  select array_agg(id) into v_announcement_ids
+  from public.professor_announcements
+  where course_id='40000000-0000-4000-8000-000000000001'
+    and audience='course' and is_published;
+  perform public.mark_course_communication_read(
+    '40000000-0000-4000-8000-000000000001',
+    coalesce(v_reply_ids,'{}'::uuid[]),
+    coalesce(v_announcement_ids,'{}'::uuid[])
+  );
+  if (select count(*) from public.course_communication_reads
+      where user_id=(select auth.uid())
+        and course_id='40000000-0000-4000-8000-000000000001')<>2 then
+    raise exception 'COMMUNICATION TEST FAILED: per-user read state did not reconcile';
+  end if;
+  raise notice 'PASS enrolled student announcement, shared thread, and read-state sync gate';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000012',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare v_cross_course_send_denied boolean:=false;
+begin
+  if (select count(*) from public.learning_messages
+      where course_id='40000000-0000-4000-8000-000000000001')<>0
+     or (select count(*) from public.professor_announcements
+         where course_id='40000000-0000-4000-8000-000000000001')<>0
+     or (select count(*) from public.course_communication_reads
+         where course_id='40000000-0000-4000-8000-000000000001')<>0 then
+    raise exception 'COMMUNICATION TEST FAILED: another institution read course communication state';
+  end if;
+  begin
+    perform public.send_course_message(
+      '40000000-0000-4000-8000-000000000001',
+      'This cross-institution question must fail.',
+      'question',
+      null,
+      null
+    );
+  exception when insufficient_privilege or raise_exception then
+    v_cross_course_send_denied:=true;
+  end;
+  if not v_cross_course_send_denied then
+    raise exception 'COMMUNICATION TEST FAILED: another institution wrote to the course room';
+  end if;
+  raise notice 'PASS cross-institution communication, receipt, and write denial';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
 do $$
 declare
   v_lesson_write_denied boolean:=false;

@@ -8,6 +8,7 @@ export const STORAGE_KEYS = Object.freeze({
   courseId: "ednotebook-course-id",
   courseStep: "ednotebook-course-step",
   aiCourseOutline: "ednotebook-ai-course-outline",
+  structuredSyllabus: "ednotebook-professor-syllabus-extraction",
   generatedCoursePackage: "ednotebook-generated-course-package",
 });
 

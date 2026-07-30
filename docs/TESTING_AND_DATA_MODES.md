@@ -53,3 +53,16 @@ These triggers do not weaken authentication, role checks, private storage, malwa
 4. Never infer research participation from enrollment, product use, or acceptance of general account settings.
 5. Never reuse product-feedback responses as a research dataset unless participants receive the newly required choices and the project owner completes the research-mode setup.
 6. A Blackboard, SIS, LTI, or SSO connection can request extra setup for that connection. Do not show or enforce it anywhere else.
+
+## Digital Literacy pilot implementation
+
+The Digital Literacy pilot planning surface is visible in the institution control center, but its synthetic fixture is **NOT ACTIVATED** and never writes responses. The authoritative research gate is course-scoped and remains separate from the ordinary feedback paths above.
+
+- `product_feedback` and `course_feedback` continue without a research protocol field.
+- Pre/post assessments, qualitative interviews, open-ended research surveys, learning-effectiveness analysis, and research exports use `purpose = research`.
+- A research version is immutable. Changing the purpose, instrument, notice, consent configuration, minimization, retention, export, or deletion rules creates a new version.
+- The database rejects response collection unless the exact institution/course version has a current written determination, current dates, approved instrument, explicit activation, enabled course feature, current learner membership, and an explicit participant choice.
+- Enrollment, product use, course work, and account terms never create a research participation record.
+- Withdrawal plus export/deletion request state remains visible to the participant and institution reviewers through audited records.
+
+See [`DIGITAL_LITERACY_RESEARCH_GOVERNANCE.md`](DIGITAL_LITERACY_RESEARCH_GOVERNANCE.md) for the deployment boundary and ASU sources.
