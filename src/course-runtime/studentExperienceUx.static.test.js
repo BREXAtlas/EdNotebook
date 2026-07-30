@@ -22,6 +22,10 @@ const environmentBannerCss = readFileSync(
   new URL("../environment-banner.css", import.meta.url),
   "utf8",
 );
+const portalCss = readFileSync(
+  new URL("../portal/portal.css", import.meta.url),
+  "utf8",
+);
 const runtimeCss = readFileSync(
   new URL("./course-runtime.css", import.meta.url),
   "utf8",
@@ -95,6 +99,10 @@ test("staging and account controls cannot cover student lesson actions", () => {
   assert.match(
     runtimeCss,
     /\.course-account-shell\{[^}]*padding-bottom:calc\(88px \+ env\(safe-area-inset-bottom\)\)/u,
+  );
+  assert.match(
+    portalCss,
+    /@media \(max-width: 780px\) \{[\s\S]*?\.account-bubble \{[^}]*position: static;[^}]*\}/u,
   );
 });
 

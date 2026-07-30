@@ -1015,6 +1015,7 @@
   .student-share-section { margin-inline: 18px; }
   .friend-result-grid article { grid-template-columns: auto 1fr; }
   .friend-result-grid article button { grid-column: 1 / -1; }
+  .account-bubble { position: static; width: max-content; margin: 12px 12px calc(12px + env(safe-area-inset-bottom)) auto; opacity: 1; background: rgba(22,31,49,.94); }
   .account-bubble-details { display: none; }
   .portal-home-share, .portal-brand-variant-grid { grid-template-columns: 1fr; }
   .portal-home-share, .portal-brand-kit { margin-right: 20px; margin-left: 20px; padding: 24px; }
