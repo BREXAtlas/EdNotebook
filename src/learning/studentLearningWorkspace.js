@@ -215,9 +215,17 @@ function createVersionedRecord({ kind, content, context = {}, previous = null, n
   const rootId = previous?.rootId || makeId(`${kind}-root`);
   const version = previous ? Number(previous.version || 1) + 1 : 1;
   const id = makeId(kind);
-  const title = cleanText(content?.title) || (kind === "note" ? "Untitled note" : kind === "feedback" ? "Feedback" : "Untitled record");
+  const title = cleanText(content?.title) || (
+    kind === "note"
+      ? "Untitled note"
+      : kind === "feedback"
+        ? "Feedback"
+        : kind === "document"
+          ? "Untitled document"
+          : "Untitled record"
+  );
   const courseCode = cleanText(context.courseCode || content?.courseCode) || "DIGL-101";
-  const extension = kind === "source" ? "json" : "md";
+  const extension = kind === "source" ? "json" : kind === "document" ? "html" : "md";
   return {
     id,
     rootId,
@@ -261,6 +269,7 @@ function recordMatchesQuery(record, query) {
     content.citation,
     content.inTextCitation,
     content.summary,
+    content.html,
   ].some((value) => String(value || "").toLowerCase().includes(search));
 }
 
@@ -283,7 +292,7 @@ function validateRestoreManifest(manifest) {
   if (manifest?.schema !== PACKET_SCHEMA) errors.push(`Expected ${PACKET_SCHEMA}.`);
   if (!Array.isArray(manifest?.records)) errors.push("The restore manifest has no records array.");
   if (manifest?.records?.length > 1000) errors.push("A restore manifest may contain at most 1,000 records.");
-  if (manifest?.records?.some((record) => !["note", "source", "feedback"].includes(record?.kind) || !record?.content || typeof record.content !== "object")) {
+  if (manifest?.records?.some((record) => !["note", "source", "feedback", "document"].includes(record?.kind) || !record?.content || typeof record.content !== "object")) {
     errors.push("One or more records have an unsupported kind or missing content.");
   }
   try {
@@ -335,6 +344,15 @@ function packetRecordHtml(record) {
   }
   if (record.kind === "feedback") {
     return `<article><h3>${escapeHtml(record.title)}</h3><p class="context">${escapeHtml(context)} · Feedback saved by student</p><p>${escapeHtml(content.body || content.summary || "")}</p></article>`;
+  }
+  if (record.kind === "document") {
+    const documentText = String(content.html || "")
+      .replace(/<br\s*\/?>/giu, "\n")
+      .replace(/<\/p>|<\/h[1-3]>|<\/li>|<\/section>/giu, "\n")
+      .replace(/<[^>]+>/gu, " ")
+      .replace(/\n{3,}/gu, "\n\n")
+      .trim();
+    return `<article><h3>${escapeHtml(record.title)}</h3><p class="context">${escapeHtml(context)} · ${escapeHtml(record.filename)}</p><p>${escapeHtml(documentText).replace(/\n/gu, "<br>")}</p></article>`;
   }
   return `<article><h3>${escapeHtml(record.title)}</h3><p class="context">${escapeHtml(context)} · ${escapeHtml(record.filename)}</p><p>${escapeHtml(content.body || "").replace(/\n/gu, "<br>")}</p></article>`;
 }

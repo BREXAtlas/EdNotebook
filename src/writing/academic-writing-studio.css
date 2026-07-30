@@ -1,0 +1,375 @@
+.academic-writing-studio {
+  background: #e8edf3;
+}
+
+.academic-writing-studio > header {
+  flex: 0 0 auto;
+}
+
+.academic-writing-ribbon {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid #cfd7e3;
+  background: #f9fafc;
+}
+
+.writing-tool-drawer {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.writing-tool-drawer > summary {
+  display: grid;
+  min-width: 112px;
+  gap: 2px;
+  padding: 8px 11px;
+  list-style: none;
+  border: 1px solid #d4dbe6;
+  border-radius: 10px;
+  color: #24334c;
+  background: #fff;
+  cursor: pointer;
+}
+
+.writing-tool-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.writing-tool-drawer > summary strong {
+  font-size: 12px;
+}
+
+.writing-tool-drawer > summary span {
+  color: #6b778a;
+  font-size: 9px;
+}
+
+.writing-tool-drawer[open] > summary {
+  color: #fff;
+  border-color: #245397;
+  background: #245397;
+}
+
+.writing-tool-drawer[open] > summary span {
+  color: rgba(255, 255, 255, .8);
+}
+
+.writing-tool-drawer > div {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  display: grid;
+  width: max-content;
+  max-width: min(760px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #ccd5e2;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(23, 35, 58, .18);
+}
+
+.writing-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 6px;
+}
+
+.writing-tool-row > button,
+.academic-design-grid button,
+.saved-source-insert-list button {
+  color: #23324b;
+  border: 1px solid #d3dbe6;
+  background: #fff;
+  cursor: pointer;
+}
+
+.writing-tool-row > button {
+  display: grid;
+  min-width: 64px;
+  min-height: 48px;
+  place-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.writing-tool-row > button:hover,
+.academic-design-grid button:hover,
+.saved-source-insert-list button:hover {
+  border-color: #5f88c3;
+  background: #eef4ff;
+}
+
+.writing-tool-row > button > span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.writing-tool-row > button small {
+  color: #5f6d82;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.writing-tool-row > label {
+  display: grid;
+  gap: 3px;
+  color: #5f6d82;
+  font-size: 9px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.writing-tool-row select {
+  min-width: 108px;
+  padding: 7px 8px;
+  border: 1px solid #ccd5e2;
+  border-radius: 8px;
+  background: #fff;
+  font: 700 11px/1.2 var(--portal-sans);
+}
+
+.academic-design-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(135px, 1fr));
+  gap: 7px;
+}
+
+.academic-design-grid button {
+  display: grid;
+  min-height: 105px;
+  gap: 7px;
+  padding: 12px;
+  text-align: left;
+  border-radius: 10px;
+}
+
+.academic-design-grid button strong {
+  font-size: 12px;
+}
+
+.academic-design-grid button span {
+  color: #66748a;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.saved-source-insert-list {
+  display: flex;
+  max-width: 680px;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e5ec;
+}
+
+.saved-source-insert-list > strong {
+  flex: 0 0 100%;
+  color: #59677d;
+  font-size: 10px;
+}
+
+.saved-source-insert-list button {
+  padding: 7px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.academic-writing-notice {
+  flex: 0 0 auto;
+  padding: 8px 20px;
+  color: #314b75;
+  border-bottom: 1px solid #bfd0e7;
+  background: #edf4ff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.academic-writing-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.academic-writing-body > .assignment-editor-page {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.academic-paged-editor {
+  display: grid;
+  width: min(8.5in, calc(100% - 28px));
+  min-height: 0;
+  gap: 28px;
+  margin: 0 auto;
+  padding: 0;
+  color: #171717;
+  background: transparent;
+  box-shadow: none;
+  counter-reset: document-page;
+  font: 12pt/2 "Times New Roman", Georgia, serif;
+}
+
+.academic-paged-editor:focus {
+  box-shadow: none;
+}
+
+.academic-paged-editor > .document-page {
+  position: relative;
+  box-sizing: border-box;
+  width: 8.5in;
+  min-height: 11in;
+  padding: 1in;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 12px 35px rgba(28, 39, 58, .14);
+  counter-increment: document-page;
+}
+
+.academic-paged-editor > .document-page.numbered-page::after {
+  position: absolute;
+  top: .42in;
+  right: .72in;
+  color: #3c4658;
+  content: counter(document-page);
+  font: 10pt/1 Arial, sans-serif;
+}
+
+.academic-paged-editor .document-cover-block {
+  display: grid;
+  min-height: 8.5in;
+  place-content: center;
+  text-align: center;
+}
+
+.academic-paged-editor .document-centered-title {
+  text-align: center;
+}
+
+.academic-paged-editor .hanging-indent {
+  padding-left: .5in;
+  text-indent: -.5in;
+}
+
+.academic-writing-review {
+  width: min(330px, 32vw);
+  flex: 0 0 auto;
+  overflow: auto;
+  padding: 18px;
+  border-left: 1px solid #ccd5e2;
+  background: #fff;
+}
+
+.academic-writing-review header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.academic-writing-review header button {
+  padding: 6px 8px;
+  border: 1px solid #ccd5e2;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.academic-writing-review > p {
+  color: #647188;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.academic-writing-review ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.academic-writing-review li {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-left: 3px solid #6488bc;
+  border-radius: 6px;
+  background: #f4f7fb;
+}
+
+.academic-writing-review li.is-warning {
+  border-color: #b7781d;
+  background: #fff7e7;
+}
+
+.academic-writing-review li.is-success {
+  border-color: #337954;
+  background: #edf8f1;
+}
+
+.academic-writing-review li span {
+  color: #5f6d82;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.academic-published-feedback li mark {
+  padding: 4px 6px;
+  overflow-wrap: anywhere;
+  color: #493800;
+  background: #fff0a9;
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .academic-design-grid {
+    grid-template-columns: repeat(2, minmax(135px, 1fr));
+  }
+
+  .academic-paged-editor {
+    width: calc(100% - 16px);
+  }
+
+  .academic-paged-editor > .document-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 54px 38px;
+  }
+
+  .academic-writing-review {
+    position: absolute;
+    right: 0;
+    bottom: 58px;
+    top: 132px;
+    z-index: 4;
+    width: min(330px, 90vw);
+    box-sizing: border-box;
+    box-shadow: -14px 0 32px rgba(23, 35, 58, .14);
+  }
+}
+
+@media (max-width: 620px) {
+  .academic-design-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .writing-tool-drawer > div {
+    position: fixed;
+    top: 175px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+
+  .academic-paged-editor > .document-page {
+    padding: 42px 25px;
+  }
+}

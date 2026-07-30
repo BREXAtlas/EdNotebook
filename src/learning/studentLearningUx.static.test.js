@@ -19,6 +19,9 @@ test("workspace exposes device, cloud, portable export, citations, and restore w
   assert.match(workspace, /PASTED-CITATION FORMAT CHECK/u);
   assert.match(workspace, /cannot verify that names, dates, titles/u);
   assert.match(workspace, /Restore from JSON manifest/u);
+  assert.match(workspace, /Writing studio/u);
+  assert.match(workspace, /STUDENT-INITIATED WRITING/u);
+  assert.match(workspace, /Start a college paper/u);
   assert.match(workspace, /synthetic practice—not a real ASU course or library record/u);
   assert.doesNotMatch(workspace, /citation validator|certified citation/iu);
 });
