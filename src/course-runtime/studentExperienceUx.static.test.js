@@ -102,8 +102,9 @@ test("staging and account controls cannot cover student lesson actions", () => {
   );
   assert.match(
     portalCss,
-    /@media \(max-width: 780px\) \{[\s\S]*?\.account-bubble \{[^}]*position: static;[^}]*\}/u,
+    /\.account-bubble \{[^}]*position: static;[^}]*width: max-content;[^}]*margin: 12px 12px calc\(12px \+ env\(safe-area-inset-bottom\)\) auto;[^}]*\}/u,
   );
+  assert.doesNotMatch(portalCss, /\.account-bubble \{[^}]*position: fixed/u);
 });
 
 test("published course work feeds the in-course calendar and syllabus surfaces", () => {
