@@ -1,4 +1,10 @@
+import {
+  SYLLABUS_CALENDAR_CONTRACT_VERSION,
+  synchronizeCalendarSourceItem,
+} from "../ai/syllabusCalendarContract.js";
+
 export const STUDENT_EXPERIENCE_CONTRACT_VERSION = 1;
+export const PUBLISHED_COURSE_CALENDAR_SOURCE = "professor-published-course";
 
 export const STUDENT_LESSON_STAGES = Object.freeze([
   { id: "orient", label: "Orient" },
@@ -181,8 +187,160 @@ export function lessonQuizExperience(lesson) {
   };
 }
 
+export function publishedDueWorkRows(dueWork) {
+  const assignments = Array.isArray(dueWork?.assignments)
+    ? dueWork.assignments
+    : [];
+  const gradeItems = Array.isArray(dueWork?.gradeItems)
+    ? dueWork.gradeItems
+    : [];
+  const assignmentsById = new Map(
+    assignments
+      .filter((item) => item?.id)
+      .map((item) => [item.id, { ...item, workType: "assignment" }]),
+  );
+  const rows = [...assignmentsById.values()];
+
+  for (const gradeItem of gradeItems) {
+    const assignment = gradeItem?.assignment_id
+      ? assignmentsById.get(gradeItem.assignment_id)
+      : null;
+    if (assignment) {
+      const index = rows.findIndex((item) => item.id === assignment.id);
+      rows[index] = {
+        ...assignment,
+        grade_item_id: gradeItem.id,
+        max_points: gradeItem.max_points,
+        due_at: gradeItem.due_at || assignment.due_at,
+      };
+      continue;
+    }
+    const semanticKey = `${clean(gradeItem?.title).toLowerCase()}\u0000${clean(
+      gradeItem?.due_at,
+    )}`;
+    const duplicate = rows.some(
+      (item) =>
+        `${clean(item?.title).toLowerCase()}\u0000${clean(item?.due_at)}` ===
+        semanticKey,
+    );
+    if (!duplicate) rows.push({ ...gradeItem, workType: "grade_item" });
+  }
+
+  return rows;
+}
+
+export function publishedCourseCalendarItems(
+  dueWork,
+  { courseCode = "COURSE", courseId = "" } = {},
+) {
+  const normalizedCourseCode = clean(courseCode) || "COURSE";
+  const sourceScope = clean(courseId) || normalizedCourseCode;
+  return publishedDueWorkRows(dueWork)
+    .filter((item) => item?.due_at && Number.isFinite(Date.parse(item.due_at)))
+    .map((item) => ({
+      id: `published-course-${item.workType}-${item.id}`,
+      importSourceId: `${PUBLISHED_COURSE_CALENDAR_SOURCE}:${sourceScope}`,
+      importItemKey: `${item.workType}-${item.id}`,
+      sourceAuthority: PUBLISHED_COURSE_CALENDAR_SOURCE,
+      sourceScope,
+      course: normalizedCourseCode,
+      title: clean(item.title) || "Published course work",
+      sourceTitle: clean(item.title) || "Published course work",
+      due: item.due_at,
+      sourceDue: item.due_at,
+      hours: Math.max(0.5, Number(item?.settings?.estimated_hours) || 1),
+      status: "not-started",
+      description:
+        clean(item.instructions) || "Professor-published course deadline.",
+      dateConfirmed: true,
+      calendarContractVersion: SYLLABUS_CALENDAR_CONTRACT_VERSION,
+    }));
+}
+
+export function reconcilePublishedCourseCalendarItems(
+  currentItems,
+  publishedItems,
+  synchronizedAt = new Date(),
+  sourceScope = "",
+) {
+  const current = Array.isArray(currentItems) ? currentItems : [];
+  const incoming = Array.isArray(publishedItems) ? publishedItems : [];
+  const targetScopes = new Set(
+    [
+      clean(sourceScope),
+      ...incoming.map((item) => clean(item?.sourceScope)),
+    ].filter(Boolean),
+  );
+  if (!targetScopes.size) return current;
+  const priorPublished = new Map(
+    current
+      .filter(
+        (item) =>
+          item?.sourceAuthority === PUBLISHED_COURSE_CALENDAR_SOURCE &&
+          targetScopes.has(clean(item?.sourceScope)),
+      )
+      .map((item) => [item.importItemKey || item.id, item]),
+  );
+  const personalItems = current.filter(
+    (item) =>
+      item?.sourceAuthority !== PUBLISHED_COURSE_CALENDAR_SOURCE ||
+      !targetScopes.has(clean(item?.sourceScope)),
+  );
+  const synchronized = incoming.map((item) =>
+    synchronizeCalendarSourceItem(
+      priorPublished.get(item.importItemKey || item.id),
+      item,
+      synchronizedAt,
+    ),
+  );
+  return [...personalItems, ...synchronized];
+}
+
+function syllabusDate(value, timeZone) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return clean(value);
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone,
+  }).format(parsed);
+}
+
+export function publishedCourseSyllabusText(
+  dueWork,
+  {
+    courseCode = "COURSE",
+    courseTitle = "Published course",
+    timeZone = "America/Chicago",
+  } = {},
+) {
+  const datedWork = publishedDueWorkRows(dueWork).filter(
+    (item) => item?.due_at && Number.isFinite(Date.parse(item.due_at)),
+  );
+  const heading = `${(clean(courseTitle) || "Published course").toUpperCase()} — ${
+    clean(courseCode) || "COURSE"
+  }`;
+  if (!datedWork.length) {
+    return `${heading}\nAssignments:\nNo professor-published dates are available yet.`;
+  }
+  return [
+    heading,
+    "Assignments:",
+    ...datedWork.map(
+      (item) =>
+        `${clean(item.title) || "Course work"} due ${syllabusDate(
+          item.due_at,
+          timeZone,
+        )}`,
+    ),
+  ].join("\n");
+}
+
 export function nextDueWork(dueWork, now = new Date()) {
-  const rows = [...(dueWork?.assignments || []), ...(dueWork?.gradeItems || [])]
+  const rows = publishedDueWorkRows(dueWork)
     .filter((item) => item?.due_at)
     .map((item) => ({ ...item, dueTime: Date.parse(item.due_at) }))
     .filter(

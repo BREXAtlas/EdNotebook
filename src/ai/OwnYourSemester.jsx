@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarPanel } from "../demo/WorkspaceCalendar.jsx";
 import { SyllabusPanel } from "../demo/WorkspaceSyllabus.jsx";
+import { reconcilePublishedCourseCalendarItems } from "../course-runtime/studentExperienceContract.js";
 import "./own-your-semester.css";
 
 function readSavedItems(key) {
@@ -20,11 +21,41 @@ export default function OwnYourSemester({
   session,
   track = "university",
   classes = [],
+  officialAssignments = [],
+  officialCalendarScope = "",
+  initialSyllabusText = "",
+  syllabusSourceName = "",
 }) {
   const storageKey = `ednotebook-own-semester-${session?.user?.id || "student"}-${track}`;
-  const [assignments, setAssignments] = useState(() =>
-    readSavedItems(storageKey)
+  const officialAssignmentSignature = JSON.stringify(
+    officialAssignments.map((item) => [
+      item.id,
+      item.sourceTitle,
+      item.sourceDue,
+      item.course,
+    ]),
   );
+  const [assignments, setAssignments] = useState(() =>
+    reconcilePublishedCourseCalendarItems(
+      readSavedItems(storageKey),
+      officialAssignments,
+      new Date(),
+      officialCalendarScope,
+    )
+  );
+
+  useEffect(() => {
+    setAssignments((current) => {
+      const next = reconcilePublishedCourseCalendarItems(
+        current,
+        officialAssignments,
+        new Date(),
+        officialCalendarScope,
+      );
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+    });
+  }, [officialAssignmentSignature, officialCalendarScope]);
+
   const persona = useMemo(() => {
     const normalizedClasses = classes.length
       ? classes.map((course) => ({
@@ -39,8 +70,17 @@ export default function OwnYourSemester({
       classes: normalizedClasses,
       assignments,
       calendarEvents: [],
+      syllabusText: initialSyllabusText,
+      syllabusSourceName,
     };
-  }, [assignments, classes, profile?.full_name, track]);
+  }, [
+    assignments,
+    classes,
+    initialSyllabusText,
+    profile?.full_name,
+    syllabusSourceName,
+    track,
+  ]);
 
   useEffect(() => {
     window.localStorage.setItem(

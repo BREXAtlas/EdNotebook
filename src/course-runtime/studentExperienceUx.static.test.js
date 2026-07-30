@@ -26,6 +26,18 @@ const runtimeCss = readFileSync(
   new URL("./course-runtime.css", import.meta.url),
   "utf8",
 );
+const ownSemester = readFileSync(
+  new URL("../ai/OwnYourSemester.jsx", import.meta.url),
+  "utf8",
+);
+const syllabusWorkspace = readFileSync(
+  new URL("../demo/WorkspaceSyllabus.jsx", import.meta.url),
+  "utf8",
+);
+const calendarWorkspace = readFileSync(
+  new URL("../demo/WorkspaceCalendar.jsx", import.meta.url),
+  "utf8",
+);
 
 test("student course stays in the signed-in course shell and reuses existing tools", () => {
   assert.match(runtime, /state\.packageIdentity\.label/u);
@@ -71,5 +83,21 @@ test("staging and account controls cannot cover student lesson actions", () => {
   assert.match(
     runtimeCss,
     /\.course-account-shell\{[^}]*padding-bottom:calc\(88px \+ env\(safe-area-inset-bottom\)\)/u,
+  );
+});
+
+test("published course work feeds the in-course calendar and syllabus surfaces", () => {
+  assert.match(runtime, /publishedCourseCalendarItems/u);
+  assert.match(runtime, /publishedCourseSyllabusText/u);
+  assert.match(runtime, /officialAssignments=\{publishedCalendarItems\}/u);
+  assert.match(runtime, /officialCalendarScope=\{course\.id\}/u);
+  assert.match(runtime, /initialSyllabusText=\{publishedSyllabusText\}/u);
+  assert.match(runtime, /Course work and official dates/u);
+  assert.match(ownSemester, /reconcilePublishedCourseCalendarItems/u);
+  assert.match(ownSemester, /syllabusText:\s*initialSyllabusText/u);
+  assert.match(syllabusWorkspace, /persona\?\.syllabusText/u);
+  assert.match(
+    calendarWorkspace,
+    /sourceAuthority !== "professor-published-course"/u,
   );
 });

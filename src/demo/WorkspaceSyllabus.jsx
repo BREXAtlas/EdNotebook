@@ -58,9 +58,15 @@ function defaultParameters(persona) {
 }
 
 function defaultSyllabusText(persona) {
+  const publishedCourseText = String(persona?.syllabusText || "").trim();
+  if (publishedCourseText) return publishedCourseText;
   if (persona.id === "k12") return `ACCOUNTING I\nRequired text: Introduction to Accounting course packet\nLearning objectives:\n- Explain the accounting cycle\n- Prepare journals, ledgers, and a trial balance\n- Discuss ethics and accounting careers\nAssignments:\nJournal entries case due September 22, 2026 at 3:30 PM\nCareer interview due October 6, 2026 at 8:00 AM`;
   if (persona.id === "professor") return `TRANSFORMATIVE TEACHING — EDUC 5302\nRequired reading: Teaching for Transformation\nLearning objectives:\n- Design learner-centered experiences\n- Evaluate inclusive teaching strategies\n- Use workspace assistants thoughtfully in course preparation\nAssignments:\nTeaching philosophy statement due August 21, 2026 at 5:00 PM\nLearning design prototype due September 11, 2026 at 11:59 PM`;
   return `PRINCIPLES OF MARKETING — MKTG 2301\nRequired book: Principles of Marketing, 19th edition\nLearning objectives:\n- Analyze customer value and market segments\n- Explain positioning and ethical promotion\n- Build a basic marketing plan\nAssignments:\nMarketing reflection draft due August 21, 2026 at 11:59 PM\nAudience analysis due September 4, 2026 at 5:00 PM`;
+}
+
+function defaultSyllabusSourceName(persona) {
+  return String(persona?.syllabusSourceName || "").trim() || "sample syllabus";
 }
 
 function pad(value) {
@@ -438,7 +444,9 @@ function SyllabusPanel({
 }) {
   const [text, setTextState] = useState(() => defaultSyllabusText(persona));
   const [parameters, setParameters] = useState(() => defaultParameters(persona));
-  const [fileName, setFileName] = useState("");
+  const [fileName, setFileName] = useState(
+    () => String(persona?.syllabusSourceName || "").trim(),
+  );
   const [extraction, setExtraction] = useState(null);
   const [approved, setApproved] = useState([]);
   const [reviewStale, setReviewStale] = useState(false);
@@ -454,7 +462,13 @@ function SyllabusPanel({
   const [studentAiProvenance, setStudentAiProvenance] = useState(null);
   const [studentAiStatus, setStudentAiStatus] = useState("");
   const [studentAiError, setStudentAiError] = useState("");
-  const [sourceId, setSourceId] = useState(() => syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
+  const [sourceId, setSourceId] = useState(() =>
+    syllabusSourceId(
+      persona.id,
+      defaultSyllabusSourceName(persona),
+      defaultParameters(persona).course,
+    )
+  );
   const inputRef = useRef(null);
   const readControllerRef = useRef(null);
   const readSequenceRef = useRef(0);
@@ -471,7 +485,7 @@ function SyllabusPanel({
     setNotice("");
     setSurfacePage(null);
     setReportOpen(false);
-    setFileName("");
+    setFileName(String(persona?.syllabusSourceName || "").trim());
     setIsReading(false);
     setReadProgress("");
     setReadError("");
@@ -481,12 +495,23 @@ function SyllabusPanel({
     setStudentAiProvenance(null);
     setStudentAiStatus("");
     setStudentAiError("");
-    setSourceId(syllabusSourceId(persona.id, "sample syllabus", defaultParameters(persona).course));
+    setSourceId(
+      syllabusSourceId(
+        persona.id,
+        defaultSyllabusSourceName(persona),
+        defaultParameters(persona).course,
+      ),
+    );
     return () => {
       readControllerRef.current?.abort();
       readSequenceRef.current += 1;
     };
-  }, [persona.id]);
+  }, [
+    persona.classes?.[0]?.code,
+    persona.id,
+    persona.syllabusSourceName,
+    persona.syllabusText,
+  ]);
 
   function setText(value) {
     const next = value.length > MAX_EXTRACTED_CHARACTERS ? value.slice(0, MAX_EXTRACTED_CHARACTERS) : value;

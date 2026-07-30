@@ -9,6 +9,9 @@ import {
 import StudentLessonPlayer from "./StudentLessonPlayer.jsx";
 import {
   nextDueWork,
+  publishedCourseCalendarItems,
+  publishedCourseSyllabusText,
+  publishedDueWorkRows,
   publishedPackageIdentity,
 } from "./studentExperienceContract.js";
 import "./course-runtime.css";
@@ -121,8 +124,28 @@ export default function CourseRuntimePage({
       .filter((item) => item.status === "completed")
       .map((item) => item.lesson_id),
   );
-  const dueNext = useMemo(() => nextDueWork(state.dueWork), [state.dueWork]);
   const course = state.publication?.courses;
+  const dueNext = useMemo(() => nextDueWork(state.dueWork), [state.dueWork]);
+  const publishedWork = useMemo(
+    () => publishedDueWorkRows(state.dueWork),
+    [state.dueWork],
+  );
+  const publishedCalendarItems = useMemo(
+    () =>
+      publishedCourseCalendarItems(state.dueWork, {
+        courseCode: course?.course_code,
+        courseId: course?.id,
+      }),
+    [course?.course_code, course?.id, state.dueWork],
+  );
+  const publishedSyllabusText = useMemo(
+    () =>
+      publishedCourseSyllabusText(state.dueWork, {
+        courseCode: course?.course_code,
+        courseTitle: course?.title,
+      }),
+    [course?.course_code, course?.title, state.dueWork],
+  );
 
   function openLesson(lesson) {
     const saved = (state.progress?.lessons || []).find(
@@ -365,7 +388,7 @@ export default function CourseRuntimePage({
                   <span className="course-kicker">DUE NEXT</span>
                   <h2>Course work and dates</h2>
                 </div>
-                {(state.dueWork?.gradeItems || [])
+                {publishedWork
                   .filter((item) => item.due_at)
                   .slice(0, 4)
                   .map((item) => (
@@ -374,9 +397,9 @@ export default function CourseRuntimePage({
                       <span>{formatDate(item.due_at)}</span>
                     </article>
                   ))}
-                {!(state.dueWork?.gradeItems || []).some(
-                  (item) => item.due_at,
-                ) && <p>No dated work has been published yet.</p>}
+                {!publishedWork.some((item) => item.due_at) && (
+                  <p>No dated work has been published yet.</p>
+                )}
               </section>
             </>
           )}
@@ -449,6 +472,26 @@ export default function CourseRuntimePage({
           )}
           {view === "assignments" && (
             <section className="course-assignment-frame">
+              <section
+                className="course-due-panel"
+                aria-labelledby="published-course-work-title"
+              >
+                <div>
+                  <span className="course-kicker">PROFESSOR-PUBLISHED</span>
+                  <h2 id="published-course-work-title">
+                    Course work and official dates
+                  </h2>
+                </div>
+                {publishedWork.map((item) => (
+                  <article key={`${item.workType}-${item.id}`}>
+                    <strong>{item.title}</strong>
+                    <span>{formatDate(item.due_at)}</span>
+                  </article>
+                ))}
+                {!publishedWork.length && (
+                  <p>No published course work is available yet.</p>
+                )}
+              </section>
               <AssignmentTemplateWorkspace
                 mode="student"
                 session={session}
@@ -464,6 +507,10 @@ export default function CourseRuntimePage({
                 session={session}
                 track={track}
                 classes={[courseClass]}
+                officialAssignments={publishedCalendarItems}
+                officialCalendarScope={course.id}
+                initialSyllabusText={publishedSyllabusText}
+                syllabusSourceName={`${course.course_code || "COURSE"} professor-published dates`}
               />
             </Suspense>
           )}
