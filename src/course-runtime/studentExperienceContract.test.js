@@ -7,7 +7,11 @@ import {
   lessonQuizExperience,
   lessonRecoveryKey,
   nextDueWork,
+  publishedCourseCalendarItems,
+  publishedCourseSyllabusText,
+  publishedDueWorkRows,
   publishedPackageIdentity,
+  reconcilePublishedCourseCalendarItems,
   restoreLessonSession,
   stagePhase,
 } from "./studentExperienceContract.js";
@@ -165,4 +169,135 @@ test("workflow phases and next due work are deterministic", () => {
   );
   assert.equal(due.id, "next");
   assert.equal(due.timeRemaining, "1 day left");
+});
+
+test("professor-published due work reaches one synchronized student calendar", () => {
+  const dueWork = {
+    assignments: [
+      {
+        id: "assignment-1",
+        title: "Source evaluation check",
+        due_at: "2026-08-06T04:59:00.000Z",
+        instructions: "Apply the four-question source check.",
+        settings: { estimated_hours: 2 },
+      },
+    ],
+    gradeItems: [
+      {
+        id: "grade-1",
+        assignment_id: "assignment-1",
+        title: "Source evaluation check",
+        due_at: "2026-08-06T04:59:00.000Z",
+        max_points: 20,
+      },
+      {
+        id: "semantic-duplicate",
+        title: "Source evaluation check",
+        due_at: "2026-08-06T04:59:00.000Z",
+        max_points: 20,
+      },
+    ],
+  };
+
+  const rows = publishedDueWorkRows(dueWork);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].grade_item_id, "grade-1");
+  assert.equal(rows[0].max_points, 20);
+
+  const calendarItems = publishedCourseCalendarItems(dueWork, {
+    courseCode: "UNIV 1101",
+  });
+  assert.equal(calendarItems.length, 1);
+  assert.equal(calendarItems[0].course, "UNIV 1101");
+  assert.equal(calendarItems[0].dateConfirmed, true);
+  assert.equal(
+    calendarItems[0].sourceDue,
+    "2026-08-06T04:59:00.000Z",
+  );
+
+  const syllabusText = publishedCourseSyllabusText(dueWork, {
+    courseCode: "UNIV 1101",
+    courseTitle: "Digital Literacy",
+  });
+  assert.match(syllabusText, /DIGITAL LITERACY — UNIV 1101/u);
+  assert.match(
+    syllabusText,
+    /Source evaluation check due August 5, 2026 at 11:59 PM/u,
+  );
+});
+
+test("published deadline refresh preserves personal planning without duplicates", () => {
+  const initial = publishedCourseCalendarItems(
+    {
+      assignments: [],
+      gradeItems: [
+        {
+          id: "grade-1",
+          title: "Source evaluation check",
+          due_at: "2026-08-06T04:59:00.000Z",
+        },
+      ],
+    },
+    { courseCode: "UNIV 1101" },
+  );
+  const current = [
+    {
+      ...initial[0],
+      due: "2026-08-05T23:00:00.000Z",
+      personalDueOverride: "2026-08-05T23:00:00.000Z",
+    },
+    {
+      id: "personal-plan",
+      title: "Study block",
+      due: "2026-08-04T20:00:00.000Z",
+    },
+    {
+      ...initial[0],
+      id: "other-course-deadline",
+      importItemKey: "grade_item-other",
+      sourceScope: "OTHER 2000",
+      course: "OTHER 2000",
+    },
+  ];
+  const updated = publishedCourseCalendarItems(
+    {
+      assignments: [],
+      gradeItems: [
+        {
+          id: "grade-1",
+          title: "Source evaluation check",
+          due_at: "2026-08-07T04:59:00.000Z",
+        },
+      ],
+    },
+    { courseCode: "UNIV 1101" },
+  );
+  const reconciled = reconcilePublishedCourseCalendarItems(
+    current,
+    updated,
+    new Date("2026-07-30T00:00:00.000Z"),
+  );
+
+  assert.equal(reconciled.length, 3);
+  assert.equal(reconciled[0].id, "personal-plan");
+  assert.equal(reconciled[1].id, "other-course-deadline");
+  assert.equal(reconciled[2].sourceDue, "2026-08-07T04:59:00.000Z");
+  assert.equal(reconciled[2].due, "2026-08-05T23:00:00.000Z");
+
+  const courseRemoved = reconcilePublishedCourseCalendarItems(
+    reconciled,
+    [],
+    new Date("2026-07-31T00:00:00.000Z"),
+    "UNIV 1101",
+  );
+  assert.deepEqual(
+    courseRemoved.map((item) => item.id),
+    ["personal-plan", "other-course-deadline"],
+  );
+
+  const generalDashboard = reconcilePublishedCourseCalendarItems(
+    reconciled,
+    [],
+  );
+  assert.equal(generalDashboard, reconciled);
 });
