@@ -14,6 +14,18 @@ const lessonContract = readFileSync(
   new URL("../ai/lessonGenerationContract.js", import.meta.url),
   "utf8",
 );
+const environmentBanner = readFileSync(
+  new URL("../EnvironmentBanner.jsx", import.meta.url),
+  "utf8",
+);
+const environmentBannerCss = readFileSync(
+  new URL("../environment-banner.css", import.meta.url),
+  "utf8",
+);
+const runtimeCss = readFileSync(
+  new URL("./course-runtime.css", import.meta.url),
+  "utf8",
+);
 
 test("student course stays in the signed-in course shell and reuses existing tools", () => {
   assert.match(runtime, /state\.packageIdentity\.label/u);
@@ -48,4 +60,16 @@ test("accepted quiz reaches the student scoring contract without leaking profess
   assert.match(lessonContract, /endQuiz:[\s\S]*draft\.quizDrafts/u);
   assert.match(player, /lessonQuizExperience\(lesson\)/u);
   assert.doesNotMatch(player, /rubricDrafts/u);
+});
+
+test("staging and account controls cannot cover student lesson actions", () => {
+  assert.match(environmentBanner, /className="environment-banner"/u);
+  assert.match(
+    environmentBannerCss,
+    /\.environment-banner[\s\S]*position:\s*relative[\s\S]*pointer-events:\s*none/u,
+  );
+  assert.match(
+    runtimeCss,
+    /\.course-account-shell\{[^}]*padding-bottom:calc\(88px \+ env\(safe-area-inset-bottom\)\)/u,
+  );
 });

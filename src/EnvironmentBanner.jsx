@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import "./environment-banner.css";
 
 const environment = import.meta.env.VITE_APP_ENVIRONMENT || "production";
 const isStaging = environment === "staging";
@@ -21,23 +22,9 @@ export default function EnvironmentBanner() {
 
   return (
     <div
+      className="environment-banner"
       role="status"
       aria-label="Staging environment"
-      style={{
-        position: "fixed",
-        right: 12,
-        bottom: 12,
-        zIndex: 10000,
-        padding: "8px 12px",
-        borderRadius: 999,
-        background: "#7a3e00",
-        color: "#ffffff",
-        boxShadow: "0 6px 20px rgba(0,0,0,.24)",
-        fontFamily: "system-ui, sans-serif",
-        fontSize: 12,
-        fontWeight: 800,
-        letterSpacing: ".08em",
-      }}
     >
       EDNOTEBOOK STAGING · TEST DATA ONLY
     </div>

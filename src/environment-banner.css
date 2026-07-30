@@ -1,0 +1,20 @@
+.environment-banner {
+  position: relative;
+  z-index: 10001;
+  width: 100%;
+  padding: 7px 12px;
+  color: #fff;
+  background: #7a3e00;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+  font: 800 11px/1.2 system-ui, sans-serif;
+  letter-spacing: .08em;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  .environment-banner {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+}
