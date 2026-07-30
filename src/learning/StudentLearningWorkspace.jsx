@@ -34,6 +34,10 @@ import {
 } from "./studentLearningWorkspace.js";
 import { appendCloudLearningRecord, loadCloudLearningRecords } from "./studentLearningService.js";
 import { downloadDeviceFile, listDeviceFiles, saveDeviceFile } from "../studio/localVault.js";
+import AcademicWritingStudio, {
+  sanitizeAcademicHtml,
+} from "../writing/AcademicWritingStudio.jsx";
+import { academicDesignHtml } from "../writing/academicWritingModel.js";
 import "./student-learning-workspace.css";
 
 function combineAppendOnly(left, right) {
@@ -379,8 +383,116 @@ function CitationBuilder({ records, courses, onSave, storageMode, notice }) {
   );
 }
 
+function DocumentWorkspace({ records, courses, onSave, storageMode, notice }) {
+  const documents = latestRecords(records, "document");
+  const savedSources = latestRecords(records, "source");
+  const [context, setContext] = useReconciledCourseContext(courses);
+  const [title, setTitle] = useState("Untitled college paper");
+  const [editing, setEditing] = useState(null);
+  const [documentContent, setDocumentContent] = useState(
+    () => academicDesignHtml("blank-college-paper"),
+  );
+  const [documentNotice, setDocumentNotice] = useState("");
+
+  function beginNew() {
+    setEditing({ previous: null });
+    setTitle("Untitled college paper");
+    setDocumentContent(academicDesignHtml("blank-college-paper"));
+    setDocumentNotice("");
+  }
+
+  function revise(record) {
+    setEditing({ previous: record });
+    setTitle(record.title);
+    setDocumentContent(
+      sanitizeAcademicHtml(
+        record.content?.html || academicDesignHtml("blank-college-paper"),
+      ),
+    );
+    setContext(reconcileCourseContext(record, courses));
+    setDocumentNotice(`Editing the next version after v${record.version}.`);
+  }
+
+  async function saveDocument(safeContent) {
+    const saveContext = reconcileCourseContext(context, courses);
+    const record = createVersionedRecord({
+      kind: "document",
+      content: {
+        title,
+        html: sanitizeAcademicHtml(safeContent),
+        documentType: "academic-writing",
+      },
+      context: saveContext,
+      previous: editing?.previous || null,
+    });
+    await onSave(record);
+    setEditing({ previous: record });
+    setDocumentContent(record.content.html);
+    setDocumentNotice(`${record.filename} saved as version ${record.version}.`);
+    return { message: `${record.filename} saved as version ${record.version}` };
+  }
+
+  return (
+    <section className="document-workspace">
+      <section className="dashboard-card document-workspace-intro">
+        <div>
+          <span className="portal-kicker">STUDENT-INITIATED WRITING</span>
+          <h2>Your canvas, even when it is not an assignment.</h2>
+          <p>Start a college paper, continue an imported Word document, connect saved sources, and keep append-only versions in the same studio used for assignments.</p>
+        </div>
+        <button className="primary" type="button" onClick={beginNew}>New document</button>
+      </section>
+      <section className="dashboard-card document-library">
+        <div className="dashboard-card-heading">
+          <div><span className="portal-kicker">WRITING CABINET</span><h2>Documents you can find again</h2></div>
+          <span>{documents.length}</span>
+        </div>
+        {documents.length
+          ? (
+            <div>
+              {documents.map((record) => (
+                <article key={record.id}>
+                  <span>{record.courseCode} · v{record.version}</span>
+                  <strong>{record.title}</strong>
+                  <p>{record.filename}</p>
+                  <small>{String(record.content?.html || "").replace(/<[^>]+>/gu, " ").trim().split(/\s+/u).filter(Boolean).length} words · {record.storage === "cloud" ? "browser + private cloud" : "this browser"}</small>
+                  <button type="button" onClick={() => revise(record)}>Open next version</button>
+                </article>
+              ))}
+            </div>
+          )
+          : <p className="learning-empty">No personal documents yet. Start with a familiar college-paper design or import a .docx file.</p>}
+        {(documentNotice || notice) && <p className="learning-notice" role="status">{documentNotice || notice}</p>}
+      </section>
+      {editing && (
+        <AcademicWritingStudio
+          title={title}
+          content={documentContent}
+          setContent={setDocumentContent}
+          onClose={() => setEditing(null)}
+          onSave={saveDocument}
+          status="draft"
+          spellCheck
+          savedSources={savedSources}
+          saveLabel={`Save to ${storageMode === "cloud" ? "browser + private cloud" : "this browser"}`}
+          secondaryLabel="Document details"
+          secondaryContent={(
+            <section className="dashboard-card personal-document-details">
+              <span className="portal-kicker">DOCUMENT DETAILS</span>
+              <h1>Name and file this work.</h1>
+              <p>The title, course, and lesson become part of the file name and retrieval trail.</p>
+              <label>Document title<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+              <ContextFields context={context} setContext={setContext} courses={courses} />
+            </section>
+          )}
+        />
+      )}
+    </section>
+  );
+}
+
 function PacketWorkspace({ records, setRecords, courses, storageScope, onSave, notice }) {
-  const latest = latestRecords(records).filter((record) => ["note", "source", "feedback"].includes(record.kind));
+  const latest = latestRecords(records).filter((record) => ["note", "source", "feedback", "document"].includes(record.kind));
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [files, setFiles] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -483,10 +595,10 @@ function PacketWorkspace({ records, setRecords, courses, storageScope, onSave, n
       <section className="dashboard-card packet-builder">
         <span className="portal-kicker">PORTABLE LEARNING PACKET</span>
         <h2>Choose what leaves with you.</h2>
-        <p>The readable copy opens in any modern browser. The restore manifest preserves structured notes, citations, feedback, versions, and file metadata without trapping the work in EdNotebook.</p>
+        <p>The readable copy opens in any modern browser. The restore manifest preserves structured notes, citations, documents, feedback, versions, and file metadata without trapping the work in EdNotebook.</p>
         <ContextFields context={context} setContext={setContext} courses={courses} />
         <div className="packet-select-list">
-          <h3>Notes, sources, and feedback</h3>
+          <h3>Notes, sources, documents, and feedback</h3>
           {latest.length ? latest.map((record) => <label key={record.id}><input type="checkbox" checked={selectedRecords.includes(record.id)} onChange={() => toggle(selectedRecords, setSelectedRecords, record.id)} /><span><strong>{record.title}</strong><small>{record.kind} · {record.courseCode} · v{record.version} · {record.filename}</small></span></label>) : <p>No saved learning records yet.</p>}
           <h3>Device file manifest</h3>
           {files.length ? files.map((item) => <div className="packet-file-row" key={item.id}><label><input type="checkbox" checked={selectedFiles.includes(item.id)} onChange={() => toggle(selectedFiles, setSelectedFiles, item.id)} /><span><strong>{item.safeName || item.originalName}</strong><small>{item.mimeType} · stored only in this browser</small></span></label><button type="button" onClick={() => downloadFile(item.id)}>Download file</button></div>) : <p>No device files yet.</p>}
@@ -588,10 +700,11 @@ export default function StudentLearningWorkspace({ classes = [], session, storag
       </section>
       <StorageChoice mode={storageMode} setMode={setStorageMode} signedIn={Boolean(studentId)} />
       <nav className="learning-workspace-tabs" aria-label="Student learning workspace">
-        {[["notes", "Notes + versions"], ["sources", "Sources + citations"], ["packet", "Files + learning packet"]].map(([id, label]) => <button type="button" key={id} className={section === id ? "is-active" : ""} onClick={() => { setSection(id); setNotice(""); }}>{label}</button>)}
+        {[["notes", "Notes + versions"], ["sources", "Sources + citations"], ["documents", "Writing studio"], ["packet", "Files + learning packet"]].map(([id, label]) => <button type="button" key={id} className={section === id ? "is-active" : ""} onClick={() => { setSection(id); setNotice(""); }}>{label}</button>)}
       </nav>
       {section === "notes" && <NoteWorkspace records={records} courses={courseOptions} onSave={saveRecord} storageMode={storageMode} notice={notice} />}
       {section === "sources" && <CitationBuilder records={records} courses={courseOptions} onSave={saveRecord} storageMode={storageMode} notice={notice} />}
+      {section === "documents" && <DocumentWorkspace records={records} courses={courseOptions} onSave={saveRecord} storageMode={storageMode} notice={notice} />}
       {section === "packet" && <PacketWorkspace records={records} setRecords={setRecords} courses={courseOptions} storageScope={storageScope} onSave={saveRecord} notice={notice} />}
     </div>
   );
