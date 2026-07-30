@@ -918,7 +918,7 @@
 }
 
 /* Account, onboarding, sharing, discovery, and editor refinements */
-.account-bubble { position: fixed; z-index: 10000; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px; max-width: min(300px, calc(100vw - 24px)); padding: 6px 7px 6px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; color: white; background: rgba(22,31,49,.38); box-shadow: 0 8px 24px rgba(0,0,0,.1); opacity: .58; backdrop-filter: blur(8px); transition: opacity .18s ease, background .18s ease, box-shadow .18s ease; font-family: Inter, system-ui, sans-serif; }
+.account-bubble { position: static; display: flex; width: max-content; align-items: center; gap: 8px; max-width: min(300px, calc(100vw - 24px)); margin: 12px 12px calc(12px + env(safe-area-inset-bottom)) auto; padding: 6px 7px 6px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; color: white; background: rgba(22,31,49,.94); box-shadow: 0 8px 24px rgba(0,0,0,.1); opacity: 1; backdrop-filter: blur(8px); transition: background .18s ease, box-shadow .18s ease; font-family: Inter, system-ui, sans-serif; }
 .account-bubble:hover, .account-bubble:focus-within { opacity: 1; background: rgba(22,31,49,.94); box-shadow: 0 12px 35px rgba(0,0,0,.22); }
 .account-bubble-details { max-width: 150px; }
 .account-bubble button { padding: 6px 8px !important; font-size: 11px; }
@@ -1015,7 +1015,6 @@
   .student-share-section { margin-inline: 18px; }
   .friend-result-grid article { grid-template-columns: auto 1fr; }
   .friend-result-grid article button { grid-column: 1 / -1; }
-  .account-bubble { position: static; width: max-content; margin: 12px 12px calc(12px + env(safe-area-inset-bottom)) auto; opacity: 1; background: rgba(22,31,49,.94); }
   .account-bubble-details { display: none; }
   .portal-home-share, .portal-brand-variant-grid { grid-template-columns: 1fr; }
   .portal-home-share, .portal-brand-kit { margin-right: 20px; margin-left: 20px; padding: 24px; }
