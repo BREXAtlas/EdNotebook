@@ -359,22 +359,26 @@ function CalendarItemEditor({
                     >
                       {item.status === "complete" ? "Reopen" : "Mark complete"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAssignments((current) =>
-                          current.filter((candidate) =>
-                            candidate.id !== item.id
-                          )
-                        )}
-                    >
-                      Remove
-                    </button>
+                    {item.sourceAuthority !== "professor-published-course" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAssignments((current) =>
+                            current.filter((candidate) =>
+                              candidate.id !== item.id
+                            )
+                          )}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </>
                 )}
             </div>
             <footer>
-              {role === "professor"
+              {item.sourceAuthority === "professor-published-course"
+                ? "This professor-published deadline stays visible; personal edits never change its official source."
+                : role === "professor"
                 ? "Calendar edits are personal until the syllabus is revised and re-synced."
                 : "A personal edit never changes the professor’s official deadline."}
             </footer>
