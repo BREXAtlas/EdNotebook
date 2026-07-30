@@ -16,6 +16,7 @@ import {
   iconForType,
   NotebookLabel,
 } from "./demoShared.jsx";
+import "./workspace-calendar.css";
 
 const DEFAULT_REMINDERS = Object.freeze({
   week: true,
@@ -115,52 +116,76 @@ function MonthCalendar({ events, visibleMonth }) {
     next.setDate(next.getDate() + index);
     return next;
   });
+  const weeks = Array.from(
+    { length: 6 },
+    (_, index) => dates.slice(index * 7, index * 7 + 7),
+  );
   const eventMap = events.reduce((map, event) => {
     map[event.date] = [...(map[event.date] || []), event];
     return map;
   }, {});
   const todayKey = localDateKey(new Date());
   return (
-    <div className="month-calendar">
-      <div className="month-calendar-weekdays">
+    <div
+      className="month-calendar"
+      role="grid"
+      aria-label={`${monthLabel(visibleMonth)} calendar`}
+    >
+      <div className="month-calendar-weekdays" role="row">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <span key={day}>{day}</span>
+          <span key={day} role="columnheader">{day}</span>
         ))}
       </div>
-      <div className="month-calendar-grid">
-        {dates.map((date) => {
-          const key = localDateKey(date);
-          const dayEvents = eventMap[key] || [];
-          const today = key === todayKey;
-          return (
-            <article
-              aria-current={today ? "date" : undefined}
-              aria-label={`${formatDate(`${key}T12:00:00`, { year: true })}${
-                today ? ", today" : ""
-              }`}
-              className={cx(
-                date.getMonth() !== visibleMonth.getMonth() && "is-muted",
-                dayEvents.length && "has-events",
-                today && "is-today",
-              )}
-              key={key}
-            >
-              <strong>{date.getDate()}</strong>
-              {today ? <em>Today</em> : null}
-              {dayEvents.slice(0, 3).map((event) => (
-                <span
-                  className={`is-${event.type}`}
-                  key={`${event.title}-${event.time}`}
+      <div className="month-calendar-grid" role="rowgroup">
+        {weeks.map((week, weekIndex) => (
+          <div
+            className="month-calendar-week"
+            role="row"
+            key={`week-${weekIndex + 1}`}
+          >
+            {week.map((date) => {
+              const key = localDateKey(date);
+              const dayEvents = eventMap[key] || [];
+              const today = key === todayKey;
+              return (
+                <article
+                  role="gridcell"
+                  aria-current={today ? "date" : undefined}
+                  aria-label={`${
+                    formatDate(`${key}T12:00:00`, { year: true })
+                  }${today ? ", today" : ""}${dayEvents.length
+                    ? `, ${dayEvents.length} calendar item${
+                      dayEvents.length === 1 ? "" : "s"
+                    }`
+                    : ""}`}
+                  className={cx(
+                    date.getMonth() !== visibleMonth.getMonth() && "is-muted",
+                    dayEvents.length && "has-events",
+                    today && "is-today",
+                  )}
+                  key={key}
                 >
-                  {event.title}
-                </span>
-              ))}
-              {dayEvents.length > 3
-                ? <small>+{dayEvents.length - 3} more</small>
-                : null}
-            </article>
-          );
-        })}
+                  <strong>{date.getDate()}</strong>
+                  {today ? <em>Today</em> : null}
+                  {dayEvents.slice(0, 3).map((event) => (
+                    <span
+                      className={`is-${event.type}`}
+                      key={`${event.title}-${event.time}`}
+                      title={`${event.title}${
+                        event.time ? ` · ${event.time}` : ""
+                      }`}
+                    >
+                      {event.title}
+                    </span>
+                  ))}
+                  {dayEvents.length > 3
+                    ? <small>+{dayEvents.length - 3} more</small>
+                    : null}
+                </article>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -775,39 +800,49 @@ function CalendarPanel({
         )
         : null}
 
-      <section className="paper-card calendar-full-card">
-        <div className="dashboard-card-heading">
-          <div>
-            <NotebookLabel>{monthLabel(visibleMonth).toUpperCase()}</NotebookLabel>
-            <h2>Assignments and class events share the same view.</h2>
+      <section
+        className="paper-card calendar-full-card"
+        aria-labelledby="calendar-month-heading"
+      >
+        <div className="calendar-month-header">
+          <div className="calendar-month-copy">
+            <NotebookLabel>COURSE CALENDAR</NotebookLabel>
+            <h2 id="calendar-month-heading">{monthLabel(visibleMonth)}</h2>
+            <p>Assignments and class events at a glance.</p>
           </div>
-          <div className="calendar-month-navigation">
-            <span>
+          <div>
+            <span className="calendar-month-count">
               {visibleEventCount} item{visibleEventCount === 1 ? "" : "s"} this
               month
             </span>
-            <button
-              type="button"
-              aria-label="Previous month"
-              onClick={() =>
-                setVisibleMonth((current) => shiftMonth(current, -1))}
+            <div
+              className="calendar-month-navigation"
+              aria-label="Calendar month navigation"
             >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={() => setVisibleMonth(monthStart(new Date()))}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              aria-label="Next month"
-              onClick={() =>
-                setVisibleMonth((current) => shiftMonth(current, 1))}
-            >
-              →
-            </button>
+              <button
+                type="button"
+                aria-label="Previous month"
+                onClick={() =>
+                  setVisibleMonth((current) => shiftMonth(current, -1))}
+              >
+                ‹
+              </button>
+              <button
+                className="calendar-today-button"
+                type="button"
+                onClick={() => setVisibleMonth(monthStart(new Date()))}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                aria-label="Next month"
+                onClick={() =>
+                  setVisibleMonth((current) => shiftMonth(current, 1))}
+              >
+                ›
+              </button>
+            </div>
           </div>
         </div>
         <MonthCalendar events={events} visibleMonth={visibleMonth} />
