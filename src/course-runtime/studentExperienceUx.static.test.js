@@ -38,6 +38,10 @@ const calendarWorkspace = readFileSync(
   new URL("../demo/WorkspaceCalendar.jsx", import.meta.url),
   "utf8",
 );
+const calendarWorkspaceCss = readFileSync(
+  new URL("../demo/workspace-calendar.css", import.meta.url),
+  "utf8",
+);
 
 test("student course stays in the signed-in course shell and reuses existing tools", () => {
   assert.match(runtime, /state\.packageIdentity\.label/u);
@@ -100,4 +104,19 @@ test("published course work feeds the in-course calendar and syllabus surfaces",
     calendarWorkspace,
     /sourceAuthority !== "professor-published-course"/u,
   );
+});
+
+test("course calendar owns a traditional seven-column responsive month grid", () => {
+  assert.match(calendarWorkspace, /import "\.\/workspace-calendar\.css"/u);
+  assert.match(calendarWorkspace, /role="grid"/u);
+  assert.match(calendarWorkspace, /role="columnheader"/u);
+  assert.match(calendarWorkspace, /Assignments and class events at a glance/u);
+  assert.match(
+    calendarWorkspaceCss,
+    /grid-template-columns:\s*repeat\(7,\s*minmax\(0,\s*1fr\)\)/u,
+  );
+  assert.match(calendarWorkspaceCss, /\.month-calendar-grid article/u);
+  assert.match(calendarWorkspaceCss, /@media \(max-width:\s*460px\)/u);
+  assert.doesNotMatch(calendarWorkspaceCss, /min-width:\s*680px/u);
+  assert.doesNotMatch(calendarWorkspaceCss, /overflow-x:\s*auto/u);
 });

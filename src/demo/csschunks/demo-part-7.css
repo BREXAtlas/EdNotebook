@@ -115,10 +115,6 @@
   .extraction-summary-grid,
   .profile-detail-grid,
   .history-strip { grid-template-columns: 1fr; }
-  .calendar-control-grid { grid-template-columns: 1fr; }
-  .month-calendar { overflow-x: auto; }
-  .month-calendar-weekdays,
-  .month-calendar-grid { min-width: 680px; }
   .syllabus-editor-grid { grid-template-columns: 1fr; }
   .extracted-head,
   .extracted-assignment-list label { grid-template-columns: 46px 1fr; }

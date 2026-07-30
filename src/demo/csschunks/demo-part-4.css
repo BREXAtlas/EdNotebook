@@ -25,28 +25,6 @@
 .feature-toggle-list input { width: 35px; height: 20px; accent-color: var(--demo-blue); }
 .inline-notice { padding: 10px 12px; color: #315b42 !important; background: #e8f5ec; border: 1px solid #b8dcc5; border-radius: 9px; font-size: 9px !important; }
 
-/* Calendar */
-.calendar-control-grid { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 9px; align-items: end; }
-.calendar-control-grid label { display: grid; gap: 5px; color: var(--demo-muted); font-size: 9px; font-weight: 800; }
-.calendar-control-grid select { padding: 10px; background: #fff; border: 1px solid var(--demo-line); border-radius: 9px; }
-.calendar-control-grid button { padding: 10px 12px; color: var(--demo-blue-dark); background: #eeebf8; border: 1px solid #d8d4ee; border-radius: 9px; font-size: 9px; font-weight: 850; }
-.month-calendar { margin-top: 16px; overflow: hidden; border: 1px solid #ddd6cb; border-radius: 13px; }
-.month-calendar-weekdays,
-.month-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-.month-calendar-weekdays span { padding: 9px; color: #7c8496; background: #efebe4; border-right: 1px solid #ddd6cb; font-size: 8px; font-weight: 850; text-align: center; text-transform: uppercase; }
-.month-calendar-grid article { min-height: 104px; padding: 8px; background: #fffdf8; border-top: 1px solid #e4ddd2; border-right: 1px solid #e4ddd2; }
-.month-calendar-grid article.is-muted { background: #f5f1eb; opacity: .66; }
-.month-calendar-grid article strong { display: grid; place-items: center; width: 24px; height: 24px; margin-bottom: 5px; font-family: var(--demo-display); font-size: 12px; }
-.month-calendar-grid article.has-events strong { color: #fff; background: var(--demo-blue); border-radius: 99px; }
-.month-calendar-grid article span { display: block; overflow: hidden; margin-top: 3px; padding: 4px 5px; color: #4d5670; background: #eeecf7; border-left: 3px solid #777bc3; border-radius: 4px; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
-.month-calendar-grid article span.is-assignment { color: #763c3c; background: #fae7e4; border-left-color: #ad615d; }
-.month-calendar-grid article span.is-college { color: #28594d; background: #e0f1eb; border-left-color: #2f7c76; }
-.month-calendar-grid article span.is-activity { color: #664174; background: #f0e5f4; border-left-color: #9a6caa; }
-.month-calendar-grid article small { color: var(--demo-muted); font-size: 7px; }
-.calendar-agenda-grid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 12px; }
-.calendar-agenda.is-full > div { grid-template-columns: 30px 1fr; }
-.calendar-legend-card ul { display: grid; gap: 10px; padding-left: 18px; color: var(--demo-muted); font-size: 10px; line-height: 1.45; }
-
 /* Syllabus */
 .syllabus-editor-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; }
 .syllabus-editor-grid > div { display: grid; gap: 9px; }
