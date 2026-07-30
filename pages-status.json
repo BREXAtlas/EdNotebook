@@ -10,7 +10,7 @@
   "staging_source_commit": "aa45cc321907a84cd3c0e4959e6acd1d00c14a79",
   "trigger_branch": "main",
   "trigger_commit": "a3c509d172234e5cd42af77f8ccf6f6a4803eaff",
-  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30583708625",
-  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30583813160",
-  "deployed_at": "2026-07-30T21:35:45Z"
+  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30584058849",
+  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/30584174037",
+  "deployed_at": "2026-07-30T21:39:12Z"
 }
