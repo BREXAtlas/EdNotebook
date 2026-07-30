@@ -18,7 +18,7 @@
     "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js",
     "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/contentUnitGenerationContract.test.js src/ai/finalContentUnitGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
     "test:research-gate": "node --test src/research/researchGateModel.test.js",
-    "test:student-learning": "node --test src/learning/citationTools.test.js src/learning/studentLearningWorkspace.test.js src/learning/studentLearningMigration.test.js src/learning/studentLearningUx.static.test.js",
+    "test:student-learning": "node --test src/learning/citationTools.test.js src/learning/studentLearningWorkspace.test.js src/learning/studentLearningMigration.test.js src/learning/studentLearningUx.static.test.js src/writing/academicWritingModel.test.js src/writing/academicWritingMigration.test.js src/writing/academicWritingUx.static.test.js",
     "test:student-experience": "node --test src/course-runtime/studentExperienceContract.test.js src/course-runtime/courseNotificationModel.test.js src/course-runtime/studentExperienceUx.static.test.js",
     "test:social-learning": "node --test src/social-learning/socialLearningModel.test.js src/social-learning/socialLearningMigration.test.js src/social-learning/socialLearningUx.static.test.js",
     "test:course-communication": "node --test src/communication/courseCommunicationModel.test.js src/communication/courseCommunicationUx.static.test.js",

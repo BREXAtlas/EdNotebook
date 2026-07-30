@@ -6,8 +6,12 @@ import {
   buildStudentNotificationFeed,
   CALENDAR_REMINDER_SETTINGS_EVENT,
   calendarReminderSettingsKey,
+  filterUnreadStudentNotifications,
+  markStudentNotificationRead,
   readCalendarReminderSettings,
+  readStudentNotificationIds,
 } from "./courseNotificationModel.js";
+import { listStudentAssignmentEvents } from "../portal/assignmentTemplateService.js";
 import {
   listCourseDueWork,
   loadLearnerProgress,
@@ -121,12 +125,32 @@ export default function CourseRuntimePage({
   const [view, setView] = useState("home");
   const [active, setActive] = useState(null);
   const [selectedWorkId, setSelectedWorkId] = useState(null);
+  const [requestedTemplateId, setRequestedTemplateId] = useState(null);
   const [notificationNow, setNotificationNow] = useState(() => new Date());
+  const [assignmentEvents, setAssignmentEvents] = useState([]);
+  const [readNotificationIds, setReadNotificationIds] = useState([]);
   const studentCalendarScope =
     `ednotebook-own-semester-${session?.user?.id || "student"}-${track}-calendar`;
   const [reminderSettings, setReminderSettings] = useState(() =>
     readCalendarReminderSettings(studentCalendarScope)
   );
+  const notificationScope =
+    `ednotebook-${session?.user?.id || "student"}-${publicationId || "course"}`;
+
+  useEffect(() => {
+    setReadNotificationIds(readStudentNotificationIds(notificationScope));
+  }, [notificationScope]);
+
+  useEffect(() => {
+    let active = true;
+    listStudentAssignmentEvents({
+      studentId: session?.user?.id,
+      courseId: state.publication?.course_id,
+    }).then((result) => {
+      if (active) setAssignmentEvents(result.data || []);
+    });
+    return () => { active = false; };
+  }, [session?.user?.id, state.publication?.course_id]);
 
   useEffect(() => {
     let live = true;
@@ -256,12 +280,19 @@ export default function CourseRuntimePage({
   );
   const notifications = useMemo(
     () =>
-      buildStudentNotificationFeed({
+      filterUnreadStudentNotifications(buildStudentNotificationFeed({
         items: publishedCalendarItems,
+        activityItems: assignmentEvents,
         reminders: reminderSettings.reminders,
         now: notificationNow,
-      }),
-    [notificationNow, publishedCalendarItems, reminderSettings.reminders],
+      }), readNotificationIds),
+    [
+      assignmentEvents,
+      notificationNow,
+      publishedCalendarItems,
+      readNotificationIds,
+      reminderSettings.reminders,
+    ],
   );
   const selectedWork = useMemo(
     () =>
@@ -301,6 +332,21 @@ export default function CourseRuntimePage({
     setSelectedWorkId(workId);
     setView("assignments");
     window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+  }
+
+  function openNotification(notification) {
+    setReadNotificationIds(
+      markStudentNotificationRead(notificationScope, notification.id),
+    );
+    if (notification.route?.templateId) {
+      setActive(null);
+      setSelectedWorkId(null);
+      setRequestedTemplateId(notification.route.templateId);
+      setView("assignments");
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+      return;
+    }
+    openPublishedWorkDetail(notification.route.workId);
   }
 
   async function refreshProgress() {
@@ -383,8 +429,7 @@ export default function CourseRuntimePage({
         </nav>
         <CourseNotificationCenter
           notifications={notifications}
-          onSelect={(notification) =>
-            openPublishedWorkDetail(notification.route.workId)}
+          onSelect={openNotification}
           onOpenCalendar={() => openTool("calendar")}
         />
         <span className="course-profile-name">
@@ -664,6 +709,7 @@ export default function CourseRuntimePage({
                 session={session}
                 track={track}
                 classes={[courseClass]}
+                initialTemplateId={requestedTemplateId}
               />
             </section>
           )}

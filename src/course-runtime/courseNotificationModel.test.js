@@ -4,7 +4,11 @@ import {
   buildStudentNotificationFeed,
   calendarReminderSettingsKey,
   DEFAULT_CALENDAR_REMINDERS,
+  filterUnreadStudentNotifications,
+  markStudentNotificationRead,
+  notificationReadStateKey,
   readCalendarReminderSettings,
+  readStudentNotificationIds,
 } from "./courseNotificationModel.js";
 
 const assignment = {
@@ -76,4 +80,55 @@ test("completed work is removed from the active notification feed", () => {
     }),
     [],
   );
+});
+
+test("opening a notification persists read state and removes it from the badge feed", () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+  const notifications = buildStudentNotificationFeed({
+    items: [assignment],
+    reminders: DEFAULT_CALENDAR_REMINDERS,
+    now: new Date("2026-08-01T05:00:00.000Z"),
+  });
+  const scope = "student-1-course-1";
+
+  const ids = markStudentNotificationRead(scope, notifications[0].id, storage);
+
+  assert.deepEqual(ids, [notifications[0].id]);
+  assert.deepEqual(readStudentNotificationIds(scope, storage), ids);
+  assert.deepEqual(filterUnreadStudentNotifications(notifications, ids), []);
+  assert.match(notificationReadStateKey(scope), /notifications-read-v1$/u);
+});
+
+test("published professor feedback and grades share the notification feed", () => {
+  const notifications = buildStudentNotificationFeed({
+    items: [],
+    activityItems: [
+      {
+        id: "feedback-submission-1-2026-08-02",
+        templateId: "template-1",
+        title: "Source Analysis Response",
+        kind: "assignment-feedback",
+        createdAt: "2026-08-02T18:00:00.000Z",
+      },
+      {
+        id: "graded-submission-2-2026-08-03",
+        templateId: "template-2",
+        title: "Research Paper",
+        kind: "assignment-graded",
+        createdAt: "2026-08-03T18:00:00.000Z",
+      },
+    ],
+  });
+
+  assert.equal(notifications[0].kind, "assignment-graded");
+  assert.equal(notifications[0].label, "Assignment graded");
+  assert.deepEqual(notifications[0].route, {
+    view: "assignments",
+    templateId: "template-2",
+  });
+  assert.equal(notifications[1].label, "Feedback ready");
 });

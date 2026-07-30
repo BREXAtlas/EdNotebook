@@ -393,7 +393,7 @@ test("deletion evaluation is deterministic for completed files and invalid dates
 
 test("the disposable SQL harness contains all four rollback-safe database gates", async () => {
   const sql = await readFile(new URL("../../supabase/tests/institution_student_data_safety.sql", import.meta.url), "utf8");
-  assert.equal(STUDENT_DATA_DOMAINS.length, 47);
+  assert.equal(STUDENT_DATA_DOMAINS.length, 48);
   const captureBody = sql.match(/as \$capture\$([\s\S]*?)\$capture\$;/u)?.[1];
   assert.ok(captureBody, "SQL restore capture function is missing");
   const capturedDomains = [...captureBody.matchAll(/select '([^']+)'/gu)].map((match) => match[1]);

@@ -1,4 +1,4 @@
-export const STUDENT_DATA_SNAPSHOT_VERSION = "2.3";
+export const STUDENT_DATA_SNAPSHOT_VERSION = "2.4";
 
 export const STUDENT_DATA_DOMAINS = Object.freeze([
   "profile",
@@ -12,6 +12,7 @@ export const STUDENT_DATA_DOMAINS = Object.freeze([
   "studentRosterEntries",
   "assignmentDrafts",
   "assignmentFormSubmissions",
+  "assignmentDocumentFeedback",
   "courseLessonProgress",
   "courseProgress",
   "studentGrades",
