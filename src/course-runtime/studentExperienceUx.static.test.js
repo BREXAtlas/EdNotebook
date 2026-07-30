@@ -42,6 +42,14 @@ const calendarWorkspaceCss = readFileSync(
   new URL("../demo/workspace-calendar.css", import.meta.url),
   "utf8",
 );
+const notificationCenter = readFileSync(
+  new URL("./CourseNotificationCenter.jsx", import.meta.url),
+  "utf8",
+);
+const notificationCss = readFileSync(
+  new URL("./course-notifications.css", import.meta.url),
+  "utf8",
+);
 
 test("student course stays in the signed-in course shell and reuses existing tools", () => {
   assert.match(runtime, /state\.packageIdentity\.label/u);
@@ -119,4 +127,31 @@ test("course calendar owns a traditional seven-column responsive month grid", ()
   assert.match(calendarWorkspaceCss, /@media \(max-width:\s*460px\)/u);
   assert.doesNotMatch(calendarWorkspaceCss, /min-width:\s*680px/u);
   assert.doesNotMatch(calendarWorkspaceCss, /overflow-x:\s*auto/u);
+});
+
+test("student reminders, assignment details, and calendar use one route", () => {
+  assert.match(runtime, /buildStudentNotificationFeed/u);
+  assert.match(runtime, /<CourseNotificationCenter/u);
+  assert.match(runtime, /notification\.route\.workId/u);
+  assert.match(runtime, /openPublishedWorkDetail/u);
+  assert.match(runtime, /<PublishedWorkDetail/u);
+  assert.match(runtime, /onOpenAssignment=\{openPublishedWorkDetail\}/u);
+  assert.match(notificationCenter, /course-notification-badge/u);
+  assert.match(notificationCenter, /Recent course notifications/u);
+  assert.match(notificationCenter, /Open calendar and reminder settings/u);
+  assert.match(notificationCss, /\.course-notification-popover/u);
+  assert.match(notificationCss, /@media \(max-width:\s*520px\)/u);
+});
+
+test("calendar supports direct month-year search and clickable descriptions", () => {
+  assert.match(calendarWorkspace, /type="month"/u);
+  assert.match(calendarWorkspace, /Go to month and year/u);
+  assert.match(calendarWorkspace, /onSelectEvent=\{setSelectedEvent\}/u);
+  assert.match(calendarWorkspace, /Open assignment details/u);
+  assert.match(calendarWorkspace, /Edit personal plan/u);
+  assert.match(calendarWorkspaceCss, /\.calendar-event-detail/u);
+  assert.match(
+    calendarWorkspaceCss,
+    /\.month-calendar-grid article > button/u,
+  );
 });

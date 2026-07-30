@@ -243,6 +243,8 @@ export function publishedCourseCalendarItems(
       importItemKey: `${item.workType}-${item.id}`,
       sourceAuthority: PUBLISHED_COURSE_CALENDAR_SOURCE,
       sourceScope,
+      sourceWorkId: item.id,
+      workType: item.workType,
       course: normalizedCourseCode,
       title: clean(item.title) || "Published course work",
       sourceTitle: clean(item.title) || "Published course work",

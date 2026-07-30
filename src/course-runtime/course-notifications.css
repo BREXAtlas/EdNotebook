@@ -1,0 +1,287 @@
+.course-account-header > .course-header-nav {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+
+.course-account-header > .course-profile-name {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.course-notification-center {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.course-account-header .course-notification-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  background: rgba(255, 255, 255, .08);
+}
+
+.course-notification-trigger svg {
+  width: 22px;
+  height: 22px;
+}
+
+.course-notification-trigger .course-notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  margin: 0;
+  padding: 0 5px;
+  color: #111d38;
+  background: var(--course-accent);
+  border: 2px solid #111d38;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.course-notification-popover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(390px, calc(100vw - 24px));
+  overflow: hidden;
+  color: var(--course-text);
+  background: var(--course-surface);
+  border: 1px solid var(--course-border);
+  border-radius: 16px;
+  box-shadow: 0 18px 55px rgba(12, 24, 48, .28);
+}
+
+.course-notification-popover > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--course-border);
+}
+
+.course-notification-popover > header span {
+  margin: 0;
+  color: var(--course-muted);
+  font-size: 12px;
+}
+
+.course-notification-list {
+  display: grid;
+  max-height: min(480px, calc(100vh - 180px));
+  overflow-y: auto;
+}
+
+.course-account-header .course-notification-list > button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+  padding: 14px 18px;
+  color: var(--course-text);
+  background: var(--course-surface);
+  border: 0;
+  border-bottom: 1px solid var(--course-border);
+  border-radius: 0;
+  text-align: left;
+}
+
+.course-account-header .course-notification-list > button:hover,
+.course-account-header .course-notification-list > button:focus-visible {
+  background: color-mix(in srgb, var(--course-primary) 8%, white);
+}
+
+.course-notification-list > button span {
+  margin: 0;
+  color: var(--course-primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.course-notification-list > button small,
+.course-notification-list > button time {
+  color: var(--course-muted);
+  line-height: 1.4;
+}
+
+.course-notification-list > button time {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.course-notification-list > p {
+  margin: 0;
+  padding: 24px 18px;
+  color: var(--course-muted);
+  line-height: 1.5;
+}
+
+.course-account-header .course-notification-calendar-link {
+  width: 100%;
+  min-height: 46px;
+  color: var(--course-primary-dark);
+  background: color-mix(in srgb, var(--course-accent) 28%, white);
+  border: 0;
+  border-radius: 0;
+}
+
+.course-due-panel article > .course-work-summary-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  width: 100%;
+  padding: 2px 0;
+  color: var(--course-text);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.course-work-summary-button:hover strong,
+.course-work-summary-button:focus-visible strong {
+  color: var(--course-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.course-work-detail {
+  margin-top: 18px;
+  padding: 20px;
+  background: color-mix(in srgb, var(--course-primary) 7%, white);
+  border: 1px solid var(--course-primary);
+  border-radius: 14px;
+}
+
+.course-work-detail > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.course-work-detail h3 {
+  margin: 5px 0 0;
+  color: var(--course-primary-dark);
+}
+
+.course-work-detail > header button,
+.course-work-detail > footer button {
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--course-primary-dark);
+  background: var(--course-surface);
+  border: 1px solid var(--course-border);
+  border-radius: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.course-work-detail > p {
+  margin: 16px 0;
+  line-height: 1.6;
+}
+
+.course-work-detail > dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.course-work-detail dl > div {
+  padding: 10px;
+  background: var(--course-surface);
+  border-radius: 9px;
+}
+
+.course-work-detail dt {
+  color: var(--course-muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.course-work-detail dd {
+  margin: 4px 0 0;
+  font-weight: 750;
+}
+
+.course-work-detail > footer {
+  margin-top: 16px;
+}
+
+@media (max-width: 800px) {
+  .course-account-header {
+    overflow: visible;
+  }
+
+  .course-account-header > .course-header-nav {
+    overflow-x: auto;
+  }
+
+  .course-account-header > .course-profile-name {
+    display: none;
+  }
+
+  .course-account-header .course-notification-badge,
+  .course-notification-popover > header span,
+  .course-notification-list > button span {
+    display: grid;
+  }
+
+  .course-notification-popover {
+    position: fixed;
+    top: 66px;
+    right: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .course-account-header {
+    gap: 7px;
+    padding-inline: 9px;
+  }
+
+  .course-account-header > button:first-child {
+    padding-inline: 9px;
+    font-size: 0;
+  }
+
+  .course-account-header > button:first-child::after {
+    content: "←";
+    font-size: 20px;
+  }
+
+  .course-account-header > .course-header-nav {
+    gap: 6px;
+  }
+
+  .course-account-header > .course-header-nav button {
+    padding-inline: 10px;
+    white-space: nowrap;
+  }
+
+  .course-due-panel article > .course-work-summary-button {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .course-work-detail > header {
+    align-items: flex-start;
+  }
+}

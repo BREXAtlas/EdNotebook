@@ -1,6 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import AssignmentTemplateWorkspace from "../portal/AssignmentTemplateWorkspace.jsx";
 import { COURSE_PRESETS, flattenLessons } from "./courseManifest.js";
+import CourseNotificationCenter from "./CourseNotificationCenter.jsx";
+import {
+  buildStudentNotificationFeed,
+  CALENDAR_REMINDER_SETTINGS_EVENT,
+  calendarReminderSettingsKey,
+  readCalendarReminderSettings,
+} from "./courseNotificationModel.js";
 import {
   listCourseDueWork,
   loadLearnerProgress,
@@ -15,6 +22,7 @@ import {
   publishedPackageIdentity,
 } from "./studentExperienceContract.js";
 import "./course-runtime.css";
+import "./course-notifications.css";
 import "./student-experience.css";
 
 const OwnYourSemester = lazy(() => import("../ai/OwnYourSemester.jsx"));
@@ -42,6 +50,57 @@ function ToolLoading({ name }) {
   );
 }
 
+function PublishedWorkDetail({ item, onClose, onOpenCalendar }) {
+  if (!item) return null;
+  const workType = item.workType === "grade_item"
+    ? "Grade item"
+    : "Assignment";
+  return (
+    <section
+      className="course-work-detail"
+      id={`course-work-detail-${item.id}`}
+      aria-labelledby={`course-work-detail-title-${item.id}`}
+    >
+      <header>
+        <div>
+          <span className="course-kicker">ASSIGNMENT DETAILS</span>
+          <h3 id={`course-work-detail-title-${item.id}`}>{item.title}</h3>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close details">
+          Close
+        </button>
+      </header>
+      <p>
+        {item.instructions ||
+          "Your professor has not added a longer description yet."}
+      </p>
+      <dl>
+        <div>
+          <dt>Due</dt>
+          <dd>{formatDate(item.due_at)}</dd>
+        </div>
+        <div>
+          <dt>Type</dt>
+          <dd>{workType}</dd>
+        </div>
+        {Number.isFinite(Number(item.max_points))
+          ? (
+            <div>
+              <dt>Points</dt>
+              <dd>{Number(item.max_points)}</dd>
+            </div>
+          )
+          : null}
+      </dl>
+      <footer>
+        <button type="button" onClick={onOpenCalendar}>
+          See on calendar
+        </button>
+      </footer>
+    </section>
+  );
+}
+
 export default function CourseRuntimePage({
   publicationId,
   session,
@@ -61,6 +120,13 @@ export default function CourseRuntimePage({
   });
   const [view, setView] = useState("home");
   const [active, setActive] = useState(null);
+  const [selectedWorkId, setSelectedWorkId] = useState(null);
+  const [notificationNow, setNotificationNow] = useState(() => new Date());
+  const studentCalendarScope =
+    `ednotebook-own-semester-${session?.user?.id || "student"}-${track}-calendar`;
+  const [reminderSettings, setReminderSettings] = useState(() =>
+    readCalendarReminderSettings(studentCalendarScope)
+  );
 
   useEffect(() => {
     let live = true;
@@ -112,6 +178,48 @@ export default function CourseRuntimePage({
     };
   }, [publicationId, session?.user?.id]);
 
+  useEffect(() => {
+    setReminderSettings(readCalendarReminderSettings(studentCalendarScope));
+    function refreshReminderSettings(event) {
+      if (
+        event.type === "storage" &&
+        event.key !== calendarReminderSettingsKey(studentCalendarScope)
+      ) {
+        return;
+      }
+      if (
+        event.type === CALENDAR_REMINDER_SETTINGS_EVENT &&
+        event.detail?.scope !== studentCalendarScope
+      ) {
+        return;
+      }
+      setReminderSettings(
+        event.detail?.settings ||
+          readCalendarReminderSettings(studentCalendarScope),
+      );
+    }
+    window.addEventListener("storage", refreshReminderSettings);
+    window.addEventListener(
+      CALENDAR_REMINDER_SETTINGS_EVENT,
+      refreshReminderSettings,
+    );
+    return () => {
+      window.removeEventListener("storage", refreshReminderSettings);
+      window.removeEventListener(
+        CALENDAR_REMINDER_SETTINGS_EVENT,
+        refreshReminderSettings,
+      );
+    };
+  }, [studentCalendarScope]);
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setNotificationNow(new Date()),
+      60_000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
   const preset =
     COURSE_PRESETS[state.manifest?.preset?.id] ||
     COURSE_PRESETS["ednotebook-default"];
@@ -146,6 +254,21 @@ export default function CourseRuntimePage({
       }),
     [course?.course_code, course?.title, state.dueWork],
   );
+  const notifications = useMemo(
+    () =>
+      buildStudentNotificationFeed({
+        items: publishedCalendarItems,
+        reminders: reminderSettings.reminders,
+        now: notificationNow,
+      }),
+    [notificationNow, publishedCalendarItems, reminderSettings.reminders],
+  );
+  const selectedWork = useMemo(
+    () =>
+      publishedWork.find((item) => String(item.id) === String(selectedWorkId)) ||
+      null,
+    [publishedWork, selectedWorkId],
+  );
 
   function openLesson(lesson) {
     const saved = (state.progress?.lessons || []).find(
@@ -171,6 +294,13 @@ export default function CourseRuntimePage({
   function openTool(nextView) {
     setActive(null);
     setView(nextView);
+  }
+
+  function openPublishedWorkDetail(workId) {
+    setActive(null);
+    setSelectedWorkId(workId);
+    setView("assignments");
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   }
 
   async function refreshProgress() {
@@ -234,22 +364,32 @@ export default function CourseRuntimePage({
         <button type="button" onClick={onBack}>
           ← My classes
         </button>
-        <button type="button" onClick={() => openTool("home")}>
-          Course home
-        </button>
-        <button type="button" onClick={() => openTool("assignments")}>
-          Assignments
-        </button>
-        <button type="button" onClick={() => openTool("calendar")}>
-          Calendar
-        </button>
-        <button type="button" onClick={() => openTool("notes")}>
-          Notes
-        </button>
-        <button type="button" onClick={() => openTool("messages")}>
-          Messages
-        </button>
-        <span>{profile?.full_name || session?.user?.email || "Learner"}</span>
+        <nav className="course-header-nav" aria-label="Course shortcuts">
+          <button type="button" onClick={() => openTool("home")}>
+            Course home
+          </button>
+          <button type="button" onClick={() => openTool("assignments")}>
+            Assignments
+          </button>
+          <button type="button" onClick={() => openTool("calendar")}>
+            Calendar
+          </button>
+          <button type="button" onClick={() => openTool("notes")}>
+            Notes
+          </button>
+          <button type="button" onClick={() => openTool("messages")}>
+            Messages
+          </button>
+        </nav>
+        <CourseNotificationCenter
+          notifications={notifications}
+          onSelect={(notification) =>
+            openPublishedWorkDetail(notification.route.workId)}
+          onOpenCalendar={() => openTool("calendar")}
+        />
+        <span className="course-profile-name">
+          {profile?.full_name || session?.user?.email || "Learner"}
+        </span>
       </header>
       <div className="course-shell-grid">
         <aside className="course-rail">
@@ -364,8 +504,11 @@ export default function CourseRuntimePage({
                     <strong>{dueNext.title}</strong>
                     <small>{formatDate(dueNext.due_at)}</small>
                   </div>
-                  <button type="button" onClick={() => openTool("calendar")}>
-                    Open calendar
+                  <button
+                    type="button"
+                    onClick={() => openPublishedWorkDetail(dueNext.id)}
+                  >
+                    View assignment
                   </button>
                 </section>
               )}
@@ -393,8 +536,19 @@ export default function CourseRuntimePage({
                   .slice(0, 4)
                   .map((item) => (
                     <article key={item.id}>
-                      <strong>{item.title}</strong>
-                      <span>{formatDate(item.due_at)}</span>
+                      <button
+                        className="course-work-summary-button"
+                        type="button"
+                        aria-controls={`course-work-detail-${item.id}`}
+                        aria-expanded={
+                          view === "assignments" &&
+                          String(selectedWorkId) === String(item.id)
+                        }
+                        onClick={() => openPublishedWorkDetail(item.id)}
+                      >
+                        <strong>{item.title}</strong>
+                        <span>{formatDate(item.due_at)}</span>
+                      </button>
                     </article>
                   ))}
                 {!publishedWork.some((item) => item.due_at) && (
@@ -484,13 +638,26 @@ export default function CourseRuntimePage({
                 </div>
                 {publishedWork.map((item) => (
                   <article key={`${item.workType}-${item.id}`}>
-                    <strong>{item.title}</strong>
-                    <span>{formatDate(item.due_at)}</span>
+                    <button
+                      className="course-work-summary-button"
+                      type="button"
+                      aria-controls={`course-work-detail-${item.id}`}
+                      aria-expanded={String(selectedWorkId) === String(item.id)}
+                      onClick={() => setSelectedWorkId(item.id)}
+                    >
+                      <strong>{item.title}</strong>
+                      <span>{formatDate(item.due_at)}</span>
+                    </button>
                   </article>
                 ))}
                 {!publishedWork.length && (
                   <p>No published course work is available yet.</p>
                 )}
+                <PublishedWorkDetail
+                  item={selectedWork}
+                  onClose={() => setSelectedWorkId(null)}
+                  onOpenCalendar={() => openTool("calendar")}
+                />
               </section>
               <AssignmentTemplateWorkspace
                 mode="student"
@@ -509,6 +676,8 @@ export default function CourseRuntimePage({
                 classes={[courseClass]}
                 officialAssignments={publishedCalendarItems}
                 officialCalendarScope={course.id}
+                calendarScope={studentCalendarScope}
+                onOpenAssignment={openPublishedWorkDetail}
                 initialSyllabusText={publishedSyllabusText}
                 syllabusSourceName={`${course.course_code || "COURSE"} professor-published dates`}
               />

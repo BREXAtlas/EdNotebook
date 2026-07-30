@@ -85,6 +85,12 @@ test("time remaining deterministically drives workflow and alerts", () => {
   );
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].phase, "twoDays");
+  assert.equal(notifications[0].calendarItemId, approved.id);
+  assert.equal(notifications[0].dueAt, new Date(approved.due).toISOString());
+  assert.deepEqual(notifications[0].route, {
+    view: "assignments",
+    workId: approved.id,
+  });
 });
 
 test("professor export becomes an unapproved student import in the same format", () => {
