@@ -67,11 +67,15 @@ production:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_CONNECT_WEBHOOK_SECRET`
 - `MARKETPLACE_RETURN_URL`
 
-The Stripe webhook endpoint must subscribe to:
+Create two Stripe webhook destinations that point to the same `stripe-webhook`
+Edge Function URL. Stripe gives each destination a distinct signing secret, and
+the function verifies every request against both configured secrets:
 
-- `account.updated`
+- **Platform account** (`STRIPE_WEBHOOK_SECRET`) subscribes to:
+
 - `checkout.session.completed`
 - `checkout.session.async_payment_succeeded`
 - `checkout.session.async_payment_failed`
@@ -79,13 +83,16 @@ The Stripe webhook endpoint must subscribe to:
 - `refund.created`, `refund.updated`, and `refund.failed`
 - `charge.dispute.created`, `charge.dispute.updated`, and
   `charge.dispute.closed`
+- **Connected accounts** (`STRIPE_CONNECT_WEBHOOK_SECRET`) subscribes to:
+
+- `account.updated`
 - `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, and
-  `payout.canceled` for connected accounts
+  `payout.canceled`
 
 `stripe-webhook` intentionally disables Supabase JWT verification because Stripe
 cannot send a Supabase JWT. The function must continue verifying the unmodified
-request body against `STRIPE_WEBHOOK_SECRET`; never place it behind a JSON body
-parser or accept unsigned events.
+request body against the signing secret for its platform or connected-account
+destination; never place it behind a JSON body parser or accept unsigned events.
 
 ## Evidence gate
 

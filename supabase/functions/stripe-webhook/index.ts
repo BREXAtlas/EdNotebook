@@ -432,8 +432,13 @@ Deno.serve(async (req) => {
   try {
     requirePost(req);
     const secret = Deno.env.get("STRIPE_SECRET_KEY");
-    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    if (!secret || !webhookSecret) throw new HttpError(503, "Stripe Edge Function secrets are not configured.");
+    const webhookSecrets = [
+      Deno.env.get("STRIPE_WEBHOOK_SECRET"),
+      Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET"),
+    ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
+    if (!secret || webhookSecrets.length === 0) {
+      throw new HttpError(503, "Stripe Edge Function secrets are not configured.");
+    }
 
     const signature = req.headers.get("stripe-signature");
     if (!signature) throw new HttpError(400, "Stripe-Signature header is missing.");
@@ -443,7 +448,16 @@ Deno.serve(async (req) => {
     }
 
     const stripe = new Stripe(secret, { telemetry: false });
-    const event = await stripe.webhooks.constructEventAsync(rawBody, signature, webhookSecret);
+    let event: Stripe.Event | null = null;
+    for (const webhookSecret of webhookSecrets) {
+      try {
+        event = await stripe.webhooks.constructEventAsync(rawBody, signature, webhookSecret);
+        break;
+      } catch {
+        // Platform and connected-account destinations have distinct signing secrets.
+      }
+    }
+    if (!event) throw new HttpError(400, "Stripe webhook signature verification failed.");
     eventId = event.id;
 
     const { data: existing } = await admin

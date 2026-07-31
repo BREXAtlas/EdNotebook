@@ -49,5 +49,7 @@ test("Stripe webhook owns fulfillment and processor reconciliation", async () =>
   assert.match(webhook, /charge\.dispute\.created/u);
   assert.match(webhook, /payout\.paid/u);
   assert.match(webhook, /marketplace_revoke_order_entitlement/u);
+  assert.match(webhook, /STRIPE_CONNECT_WEBHOOK_SECRET/u);
+  assert.match(webhook, /for \(const webhookSecret of webhookSecrets\)/u);
   assert.match(config, /\[functions\.stripe-webhook\][\s\S]*verify_jwt = false/u);
 });
