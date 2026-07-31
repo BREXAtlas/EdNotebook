@@ -59,7 +59,7 @@ test("database contract derives identity, isolates courses, and exposes no anony
   assert.match(harness, /PASS cross-institution communication, receipt, and write denial/u);
 });
 
-test("profile messaging routes to the course room and preserves the professor faculty feed", async () => {
+test("profile messaging routes to the course room beside the shared campus feed", async () => {
   const [student, professor, panel] = await Promise.all([
     readFile(studentDashboardUrl, "utf8"),
     readFile(professorDashboardUrl, "utf8"),
@@ -70,11 +70,11 @@ test("profile messaging routes to the course room and preserves the professor fa
   assert.match(student, /onOpenCourseCommunication=\{\(\) => chooseTab\("messages"\)\}/u);
   assert.match(student, /Profiles do not create private direct-message threads/u);
   assert.match(student, /nextTab === "settings" \|\| nextTab === "messages"[\s\S]*setDemoMode\(false\)/u);
-  assert.match(professor, /\["announcements", "Faculty & announcements"\][\s\S]*\["communication", "Course communication"\]/u);
-  assert.match(professor, /tab === "announcements" && <FacultyFeedPanel/u);
+  assert.match(professor, /\["announcements", "Campus social"\][\s\S]*\["communication", "Course communication"\]/u);
+  assert.match(professor, /tab === "announcements" && <CampusSocialFeed/u);
   assert.match(professor, /tab === "communication" && <CourseCommunicationPanel/u);
-  assert.match(professor, /onOpenCourseCommunication=\{\(\) => setTab\("communication"\)\}/u);
-  assert.match(professor, /Social posts here are saved only on this device\. They are not delivered to a class\./u);
+  assert.match(professor, /onOpenMessages=\{\(\) => setTab\("communication"\)\}/u);
+  assert.match(professor, /Course Builder controls the live state/u);
   assert.doesNotMatch(professor, /<option value="class">/u);
 
   assert.match(panel, /requestedCourseId !== currentCourseIdRef\.current/u);
@@ -94,7 +94,7 @@ test("communication tabs and dashboard navigation expose complete keyboard and A
   ]);
 
   assert.match(student, /aria-current=\{\(id === "demo" \? demoMode : tab === id && !demoMode\) \? "page" : undefined\}/u);
-  assert.equal((professor.match(/aria-current=\{tab === id \? "page" : undefined\}/gu) || []).length, 2);
+  assert.equal((professor.match(/aria-current=\{tab === id \? "page" : undefined\}/gu) || []).length, 1);
 
   assert.match(panel, /id="course-communication-cloud-tab"[\s\S]*aria-controls="course-communication-cloud-panel"/u);
   assert.match(panel, /id="course-communication-device-tab"[\s\S]*aria-controls="course-communication-device-panel"/u);
