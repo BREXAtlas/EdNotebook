@@ -82,7 +82,30 @@
 .studio-rights-panel { margin:20px 0; padding:20px; background:#fff8e5; border:1px solid #edd594; border-radius:15px; }
 .studio-rights-panel h3 { margin:5px 0 15px; color:#101b33; font-family:"Zilla Slab",serif; font-size:23px; }
 .studio-publisher-application { padding:25px; }
+.commercial-publishing-workflow { display:grid; gap:16px; }
+.marketplace-gate-summary { margin:0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; list-style:none; counter-reset:none; }
+.marketplace-gate-summary li { padding:13px; display:grid; gap:4px; color:#665d72; background:#f7f5fa; border:1px solid #ded8e6; border-radius:12px; }
+.marketplace-gate-summary li::before { content:"○"; color:#9d8eae; font-size:16px; line-height:1; }
+.marketplace-gate-summary li.is-complete { color:#1d5d43; background:#edf9f3; border-color:#b9dfcd; }
+.marketplace-gate-summary li.is-complete::before { content:"✓"; color:#168058; }
+.marketplace-gate-summary strong { color:inherit; font-size:9px; }
+.marketplace-gate-summary span { font-family:"IBM Plex Mono",monospace; font-size:7px; text-transform:uppercase; }
+.marketplace-step-card { padding:20px; display:grid; gap:13px; background:#fff; border:1px solid #dce2ee; border-radius:16px; box-shadow:0 10px 28px rgba(16,27,51,.04); }
+.marketplace-step-card > div:first-child > span { color:#1d4ed8; font-family:"IBM Plex Mono",monospace; font-size:7px; font-weight:800; letter-spacing:.09em; }
+.marketplace-step-card h3 { margin:4px 0; color:#101b33; font-family:"Zilla Slab",serif; font-size:23px; }
+.marketplace-step-card > div:first-child > p { max-width:850px; margin:0; color:#687286; font-size:9px; line-height:1.6; }
+.marketplace-step-card .studio-primary-button { justify-self:start; }
+.marketplace-readiness-grid { margin:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.marketplace-readiness-grid > div { padding:12px; background:#f7f9fc; border:1px solid #e1e6ef; border-radius:10px; }
+.marketplace-readiness-grid dt { color:#747f92; font-size:7px; text-transform:uppercase; }
+.marketplace-readiness-grid dd { margin:4px 0 0; color:#1a2842; font-size:9px; font-weight:800; }
+.marketplace-rights-options { display:flex; flex-wrap:wrap; gap:15px; }
+.marketplace-status-list { display:grid; gap:6px; }
+.marketplace-status-list article { padding:9px 11px; display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:10px; background:#f7f9fc; border:1px solid #e1e6ef; border-radius:9px; }
+.marketplace-status-list strong { color:#1a2842; font-size:8.5px; }
+.marketplace-status-list span { color:#687286; font-size:8px; }
+.marketplace-status-list em { padding:4px 7px; color:#6a4a0a; background:#fff2c9; border-radius:999px; font-family:"IBM Plex Mono",monospace; font-size:6.5px; font-style:normal; text-transform:uppercase; }
 
 @media(max-width:1100px){.studio-reader-layout{grid-template-columns:190px minmax(0,1fr)}.studio-annotation-panel{grid-column:1/-1;position:static}.studio-annotation-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.studio-annotation-list article{padding:10px;border:1px solid #e0e5ed;border-radius:10px}}
-@media(max-width:820px){.studio-reader-layout,.studio-import-grid{grid-template-columns:1fr}.studio-reader-library,.studio-conversion-preview{position:static}.studio-reader-library{display:flex;overflow-x:auto;gap:6px}.studio-reader-library .studio-panel-heading{min-width:160px}.studio-reader-library>button{min-width:180px}.studio-annotation-list{grid-template-columns:1fr 1fr}}
+@media(max-width:820px){.studio-reader-layout,.studio-import-grid{grid-template-columns:1fr}.studio-reader-library,.studio-conversion-preview{position:static}.studio-reader-library{display:flex;overflow-x:auto;gap:6px}.studio-reader-library .studio-panel-heading{min-width:160px}.studio-reader-library>button{min-width:180px}.studio-annotation-list{grid-template-columns:1fr 1fr}.marketplace-gate-summary,.marketplace-readiness-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.studio-book-importer,.studio-publisher-application{padding:17px}.studio-reader-page{padding:28px 20px}.studio-book-reader>header{flex-direction:column}.studio-annotation-list{grid-template-columns:1fr}.library-book-reader-shell{padding:12px}.studio-publication-release-panel{padding:15px}}

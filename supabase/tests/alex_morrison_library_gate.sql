@@ -260,7 +260,7 @@ begin
   raise exception 'Expected direct commercial publication release to fail';
 exception
   when others then
-    if sqlerrm not like '%Commercial publication checkout is not active%' then
+    if sqlerrm not like '%Commercial publication governance is not approved%' then
       raise;
     end if;
 end;

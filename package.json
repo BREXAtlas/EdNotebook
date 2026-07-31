@@ -22,6 +22,7 @@
     "test:student-experience": "node --test src/course-runtime/studentExperienceContract.test.js src/course-runtime/courseNotificationModel.test.js src/course-runtime/studentExperienceUx.static.test.js src/portal/courseEnrollmentMigration.test.js src/portal/courseEnrollmentUx.static.test.js src/portal/alexMorrisonLibraryMigration.test.js src/portal/alexMorrisonLibraryUx.static.test.js",
     "test:social-learning": "node --test src/social-learning/socialLearningModel.test.js src/social-learning/socialLearningMigration.test.js src/social-learning/socialLearningUx.static.test.js src/social-learning/campusSocialMigration.test.js src/social-learning/campusSocialUx.static.test.js",
     "test:course-communication": "node --test src/communication/courseCommunicationModel.test.js src/communication/courseCommunicationUx.static.test.js",
+    "test:commercial-publishing": "node --test src/marketplace/commercialPublishingUx.static.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },

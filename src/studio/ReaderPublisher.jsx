@@ -7,7 +7,7 @@ import { listProfessorPublicationCourses } from "./publishingService.js";
 const TABS = [
   ["reader", "Interactive reader", "📖"],
   ["import", "Import & convert", "⇩"],
-  ["partner", "Publisher sign-up", "◎"],
+  ["partner", "Commercial publishing", "◎"],
 ];
 
 export default function ReaderPublisher() {
