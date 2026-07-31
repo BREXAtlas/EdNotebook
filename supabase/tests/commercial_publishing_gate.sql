@@ -112,6 +112,24 @@ select public.review_marketplace_case(
 );
 
 reset role;
+select set_config('request.jwt.claim.sub','',true);
+insert into public.marketplace_tax_controls (
+  seller_application_id,provider,country_code,jurisdiction_label,
+  liability,status,review_notes
+) values (
+  (select id from public.publisher_applications where applicant_id='22000000-0000-4000-8000-000000000001'),
+  'stripe_tax','US','United States marketplace sales','platform','pending',
+  'Awaiting fixture-specific Stripe Tax review.'
+)
+on conflict (seller_application_id,country_code,liability) do update set
+  registration_reference=null,
+  status='pending',
+  reviewed_by=null,
+  reviewed_at=null,
+  review_notes=excluded.review_notes,
+  updated_at=now();
+
+reset role;
 select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000001',true);
 set local role authenticated;
 select id,status
@@ -186,6 +204,10 @@ from public.configure_marketplace_tax_control(
     select (item->>'id')::uuid
     from jsonb_array_elements(public.get_marketplace_control_center()->'tax_controls') item
     where item->>'country_code'='US'
+      and item->>'seller_application_id'=(
+        select id::text from public.publisher_applications
+        where applicant_id='22000000-0000-4000-8000-000000000001'
+      )
   ),
   'stripe-tax-registration-gate',
   'platform',
@@ -197,6 +219,10 @@ select public.review_marketplace_case(
     select (item->>'id')::uuid
     from jsonb_array_elements(public.get_marketplace_control_center()->'tax_controls') item
     where item->>'country_code'='US'
+      and item->>'seller_application_id'=(
+        select id::text from public.publisher_applications
+        where applicant_id='22000000-0000-4000-8000-000000000001'
+      )
   ),
   'approved',
   'Stripe Tax registration and platform marketplace liability verified.'
@@ -437,6 +463,62 @@ begin
 end;
 $$;
 
+-- A permanent purchase can supersede an active rental in the one-row course
+-- membership projection. Refunding that purchase must restore the rental
+-- instead of removing access that the learner still owns.
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+insert into public.marketplace_orders (
+  id,buyer_id,listing_id,seller_application_id,client_request_key,
+  item_kind,course_id,access_model,currency,subtotal_cents,
+  tax_cents,total_cents,platform_fee_cents,seller_net_cents,status,
+  stripe_checkout_session_id
+) values (
+  '22000000-0000-4000-8000-000000000042',
+  '22000000-0000-4000-8000-000000000002',
+  (select id from public.marketplace_listings where course_id='22000000-0000-4000-8000-000000000010'),
+  (select id from public.publisher_applications where applicant_id='22000000-0000-4000-8000-000000000001'),
+  '22000000-0000-4000-8000-000000000043',
+  'course','22000000-0000-4000-8000-000000000010',
+  'purchase','usd',499,0,499,75,424,'checkout_created','cs_marketplace_course_purchase'
+);
+select id,status
+from public.marketplace_fulfill_order(
+  '22000000-0000-4000-8000-000000000042',
+  'cs_marketplace_course_purchase','pi_marketplace_course_purchase',
+  'ch_marketplace_course_purchase','cus_marketplace_buyer',
+  'tr_marketplace_course_purchase','fee_marketplace_course_purchase',
+  499,0,499,'{"webhook":"checkout.session.completed"}'::jsonb
+);
+
+select public.marketplace_revoke_order_entitlement(
+  '22000000-0000-4000-8000-000000000042',
+  'refunded',
+  'Stripe confirmed the overlapping purchase refund.'
+);
+
+do $$
+begin
+  if not exists (
+    select 1 from public.marketplace_entitlements
+    where order_id='22000000-0000-4000-8000-000000000042'
+      and status='refunded'
+  ) then
+    raise exception 'Overlapping purchase entitlement was not revoked';
+  end if;
+  if not exists (
+    select 1 from public.course_memberships
+    where course_id='22000000-0000-4000-8000-000000000010'
+      and user_id='22000000-0000-4000-8000-000000000002'
+      and access_source='marketplace'
+      and marketplace_order_id='22000000-0000-4000-8000-000000000040'
+      and access_expires_at between now()+interval '29 days' and now()+interval '31 days'
+  ) then
+    raise exception 'Refund did not restore the active rental membership';
+  end if;
+end;
+$$;
+
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 insert into public.marketplace_disputes (
@@ -461,8 +543,13 @@ do $$
 declare center jsonb;
 begin
   center := public.get_marketplace_control_center();
-  if jsonb_array_length(center->'disputes')<>1
-     or jsonb_array_length(center->'payouts')<>1 then
+  if not exists (
+    select 1 from jsonb_array_elements(center->'disputes') item
+    where item->>'stripe_dispute_id'='dp_marketplace_course'
+  ) or not exists (
+    select 1 from jsonb_array_elements(center->'payouts') item
+    where item->>'stripe_payout_id'='po_marketplace_seller'
+  ) then
     raise exception 'Control Center did not reconcile dispute and payout evidence';
   end if;
 end;

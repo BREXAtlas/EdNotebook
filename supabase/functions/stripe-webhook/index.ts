@@ -166,6 +166,17 @@ async function applyCheckout(admin: ReturnType<typeof adminClient>, session: Rec
       },
     });
     if (fulfillmentError) throw fulfillmentError;
+    const { data: dispute, error: disputeError } = await admin
+      .from("marketplace_disputes")
+      .select("status")
+      .eq("order_id", marketplaceOrderId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (disputeError) throw disputeError;
+    if (dispute) {
+      await applyMarketplaceDisputeStatus(admin, marketplaceOrderId, "fulfilled", dispute.status);
+    }
     return;
   }
 
@@ -289,17 +300,70 @@ async function syncMarketplaceRefund(
   return true;
 }
 
+async function applyMarketplaceDisputeStatus(
+  admin: ReturnType<typeof adminClient>,
+  orderId: string,
+  orderStatus: string,
+  disputeStatus: string,
+) {
+  if (disputeStatus === "lost") {
+    if (!["paid", "fulfilled", "partially_refunded", "disputed"].includes(orderStatus)) return;
+    const { error: orderError } = await admin.from("marketplace_orders")
+      .update({ status: "chargeback" })
+      .eq("id", orderId);
+    if (orderError) throw orderError;
+    const { error: revokeError } = await admin.rpc("marketplace_revoke_order_entitlement", {
+      p_order_id: orderId,
+      p_status: "chargeback",
+      p_reason: "Stripe closed the dispute as lost.",
+    });
+    if (revokeError) throw revokeError;
+    return;
+  }
+  if (disputeStatus === "won") {
+    if (["fulfilled", "disputed"].includes(orderStatus)) {
+      const { error } = await admin.from("marketplace_orders")
+        .update({ status: "fulfilled" })
+        .eq("id", orderId);
+      if (error) throw error;
+    }
+    return;
+  }
+  if (["paid", "fulfilled", "partially_refunded"].includes(orderStatus)) {
+    const { error } = await admin.from("marketplace_orders")
+      .update({ status: "disputed" })
+      .eq("id", orderId);
+    if (error) throw error;
+  }
+}
+
 async function syncMarketplaceDispute(
   admin: ReturnType<typeof adminClient>,
+  stripe: Stripe,
   dispute: Record<string, any>,
 ) {
   const chargeId = idValue(dispute.charge);
-  if (!chargeId) return false;
-  const { data: order, error: orderError } = await admin.from("marketplace_orders")
-    .select("id,seller_application_id,status")
-    .eq("stripe_charge_id", chargeId)
-    .maybeSingle();
+  const paymentIntentId = idValue(dispute.payment_intent);
+  if (!chargeId && !paymentIntentId) return false;
+  let orderQuery = admin.from("marketplace_orders")
+    .select("id,seller_application_id,status");
+  orderQuery = chargeId
+    ? orderQuery.eq("stripe_charge_id", chargeId)
+    : orderQuery.eq("stripe_payment_intent_id", paymentIntentId);
+  let { data: order, error: orderError } = await orderQuery.maybeSingle();
   if (orderError) throw orderError;
+  if (!order && paymentIntentId) {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const orderId = paymentIntent.metadata?.ednotebook_order_id || null;
+    if (orderId) {
+      const result = await admin.from("marketplace_orders")
+        .select("id,seller_application_id,status")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (result.error) throw result.error;
+      order = result.data;
+    }
+  }
   if (!order) return false;
   const status = String(dispute.status || "unknown");
   const closed = ["won", "lost", "warning_closed"].includes(status);
@@ -320,25 +384,13 @@ async function syncMarketplaceDispute(
     processor_payload: {
       network_reason_code: dispute.network_reason_code || null,
       is_charge_refundable: dispute.is_charge_refundable ?? null,
-      payment_intent_id: idValue(dispute.payment_intent),
+      payment_intent_id: paymentIntentId,
     },
     closed_at: closed ? new Date().toISOString() : null,
   }, { onConflict: "stripe_dispute_id" });
   if (disputeError) throw disputeError;
 
-  if (status === "lost") {
-    await admin.from("marketplace_orders").update({ status: "chargeback" }).eq("id", order.id);
-    const { error: revokeError } = await admin.rpc("marketplace_revoke_order_entitlement", {
-      p_order_id: order.id,
-      p_status: "chargeback",
-      p_reason: "Stripe closed the dispute as lost.",
-    });
-    if (revokeError) throw revokeError;
-  } else if (status === "won") {
-    await admin.from("marketplace_orders").update({ status: "fulfilled" }).eq("id", order.id);
-  } else {
-    await admin.from("marketplace_orders").update({ status: "disputed" }).eq("id", order.id);
-  }
+  await applyMarketplaceDisputeStatus(admin, order.id, order.status, status);
   return true;
 }
 
@@ -508,7 +560,7 @@ Deno.serve(async (req) => {
       case "charge.dispute.created":
       case "charge.dispute.updated":
       case "charge.dispute.closed":
-        handled = await syncMarketplaceDispute(admin, object);
+        handled = await syncMarketplaceDispute(admin, stripe, object);
         break;
       case "payout.created":
       case "payout.updated":

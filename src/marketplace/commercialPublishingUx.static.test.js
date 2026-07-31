@@ -20,6 +20,8 @@ test("commercial catalog exposes checkout only through the governed Edge Functio
   const checkout = await source("supabase/functions/marketplace-checkout/index.ts");
   assert.match(checkout, /tax\.liability === "platform"/u);
   assert.match(checkout, /amount: listing\.price_cents - feeCents/u);
+  assert.match(checkout, /checkout_creation_failed: true/u);
+  assert.match(checkout, /\.eq\("status", "pending"\)/u);
 });
 
 test("professor workflow separates seller, Stripe, rights, and listing approval", async () => {
@@ -52,4 +54,11 @@ test("Stripe webhook owns fulfillment and processor reconciliation", async () =>
   assert.match(webhook, /STRIPE_CONNECT_WEBHOOK_SECRET/u);
   assert.match(webhook, /for \(const webhookSecret of webhookSecrets\)/u);
   assert.match(config, /\[functions\.stripe-webhook\][\s\S]*verify_jwt = false/u);
+});
+
+test("Stripe dispute reconciliation tolerates events arriving before checkout fulfillment", async () => {
+  const webhook = await source("supabase/functions/stripe-webhook/index.ts");
+  assert.match(webhook, /paymentIntent\.metadata\?\.ednotebook_order_id/u);
+  assert.match(webhook, /applyMarketplaceDisputeStatus\(admin, marketplaceOrderId, "fulfilled", dispute\.status\)/u);
+  assert.match(webhook, /syncMarketplaceDispute\(admin, stripe, object\)/u);
 });

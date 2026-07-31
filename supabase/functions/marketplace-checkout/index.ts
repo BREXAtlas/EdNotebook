@@ -28,6 +28,7 @@ Deno.serve(async (req) => {
   const options = preflight(req);
   if (options) return options;
   const admin = adminClient();
+  let pendingOrderId: string | null = null;
   try {
     requirePost(req);
     const { user } = await requireUser(req);
@@ -158,6 +159,7 @@ Deno.serve(async (req) => {
       status: "pending",
     });
     if (orderError) throw orderError;
+    pendingOrderId = orderId;
 
     const automaticTax = tax.liability === "seller"
       ? { enabled: true, liability: { type: "account", account: seller.stripe_account_id } }
@@ -241,6 +243,15 @@ Deno.serve(async (req) => {
     });
     return jsonResponse(req, { orderId, checkoutUrl: session.url });
   } catch (error) {
+    if (pendingOrderId) {
+      const { error: cleanupError } = await admin.from("marketplace_orders").update({
+        status: "payment_failed",
+        metadata: { checkout_creation_failed: true },
+      })
+        .eq("id", pendingOrderId)
+        .eq("status", "pending");
+      if (cleanupError) console.error("checkout order cleanup failed", cleanupError);
+    }
     return errorResponse(req, error);
   }
 });
