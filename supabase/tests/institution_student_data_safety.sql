@@ -180,6 +180,21 @@ reset request.jwt.claim.sub;
 reset request.jwt.claim.role;
 
 do $$
+begin
+  if not exists (
+    select 1
+    from public.published_course_directory
+    where course_id='40000000-0000-4000-8000-000000000001'
+      and completion_badge_name='Completed · Safety Course A'
+      and completion_badge_description=
+        'Recognizes completion of Safety Course A in EdNotebook.'
+  ) then
+    raise exception 'PUBLISH TEST FAILED: legacy publisher did not receive completion badge defaults';
+  end if;
+  raise notice 'PASS legacy publisher completion badge defaults';
+end $$;
+
+do $$
 declare v_signature text;
 begin
   if has_table_privilege('authenticated','public.course_lesson_progress','INSERT,UPDATE,DELETE')

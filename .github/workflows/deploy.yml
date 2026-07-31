@@ -165,6 +165,15 @@ jobs:
           --echo-errors
           --file=supabase/tests/campus_social_returning_gate.sql
 
+      - name: Run governed course enrollment access gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/course_enrollment_access_gate.sql
+
       - name: Stop the disposable local database
         if: always()
         run: supabase stop --no-backup

@@ -19,7 +19,10 @@ import { STORY_GUIDES, STORY_REACTION_TYPES, generateStoryFeed, getDefaultConnec
 import {
   listCurrentStudentEnrollmentRequests,
   listCurrentStudentCourses,
+  listStudentAccountNotifications,
+  listStudentCourseBadges,
   loadPublicStudentPage,
+  markStudentAccountNotificationRead,
   requestClassLink,
   savePublicStudentPage,
   searchEducatorProfiles,
@@ -60,6 +63,43 @@ function DashboardTour({ step, setStep, showOnSignIn, onShowOnSignIn }) {
 
 function GradeStatus({ status }) { return <span className={`grade-status is-${status}`}>{status}</span>; }
 
+function StudentNotificationCenter({ notifications = [], onOpen }) {
+  const [open, setOpen] = useState(false);
+  const unread = notifications.filter((notification) => !notification.read_at);
+  return <div className="student-account-notifications">
+    <button
+      className="student-notification-trigger"
+      type="button"
+      aria-label={`${unread.length} unread student notifications`}
+      aria-expanded={open}
+      onClick={() => setOpen((current) => !current)}
+    >
+      <span aria-hidden="true">🔔</span>
+      {unread.length > 0 && <i>{unread.length > 9 ? "9+" : unread.length}</i>}
+    </button>
+    {open && <section className="student-notification-popover" aria-label="Recent student notifications">
+      <header><div><strong>Notifications</strong><span>Enrollment, completion, and course updates</span></div><b>{unread.length} new</b></header>
+      <div>
+        {notifications.slice(0, 8).map((notification) => <button
+          className={notification.read_at ? "" : "is-unread"}
+          type="button"
+          key={notification.id}
+          onClick={() => {
+            onOpen?.(notification);
+            setOpen(false);
+          }}
+        >
+          <span>{notification.notification_type === "course_completed" ? "Badge earned" : notification.notification_type === "course_assigned" ? "Course assigned" : "Enrollment"}</span>
+          <strong>{notification.title}</strong>
+          <small>{notification.body}</small>
+          <time dateTime={notification.created_at}>{new Date(notification.created_at).toLocaleString()}</time>
+        </button>)}
+        {!notifications.length && <p>No new course notices yet.</p>}
+      </div>
+    </section>}
+  </div>;
+}
+
 function OverviewPanel({ name, onTab, classes, track, rewardSummary }) {
   const copy = getTrack(track);
   if (!classes.length) {
@@ -70,7 +110,7 @@ function OverviewPanel({ name, onTab, classes, track, rewardSummary }) {
   return <div className="student-panel-stack"><section className={`student-welcome-card ${track === "k12" ? "is-k12" : ""}`}><div><span>FALL 2026 · {track === "k12" ? "EXAMPLE HIGH SCHOOL" : "EXAMPLE UNIVERSITY"}</span><h1>Good morning, {name}.</h1><p>{gradedCourses.length ? "Your linked classes and published progress are ready below." : "Your classes are linked. Grades and learning recognition stay clearly separated."}</p></div>{gradedCourses.length > 0 && <div className="student-streak"><strong>11</strong><span>day study streak</span></div>}</section><section className="student-stat-grid"><article><span>Classes</span><strong>{classes.length}</strong><button onClick={() => onTab("classes")} type="button">View all</button></article><article><span>Overall grade</span><strong>{average}</strong><button onClick={() => onTab("grades")} type="button">Open report</button></article><article><span>Learning points</span><strong>{rewardSummary.totalPoints}</strong><button onClick={() => onTab("rewards")} type="button">{rewardSummary.pointsToNext ? `${rewardSummary.pointsToNext} to ${rewardSummary.nextMilestone.badge_name}` : "Open trophy shelf"}</button></article><article><span>Needs attention</span><strong>{gradedCourses.length ? "2" : "0"}</strong><small>{gradedCourses.length ? "1 missing · 1 pending" : "No published items yet"}</small></article></section><section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">YOUR CLASSES</span><h2>Pick up where you left off.</h2></div><button type="button" onClick={() => onTab("classes")}>All classes</button></div><div className="student-class-list">{classes.map((course) => <article key={course.id}><div className="class-list-code">{course.code}</div><div><strong>{course.title}</strong><span>{course.professor}</span><p>{course.next}</p><div className="mini-progress"><i style={{ width: `${course.progress}%` }} /></div></div><div><strong>{Number.isFinite(course.grade) ? `${course.grade}%` : "—"}</strong><span>{course.progress}% complete</span></div></article>)}</div></section><section className="student-dashboard-columns"><article className="dashboard-card"><span className="portal-kicker">FROM YOUR {copy.teacherLabel.toUpperCase()}S</span><h2>Current notes</h2><p><strong>{classes[0].code}</strong> · {gradedCourses.length ? "A new review guide is ready. Bring one question to the next class." : "No class note has been published yet."}</p></article><article className="dashboard-card"><span className="portal-kicker">{copy.shortLabel.toUpperCase()} HIGHLIGHT</span><h2>{track === "k12" ? "Club and project week" : "Portfolio week"}</h2><p>{track === "k12" ? "Join a school group, finish one project, and celebrate a classmate's progress." : "Add one finished project to your student page and ask a peer mentor for feedback."}</p><button type="button" onClick={() => onTab("page")}>Open my page</button></article></section></div>;
 }
 
-function ClassesPanel({ classes, track, enrollmentRequests = [] }) {
+function ClassesPanel({ classes, track, enrollmentRequests = [], badges = [], focusCourseId = null }) {
   const [openClass, setOpenClass] = useState(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("code");
@@ -79,10 +119,14 @@ function ClassesPanel({ classes, track, enrollmentRequests = [] }) {
     .filter((course) => `${course.code} ${course.title} ${course.professor}`.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((left, right) => sort === "title" ? left.title.localeCompare(right.title) : left.code.localeCompare(right.code));
   const pending = enrollmentRequests.filter((request) => request.status === "pending");
+  useEffect(() => {
+    if (focusCourseId) setOpenClass(focusCourseId);
+  }, [focusCourseId]);
   return <div className="student-panel-stack">
     <section className="dashboard-card">
       <div className="dashboard-card-heading"><div><span className="portal-kicker">MY CLASS LIBRARY</span><h1>Every class, organized.</h1><p>Published classes appear after educator approval. Search, sort, and reopen the same protected course workspace.</p></div><a href={destination}>Find another class</a></div>
       {pending.length > 0 && <div className="class-request-queue"><strong>{pending.length} class request{pending.length === 1 ? "" : "s"} awaiting educator approval</strong>{pending.map((request) => <article key={request.id}><span>{request.course?.course_code || "CLASS"}</span><div><strong>{request.course?.title || "Published class"}</strong><small>{request.course?.professor_display_name || "Educator"} · Requested {new Date(request.requested_at).toLocaleDateString()}</small></div><i>Pending</i></article>)}</div>}
+      {badges.length > 0 && <div className="course-completion-badges"><strong>Completed course badges</strong><div>{badges.map((badge) => <article key={badge.id}><span aria-hidden="true">✓</span><div><strong>{badge.badge_name}</strong><small>{badge.badge_description}</small><time dateTime={badge.earned_at}>Earned {new Date(badge.earned_at).toLocaleDateString()}</time></div></article>)}</div></div>}
       {classes.length > 0 && <div className="class-library-controls"><label>Search classes<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or professor" /></label><label>Sort<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="code">Course code</option><option value="title">Course title</option></select></label></div>}
       {classes.length === 0 ? <div className="empty-class-list"><strong>No approved classes yet.</strong><p>Find a published class and request access. It will move from the pending queue into this library after educator approval.</p><a href={destination}>Search for a class</a></div> : visibleClasses.length === 0 ? <div className="empty-class-list"><strong>No classes match that search.</strong><button type="button" onClick={() => setQuery("")}>Clear search</button></div> : <div className="student-class-grid">{visibleClasses.map((course) => <article key={course.id}><span>{course.code}</span><h2>{course.title}</h2><p>{course.professor}</p><div className="class-grade-line"><strong>{course.grade === null ? "—" : `${course.grade}%`}</strong><span>{course.points} points</span></div><div className="mini-progress"><i style={{ width: `${course.progress}%` }} /></div><small>{course.progress}% complete · {course.next}</small><button type="button" onClick={() => setOpenClass(openClass === course.id ? null : course.id)}>{openClass === course.id ? "Close class" : "Open class"}</button>{openClass === course.id && <div className="protected-course-preview"><span>ENROLLMENT CONFIRMED</span><strong>Protected class content</strong><p>Your lessons, assignments, files, class group, and educator feedback open here.</p>{course.publicationId ? <a href={`#/student/${track}/course/${course.publicationId}`}>Continue current lesson</a> : <span>The educator has not published a course version yet.</span>}</div>}</article>)}</div>}
     </section>
@@ -222,6 +266,9 @@ export default function StudentDashboard({ profile, session, track = "university
   const [tourStep, setTourStep] = useState(null);
   const [liveClasses, setLiveClasses] = useState([]);
   const [enrollmentRequests, setEnrollmentRequests] = useState([]);
+  const [accountNotifications, setAccountNotifications] = useState([]);
+  const [courseBadges, setCourseBadges] = useState([]);
+  const [notificationCourseId, setNotificationCourseId] = useState(null);
   const [classLinkStatus, setClassLinkStatus] = useState("");
   const [classLinkError, setClassLinkError] = useState("");
   const [demoMode, setDemoMode] = useState(false);
@@ -251,9 +298,13 @@ export default function StudentDashboard({ profile, session, track = "university
     Promise.all([
       listCurrentStudentCourses(),
       listCurrentStudentEnrollmentRequests(session?.user?.id),
-    ]).then(([courseResult, requestResult]) => {
+      listStudentAccountNotifications(session?.user?.id),
+      listStudentCourseBadges(session?.user?.id),
+    ]).then(([courseResult, requestResult, notificationResult, badgeResult]) => {
       if (!active) return;
       setEnrollmentRequests((requestResult.data || []).filter((request) => !request.course || request.course.education_division === track));
+      setAccountNotifications(notificationResult.data || []);
+      setCourseBadges(badgeResult.data || []);
       setLiveClasses((courseResult.data || []).filter((course) => course.education_division === track).map((course) => ({
         id: course.id,
         code: course.course_code || "CLASS",
@@ -293,10 +344,28 @@ export default function StudentDashboard({ profile, session, track = "university
       }
       window.sessionStorage.removeItem("ednotebook-requested-course");
       setClassLinkStatus(data?.status === "approved"
-        ? "This class is already approved and ready in your library."
+        ? "Enrollment confirmed. This class is ready in your library and your notification center."
         : "Class request sent. It will appear in your library after the educator approves it.");
-      const result = await listCurrentStudentEnrollmentRequests(studentId);
-      if (active) setEnrollmentRequests((result.data || []).filter((request) => !request.course || request.course.education_division === track));
+      const [requestResult, courseResult, notificationResult] = await Promise.all([
+        listCurrentStudentEnrollmentRequests(studentId),
+        listCurrentStudentCourses(),
+        listStudentAccountNotifications(studentId),
+      ]);
+      if (!active) return;
+      setEnrollmentRequests((requestResult.data || []).filter((request) => !request.course || request.course.education_division === track));
+      setAccountNotifications(notificationResult.data || []);
+      setLiveClasses((courseResult.data || []).filter((course) => course.education_division === track).map((course) => ({
+        id: course.id,
+        code: course.course_code || "CLASS",
+        title: course.title,
+        professor: course.professor_display_name || "Educator",
+        progress: 0,
+        points: 0,
+        grade: null,
+        next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
+        division: course.education_division,
+        publicationId: course.publication_id,
+      })));
     });
     return () => { active = false; };
   }, [session?.user?.id, track]);
@@ -326,6 +395,20 @@ export default function StudentDashboard({ profile, session, track = "university
     }
     if (nextTab === "settings" || nextTab === "messages") setDemoMode(false);
     setTab(nextTab);
+  }
+
+  async function openAccountNotification(notification) {
+    if (!notification.read_at) {
+      const result = await markStudentAccountNotificationRead(notification.id);
+      if (!result.error) {
+        setAccountNotifications((current) => current.map((item) => (
+          item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item
+        )));
+      }
+    }
+    setDemoMode(false);
+    setNotificationCourseId(notification.course_id || null);
+    setTab(notification.route === "rewards" ? "rewards" : "classes");
   }
 
   function exitDemo() {
@@ -366,6 +449,7 @@ export default function StudentDashboard({ profile, session, track = "university
         {demoMode && <span className="sample-workspace-badge">Brooke's demo workspace</span>}
         <div className="dashboard-top-actions">
           <LiveDateTime />
+          {!demoMode && <StudentNotificationCenter notifications={accountNotifications} onOpen={openAccountNotification} />}
           {demoMode && <button type="button" onClick={exitDemo}>Return to my workspace</button>}
           <button type="button" onClick={onProfessorPortal}>Educator portal</button>
           <button type="button" onClick={() => setTourStep(0)}>Brooke tour</button>
@@ -384,7 +468,7 @@ export default function StudentDashboard({ profile, session, track = "university
           {demoMode && <div className="brooke-demo-banner"><div><span aria-hidden="true">B</span><div><strong>You're exploring Brooke's demonstration workspace.</strong><p>Nothing here belongs to your account. Use it to safely explore how classes, grades, assignments, and student life will work.</p></div></div><button type="button" onClick={exitDemo}>Back to my workspace</button></div>}
           {tab === "overview" && <OverviewPanel name={demoMode ? "Brooke" : displayName} onTab={chooseTab} classes={classes} track={track} rewardSummary={rewardSummary} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening Own Your Semester…</section>}><OwnYourSemester profile={profile} session={session} track={track} classes={classes} /></Suspense>}
-          {tab === "classes" && <ClassesPanel classes={classes} track={track} enrollmentRequests={enrollmentRequests} />}
+          {tab === "classes" && <ClassesPanel classes={classes} track={track} enrollmentRequests={enrollmentRequests} badges={courseBadges} focusCourseId={notificationCourseId} />}
           {tab === "assignments" && (classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">ASSIGNMENTS</span><h1>No assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>)}
           {tab === "grades" && <GradesPanel classes={classes} rows={rows} track={track} />}
           {tab === "rewards" && <StudentSocialLearningPanel userId={session?.user?.id} demo={demoMode} onSummary={setRewardSummary} />}

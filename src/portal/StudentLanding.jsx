@@ -164,7 +164,11 @@ export default function StudentLanding({ onEnter, track = "university" }) {
             <p>{selectedCourse.summary}</p>
             <dl><div><dt>{copy.schoolLabel}</dt><dd>{selectedCourse.school.name}</dd></div><div><dt>{copy.teacherLabel}</dt><dd>{selectedCourse.professor}</dd></div><div><dt>Term</dt><dd>{selectedCourse.term}</dd></div><div><dt>Schedule</dt><dd>{selectedCourse.schedule}</dd></div></dl>
             <div className="class-preview-lock"><strong>Protected after this point</strong><span>Lessons, assignments, classmates, messages, and grades open after sign-in and confirmed enrollment.</span></div>
-            <button className="portal-modal-primary" type="button" onClick={() => onEnter?.(selectedCourse)}>Sign in to request this class</button>
+            <button className="portal-modal-primary" type="button" onClick={() => onEnter?.(selectedCourse)}>
+              {selectedCourse.enrollmentPolicy === "open_self_enroll"
+                ? "Sign in and join this class"
+                : "Sign in to request this class"}
+            </button>
           </div>
         </div>
       )}

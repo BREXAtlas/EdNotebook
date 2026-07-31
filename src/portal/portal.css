@@ -329,6 +329,23 @@
 .dashboard-top-actions { display: flex; gap: 7px; }
 .dashboard-top-actions button { padding: 9px 12px; color: #40506a; background: #f1f4f9; border: 1px solid var(--portal-line); border-radius: 9px; font-size: 12px; font-weight: 800; }
 .dashboard-top-actions button.primary { color: #fff; background: var(--portal-blue); border-color: var(--portal-blue); }
+.student-account-notifications { position: relative; }
+.dashboard-top-actions .student-notification-trigger { position: relative; width: 39px; height: 39px; display: grid; place-items: center; padding: 0; font-size: 17px; }
+.student-notification-trigger i { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 4px; color: #fff; background: #c83d51; border: 2px solid #fff; border-radius: 999px; font-size: 9px; font-style: normal; }
+.student-notification-popover { position: absolute; z-index: 40; top: calc(100% + 10px); right: 0; width: min(380px, calc(100vw - 28px)); overflow: hidden; color: #17233b; background: #fff; border: 1px solid var(--portal-line); border-radius: 14px; box-shadow: 0 18px 45px rgba(24, 38, 67, .18); }
+.student-notification-popover > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 15px 16px; background: #f5f7fb; border-bottom: 1px solid var(--portal-line); }
+.student-notification-popover > header div { display: grid; gap: 3px; }
+.student-notification-popover > header strong { font-size: 14px; }
+.student-notification-popover > header span { color: var(--portal-muted); font-size: 9px; }
+.student-notification-popover > header b { padding: 4px 7px; color: #fff; background: var(--portal-blue); border-radius: 999px; font-size: 9px; }
+.student-notification-popover > div { display: grid; max-height: 420px; overflow-y: auto; }
+.dashboard-top-actions .student-notification-popover button { display: grid; gap: 4px; padding: 13px 16px; text-align: left; background: #fff; border: 0; border-bottom: 1px solid #edf0f4; border-radius: 0; }
+.dashboard-top-actions .student-notification-popover button.is-unread { background: #f1f6ff; box-shadow: inset 3px 0 var(--portal-blue); }
+.student-notification-popover button span { color: var(--portal-blue); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+.student-notification-popover button strong { font-size: 12px; }
+.student-notification-popover button small,
+.student-notification-popover button time { color: var(--portal-muted); font-size: 9px; line-height: 1.45; }
+.student-notification-popover > div > p { margin: 0; padding: 24px 16px; color: var(--portal-muted); text-align: center; font-size: 11px; }
 .student-dashboard-shell { display: grid; grid-template-columns: 245px minmax(0, 1fr); max-width: 1440px; min-height: calc(100vh - 68px); margin: 0 auto; }
 .student-dashboard-sidebar { position: sticky; top: 68px; align-self: start; min-height: calc(100vh - 68px); padding: 24px 14px; background: #fff; border-right: 1px solid var(--portal-line); }
 .student-sidebar-profile { display: flex; gap: 10px; align-items: center; padding: 0 8px 20px; border-bottom: 1px solid var(--portal-line); }
@@ -407,6 +424,15 @@
 .class-grade-line span { color: var(--portal-muted); font-size: 10px; }
 .student-class-grid small { display: block; min-height: 30px; color: var(--portal-muted); font-size: 9px; line-height: 1.5; }
 .student-class-grid > article > button { width: 100%; margin-top: 12px; }
+.course-completion-badges { display: grid; gap: 10px; margin: 0 0 16px; padding: 15px; background: linear-gradient(135deg, #fff8df, #f6fbff); border: 1px solid #eadba9; border-radius: 13px; }
+.course-completion-badges > strong { color: #755517; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.course-completion-badges > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.course-completion-badges article { display: flex; gap: 10px; padding: 11px; background: rgba(255,255,255,.84); border: 1px solid rgba(207,177,93,.42); border-radius: 10px; }
+.course-completion-badges article > span { flex: 0 0 28px; height: 28px; display: grid; place-items: center; color: #fff; background: #b48122; border-radius: 999px; font-weight: 900; }
+.course-completion-badges article div { display: grid; gap: 3px; }
+.course-completion-badges article strong { font-size: 12px; }
+.course-completion-badges article small,
+.course-completion-badges article time { color: var(--portal-muted); font-size: 9px; line-height: 1.4; }
 .protected-course-preview { display: grid; gap: 6px; margin-top: 12px; padding: 13px; background: #fff; border: 1px solid #b9d5c5; border-radius: 9px; }
 .protected-course-preview > span { color: var(--portal-green); font-size: 9px; font-weight: 900; }
 .protected-course-preview p { line-height: 1.45; }
@@ -540,6 +566,16 @@
 .professor-class-status input { width: auto; }
 .professor-class-grid footer { display: flex; grid-column: 1 / -1; gap: 8px; padding-top: 10px; border-top: 1px solid var(--portal-line); }
 .professor-class-grid footer a { padding: 9px 12px; color: var(--portal-blue); border: 1px solid var(--portal-blue); border-radius: 8px; font-size: 11px; font-weight: 800; text-decoration: none; }
+.professor-course-access-controls { display: grid; grid-column: 1 / -1; gap: 10px; padding: 14px; background: #fff; border: 1px solid #dce3ee; border-radius: 11px; }
+.professor-course-access-controls > div:first-child { display: flex; align-items: end; gap: 14px; }
+.professor-course-access-controls label { display: grid; gap: 5px; color: #35445c; font-size: 10px; font-weight: 850; }
+.professor-course-access-controls select,
+.professor-course-access-controls input:not([type="checkbox"]) { min-height: 38px; padding: 8px 10px; color: #17233b; background: #f8fafc; border: 1px solid #ced7e4; border-radius: 8px; font: inherit; }
+.professor-course-access-controls .professor-universal-course { display: flex; align-items: center; gap: 7px; min-height: 38px; }
+.professor-course-access-controls .professor-universal-course input { width: 16px; height: 16px; }
+.professor-course-access-controls > p { margin: 0; color: var(--portal-muted); font-size: 10px; line-height: 1.5; }
+.professor-course-badge-fields { display: grid; grid-template-columns: minmax(190px, .7fr) minmax(260px, 1.3fr); gap: 10px; }
+.professor-course-access-controls > button { justify-self: start; }
 .class-publishing-note { display: grid; gap: 4px; margin-top: 14px; padding: 13px; color: #5f4b25; background: #fff6df; border-radius: 9px; }
 .class-publishing-note span { font-size: 10px; line-height: 1.5; }
 .sensitive-access-card { max-width: 620px; margin: 60px auto; padding: 32px; background: #fff; border: 1px solid var(--portal-line); border-radius: 18px; box-shadow: 0 20px 65px rgba(16,27,51,.12); }
@@ -664,6 +700,9 @@
   .student-class-grid,
   .professor-plan-strip,
   .security-setting-grid { grid-template-columns: 1fr; }
+  .course-completion-badges > div,
+  .professor-course-badge-fields { grid-template-columns: 1fr; }
+  .professor-course-access-controls > div:first-child { align-items: stretch; flex-direction: column; }
   .report-card-summary { grid-template-columns: 1fr 1fr; }
   .professor-class-grid article { grid-template-columns: 1fr; }
   .professor-class-status { justify-items: start; }
