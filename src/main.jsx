@@ -21,6 +21,7 @@ const CourseRuntimePage = lazy(() => import("./course-runtime/CourseRuntimePage.
 const StudentAudienceChooser = lazy(() => import("./portal/StudentAudienceChooser.jsx"));
 const StudentLanding = lazy(() => import("./portal/StudentLanding.jsx"));
 const PublishingLanding = lazy(() => import("./portal/PublishingLanding.jsx"));
+const LibraryBookPage = lazy(() => import("./studio/LibraryBookPage.jsx"));
 const StudentDashboard = lazy(() => import("./portal/ConnectedStudentDashboard.jsx"));
 const ProfessorDashboard = lazy(() => import("./portal/ProfessorDashboard.jsx"));
 const PlatformAdminDashboard = lazy(() => import("./portal/PlatformAdminDashboard.jsx"));
@@ -58,7 +59,7 @@ function Router() {
 
   function studentDashboard(track) {
     const returnTo = `#/student/${track}/app`;
-    return <AuthGate accountType="student" educationTrack={track} returnTo={returnTo}>{({ profile, session }) => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.dashboard"><MotionFrame routeKey={`student-${track}-dashboard`}><StudentDashboard profile={profile} session={session} track={track} onHome={() => navigate(`#/students/${track}`)} onProfessorPortal={() => navigate("#/professors")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
+    return <AuthGate accountType="student" educationTrack={track} returnTo={returnTo}>{({ profile, session }) => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.dashboard"><MotionFrame routeKey={`student-${track}-dashboard`}><StudentDashboard profile={profile} session={session} track={track} onHome={() => navigate(`#/students/${track}`)} /></MotionFrame></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
   }
 
   function studentLanding(track) {
@@ -79,6 +80,11 @@ function Router() {
     return <AuthGate accountType="student" educationTrack={track} returnTo={route}>{({ profile, session }) => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.course_runtime"><CourseRuntimePage publicationId={publicationId} profile={profile} session={session} track={track} onBack={() => navigate(`#/student/${track}/app`)} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
   }
 
+  const libraryBookRoute = route.match(/^#\/library\/book\/([0-9a-f-]{36})/i);
+  if (libraryBookRoute) {
+    return <AuthGate accountType="student" educationTrack="university" returnTo={route}>{() => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.library_reader"><LibraryBookPage publicationId={libraryBookRoute[1]} onBack={() => navigate("#/publishers")} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
+  }
+
   if (route.startsWith("#/student/k12/app")) return studentDashboard("k12");
   if (route.startsWith("#/student/university/app") || route.startsWith("#/student/app")) return studentDashboard("university");
   if (route.startsWith("#/admin/synthetic-pilot")) return <AuthGate accountType="institution" returnTo="#/admin/synthetic-pilot" allowSignup={false}>{() => <MotionFrame routeKey="synthetic-institution-pilot"><SyntheticInstitutionPilot onBack={() => navigate("#/admin/control-center")} onOpenTos={() => window.open("https://brexatlas.github.io/TOS-Platform/control-center/institutions/example-university/pilots/", "_blank", "noopener,noreferrer")} /></MotionFrame>}</AuthGate>;
@@ -86,7 +92,7 @@ function Router() {
   if (route.startsWith("#/admin/control-center") || route.startsWith("#/institution-admin/control-center")) return <AuthGate accountType="institution" returnTo="#/admin/control-center" allowSignup={false}>{() => <MotionFrame routeKey="admin-control-center"><AdminControlCenter onExit={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/integrations/lti")) return <AuthGate accountType="professor" returnTo="#/admin/integrations/lti" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="lti-owner-setup"><LtiOwnerSetup onBack={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin")) return <AuthGate accountType="professor" returnTo="#/admin" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="platform-admin"><PlatformAdminDashboard onHome={() => navigate("#/")} onEducatorPortal={() => navigate("#/professor/dashboard")} /></MotionFrame>}</AuthGate>;
-  if (route.startsWith("#/professor/dashboard")) return <AuthGate accountType="professor" returnTo="#/professor/dashboard">{({ profile, session }) => <FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.dashboard"><MotionFrame routeKey="professor-dashboard"><ProfessorDashboard profile={profile} session={session} onHome={() => navigate("#/professors")} onBuild={() => navigate("#/app")} onStudentPortal={() => navigate("#/students")} onAdmin={() => navigate("#/admin")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
+  if (route.startsWith("#/professor/dashboard")) return <AuthGate accountType="professor" returnTo="#/professor/dashboard">{({ profile, session }) => <FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.dashboard"><MotionFrame routeKey="professor-dashboard"><ProfessorDashboard profile={profile} session={session} onHome={() => navigate("#/professors")} onBuild={() => navigate("#/app")} onAdmin={() => navigate("#/admin")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
 
   if (route.startsWith("#/app/course-output")) return <AuthGate accountType="professor" returnTo="#/app/course-output">{({ session }) => <FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.course_publish"><CoursePackageStudio session={session} onBack={() => navigate("#/app/builder")} onOpenStudentCourse={(publicationId) => navigate(`#/student/course/${publicationId}`)} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
   if (route.startsWith("#/app/syllabus")) return <AuthGate accountType="professor" returnTo="#/app/syllabus"><FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.course_builder"><MotionFrame routeKey="professor-syllabus-extraction"><SyllabusToCourse onBack={() => navigate("#/app/builder")} onContinue={() => navigate("#/app/builder")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider></AuthGate>;
@@ -98,7 +104,7 @@ function Router() {
   if (route.startsWith("#/students/university")) return studentLanding("university");
   if (route === "#/students" || route === "#/students/") return <MotionFrame routeKey="student-audience"><StudentAudienceChooser /></MotionFrame>;
   if (route.startsWith("#/students")) return studentLanding("university");
-  if (route.startsWith("#/publishers")) return <MotionFrame routeKey="publishing-landing"><PublishingLanding onEnter={() => navigate("#/app/studio?tab=reader")} /></MotionFrame>;
+  if (route.startsWith("#/publishers")) return <MotionFrame routeKey="publishing-landing"><PublishingLanding onEnter={() => navigate("#/app/studio?tab=reader")} onOpenCourse={(course) => { window.sessionStorage.setItem("ednotebook-requested-course", JSON.stringify({ id: course.course_id, schoolId: null, track: course.education_division || "university" })); navigate(`#/student/${course.education_division || "university"}/app`); }} /></MotionFrame>;
   if (route.startsWith("#/professors")) return <MotionFrame routeKey="professor-landing"><Landing onEnter={() => navigate("#/app")} onDashboard={() => navigate("#/professor/dashboard")} onStudentPortal={() => navigate("#/students")} onPublishingPortal={() => navigate("#/publishers")} /></MotionFrame>;
   return <MotionFrame routeKey="portal-home"><PortalHome /></MotionFrame>;
 }

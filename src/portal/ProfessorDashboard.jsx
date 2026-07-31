@@ -8,6 +8,7 @@ import {
   listProfessorCourseLibrary,
   listProfessorEnrollmentRequests,
   submitEducatorVerification,
+  updateCourseLibraryListing,
   updatePublishedCourseEnrollment,
 } from "./portalService.js";
 import AssignmentTemplateWorkspace from "./AssignmentTemplateWorkspace.jsx";
@@ -115,7 +116,38 @@ function CourseAccessControls({ course, onSave, busy }) {
   </div>;
 }
 
-function Classes({ onBuild, classes, onSaveAccess, accessBusyCourse }) {
+function CourseLibraryControls({ course, onSave, busy }) {
+  const [accessModel, setAccessModel] = useState(course.libraryAccessModel || "not_listed");
+  const [price, setPrice] = useState(course.libraryPriceCents ? (course.libraryPriceCents / 100).toFixed(2) : "");
+  const [rentalDays, setRentalDays] = useState(course.libraryRentalDays || 30);
+  const commercial = accessModel === "purchase" || accessModel === "rental";
+  return <div className="professor-library-listing-controls">
+    <div>
+      <label>Alex B. Morrison listing<select value={accessModel} disabled={busy} onChange={(event) => setAccessModel(event.target.value)}>
+        <option value="not_listed">Not listed in Library</option>
+        <option value="open_free">Free Library course</option>
+        <option value="purchase">Bookstore purchase · submit for review</option>
+        <option value="rental">Bookstore rental · submit for review</option>
+      </select></label>
+      {commercial && <label>Price (USD)<input type="number" min="0.01" step="0.01" value={price} disabled={busy} onChange={(event) => setPrice(event.target.value)} /></label>}
+      {accessModel === "rental" && <label>Rental days<input type="number" min="1" max="365" value={rentalDays} disabled={busy} onChange={(event) => setRentalDays(event.target.value)} /></label>}
+    </div>
+    <p>{accessModel === "not_listed"
+      ? "This course stays in professor and class workflows but does not appear in the Alex B. Morrison catalog."
+      : accessModel === "open_free"
+        ? "Students can discover this course in the Library for free. Enrollment approval and automatic assignment remain separate settings above."
+        : "The catalog preview can be prepared now. Checkout stays unavailable until rights, seller, tax, refund, and payout controls are approved."}</p>
+    <button type="button" disabled={busy || (commercial && Number(price) <= 0)} onClick={() => onSave?.({
+      courseId: course.id,
+      accessModel,
+      priceCents: commercial ? Math.round(Number(price) * 100) : null,
+      rentalDays: accessModel === "rental" ? Number(rentalDays) : null,
+    })}>{busy ? "Saving Library listing…" : "Save Library listing"}</button>
+    {course.libraryListingStatus !== "not_listed" && <span className={`library-listing-state is-${course.libraryListingStatus}`}>Library status · {course.libraryListingStatus}</span>}
+  </div>;
+}
+
+function Classes({ onBuild, classes, onSaveAccess, accessBusyCourse, onSaveLibrary, libraryBusyCourse }) {
   const [query, setQuery] = useState("");
   const [division, setDivision] = useState("all");
   const [status, setStatus] = useState("all");
@@ -125,7 +157,7 @@ function Classes({ onBuild, classes, onSaveAccess, accessBusyCourse }) {
     const matchesStatus = status === "all" || (status === "published" ? course.published : !course.published);
     return matchesQuery && matchesDivision && matchesStatus;
   });
-  return <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">COURSE BUILDER LIBRARY</span><h1>Your classes, organized.</h1><p>Published courses appear in student search immediately. You choose whether matching-school students join now or wait for your approval.</p></div><button type="button" onClick={onBuild}>Create another class</button></div><div className="class-library-controls professor-library-controls"><label>Search classes<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label><label>Division<select value={division} onChange={(event) => setDivision(event.target.value)}><option value="all">All divisions</option><option value="university">University</option><option value="k12">K–12</option></select></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft or review</option></select></label></div>{classes.length === 0 ? <div className="empty-class-list"><strong>Your first class starts in Course Builder.</strong><p>Create the course, review its student experience, and publish when it is ready.</p><button type="button" onClick={onBuild}>Open Course Builder</button></div> : visible.length === 0 ? <div className="empty-class-list"><strong>No classes match these filters.</strong><button type="button" onClick={() => { setQuery(""); setDivision("all"); setStatus("all"); }}>Clear filters</button></div> : <div className="professor-class-grid">{visible.map((course) => <article key={course.id}><div><span>{course.code} · {course.division === "k12" ? "K–12" : "University"}</span><strong>{course.title}</strong><small>{course.term} · {course.students} student{course.students === 1 ? "" : "s"} · {course.pendingRequests} waiting</small></div><div className="professor-class-status"><span className={course.published ? "is-live" : "is-draft"}>{course.published ? "Published to student search" : `${course.publicationStatus || "draft"} · not in search`}</span><span className={`educator-verification-badge is-${course.verificationStatus}`}>Affiliation {course.verificationStatus}</span></div>{course.published && <CourseAccessControls course={course} onSave={onSaveAccess} busy={accessBusyCourse === course.id} />}<footer><button type="button" onClick={onBuild}>Open in Course Builder</button>{course.published && <a href={`#/students/${course.division}?course=${course.id}`}>View student listing</a>}</footer></article>)}</div>}<div className="class-publishing-note"><strong>One publish route</strong><span>Course Builder controls the live state. This library adds access choices to that published course; it does not maintain a second copy.</span></div></section>;
+  return <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">COURSE BUILDER LIBRARY</span><h1>Your classes, organized.</h1><p>Publish once, then control student enrollment, automatic assignment, and Alex B. Morrison Library/Bookstore visibility independently.</p></div><button type="button" onClick={onBuild}>Create another class</button></div><div className="class-library-controls professor-library-controls"><label>Search classes<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label><label>Division<select value={division} onChange={(event) => setDivision(event.target.value)}><option value="all">All divisions</option><option value="university">University</option><option value="k12">K–12</option></select></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft or review</option></select></label></div>{classes.length === 0 ? <div className="empty-class-list"><strong>Your first class starts in Course Builder.</strong><p>Create the course, review its student experience, and publish when it is ready.</p><button type="button" onClick={onBuild}>Open Course Builder</button></div> : visible.length === 0 ? <div className="empty-class-list"><strong>No classes match these filters.</strong><button type="button" onClick={() => { setQuery(""); setDivision("all"); setStatus("all"); }}>Clear filters</button></div> : <div className="professor-class-grid">{visible.map((course) => <article key={course.id}><div><span>{course.code} · {course.division === "k12" ? "K–12" : "University"}</span><strong>{course.title}</strong><small>{course.term} · {course.students} student{course.students === 1 ? "" : "s"} · {course.pendingRequests} waiting</small></div><div className="professor-class-status"><span className={course.published ? "is-live" : "is-draft"}>{course.published ? "Published to student search" : `${course.publicationStatus || "draft"} · not in search`}</span><span className={`educator-verification-badge is-${course.verificationStatus}`}>Affiliation {course.verificationStatus}</span></div>{course.published && <CourseAccessControls course={course} onSave={onSaveAccess} busy={accessBusyCourse === course.id} />}{course.published && <CourseLibraryControls course={course} onSave={onSaveLibrary} busy={libraryBusyCourse === course.id} />}<footer><button type="button" onClick={onBuild}>Open in Course Builder</button>{course.published && <a href={`#/students/${course.division}?course=${course.id}`}>View student listing</a>}{course.published && <a href={`#/publishers?course=${course.id}`}>View Alex B. Morrison</a>}</footer></article>)}</div>}<div className="class-publishing-note"><strong>One course package, three governed choices</strong><span>Course Builder controls the live state and owns the approved package. Student enrollment, universal assignment, and Library/Bookstore visibility reference that same package instead of creating duplicate courses.</span></div></section>;
 }
 
 function parseRosterCsv(text, autoAssign = true) {
@@ -279,12 +311,13 @@ function VerificationPanel({ session }) {
 
 function SecurityPanel({ unlocked, onLock }) { return <section className="dashboard-card professor-security-panel"><span className="portal-kicker">EDUCATOR SECURITY</span><h1>Private student areas get an extra lock.</h1><div className="security-setting-grid"><article><strong>Current sensitive session</strong><span className={unlocked ? "is-on" : "is-off"}>{unlocked ? "Unlocked · less than five minutes" : "Locked"}</span><button type="button" onClick={onLock}>Lock now</button></article><article><strong>Auto-lock</strong><span>Five minutes or whenever this browser tab is hidden</span></article><article><strong>Grade publishing</strong><span>Password re-entry before opening the gradebook; course ownership still controls writes</span></article><article><strong>Student account links</strong><span>Notifications appear when a student ID match needs educator approval</span></article></div></section>; }
 
-export default function ProfessorDashboard({ profile, session, onHome, onBuild, onStudentPortal, onAdmin }) {
+export default function ProfessorDashboard({ profile, session, onHome, onBuild, onAdmin }) {
   const [tab, setTab] = useState("overview"); const [tourStep, setTourStep] = useState(null); const [unlockedUntil, setUnlockedUntil] = useState(0); const [, setClock] = useState(Date.now());
   const [courseLibrary, setCourseLibrary] = useState([]);
   const [enrollmentRequests, setEnrollmentRequests] = useState([]);
   const [portalNotice, setPortalNotice] = useState("");
   const [accessBusyCourse, setAccessBusyCourse] = useState("");
+  const [libraryBusyCourse, setLibraryBusyCourse] = useState("");
   const settingsScope = `professor-${session?.user?.id || "guest"}`;
   const [accountSettings, setAccountSettings] = useState(() => readAccountSettings(settingsScope, { accountType: "professor", name: profile?.full_name || "Educator", email: session?.user?.email || "" }));
   const unlocked = unlockedUntil > Date.now(); const sensitive = tab === "students" || tab === "rewards" || tab === "grades"; const displayName = useMemo(() => accountSettings.displayName || profile?.full_name || "Educator", [accountSettings.displayName, profile?.full_name]);
@@ -333,7 +366,25 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
         : "Professor approval saved. Students remain pending until you accept them.");
     setAccessBusyCourse("");
   }
-  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={onStudentPortal}>View student portal</button><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={onBuild}>Course builder</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{courseLibrary.length} class{courseLibrary.length === 1 ? "" : "es"}</small></div></div><ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} /></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
+  async function saveLibraryListing(preferences) {
+    setLibraryBusyCourse(preferences.courseId);
+    setPortalNotice("Saving the Alex B. Morrison Library listing…");
+    const result = await updateCourseLibraryListing(preferences);
+    if (result.error) {
+      setPortalNotice(result.error.message || "The Library listing could not be saved.");
+      setLibraryBusyCourse("");
+      return;
+    }
+    const courseResult = await listProfessorCourseLibrary();
+    setCourseLibrary(courseResult.data || []);
+    setPortalNotice(preferences.accessModel === "open_free"
+      ? "Free Library listing published. Enrollment and automatic assignment remain separate controls."
+      : preferences.accessModel === "not_listed"
+        ? "Course removed from the Alex B. Morrison catalog. Its class publication is unchanged."
+        : "Commercial catalog preview submitted for review. Checkout remains unavailable until marketplace controls are approved.");
+    setLibraryBusyCourse("");
+  }
+  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={onBuild}>Course builder</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{courseLibrary.length} class{courseLibrary.length === 1 ? "" : "es"}</small></div></div><ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} /></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
   const protectedContent = tab === "students"
     ? <StudentsPanel enrollmentRequests={enrollmentRequests} onApproveEnrollment={approveEnrollment} />
     : tab === "rewards"
@@ -346,7 +397,6 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
         <span className="sample-workspace-badge">Teaching workspace</span>
         <div className="dashboard-top-actions">
           <LiveDateTime />
-          <button type="button" onClick={onStudentPortal}>View student portal</button>
           {["admin", "owner"].includes(profile?.role) && <button type="button" onClick={onAdmin}>Master admin</button>}
           <button type="button" onClick={() => setTourStep(0)}>Take the tour</button>
           <button className="primary" type="button" onClick={onBuild}>Course builder</button>
@@ -361,7 +411,7 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
         <main className="student-dashboard-main professor-dashboard-main">
           {portalNotice && <div className="portal-form-notice class-link-status" role="status">{portalNotice}<button type="button" onClick={() => setPortalNotice("")}>×</button></div>}
           {tab === "overview" && <Overview setTab={setTab} classes={courseLibrary} enrollmentRequests={enrollmentRequests} />}
-          {tab === "classes" && <Classes onBuild={onBuild} classes={courseLibrary} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} />}
+          {tab === "classes" && <Classes onBuild={onBuild} classes={courseLibrary} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={teachingClasses} /></Suspense>}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} classes={teachingClasses} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}

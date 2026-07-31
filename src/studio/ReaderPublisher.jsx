@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient.js";
 import InteractiveReader from "./InteractiveReader.jsx";
 import { BookImporter, PublisherApplication } from "./PublisherStudio.jsx";
+import { listProfessorPublicationCourses } from "./publishingService.js";
 
 const TABS = [
   ["reader", "Interactive reader", "📖"],
@@ -12,18 +13,28 @@ const TABS = [
 export default function ReaderPublisher() {
   const [tab, setTab] = useState("reader");
   const [publications, setPublications] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   async function refresh() {
     setLoading(true);
     setError("");
-    const { data, error: loadError } = await supabase
-      .from("publications")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (loadError) setError(loadError.message);
-    else setPublications(data || []);
+    const [publicationResult, courseResult, userResult] = await Promise.all([
+      supabase
+        .from("publications")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      listProfessorPublicationCourses(),
+      supabase.auth.getUser(),
+    ]);
+    if (publicationResult.error || courseResult.error || userResult.error) setError(publicationResult.error?.message || courseResult.error?.message || userResult.error?.message);
+    else {
+      setPublications(publicationResult.data || []);
+      setCourses(courseResult.data || []);
+      setCurrentUserId(userResult.data.user?.id || "");
+    }
     setLoading(false);
   }
 
@@ -66,7 +77,7 @@ export default function ReaderPublisher() {
       </div>
 
       {error && <div className="studio-alert is-error">{error}</div>}
-      {tab === "reader" && <InteractiveReader publications={publications} loading={loading} onRefresh={refresh} />}
+      {tab === "reader" && <InteractiveReader publications={publications} courses={courses} currentUserId={currentUserId} loading={loading} onRefresh={refresh} />}
       {tab === "import" && <BookImporter onSaved={saved} />}
       {tab === "partner" && <PublisherApplication />}
     </section>

@@ -43,6 +43,7 @@ export function BookImporter({ onSaved }) {
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [rightsStatement, setRightsStatement] = useState("I own this material or have permission to upload and distribute it through EdNotebook.");
   const [accessModel, setAccessModel] = useState("private");
+  const [readingMode, setReadingMode] = useState("interactive");
   const [price, setPrice] = useState("");
   const [rentalDays, setRentalDays] = useState(30);
   const [busy, setBusy] = useState(false);
@@ -53,8 +54,8 @@ export function BookImporter({ onSaved }) {
   const [uploadController, setUploadController] = useState(null);
 
   const instantManifest = useMemo(
-    () => textToEduBook({ title, author, sourceText, description }),
-    [title, author, sourceText, description]
+    () => textToEduBook({ title, author, sourceText, description, readingMode }),
+    [title, author, sourceText, description, readingMode]
   );
 
   async function importBook(event) {
@@ -89,6 +90,15 @@ export function BookImporter({ onSaved }) {
               status: "queued",
               pipeline: ["malware-scan", "archive-inspection", "extract", "structure", "preview", "quality-review"],
             },
+            learningDesign: {
+              mode: readingMode === "read_only" ? "read-only" : "interactive-reading",
+              annotations: true,
+              bookmarks: true,
+              progress: true,
+              checks: readingMode !== "read_only",
+              quizzes: readingMode !== "read_only",
+              discussion: readingMode !== "read_only",
+            },
             rights: { confirmed: true, statement: rightsStatement.trim() },
           }
         : {
@@ -114,6 +124,7 @@ export function BookImporter({ onSaved }) {
         preview_status: sourceFile ? "pending" : "not_requested",
         edubook_manifest: manifest,
         access_model: accessModel,
+        reading_mode: readingMode,
         price_cents: ["purchase", "rental"].includes(accessModel) ? priceCents : null,
         rental_days: accessModel === "rental" ? Number(rentalDays) || 30 : null,
         status: "draft",
@@ -233,6 +244,7 @@ export function BookImporter({ onSaved }) {
         <div><span className="studio-kicker">RIGHTS & ACCESS</span><h3>Uploading a book is also a publishing decision.</h3></div>
         <div className="studio-field-grid">
           <label>Access model<select value={accessModel} onChange={(event) => setAccessModel(event.target.value)}><option value="private">Private draft</option><option value="assigned">Assigned to a course</option><option value="open">Open access</option><option value="purchase">Purchase</option><option value="rental">Rental</option></select></label>
+          <label>Book experience<select value={readingMode} onChange={(event) => setReadingMode(event.target.value)}><option value="read_only">Read-only book</option><option value="interactive">Interactive EduBook · checks, quizzes, notes, progress</option></select></label>
           {["purchase", "rental"].includes(accessModel) && <label>Price (USD)<input type="number" min="0" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} /></label>}
           {accessModel === "rental" && <label>Rental days<input type="number" min="1" max="365" value={rentalDays} onChange={(event) => setRentalDays(event.target.value)} /></label>}
         </div>

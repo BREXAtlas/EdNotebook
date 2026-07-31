@@ -321,6 +321,34 @@
 .publishing-path-grid p,
 .publishing-audience-grid p { margin: 0; color: var(--portal-muted); font-size: 13px; line-height: 1.6; }
 .publishing-audience-grid { grid-template-columns: repeat(3, 1fr); }
+.library-catalog-section { max-width: 1180px; margin: 0 auto 82px; padding: 34px 28px; background: #eef2f8; border: 1px solid #d8e0eb; border-radius: 24px; }
+.library-catalog-section .student-section-heading { max-width: 760px; }
+.library-catalog-controls { display: grid; grid-template-columns: minmax(0, 2fr) minmax(210px, .7fr); gap: 12px; margin: 26px 0 18px; }
+.library-catalog-controls label { display: grid; gap: 7px; color: #35445c; font-size: 11px; font-weight: 850; }
+.library-catalog-controls input,
+.library-catalog-controls select { min-height: 44px; padding: 10px 12px; color: var(--portal-ink); background: #fff; border: 1px solid #cbd5e3; border-radius: 10px; font: inherit; }
+.library-catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.library-catalog-grid > article { display: grid; align-content: start; min-height: 260px; gap: 10px; padding: 20px; background: #fff; border: 1px solid var(--portal-line); border-radius: 16px; box-shadow: 0 12px 26px rgba(23,35,59,.06); }
+.library-item-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.library-item-heading > span { color: var(--portal-blue); font-size: 9px; font-weight: 900; letter-spacing: .11em; }
+.library-item-heading > i { padding: 4px 7px; border-radius: 99px; font-size: 8px; font-style: normal; font-weight: 850; }
+.library-item-heading > i.is-ready { color: #1f6c43; background: #e1f4e8; }
+.library-item-heading > i.is-review { color: #805d18; background: #fff0c8; }
+.library-catalog-grid h3 { margin: 2px 0 0; font-family: "Zilla Slab", Georgia, serif; font-size: 24px; line-height: 1.1; }
+.library-catalog-grid > article > strong { color: #4c5d77; font-size: 11px; }
+.library-catalog-grid > article > p { margin: 0; color: var(--portal-muted); font-size: 12px; line-height: 1.55; }
+.library-catalog-grid footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 13px; border-top: 1px solid var(--portal-line); }
+.library-catalog-grid footer > span { color: #5a3f91; font-size: 11px; font-weight: 900; }
+.library-catalog-grid footer button { padding: 9px 11px; color: #fff; background: var(--portal-blue); border: 0; border-radius: 8px; font-weight: 850; cursor: pointer; }
+.library-preview-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 18px 0; }
+.library-preview-card dl > div { padding: 11px; background: #f5f7fa; border-radius: 9px; }
+.library-preview-card dt { color: var(--portal-muted); font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.library-preview-card dd { margin: 4px 0 0; color: var(--portal-ink); font-size: 12px; font-weight: 800; }
+.library-modal-link { display: block; text-align: center; text-decoration: none; }
+.library-commerce-gate,
+.library-assignment-note { display: grid; gap: 4px; padding: 13px; border-radius: 10px; font-size: 11px; line-height: 1.45; }
+.library-commerce-gate { color: #6b4d18; background: #fff1cc; }
+.library-assignment-note { margin-top: 9px; color: #225a43; background: #e5f5ec; }
 
 /* Shared dashboards */
 .dashboard-topbar { position: sticky; z-index: 60; top: 0; display: flex; justify-content: space-between; align-items: center; min-height: 68px; padding: 9px 22px; background: #fff; border-bottom: 1px solid var(--portal-line); }
@@ -439,6 +467,9 @@
 .protected-course-preview { display: grid; gap: 6px; margin-top: 12px; padding: 13px; background: #fff; border: 1px solid #b9d5c5; border-radius: 9px; }
 .protected-course-preview > span { color: var(--portal-green); font-size: 9px; font-weight: 900; }
 .protected-course-preview p { line-height: 1.45; }
+.assigned-course-books { display: grid; gap: 6px; margin-top: 11px; padding-top: 10px; border-top: 1px solid #dce7df; }
+.assigned-course-books > a { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; color: var(--portal-blue); background: #f5f8fc; border: 1px solid #dbe3ef; border-radius: 8px; font-size: 10px; font-weight: 850; text-decoration: none; }
+.assigned-course-books small { color: var(--portal-muted); font-size: 8px; font-weight: 700; }
 
 .report-card-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
 .report-card-summary > div { display: grid; gap: 3px; padding: 14px; background: #f2f5f9; border-radius: 10px; }
@@ -579,6 +610,14 @@
 .professor-course-access-controls > p { margin: 0; color: var(--portal-muted); font-size: 10px; line-height: 1.5; }
 .professor-course-badge-fields { display: grid; grid-template-columns: minmax(190px, .7fr) minmax(260px, 1.3fr); gap: 10px; }
 .professor-course-access-controls > button { justify-self: start; }
+.professor-library-listing-controls { display: grid; grid-column: 1 / -1; gap: 10px; padding: 14px; background: #f4f0fb; border: 1px solid #d8caec; border-radius: 11px; }
+.professor-library-listing-controls > div:first-child { display: flex; align-items: end; gap: 12px; }
+.professor-library-listing-controls label { display: grid; gap: 5px; color: #493969; font-size: 10px; font-weight: 850; }
+.professor-library-listing-controls select,
+.professor-library-listing-controls input { min-height: 38px; padding: 8px 10px; color: #211735; background: #fff; border: 1px solid #cdbde4; border-radius: 8px; font: inherit; }
+.professor-library-listing-controls > p { margin: 0; color: #625779; font-size: 10px; line-height: 1.5; }
+.professor-library-listing-controls > button { justify-self: start; }
+.library-listing-state { justify-self: start; padding: 5px 8px; color: #5a3f91; background: #fff; border: 1px solid #d7cae8; border-radius: 99px; font-size: 9px; font-weight: 850; }
 .class-publishing-note { display: grid; gap: 4px; margin-top: 14px; padding: 13px; color: #5f4b25; background: #fff6df; border-radius: 9px; }
 .class-publishing-note span { font-size: 10px; line-height: 1.5; }
 .sensitive-access-card { max-width: 620px; margin: 60px auto; padding: 32px; background: #fff; border: 1px solid var(--portal-line); border-radius: 18px; box-shadow: 0 20px 65px rgba(16,27,51,.12); }
@@ -668,6 +707,7 @@
   .student-life-explainer,
   .publishing-path-grid,
   .publishing-audience-grid { grid-template-columns: 1fr; }
+  .library-catalog-grid { grid-template-columns: 1fr 1fr; }
   .portal-choice-card:last-child,
   .student-pricing-grid article:last-child { grid-column: 1; }
   .portal-home-principle { margin-right: 20px; margin-left: 20px; }
@@ -728,6 +768,7 @@
   .course-completion-badges > div,
   .professor-course-badge-fields { grid-template-columns: 1fr; }
   .professor-course-access-controls > div:first-child { align-items: stretch; flex-direction: column; }
+  .professor-library-listing-controls > div:first-child { align-items: stretch; flex-direction: column; }
   .report-card-summary { grid-template-columns: 1fr 1fr; }
   .professor-class-grid article { grid-template-columns: 1fr; }
   .professor-class-status { justify-items: start; }
@@ -737,6 +778,10 @@
   .portal-choice-copy h1,
   .student-hero h1,
   .publishing-hero h1 { font-size: 42px; }
+  .library-catalog-section { margin-inline: 14px; padding-inline: 16px; }
+  .library-catalog-controls,
+  .library-catalog-grid { grid-template-columns: 1fr; }
+  .library-preview-card dl { grid-template-columns: 1fr; }
   .portal-choice-grid,
   .student-how-section,
   .student-feature-section,
