@@ -254,4 +254,35 @@ begin
 end;
 $$;
 
+reset role;
+delete from public.course_completion_badges
+where course_id='20000000-0000-4000-8000-000000000020'
+  and student_id='20000000-0000-4000-8000-000000000002';
+delete from public.student_account_notifications
+where student_id='20000000-0000-4000-8000-000000000002'
+  and dedupe_key='course-completed:20000000-0000-4000-8000-000000000020';
+update public.course_progress
+set status='completed'
+where course_id='20000000-0000-4000-8000-000000000020'
+  and user_id='20000000-0000-4000-8000-000000000002';
+
+do $$
+begin
+  if not exists (
+    select 1 from public.course_completion_badges
+    where course_id='20000000-0000-4000-8000-000000000020'
+      and student_id='20000000-0000-4000-8000-000000000002'
+  ) then
+    raise exception 'A previously completed course did not recover its missing badge';
+  end if;
+  if not exists (
+    select 1 from public.student_account_notifications
+    where student_id='20000000-0000-4000-8000-000000000002'
+      and dedupe_key='course-completed:20000000-0000-4000-8000-000000000020'
+  ) then
+    raise exception 'A previously completed course did not recover its missing notification';
+  end if;
+end;
+$$;
+
 rollback;
