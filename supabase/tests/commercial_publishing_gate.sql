@@ -306,8 +306,19 @@ begin
     where item->>'id'='22000000-0000-4000-8000-000000000030'
       and item->>'tax_liability'='platform'
       and (item->>'seller_net_cents')::integer=1104
+      and item->>'title_snapshot'='Governed Marketplace Book'
+      and item->>'entitlement_status'='active'
   ) then
-    raise exception 'Platform-liable tax did not preserve the governed seller net';
+    raise exception 'Student commerce record did not reconcile title, access, and seller net';
+  end if;
+  if not exists (
+    select 1 from public.student_account_notifications
+    where student_id='22000000-0000-4000-8000-000000000002'
+      and notification_type='marketplace_purchase'
+      and route='library'
+      and dedupe_key='marketplace:22000000-0000-4000-8000-000000000030:active'
+  ) then
+    raise exception 'Verified purchase did not create the Library notification';
   end if;
 end;
 $$;
@@ -356,6 +367,15 @@ begin
     where id='22000000-0000-4000-8000-000000000020'
   ) then
     raise exception 'Full refund did not revoke commercial book access';
+  end if;
+  if not exists (
+    select 1 from public.student_account_notifications
+    where student_id='22000000-0000-4000-8000-000000000002'
+      and notification_type='marketplace_refund'
+      and route='library'
+      and dedupe_key='marketplace:22000000-0000-4000-8000-000000000030:refunded'
+  ) then
+    raise exception 'Confirmed refund did not create the Library notification';
   end if;
 end;
 $$;
@@ -537,6 +557,24 @@ insert into public.marketplace_payout_events (
   'po_marketplace_seller','acct_marketplace_gate',849,'usd','paid',now()
 );
 
+select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000001',true);
+set local role authenticated;
+do $$
+declare dashboard jsonb;
+begin
+  dashboard := public.get_my_marketplace_dashboard();
+  if not exists (
+    select 1 from jsonb_array_elements(dashboard->'sales') item
+    where item->>'id'='22000000-0000-4000-8000-000000000030'
+      and item->>'title_snapshot'='Governed Marketplace Book'
+      and item->>'entitlement_status'='refunded'
+  ) or (dashboard->'seller_summary'->>'paid_payout_cents')::integer<>849 then
+    raise exception 'Seller ledger did not reconcile the titled sale, access state, and paid payout';
+  end if;
+end;
+$$;
+
+reset role;
 select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000003',true);
 set local role authenticated;
 do $$
@@ -549,8 +587,14 @@ begin
   ) or not exists (
     select 1 from jsonb_array_elements(center->'payouts') item
     where item->>'stripe_payout_id'='po_marketplace_seller'
+  ) or not exists (
+    select 1 from jsonb_array_elements(center->'orders') item
+    where item->>'id'='22000000-0000-4000-8000-000000000030'
+      and item->>'title_snapshot'='Governed Marketplace Book'
+      and item->>'entitlement_status'='refunded'
+      and item->>'refund_status'='succeeded'
   ) then
-    raise exception 'Control Center did not reconcile dispute and payout evidence';
+    raise exception 'Control Center did not reconcile the order, access, refund, dispute, and payout evidence';
   end if;
 end;
 $$;

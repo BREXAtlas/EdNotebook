@@ -15,7 +15,9 @@ const portalService = readFileSync(new URL("./portalService.js", import.meta.url
 test("student notifications clear persistently and route into the triggering course area", () => {
   assert.match(studentDashboard, /StudentNotificationCenter/u);
   assert.match(studentDashboard, /markStudentAccountNotificationRead/u);
+  assert.match(studentDashboard, /notification\.route === "library"/u);
   assert.match(studentDashboard, /notification\.route === "rewards" \? "rewards" : "classes"/u);
+  assert.match(studentDashboard, /marketplace_purchase/u);
   assert.match(studentDashboard, /setNotificationCourseId\(notification\.course_id \|\| null\)/u);
   assert.match(studentDashboard, /if \(focusCourseId\) setOpenClass\(focusCourseId\)/u);
   assert.match(socialLearningPanels, /Completed course badges/u);

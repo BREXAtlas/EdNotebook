@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PortalNav from "./PortalNav.jsx";
 import { listAlexMorrisonCatalog } from "./portalService.js";
 import { supabase } from "../supabaseClient.js";
@@ -7,9 +7,19 @@ import {
   loadMarketplaceDashboard,
   requestMarketplaceRefund,
 } from "../marketplace/marketplaceService.js";
+import {
+  formatMarketplaceDate,
+  formatMarketplaceMoney,
+  hasActiveMarketplaceAccess,
+  marketplaceAccessHref,
+  marketplaceAccessSummary,
+  marketplaceReceiptLabel,
+  marketplaceStatusLabel,
+  marketplaceStatusTone,
+} from "../marketplace/marketplacePresentation.js";
 
 function money(cents) {
-  return Number.isFinite(cents) ? `$${(cents / 100).toFixed(2)}` : "";
+  return Number.isFinite(cents) ? formatMarketplaceMoney(cents) : "";
 }
 
 function accessLabel(item) {
@@ -19,11 +29,12 @@ function accessLabel(item) {
   return "Course access";
 }
 
-function CatalogPreview({ item, onClose, onOpenCourse, onCheckout, checkoutBusy }) {
+function CatalogPreview({ item, ownedOrder, onClose, onOpenCourse, onCheckout, checkoutBusy }) {
   if (!item) return null;
   const freeCourse = item.item_kind === "course" && item.access_model === "open_free";
   const openBook = item.item_kind === "book" && item.access_model === "open";
   const commercial = item.access_model === "purchase" || item.access_model === "rental";
+  const ownedHref = marketplaceAccessHref(ownedOrder);
   return <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="library-preview-title">
     <div className="portal-modal-card library-preview-card">
       <button className="modal-close" type="button" onClick={onClose} aria-label="Close Library preview">×</button>
@@ -40,8 +51,9 @@ function CatalogPreview({ item, onClose, onOpenCourse, onCheckout, checkoutBusy 
         {item.enrollment_policy === "open_self_enroll" ? "Start this free course" : "Request this free course"}
       </button>}
       {openBook && <a className="portal-modal-primary library-modal-link" href={`#/library/book/${item.item_id}`}>Open this free book</a>}
-      {commercial && item.checkout_available && <div className="library-commerce-ready"><button className="portal-modal-primary" type="button" disabled={checkoutBusy} onClick={() => onCheckout?.(item)}>{checkoutBusy ? "Opening secure checkout…" : item.access_model === "rental" ? "Rent securely" : "Buy securely"}</button><span>Stripe calculates applicable tax. Access begins only after the verified payment webhook confirms the order.</span></div>}
-      {commercial && !item.checkout_available && <div className="library-commerce-gate"><strong>Catalog preview only</strong><span>Checkout is unavailable until seller identity, rights, tax, refund, dispute, and payout controls pass review.</span></div>}
+      {commercial && ownedOrder ? <div className="library-commerce-ready is-owned"><strong>{ownedOrder.access_model === "rental" ? "Rented and ready" : "Owned and ready"}</strong>{ownedHref ? <a className="portal-modal-primary library-modal-link" href={ownedHref}>{ownedOrder.item_kind === "book" ? "Open book" : "Continue course"}</a> : null}<span>{marketplaceAccessSummary(ownedOrder)}</span></div> : null}
+      {commercial && !ownedOrder && item.checkout_available ? <div className="library-commerce-ready"><button className="portal-modal-primary" type="button" disabled={checkoutBusy} onClick={() => onCheckout?.(item)}>{checkoutBusy ? "Opening secure checkout…" : item.access_model === "rental" ? "Rent securely" : "Buy securely"}</button><span>Stripe calculates applicable tax. Access begins only after the verified payment webhook confirms the order.</span></div> : null}
+      {commercial && !ownedOrder && !item.checkout_available ? <div className="library-commerce-gate"><strong>Catalog preview only</strong><span>Checkout is unavailable until seller identity, rights, tax, refund, dispute, and payout controls pass review.</span></div> : null}
       {item.universal_assignment && <div className="library-assignment-note"><strong>Also assigned to eligible new students</strong><span>Automatic assignment is a professor-controlled course setting; it is separate from this free Library listing.</span></div>}
     </div>
   </div>;
@@ -77,8 +89,21 @@ function PurchaseLibrary({ dashboard, onRefresh }) {
   }
 
   return <section className="library-purchase-section" aria-labelledby="library-purchases-title">
-    <div className="student-section-heading"><span className="portal-kicker">YOUR BOOKSTORE RECORDS</span><h2 id="library-purchases-title">Purchases &amp; rentals</h2><p>Receipts, access periods, refund requests, and dispute outcomes stay connected to the governed order.</p></div>
-    <div className="library-purchase-grid">{purchases.map((order) => <article key={order.id}><span>{order.item_kind} · {order.access_model}</span><strong>{money(order.total_cents)} · {order.status}</strong><small>{order.access_model === "rental" ? `${order.rental_days} day access` : "Permanent access unless refunded or reversed"}</small>{["fulfilled", "paid", "partially_refunded"].includes(order.status) && order.total_cents > order.refunded_cents ? <button type="button" onClick={() => setRefundOrderId(order.id)}>Request refund</button> : null}</article>)}</div>
+    <div className="student-section-heading"><span className="portal-kicker">YOUR BOOKSTORE RECORDS</span><h2 id="library-purchases-title">Purchases &amp; rentals</h2><p>Open owned work, check rental time, and follow the same receipt through refunds or disputes.</p><button type="button" className="library-record-refresh" disabled={busy} onClick={() => onRefresh?.()}>{busy ? "Refreshing…" : "Refresh records"}</button></div>
+    <div className="library-purchase-grid">{purchases.map((order) => {
+      const accessHref = marketplaceAccessHref(order);
+      const canRequestRefund = ["fulfilled", "paid", "partially_refunded"].includes(order.status)
+        && order.total_cents > order.refunded_cents
+        && !["requested", "reviewing", "approved", "processing"].includes(order.refund_status);
+      return <article key={order.id} className="library-purchase-card">
+        <header><div><span>{order.item_kind} · {order.access_model}</span><h3>{order.title_snapshot || "Library purchase"}</h3><small>{marketplaceReceiptLabel(order.id)} · {formatMarketplaceDate(order.created_at)}</small></div><span className={marketplaceStatusTone(order.status)}>{marketplaceStatusLabel(order.status)}</span></header>
+        <dl className="library-receipt-grid"><div><dt>Item</dt><dd>{formatMarketplaceMoney(order.subtotal_cents, order.currency)}</dd></div><div><dt>Tax</dt><dd>{formatMarketplaceMoney(order.tax_cents, order.currency)}</dd></div><div><dt>Total</dt><dd>{formatMarketplaceMoney(order.total_cents, order.currency)}</dd></div><div><dt>Refunded</dt><dd>{formatMarketplaceMoney(order.refunded_cents, order.currency)}</dd></div></dl>
+        <p>{marketplaceAccessSummary(order)}</p>
+        {order.refund_status ? <div className="library-order-event"><strong>Refund</strong><span>{marketplaceStatusLabel(order.refund_status)} · {formatMarketplaceMoney(order.refund_amount_cents, order.currency)}</span></div> : null}
+        {order.dispute_status ? <div className="library-order-event"><strong>Dispute</strong><span>{marketplaceStatusLabel(order.dispute_status)}</span></div> : null}
+        <footer>{accessHref ? <a href={accessHref}>{order.item_kind === "book" ? "Open book" : "Continue course"}</a> : <span>{hasActiveMarketplaceAccess(order) ? "Published learning experience is being prepared" : "No active access from this order"}</span>}{canRequestRefund ? <button type="button" onClick={() => setRefundOrderId(order.id)}>Request refund</button> : null}</footer>
+      </article>;
+    })}</div>
     {refundOrderId && <form className="library-refund-form" onSubmit={requestRefund}><h3>Request a full refund</h3><p>The platform owner reviews the reason before Stripe reverses the seller transfer and platform fee. A full confirmed refund revokes this order’s access.</p><label>Reason<textarea required minLength={10} rows={3} value={refundReason} onChange={(event) => setRefundReason(event.target.value)} /></label><div><button type="button" onClick={() => setRefundOrderId("")}>Cancel</button><button type="submit" disabled={busy || refundReason.trim().length < 10}>{busy ? "Submitting…" : "Submit refund request"}</button></div></form>}
     {notice && <div className="portal-form-notice" role="status">{notice}</div>}
   </section>;
@@ -112,16 +137,30 @@ export default function PublishingLanding({ onEnter, onOpenCourse }) {
     if (courseId) setSelected(catalog.find((item) => item.item_kind === "course" && item.course_id === courseId) || null);
   }, [catalog]);
 
-  async function refreshPurchases() {
+  const refreshPurchases = useCallback(async () => {
     const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData?.session) return;
+    if (!sessionData?.session) return null;
     const result = await loadMarketplaceDashboard();
     if (!result.error) setMarketplace(result.data);
-  }
+    return result;
+  }, []);
 
   useEffect(() => {
     refreshPurchases();
-  }, []);
+  }, [refreshPurchases]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
+    const checkoutResult = params.get("checkout");
+    if (checkoutResult === "canceled") {
+      setNotice("Checkout was canceled. No Library access was granted.");
+      return undefined;
+    }
+    if (checkoutResult !== "success") return undefined;
+    setNotice("Payment returned successfully. Stripe is confirming your Library access now.");
+    const timers = [1800, 4500].map((delay) => window.setTimeout(refreshPurchases, delay));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [refreshPurchases]);
 
   async function checkout(item) {
     setCheckoutBusy(true);
@@ -153,6 +192,14 @@ export default function PublishingLanding({ onEnter, onOpenCourse }) {
       return kindMatch && queryMatch;
     });
   }, [catalog, kind, query]);
+  const ownedByListing = useMemo(() => new Map(
+    (marketplace?.purchases || [])
+      .filter((order) => hasActiveMarketplaceAccess(order))
+      .map((order) => [order.listing_id, order]),
+  ), [marketplace]);
+  const selectedOwnedOrder = selected?.marketplace_listing_id
+    ? ownedByListing.get(selected.marketplace_listing_id)
+    : null;
 
   return (
     <div className="portal-page publishing-landing-page">
@@ -181,7 +228,7 @@ export default function PublishingLanding({ onEnter, onOpenCourse }) {
             <h3>{item.title}</h3>
             <strong>{item.creator_name}</strong>
             <p>{item.description || "Professor-published learning material in EdNotebook."}</p>
-            <footer><span>{accessLabel(item)}</span><button type="button" onClick={() => setSelected(item)}>View details</button></footer>
+            <footer><span>{ownedByListing.has(item.marketplace_listing_id) ? item.access_model === "rental" ? "Rented" : "Owned" : accessLabel(item)}</span><button type="button" onClick={() => setSelected(item)}>{ownedByListing.has(item.marketplace_listing_id) ? "Open details" : "View details"}</button></footer>
           </article>)}</div>}
         </section>
         <PurchaseLibrary dashboard={marketplace} onRefresh={refreshPurchases} />
@@ -195,10 +242,10 @@ export default function PublishingLanding({ onEnter, onOpenCourse }) {
         <section className="publishing-audience-grid">
           <article><span className="portal-kicker">PROFESSOR AUTHORS</span><h2>Publish courses and books.</h2><p>List the approved course itself, publish a standalone book, or link the same book to a course without creating another source copy.</p></article>
           <article><span className="portal-kicker">STUDENTS</span><h2>Browse before enrolling.</h2><p>Search the Library, preview the learning experience, start free courses, and open free books from one familiar place.</p></article>
-          <article><span className="portal-kicker">BOOKSTORE GOVERNANCE</span><h2>Prepare commerce honestly.</h2><p>Pricing and catalog previews can be reviewed now. Charging and payout stay off until the full marketplace gate passes.</p></article>
+          <article><span className="portal-kicker">BOOKSTORE GOVERNANCE</span><h2>Prepare commerce honestly.</h2><p>Pricing and catalog previews can be reviewed now. Live charging and payouts remain off until the production marketplace gate passes.</p></article>
         </section>
       </main>
-      <CatalogPreview item={selected} onClose={() => setSelected(null)} onOpenCourse={onOpenCourse} onCheckout={checkout} checkoutBusy={checkoutBusy} />
+      <CatalogPreview item={selected} ownedOrder={selectedOwnedOrder} onClose={() => setSelected(null)} onOpenCourse={onOpenCourse} onCheckout={checkout} checkoutBusy={checkoutBusy} />
       <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/">Portal home</a><a href="#/students">Student portal</a><a href="#/professors">Professor portal</a></footer>
     </div>
   );

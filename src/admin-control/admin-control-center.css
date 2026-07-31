@@ -533,6 +533,103 @@
   gap: 0.9rem;
 }
 
+.ac-marketplace-transactions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.ac-marketplace-transactions > article {
+  min-width: 0;
+  padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+  background: var(--ac-white);
+  border: 1px solid var(--ac-line);
+  border-left: 5px solid #527ea8;
+  border-radius: 0.75rem;
+}
+
+.ac-marketplace-transactions header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.ac-marketplace-transactions header > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ac-marketplace-transactions header strong {
+  color: var(--ac-navy);
+  overflow-wrap: anywhere;
+}
+
+.ac-marketplace-transactions header span {
+  color: var(--ac-muted);
+  font-size: 0.72rem;
+}
+
+.ac-marketplace-transactions header i {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.ac-marketplace-transactions header i.is-ready { color: #176243; background: #dff3e8; }
+.ac-marketplace-transactions header i.is-warning { color: #76500b; background: #fff0c8; }
+.ac-marketplace-transactions header i.is-closed { color: #8a3140; background: #fbe5e8; }
+.ac-marketplace-transactions header i.is-pending { color: #3d5882; background: #e8eef9; }
+
+.ac-marketplace-transactions dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.ac-marketplace-transactions dl > div {
+  padding: 0.55rem;
+  background: #f5f8fb;
+  border-radius: 0.45rem;
+}
+
+.ac-marketplace-transactions dt {
+  color: var(--ac-muted);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.ac-marketplace-transactions dd {
+  margin: 0.2rem 0 0;
+  color: var(--ac-navy);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.ac-marketplace-transactions footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--ac-line);
+}
+
+.ac-marketplace-transactions footer span {
+  padding: 0.28rem 0.4rem;
+  color: #526477;
+  background: #eef3f7;
+  border-radius: 999px;
+  font-size: 0.66rem;
+}
+
 .ac-feature-card,
 .ac-connection-card,
 .ac-review-list > article,
@@ -1451,8 +1548,13 @@
   .ac-stats,
   .ac-overview-grid,
   .ac-results-grid,
-  .ac-form-grid {
+  .ac-form-grid,
+  .ac-marketplace-transactions {
     grid-template-columns: 1fr;
+  }
+
+  .ac-marketplace-transactions dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ac-card--wide {
@@ -1470,6 +1572,7 @@
   .ac-control-grid,
   .ac-schedule-grid,
   .ac-detail-grid,
+  .ac-marketplace-transactions dl,
   .ac-impact-summary dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
