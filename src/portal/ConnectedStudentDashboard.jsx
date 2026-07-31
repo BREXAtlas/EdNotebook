@@ -29,12 +29,11 @@ export default function ConnectedStudentDashboard(props) {
     return () => { active = false; };
   }, [session?.user?.id]);
 
-  return <>
-    {courses.length > 0 && <section className="connected-course-strip" aria-labelledby="connected-course-title">
-      <div><span>CONNECTED COURSES</span><h1 id="connected-course-title">Continue learning inside EdNotebook.</h1><p>Published lessons, due work, progress, completion, and grades remain connected to your professor.</p></div>
-      <div>{courses.map((item) => <article key={item.id}><span>{item.course.course_code || "COURSE"}</span><strong>{item.course.title}</strong><small>{item.progress ? `${item.progress.completion_percent}% complete · ${item.progress.grade_status.replaceAll("_", " ")}` : "Ready to begin"}</small><a href={`#/student/${track}/course/${item.id}`}>{item.progress ? "Continue course" : "Open course"}</a></article>)}</div>
-    </section>}
-    {notice && <div className="portal-form-notice" role="status">Course links will retry: {notice}</div>}
-    <StudentDashboard {...props} />
-  </>;
+  return (
+    <StudentDashboard
+      {...props}
+      connectedCourses={courses}
+      connectedCourseNotice={notice}
+    />
+  );
 }

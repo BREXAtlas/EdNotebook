@@ -436,7 +436,31 @@ export function ProfessorSocialLearningPanel() {
   );
 }
 
-export function StudentSocialLearningPanel({ userId, demo = false, onSummary }) {
+export function CourseCompletionBadges({ badges = [], rewardsView = false }) {
+  if (!badges.length) return null;
+  return (
+    <section className={`course-completion-badges ${rewardsView ? "is-rewards-view" : ""}`} aria-label="Completed course badges">
+      <div className="course-completion-badges-heading">
+        <strong>Completed course badges</strong>
+        {rewardsView && <p>These recognize finished courses. They are separate from learning points and never change a grade.</p>}
+      </div>
+      <div>
+        {badges.map((badge) => (
+          <article key={badge.id}>
+            <span aria-hidden="true">✓</span>
+            <div>
+              <strong>{badge.badge_name}</strong>
+              <small>{badge.badge_description}</small>
+              <time dateTime={badge.earned_at}>Earned {new Date(badge.earned_at).toLocaleDateString()}</time>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function StudentSocialLearningPanel({ userId, demo = false, courseBadges = [], onSummary }) {
   const [state, setState] = useState({
     events: [],
     milestones: SOCIAL_LEARNING_MILESTONES,
@@ -507,6 +531,8 @@ export function StudentSocialLearningPanel({ userId, demo = false, onSummary }) 
           <span>learning points</span>
         </div>
       </section>
+
+      <CourseCompletionBadges badges={courseBadges} rewardsView />
 
       <section className="dashboard-card social-learning-progress-card">
         <div>
