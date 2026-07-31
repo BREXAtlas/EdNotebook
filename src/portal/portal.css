@@ -348,7 +348,24 @@
 .library-commerce-gate,
 .library-assignment-note { display: grid; gap: 4px; padding: 13px; border-radius: 10px; font-size: 11px; line-height: 1.45; }
 .library-commerce-gate { color: #6b4d18; background: #fff1cc; }
+.library-commerce-ready { display: grid; gap: 7px; color: #225a43; font-size: 10px; line-height: 1.45; }
+.library-commerce-ready button:disabled { opacity: .55; cursor: wait; }
 .library-assignment-note { margin-top: 9px; color: #225a43; background: #e5f5ec; }
+.library-purchase-section { max-width: 1180px; margin: -52px auto 82px; padding: 30px 28px; background: #fff; border: 1px solid var(--portal-line); border-radius: 22px; }
+.library-purchase-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 20px; }
+.library-purchase-grid article { padding: 16px; display: grid; gap: 7px; background: #f7f9fc; border: 1px solid #e0e5ed; border-radius: 12px; }
+.library-purchase-grid span { color: var(--portal-blue); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.library-purchase-grid strong { font-size: 13px; }
+.library-purchase-grid small { color: var(--portal-muted); font-size: 9px; }
+.library-purchase-grid button { justify-self: start; padding: 8px 10px; color: #fff; background: var(--portal-blue); border: 0; border-radius: 8px; font-size: 9px; font-weight: 850; }
+.library-refund-form { max-width: 720px; margin-top: 16px; padding: 17px; display: grid; gap: 9px; background: #fff7df; border: 1px solid #ecd69d; border-radius: 12px; }
+.library-refund-form h3,.library-refund-form p { margin: 0; }
+.library-refund-form p { color: #665a42; font-size: 10px; line-height: 1.5; }
+.library-refund-form label { display: grid; gap: 6px; font-size: 10px; font-weight: 850; }
+.library-refund-form textarea { padding: 10px; border: 1px solid #d9c384; border-radius: 8px; }
+.library-refund-form > div { display: flex; justify-content: flex-end; gap: 7px; }
+.library-refund-form button { padding: 8px 11px; border: 1px solid #c4ae73; border-radius: 8px; font-weight: 850; }
+.library-refund-form button[type="submit"] { color: #fff; background: var(--portal-blue); border-color: var(--portal-blue); }
 
 /* Shared dashboards */
 .dashboard-topbar { position: sticky; z-index: 60; top: 0; display: flex; justify-content: space-between; align-items: center; min-height: 68px; padding: 9px 22px; background: #fff; border-bottom: 1px solid var(--portal-line); }

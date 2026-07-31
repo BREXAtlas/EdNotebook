@@ -17,6 +17,7 @@ const TABS = Object.freeze([
   ["publisher", "Publisher"],
   ["connections", "Connections"],
   ["research-pilot", "Research pilot"],
+  ["marketplace", "Commercial publishing"],
   ["accounts", "Accounts & courses"],
   ["institutions", "Institutions"],
   ["platform-access", "Platform access"],
@@ -1065,6 +1066,7 @@ export default function AdminControlCenter({ onExit }) {
     if (id === "research-pilot") {
       return Boolean(access.platform_owner || access.can_view_audit || access.can_view_feature_controls || access.can_control_features);
     }
+    if (id === "marketplace") return Boolean(access.platform_owner);
     if (id === "accounts") return Boolean(access.platform_owner || access.can_view_accounts);
     if (id === "institutions") return Boolean(access.platform_owner || (institutionId && access.can_manage_affiliations));
     if (id === "platform-access") return Boolean(access.platform_owner);
@@ -1263,6 +1265,8 @@ export default function AdminControlCenter({ onExit }) {
           />
         ) : null}
 
+        {activeTab === "marketplace" ? <MarketplacePanel /> : null}
+
         {activeTab === "accounts" ? (
           <AccountsPanel
             query={searchQuery} setQuery={setSearchQuery}
@@ -1357,6 +1361,149 @@ export default function AdminControlCenter({ onExit }) {
       ) : null}
     </main>
   );
+}
+
+function MarketplaceReviewNotes({ type, id, notes, setNotes }) {
+  const key = `${type}:${id}`;
+  return (
+    <label>
+      Review notes
+      <textarea
+        rows="2"
+        value={notes[key] || ""}
+        onChange={(event) => setNotes((previous) => ({ ...previous, [key]: event.target.value }))}
+        placeholder="Record verified evidence, limitations, and the reason for this decision."
+      />
+    </label>
+  );
+}
+
+function MarketplacePanel() {
+  const [marketplace, setMarketplace] = useState(null);
+  const [notes, setNotes] = useState({});
+  const [taxDrafts, setTaxDrafts] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function loadMarketplace() {
+    setLoading(true);
+    setError("");
+    try {
+      setMarketplace(await adminService.getMarketplaceControlCenter());
+    } catch (nextError) {
+      setError(friendlyError(nextError, "Commercial publishing controls could not be loaded."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadMarketplace();
+  }, []);
+
+  async function decide(type, id, decision) {
+    const key = `${type}:${id}`;
+    const reviewNotes = String(notes[key] || "").trim();
+    if (reviewNotes.length < 8) {
+      setError("Add review notes with at least eight characters before deciding this case.");
+      return;
+    }
+    setBusy(`${key}:${decision}`);
+    setError("");
+    setNotice("");
+    try {
+      await adminService.reviewMarketplaceCase(type, id, decision, reviewNotes);
+      setNotice(`${titleCase(type)} review saved as ${titleCase(decision)}. Every downstream checkout gate will recalculate from this decision.`);
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The marketplace decision could not be saved."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function processRefund(id) {
+    setBusy(`refund:${id}:process`);
+    setError("");
+    setNotice("");
+    try {
+      await adminService.processMarketplaceRefund(id);
+      setNotice("The approved refund was submitted to Stripe. The verified webhook will finalize the ledger and revoke access after a full refund.");
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The approved refund could not be sent to Stripe."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function configureTax(tax) {
+    const draft = taxDrafts[tax.id] || {};
+    const reference = String(draft.reference ?? tax.registration_reference ?? "").trim();
+    const reviewNotes = String(notes[`tax:${tax.id}`] || "").trim();
+    if (reference.length < 6 || reviewNotes.length < 8) {
+      setError("Add the Stripe Tax registration/evidence reference and review notes before saving tax responsibility.");
+      return;
+    }
+    setBusy(`tax:${tax.id}:configure`);
+    setError("");
+    try {
+      await adminService.configureMarketplaceTaxControl(
+        tax.id,
+        reference,
+        draft.liability || tax.liability,
+        reviewNotes,
+      );
+      setNotice("Stripe Tax registration and liability evidence saved for separate approval.");
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "Tax responsibility could not be configured."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  if (loading && !marketplace) return <section className="ac-panel"><div className="ac-empty">Loading commercial publishing evidence…</div></section>;
+  const applications = marketplace?.applications || [];
+  const rights = marketplace?.rights_reviews || [];
+  const listings = marketplace?.listings || [];
+  const refunds = marketplace?.refunds || [];
+  const disputes = marketplace?.disputes || [];
+  const taxControls = marketplace?.tax_controls || [];
+  const payouts = marketplace?.payouts || [];
+  const stats = marketplace?.statistics || {};
+
+  return <section className="ac-panel marketplace-control-panel">
+    <div className="ac-section-heading"><div><p className="ac-eyebrow">Platform-owner evidence gate</p><h2>Commercial publishing</h2><p>Stripe Connect processes marketplace money. EdNotebook controls who may sell, which rights are valid, when checkout appears, which order grants access, and how refunds, disputes, tax responsibility, and payouts are reconciled.</p></div><HelpTip title="Fail-closed commerce">A seller’s Stripe approval does not approve EdNotebook publication rights. A rights approval does not activate checkout. Seller, rights, tax, and listing records must all be approved, while Stripe charging and payouts remain enabled.</HelpTip></div>
+    {error ? <div className="ac-alert ac-alert--error">{String(error.message || error)}</div> : null}
+    {notice ? <div className="ac-alert ac-alert--success">{notice}</div> : null}
+    <div className="ac-stat-grid">
+      <StatCard label="Seller reviews" value={stats.pending_sellers || 0} note="Identity and payout readiness" />
+      <StatCard label="Rights reviews" value={stats.pending_rights || 0} note="Course and book scope" />
+      <StatCard label="Listing reviews" value={stats.pending_listings || 0} note="Price and release" />
+      <StatCard label="Refunds / disputes" value={(stats.open_refunds || 0) + (stats.open_disputes || 0)} note="Money and access reconciliation" />
+    </div>
+
+    <section className="ac-subsection"><h3>Seller verification <span className="ac-count-badge">{applications.length}</span></h3><p>Stripe-hosted onboarding verifies identity and payout details. Approve EdNotebook seller status only when details, charges, payouts, rights attestation, and catalog responsibility are all ready.</p><div className="ac-review-list">
+      {applications.map((application) => <article key={application.id}><div className="ac-review-heading"><div><strong>{application.organization_name}</strong><span>{application.applicant_name || application.applicant_email} · {titleCase(application.applicant_type)}</span></div><StatusPill status={application.status} /></div><dl className="ac-detail-grid"><div><dt>Stripe verification</dt><dd>{titleCase(application.verification_status)}</dd></div><div><dt>Identity details</dt><dd>{application.details_submitted ? "Submitted" : "Incomplete"}</dd></div><div><dt>Charges</dt><dd>{application.charges_enabled ? "Enabled" : "Blocked"}</dd></div><div><dt>Payouts</dt><dd>{application.payouts_enabled ? "Enabled" : "Blocked"}</dd></div></dl>{application.requirements_due?.length ? <div className="ac-callout ac-callout--warning">Stripe still requires: {application.requirements_due.join(", ")}</div> : null}{["submitted","reviewing","suspended"].includes(application.status) ? <><MarketplaceReviewNotes type="seller" id={application.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || application.verification_status !== "verified" || !application.charges_enabled || !application.payouts_enabled} onClick={() => decide("seller",application.id,"approved")}>Approve seller</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("seller",application.id,"declined")}>Decline</button></div></> : null}</article>)}
+      {!applications.length ? <div className="ac-empty">No seller applications have been submitted.</div> : null}
+    </div></section>
+
+    <section className="ac-subsection"><h3>Rights approval <span className="ac-count-badge">{rights.length}</span></h3><p>Review ownership or license evidence, permitted access models, territories, and expiration independently from seller identity.</p><div className="ac-review-list">
+      {rights.map((review) => <article key={review.id}><div className="ac-review-heading"><div><strong>{review.course_id ? "Commercial course rights" : "Commercial book rights"}</strong><span>{review.rights_owner_name} · {titleCase(review.rights_basis)}</span></div><StatusPill status={review.status} /></div><p>{review.rights_statement}</p><dl className="ac-detail-grid"><div><dt>Purchase</dt><dd>{review.purchase_allowed ? "Allowed" : "Not allowed"}</dd></div><div><dt>Rental</dt><dd>{review.rental_allowed ? "Allowed" : "Not allowed"}</dd></div><div><dt>Territories</dt><dd>{review.territories?.join(", ") || "Not recorded"}</dd></div><div><dt>Expires</dt><dd>{review.expires_at ? formatDate(review.expires_at) : "No expiration recorded"}</dd></div></dl>{["submitted","reviewing"].includes(review.status) ? <><MarketplaceReviewNotes type="rights" id={review.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("rights",review.id,"approved")}>Approve rights</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("rights",review.id,"declined")}>Decline</button></div></> : null}</article>)}
+      {!rights.length ? <div className="ac-empty">No rights packages are waiting.</div> : null}
+    </div></section>
+
+    <section className="ac-subsection"><h3>Tax responsibility <span className="ac-count-badge">{taxControls.length}</span></h3><p>The approved record must match actual Stripe Tax registration and marketplace liability. Evidence is saved first, then approved as a separate decision. No approval means no checkout.</p><div className="ac-review-list">{taxControls.map((tax) => <article key={tax.id}><div className="ac-review-heading"><div><strong>{tax.jurisdiction_label}</strong><span>{tax.provider} · liability: {tax.liability}</span></div><StatusPill status={tax.status} /></div>{tax.status !== "retired" ? <><div className="ac-form-grid"><label>Stripe Tax registration / evidence reference<input value={taxDrafts[tax.id]?.reference ?? tax.registration_reference ?? ""} onChange={(event) => setTaxDrafts((previous) => ({ ...previous, [tax.id]: { ...previous[tax.id], reference:event.target.value } }))} /></label><label>Tax liability<select value={taxDrafts[tax.id]?.liability || tax.liability} onChange={(event) => setTaxDrafts((previous) => ({ ...previous, [tax.id]: { ...previous[tax.id], liability:event.target.value } }))}><option value="platform">EdNotebook platform</option><option value="seller">Connected seller</option></select></label></div><MarketplaceReviewNotes type="tax" id={tax.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--quiet" type="button" disabled={Boolean(busy)} onClick={() => configureTax(tax)}>Save tax evidence</button><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !tax.registration_reference} onClick={() => decide("tax",tax.id,"approved")}>Approve tax control</button>{tax.status === "approved" ? <button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("tax",tax.id,"suspended")}>Suspend</button> : null}</div></> : null}</article>)}</div></section>
+
+    <section className="ac-subsection"><h3>Listing release <span className="ac-count-badge">{listings.length}</span></h3><p>The release action rechecks seller, Stripe, rights, tax, price, rental period, and source publication state in the database transaction.</p><div className="ac-review-list">{listings.map((listing) => <article key={listing.id}><div className="ac-review-heading"><div><strong>{listing.title_snapshot}</strong><span>{titleCase(listing.item_kind)} · {titleCase(listing.access_model)} · ${(listing.price_cents/100).toFixed(2)} {listing.currency.toUpperCase()}</span></div><StatusPill status={listing.status} /></div>{["submitted","reviewing"].includes(listing.status) ? <><MarketplaceReviewNotes type="listing" id={listing.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"approved")}>Approve and publish</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"retired")}>Retire listing</button></div></> : listing.status === "published" ? <><MarketplaceReviewNotes type="listing" id={listing.id} notes={notes} setNotes={setNotes} /><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"suspended")}>Suspend checkout</button></> : null}</article>)}{!listings.length ? <div className="ac-empty">No commercial listings have been submitted.</div> : null}</div></section>
+
+    <section className="ac-subsection"><h3>Refund operations <span className="ac-count-badge">{refunds.length}</span></h3><p>Approval records the platform decision. Processor submission is separate and reverses the connected transfer and application fee. Only Stripe webhook confirmation finalizes the ledger and full-refund access revocation.</p><div className="ac-review-list">{refunds.map((refund) => <article key={refund.id}><div className="ac-review-heading"><div><strong>${(refund.amount_cents/100).toFixed(2)} refund</strong><span>Order {refund.order_id} · paid ${(refund.order_total_cents/100).toFixed(2)}</span></div><StatusPill status={refund.status} /></div><p>{refund.reason}</p>{["requested","reviewing"].includes(refund.status) ? <><MarketplaceReviewNotes type="refund" id={refund.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("refund",refund.id,"approved")}>Approve refund</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("refund",refund.id,"declined")}>Decline</button></div></> : refund.status === "approved" ? <button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => processRefund(refund.id)}>Send approved refund to Stripe</button> : null}</article>)}{!refunds.length ? <div className="ac-empty">No refund requests.</div> : null}</div></section>
+
+    <section className="ac-subsection"><h3>Disputes and payouts</h3><div className="ac-control-grid"><article className="ac-callout ac-callout--neutral"><strong>{disputes.length} dispute record{disputes.length===1?"":"s"}</strong><p>{disputes.length ? disputes.map((item) => `${item.status} · $${(item.amount_cents/100).toFixed(2)}`).join(" | ") : "Stripe charge disputes will appear here with evidence deadlines and outcomes."}</p></article><article className="ac-callout ac-callout--neutral"><strong>{payouts.length} payout event{payouts.length===1?"":"s"}</strong><p>{payouts.length ? payouts.slice(0,5).map((item) => `${item.status} · $${(item.amount_cents/100).toFixed(2)}`).join(" | ") : "Connected-account payout status will appear here without exposing bank details."}</p></article></div></section>
+  </section>;
 }
 
 function OverviewPanel({ center, access, isPlatformWorkspace, setActiveTab }) {

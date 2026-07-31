@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const commercialMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260731043000_governed_commercial_publishing.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const gate = readFileSync(
   new URL(
     "../../supabase/tests/alex_morrison_library_gate.sql",
@@ -32,12 +39,14 @@ test("books keep one record across private, assigned, open, and commercial-revie
   assert.match(gate, /Open read-only book was not available/u);
 });
 
-test("the public catalog exposes safe previews but never grants checkout", () => {
+test("the public catalog keeps previews safe and exposes only governed checkout", () => {
   assert.match(migration, /list_alex_morrison_catalog/u);
   assert.match(migration, /false as checkout_available/u);
   assert.match(migration, /grant execute on function public\.list_alex_morrison_catalog\(text\)\s+to anon,authenticated/u);
+  assert.match(commercialMigration, /private\.marketplace_listing_is_ready\(listing\.id\)/u);
+  assert.match(commercialMigration, /marketplace_listing_id/u);
   assert.match(gate, /Commercial review record granted book-content access without an entitlement/u);
-  assert.match(gate, /checkout_available=false/u);
+  assert.match(gate, /Commercial publication governance is not approved/u);
 });
 
 test("Digital Literacy becomes the free pilot Library course", () => {

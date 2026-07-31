@@ -26,3 +26,8 @@ verify_jwt = false
 
 [functions.lti-ags]
 verify_jwt = false
+
+# Stripe cannot send a Supabase JWT. The function verifies the raw request
+# body with STRIPE_WEBHOOK_SECRET before processing any event.
+[functions.stripe-webhook]
+verify_jwt = false

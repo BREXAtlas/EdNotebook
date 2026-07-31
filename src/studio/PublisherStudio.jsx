@@ -1,6 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient.js";
 import { textToEduBook } from "./edubook.js";
+import {
+  listProfessorPublicationCourses,
+  loadMarketplaceDashboard,
+  startSellerOnboarding,
+  submitCommercialListing,
+  submitRightsReview,
+  submitSellerApplication,
+} from "./publishingService.js";
 import {
   buildDigitalLiteracyName,
   checksumFile,
@@ -261,13 +269,59 @@ export function BookImporter({ onSaved }) {
 
 export function PublisherApplication() {
   const [organizationName, setOrganizationName] = useState("");
-  const [applicantType, setApplicantType] = useState("publisher");
+  const [applicantType, setApplicantType] = useState("professor");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [catalogSummary, setCatalogSummary] = useState("");
   const [rightsAttestation, setRightsAttestation] = useState(false);
+  const [dashboard, setDashboard] = useState({});
+  const [items, setItems] = useState([]);
+  const [rightsItem, setRightsItem] = useState("");
+  const [rightsOwnerName, setRightsOwnerName] = useState("");
+  const [rightsBasis, setRightsBasis] = useState("original_owner");
+  const [rightsStatement, setRightsStatement] = useState("");
+  const [rightsEvidenceUrl, setRightsEvidenceUrl] = useState("");
+  const [purchaseAllowed, setPurchaseAllowed] = useState(true);
+  const [rentalAllowed, setRentalAllowed] = useState(false);
+  const [listingRightsId, setListingRightsId] = useState("");
+  const [listingAccess, setListingAccess] = useState("purchase");
+  const [listingPrice, setListingPrice] = useState("");
+  const [listingRentalDays, setListingRentalDays] = useState(30);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function refreshMarketplace() {
+    const [marketplace, courses, publications] = await Promise.all([
+      loadMarketplaceDashboard(),
+      listProfessorPublicationCourses(),
+      supabase.from("publications").select("id,title,status,access_model").order("updated_at", { ascending: false }),
+    ]);
+    if (marketplace.error || courses.error || publications.error) {
+      setError(marketplace.error?.message || courses.error?.message || publications.error?.message || "Commercial publishing could not be loaded.");
+      return;
+    }
+    setDashboard(marketplace.data || {});
+    const nextItems = [
+      ...(courses.data || []).map((course) => ({ kind: "course", id: course.id, title: course.title })),
+      ...(publications.data || []).map((book) => ({ kind: "book", id: book.id, title: book.title })),
+    ];
+    setItems(nextItems);
+    setRightsItem((current) => current || (nextItems[0] ? `${nextItems[0].kind}:${nextItems[0].id}` : ""));
+    const application = marketplace.data?.seller_application;
+    if (application) {
+      setOrganizationName((current) => current || application.organization_name || "");
+      setApplicantType(application.applicant_type || "professor");
+      setWebsiteUrl((current) => current || application.website_url || "");
+      setCatalogSummary((current) => current || application.catalog_summary || "");
+      setRightsAttestation(Boolean(application.rights_attestation));
+    }
+    const reviews = marketplace.data?.rights_reviews || [];
+    setListingRightsId((current) => current || reviews.find((review) => review.status === "approved")?.id || "");
+  }
+
+  useEffect(() => {
+    refreshMarketplace();
+  }, []);
 
   async function submit(event) {
     event.preventDefault();
@@ -276,20 +330,16 @@ export function PublisherApplication() {
     setError("");
     try {
       if (!rightsAttestation) throw new Error("The rights attestation is required for partner review.");
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      const { error: applicationError } = await supabase.from("publisher_applications").insert({
-        applicant_id: userData.user.id,
-        organization_name: organizationName.trim(),
-        applicant_type: applicantType,
-        website_url: websiteUrl.trim() || null,
-        catalog_summary: catalogSummary.trim(),
-        rights_attestation: true,
-        status: "submitted",
-        submitted_at: new Date().toISOString(),
+      const { error: applicationError } = await submitSellerApplication({
+        organizationName: organizationName.trim(),
+        applicantType,
+        websiteUrl: websiteUrl.trim(),
+        catalogSummary: catalogSummary.trim(),
+        rightsAttestation,
       });
       if (applicationError) throw applicationError;
-      setNotice("Partner application submitted for rights, catalog, payment, and quality review.");
+      setNotice("Seller application submitted. Complete Stripe verification next; EdNotebook approval remains separate.");
+      await refreshMarketplace();
     } catch (submitError) {
       setError(submitError.message || "The partner application could not be submitted.");
     } finally {
@@ -297,21 +347,160 @@ export function PublisherApplication() {
     }
   }
 
+  async function openStripeOnboarding() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: onboardingError } = await startSellerOnboarding({
+        refresh: dashboard.seller_application?.verification_status !== "not_started",
+      });
+      if (onboardingError) throw onboardingError;
+      if (data?.onboardingUrl) {
+        window.location.assign(data.onboardingUrl);
+        return;
+      }
+      setNotice("Stripe seller identity, charging, and payout readiness are verified. EdNotebook review is still required.");
+      await refreshMarketplace();
+    } catch (onboardingError) {
+      setError(onboardingError.message || "Stripe seller verification could not be opened.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitRights(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const [itemKind, itemId] = rightsItem.split(":");
+      if (!itemKind || !itemId) throw new Error("Choose a course or book for rights review.");
+      const result = await submitRightsReview({
+        itemKind,
+        itemId,
+        rightsOwnerName: rightsOwnerName.trim(),
+        rightsBasis,
+        rightsStatement: rightsStatement.trim(),
+        evidenceUrl: rightsEvidenceUrl.trim(),
+        purchaseAllowed,
+        rentalAllowed,
+      });
+      if (result.error) throw result.error;
+      setNotice("Rights evidence submitted. A platform owner must approve its scope before the listing can go live.");
+      await refreshMarketplace();
+    } catch (rightsError) {
+      setError(rightsError.message || "Rights evidence could not be submitted.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitListing(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const review = (dashboard.rights_reviews || []).find((item) => item.id === listingRightsId);
+      if (!review) throw new Error("Choose an approved rights review.");
+      const result = await submitCommercialListing({
+        itemKind: review.course_id ? "course" : "book",
+        itemId: review.course_id || review.publication_id,
+        rightsReviewId: review.id,
+        accessModel: listingAccess,
+        priceCents: Math.round(Number(listingPrice) * 100),
+        rentalDays: listingAccess === "rental" ? Number(listingRentalDays) : null,
+      });
+      if (result.error) throw result.error;
+      setNotice("Commercial listing submitted. Checkout stays off until seller, rights, tax, and listing review all pass.");
+      await refreshMarketplace();
+    } catch (listingError) {
+      setError(listingError.message || "The commercial listing could not be submitted.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const application = dashboard.seller_application;
+  const approvedRights = (dashboard.rights_reviews || []).filter((review) => review.status === "approved");
+
   return (
-    <form className="studio-publisher-application" onSubmit={submit}>
+    <div className="studio-publisher-application commercial-publishing-workflow">
       <div className="studio-section-heading">
-        <div><span className="studio-kicker">PUBLISHER & SUPPLIER PARTNERS</span><h2>Apply before listing books or learning supplies.</h2><p>Professors can author their own material. Commercial catalogs add a partner review for identity, rights, pricing, accessibility, and support.</p></div>
+        <div><span className="studio-kicker">COMMERCIAL PUBLISHING CONTROLLED UNIT</span><h2>Verify the seller, prove the rights, then submit the listing.</h2><p>Stripe Connect handles identity, charging, tax calculation, transfers, refunds, disputes, and payouts. EdNotebook separately approves seller and publication evidence before checkout can appear.</p></div>
       </div>
-      <div className="studio-field-grid">
-        <label>Organization or imprint<input required value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} /></label>
-        <label>Applicant type<select value={applicantType} onChange={(event) => setApplicantType(event.target.value)}><option value="publisher">Publisher</option><option value="author">Independent author</option><option value="professor">Professor-author</option><option value="institution">Institution</option><option value="supplier">Learning supplier</option></select></label>
-      </div>
-      <label>Website or catalog URL<input type="url" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://…" /></label>
-      <label>Catalog and intended learner use<textarea required rows={6} value={catalogSummary} onChange={(event) => setCatalogSummary(event.target.value)} placeholder="Describe the titles or supplies, audience, rights territory, accessibility status, and how professors would assign them." /></label>
-      <label className="studio-check-label"><input type="checkbox" checked={rightsAttestation} onChange={(event) => setRightsAttestation(event.target.checked)} /><span>I attest that the applicant owns or is authorized to distribute the proposed catalog.</span></label>
+
+      <ol className="marketplace-gate-summary">
+        <li className={application ? "is-complete" : ""}><strong>Seller application</strong><span>{application?.status || "not started"}</span></li>
+        <li className={application?.verification_status === "verified" ? "is-complete" : ""}><strong>Stripe verification</strong><span>{application?.verification_status || "not started"}</span></li>
+        <li className={approvedRights.length ? "is-complete" : ""}><strong>Rights approval</strong><span>{approvedRights.length} approved</span></li>
+        <li className={(dashboard.listings || []).some((listing) => listing.status === "published") ? "is-complete" : ""}><strong>Bookstore release</strong><span>{(dashboard.listings || []).filter((listing) => listing.status === "published").length} live</span></li>
+      </ol>
+
       {notice && <div className="studio-alert is-success">{notice}</div>}
       {error && <div className="studio-alert is-error">{error}</div>}
-      <button className="studio-primary-button" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit partner application"}</button>
-    </form>
+
+      <form className="marketplace-step-card" onSubmit={submit}>
+        <div><span>STEP 1</span><h3>Professor / seller application</h3><p>This record is reviewed in the TOS Control Center. It does not become approved merely because Stripe accepts identity details.</p></div>
+        <div className="studio-field-grid">
+          <label>Seller, organization, or imprint<input required value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} /></label>
+          <label>Applicant type<select value={applicantType} onChange={(event) => setApplicantType(event.target.value)}><option value="professor">Professor-author</option><option value="author">Independent author</option><option value="publisher">Publisher</option><option value="institution">Institution</option><option value="supplier">Learning supplier</option></select></label>
+        </div>
+        <label>Website or catalog URL<input type="url" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://…" /></label>
+        <label>Catalog and intended learner use<textarea required minLength={20} rows={4} value={catalogSummary} onChange={(event) => setCatalogSummary(event.target.value)} placeholder="Describe the titles, audience, rights territory, accessibility, and intended course use." /></label>
+        <label className="studio-check-label"><input type="checkbox" checked={rightsAttestation} onChange={(event) => setRightsAttestation(event.target.checked)} /><span>I attest that the applicant owns or is authorized to distribute the proposed catalog.</span></label>
+        <button className="studio-primary-button" type="submit" disabled={busy || !rightsAttestation}>{busy ? "Saving…" : application ? "Update seller application" : "Submit seller application"}</button>
+      </form>
+
+      <section className="marketplace-step-card">
+        <div><span>STEP 2</span><h3>Stripe Connect verification and payouts</h3><p>Stripe collects sensitive identity and bank information on its hosted form. EdNotebook stores readiness flags and the connected-account ID—not bank or identity documents.</p></div>
+        <dl className="marketplace-readiness-grid">
+          <div><dt>Identity details</dt><dd>{application?.details_submitted ? "submitted" : "not complete"}</dd></div>
+          <div><dt>Charges</dt><dd>{application?.charges_enabled ? "enabled" : "blocked"}</dd></div>
+          <div><dt>Payouts</dt><dd>{application?.payouts_enabled ? "enabled" : "blocked"}</dd></div>
+          <div><dt>EdNotebook review</dt><dd>{application?.status || "not started"}</dd></div>
+        </dl>
+        {application?.requirements_due?.length ? <p className="studio-commerce-review-note">Stripe still requires: {application.requirements_due.join(", ")}</p> : null}
+        <button className="studio-primary-button" type="button" disabled={busy || !application} onClick={openStripeOnboarding}>{application?.verification_status === "verified" ? "Refresh Stripe readiness" : "Continue secure Stripe verification"}</button>
+      </section>
+
+      <form className="marketplace-step-card" onSubmit={submitRights}>
+        <div><span>STEP 3</span><h3>Rights scope and evidence</h3><p>Book and course rights are reviewed separately. Choose whether the evidence permits permanent purchase, time-limited rental, or both.</p></div>
+        <div className="studio-field-grid">
+          <label>Course or book<select required value={rightsItem} onChange={(event) => setRightsItem(event.target.value)}><option value="">Choose an item</option>{items.map((item) => <option key={`${item.kind}:${item.id}`} value={`${item.kind}:${item.id}`}>{item.kind === "course" ? "Course" : "Book"} · {item.title}</option>)}</select></label>
+          <label>Rights owner<input required value={rightsOwnerName} onChange={(event) => setRightsOwnerName(event.target.value)} /></label>
+          <label>Rights basis<select value={rightsBasis} onChange={(event) => setRightsBasis(event.target.value)}><option value="original_owner">Original owner</option><option value="exclusive_license">Exclusive license</option><option value="nonexclusive_license">Nonexclusive license</option><option value="open_license">Open license</option><option value="public_domain">Public domain</option></select></label>
+          <label>Evidence URL<input type="url" value={rightsEvidenceUrl} onChange={(event) => setRightsEvidenceUrl(event.target.value)} placeholder="Optional contract or rights record URL" /></label>
+        </div>
+        <label>Rights explanation<textarea required minLength={20} rows={4} value={rightsStatement} onChange={(event) => setRightsStatement(event.target.value)} placeholder="Identify ownership, license scope, territory, and any restrictions." /></label>
+        <div className="marketplace-rights-options"><label className="studio-check-label"><input type="checkbox" checked={purchaseAllowed} onChange={(event) => setPurchaseAllowed(event.target.checked)} /><span>Permanent purchase is allowed</span></label><label className="studio-check-label"><input type="checkbox" checked={rentalAllowed} onChange={(event) => setRentalAllowed(event.target.checked)} /><span>Time-limited rental is allowed</span></label></div>
+        <button className="studio-primary-button" type="submit" disabled={busy || !application || (!purchaseAllowed && !rentalAllowed)}>Submit rights evidence</button>
+        {(dashboard.rights_reviews || []).length ? <div className="marketplace-status-list">{dashboard.rights_reviews.map((review) => <article key={review.id}><strong>{review.course_id ? "Course rights" : "Book rights"}</strong><span>{review.rights_basis.replaceAll("_", " ")}</span><em>{review.status}</em></article>)}</div> : null}
+      </form>
+
+      <form className="marketplace-step-card" onSubmit={submitListing}>
+        <div><span>STEP 4</span><h3>Price and submit the governed listing</h3><p>Only approved rights appear here. Platform tax responsibility and final listing release are approved in the TOS Control Center.</p></div>
+        <div className="studio-field-grid">
+          <label>Approved rights<select required value={listingRightsId} onChange={(event) => setListingRightsId(event.target.value)}><option value="">No approved rights yet</option>{approvedRights.map((review) => <option key={review.id} value={review.id}>{review.course_id ? "Course" : "Book"} · {review.rights_owner_name}</option>)}</select></label>
+          <label>Access<select value={listingAccess} onChange={(event) => setListingAccess(event.target.value)}><option value="purchase">Permanent purchase</option><option value="rental">Rental</option></select></label>
+          <label>Price (USD)<input required type="number" min="0.50" step="0.01" value={listingPrice} onChange={(event) => setListingPrice(event.target.value)} /></label>
+          {listingAccess === "rental" && <label>Rental days<input required type="number" min="1" max="365" value={listingRentalDays} onChange={(event) => setListingRentalDays(event.target.value)} /></label>}
+        </div>
+        <button className="studio-primary-button" type="submit" disabled={busy || !listingRightsId || Number(listingPrice) < 0.5}>Submit commercial listing</button>
+        {(dashboard.listings || []).length ? <div className="marketplace-status-list">{dashboard.listings.map((listing) => <article key={listing.id}><strong>{listing.title_snapshot}</strong><span>{listing.access_model} · ${(listing.price_cents / 100).toFixed(2)}</span><em>{listing.status}</em></article>)}</div> : null}
+      </form>
+
+      <section className="marketplace-step-card">
+        <div><span>OPERATIONS</span><h3>Sales, refunds, disputes, and payouts</h3><p>Students request refunds from their purchase record. Platform-owner review, Stripe transfer reversal, disputes, and connected-account payouts remain visible here after activity begins.</p></div>
+        <dl className="marketplace-readiness-grid">
+          <div><dt>Sales</dt><dd>{(dashboard.sales || []).length}</dd></div>
+          <div><dt>Refunds</dt><dd>{(dashboard.refunds || []).length}</dd></div>
+          <div><dt>Disputes</dt><dd>{(dashboard.disputes || []).length}</dd></div>
+          <div><dt>Payout events</dt><dd>{(dashboard.payouts || []).length}</dd></div>
+        </dl>
+      </section>
+    </div>
   );
 }

@@ -33,9 +33,10 @@ test("one professor book can be read-only, interactive, open, or course-assigned
   assert.match(router, /libraryBookRoute/u);
 });
 
-test("commercial previews remain explicitly gated", () => {
+test("commercial previews remain gated until the controlled checkout flag is true", () => {
   assert.match(publishingLanding, /Catalog preview only/u);
-  assert.match(publishingLanding, /Checkout is not active/u);
+  assert.match(publishingLanding, /!item\.checkout_available/u);
+  assert.match(publishingLanding, /verified payment webhook/u);
   assert.match(interactiveReader, /browser cannot grant paid access/u);
 });
 

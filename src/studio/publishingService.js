@@ -1,4 +1,11 @@
 import { supabase } from "../supabaseClient.js";
+export {
+  loadMarketplaceDashboard,
+  startSellerOnboarding,
+  submitCommercialListing,
+  submitRightsReview,
+  submitSellerApplication,
+} from "../marketplace/marketplaceService.js";
 
 export async function listProfessorPublicationCourses() {
   const { data, error } = await supabase

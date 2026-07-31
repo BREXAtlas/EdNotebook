@@ -750,6 +750,54 @@ export function generateAdminControlReport(institutionId, reportType, filters = 
   );
 }
 
+export function getMarketplaceControlCenter() {
+  return callRpc(
+    "get_marketplace_control_center",
+    undefined,
+    "Commercial publishing controls could not be loaded.",
+  );
+}
+
+export function reviewMarketplaceCase(caseType, caseId, decision, reviewNotes) {
+  return callRpc(
+    "review_marketplace_case",
+    {
+      p_case_type: requiredText(caseType, "Marketplace case type"),
+      p_case_id: requiredText(caseId, "Marketplace case"),
+      p_decision: requiredText(decision, "Decision"),
+      p_review_notes: requiredText(reviewNotes, "Review notes"),
+    },
+    "The commercial publishing decision could not be saved.",
+  );
+}
+
+export function configureMarketplaceTaxControl(taxControlId, registrationReference, liability, reviewNotes) {
+  return callRpc(
+    "configure_marketplace_tax_control",
+    {
+      p_tax_control_id: requiredText(taxControlId, "Tax control"),
+      p_registration_reference: requiredText(registrationReference, "Stripe Tax registration reference"),
+      p_liability: requiredText(liability, "Tax liability"),
+      p_review_notes: requiredText(reviewNotes, "Tax configuration notes"),
+    },
+    "Marketplace tax responsibility could not be configured.",
+  );
+}
+
+export async function processMarketplaceRefund(refundRequestId) {
+  const client = requireClient();
+  try {
+    const { data, error } = await client.functions.invoke("marketplace-refund", {
+      body: { refundRequestId: requiredText(refundRequestId, "Refund request") },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  } catch (error) {
+    throw friendlyError(error, "The approved refund could not be sent to Stripe.");
+  }
+}
+
 // Compatibility names used by the administration screens.
 export const signInInstitutionAdmin = (email, password) => adminSignIn({ email, password });
 export const signUpInstitutionApplicant = adminSignUp;
@@ -780,6 +828,9 @@ export const set_platform_admin_authorization = setPlatformAdminAuthorization;
 export const record_integration_test = recordIntegrationTest;
 export const set_integration_connection_status = setIntegrationConnectionStatus;
 export const generate_admin_control_report = generateAdminControlReport;
+export const get_marketplace_control_center = getMarketplaceControlCenter;
+export const review_marketplace_case = reviewMarketplaceCase;
+export const configure_marketplace_tax_control = configureMarketplaceTaxControl;
 
 const adminControlService = Object.freeze({
   AdminControlError,
@@ -806,6 +857,10 @@ const adminControlService = Object.freeze({
   recordIntegrationTest,
   setIntegrationConnectionStatus,
   generateAdminControlReport,
+  getMarketplaceControlCenter,
+  reviewMarketplaceCase,
+  configureMarketplaceTaxControl,
+  processMarketplaceRefund,
   signInInstitutionAdmin,
   signUpInstitutionApplicant,
   signOutAdmin,

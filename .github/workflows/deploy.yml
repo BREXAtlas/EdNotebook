@@ -67,6 +67,9 @@ jobs:
       - name: Test professor-student course communication sync
         run: npm run test:course-communication
 
+      - name: Test governed commercial publishing experience
+        run: npm run test:commercial-publishing
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 
@@ -182,6 +185,15 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/alex_morrison_library_gate.sql
+
+      - name: Run governed commercial publishing gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/commercial_publishing_gate.sql
 
       - name: Stop the disposable local database
         if: always()
