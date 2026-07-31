@@ -29,6 +29,8 @@ function liveSchools(rows) {
       enrolled: null,
       seats: null,
       enrollmentOpen: row.enrollment_open,
+      enrollmentPolicy: row.enrollment_policy || "approval_required",
+      universalAssignment: Boolean(row.universal_assignment),
       educatorVerificationStatus: row.educator_verification_status || "unverified",
     });
   });
@@ -107,7 +109,13 @@ export default function ClassDirectory({ onOpen, compact = false, track = "unive
               <span className={`educator-verification-badge is-${course.educatorVerificationStatus || "unverified"}`}>{course.educatorVerificationStatus === "approved" ? `Verified ${copy.teacherLabel}` : course.educatorVerificationStatus === "pending" ? "Affiliation review pending" : "Affiliation unverified"}</span>
             </div>
             <div className="directory-course-action">
-              <span>{course.seats == null ? (course.enrollmentOpen ? "Linking open" : "Linking paused") : `${course.enrolled} / ${course.seats} seats`}</span>
+              <span>{course.seats == null
+                ? !course.enrollmentOpen
+                  ? "Enrollment paused"
+                  : course.enrollmentPolicy === "open_self_enroll"
+                    ? course.universalAssignment ? "Open · assigned to new students" : "Open · join immediately"
+                    : "Professor approval required"
+                : `${course.enrolled} / ${course.seats} seats`}</span>
               <button type="button" onClick={() => onOpen?.({ ...course, school })}>View class</button>
             </div>
           </article>
