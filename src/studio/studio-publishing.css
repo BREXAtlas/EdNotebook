@@ -3,6 +3,16 @@
 .studio-reader-empty h3 { margin:12px 0 6px; color:#101b33; font-family:"Zilla Slab",serif; font-size:25px; }
 .studio-reader-empty p { max-width:520px; margin:0 auto 15px; font-size:10px; line-height:1.55; }
 .studio-reader-empty button { padding:9px 13px; color:#1d4ed8; background:#fff; border:1px solid #cad4e5; border-radius:10px; cursor:pointer; font-weight:800; }
+.studio-publication-release-panel { display:grid; gap:14px; margin-bottom:16px; padding:20px; color:#30254a; background:#f3effa; border:1px solid #d7cbe9; border-radius:18px; }
+.studio-publication-release-panel h3 { margin:5px 0; color:#191129; font-family:"Zilla Slab",serif; font-size:24px; }
+.studio-publication-release-panel > div:first-child > p,
+.studio-commerce-review-note { margin:0; color:#645b74; font-size:9.5px; line-height:1.55; }
+.studio-publication-release-panel .studio-field-grid { align-items:end; }
+.studio-publication-release-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.studio-publication-release-actions > span { color:#66577e; font-family:"IBM Plex Mono",monospace; font-size:8px; }
+.studio-commerce-review-note { padding:10px 12px; color:#745417; background:#fff4d7; border-radius:9px; }
+.library-book-reader-shell { padding:24px; }
+.library-book-page .studio-reader-layout { max-width:1350px; margin:0 auto; }
 
 .studio-reader-layout { display:grid; grid-template-columns:220px minmax(0,1fr) 250px; align-items:start; gap:14px; }
 .studio-reader-library,.studio-book-reader,.studio-annotation-panel { background:#fff; border:1px solid #dce2ee; border-radius:18px; box-shadow:0 14px 38px rgba(16,27,51,.055); }
@@ -75,4 +85,4 @@
 
 @media(max-width:1100px){.studio-reader-layout{grid-template-columns:190px minmax(0,1fr)}.studio-annotation-panel{grid-column:1/-1;position:static}.studio-annotation-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.studio-annotation-list article{padding:10px;border:1px solid #e0e5ed;border-radius:10px}}
 @media(max-width:820px){.studio-reader-layout,.studio-import-grid{grid-template-columns:1fr}.studio-reader-library,.studio-conversion-preview{position:static}.studio-reader-library{display:flex;overflow-x:auto;gap:6px}.studio-reader-library .studio-panel-heading{min-width:160px}.studio-reader-library>button{min-width:180px}.studio-annotation-list{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.studio-book-importer,.studio-publisher-application{padding:17px}.studio-reader-page{padding:28px 20px}.studio-book-reader>header{flex-direction:column}.studio-annotation-list{grid-template-columns:1fr}}
+@media(max-width:560px){.studio-book-importer,.studio-publisher-application{padding:17px}.studio-reader-page{padding:28px 20px}.studio-book-reader>header{flex-direction:column}.studio-annotation-list{grid-template-columns:1fr}.library-book-reader-shell{padding:12px}.studio-publication-release-panel{padding:15px}}

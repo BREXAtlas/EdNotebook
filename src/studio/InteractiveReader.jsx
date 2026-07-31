@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient.js";
 import { eduBookDownload, readingProgress } from "./edubook.js";
+import { setPublicationLibraryAccess } from "./publishingService.js";
 
 function accessLabel(publication) {
   const labels = {
@@ -13,7 +14,7 @@ function accessLabel(publication) {
   return labels[publication.access_model] || publication.access_model;
 }
 
-export default function InteractiveReader({ publications, loading, onRefresh }) {
+export default function InteractiveReader({ publications, courses = [], currentUserId = "", loading, onRefresh, libraryMode = false }) {
   const [selectedId, setSelectedId] = useState(null);
   const [chapterIndex, setChapterIndex] = useState(0);
   const [annotations, setAnnotations] = useState([]);
@@ -21,6 +22,12 @@ export default function InteractiveReader({ publications, loading, onRefresh }) 
   const [annotationType, setAnnotationType] = useState("note");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [accessModel, setAccessModel] = useState("private");
+  const [readingMode, setReadingMode] = useState("interactive");
+  const [courseId, setCourseId] = useState("");
+  const [price, setPrice] = useState("");
+  const [rentalDays, setRentalDays] = useState(30);
+  const [publishBusy, setPublishBusy] = useState(false);
 
   const selected = useMemo(
     () => publications.find((publication) => publication.id === selectedId) || publications[0] || null,
@@ -47,6 +54,42 @@ export default function InteractiveReader({ publications, loading, onRefresh }) 
         else setAnnotations(data || []);
       });
   }, [selected?.id]);
+
+  useEffect(() => {
+    setAccessModel(selected?.access_model || "private");
+    setReadingMode(selected?.reading_mode || "interactive");
+    setCourseId(selected?.course_id || "");
+    setPrice(selected?.price_cents ? (selected.price_cents / 100).toFixed(2) : "");
+    setRentalDays(selected?.rental_days || 30);
+  }, [selected?.id]);
+
+  async function saveLibraryAccess() {
+    setPublishBusy(true);
+    setNotice("");
+    setError("");
+    const commercial = accessModel === "purchase" || accessModel === "rental";
+    const result = await setPublicationLibraryAccess({
+      publicationId: selected.id,
+      accessModel,
+      readingMode,
+      courseId: courseId || null,
+      priceCents: commercial ? Math.round(Number(price) * 100) : null,
+      rentalDays: accessModel === "rental" ? Number(rentalDays) : null,
+    });
+    if (result.error) {
+      setError(result.error.message || "The Library access settings could not be saved.");
+    } else {
+      setNotice(accessModel === "open"
+        ? "Open Library book published. Students can find and read it after signing in."
+        : accessModel === "assigned"
+          ? "The same publication is now assigned to the selected course. No duplicate book was created."
+          : accessModel === "private"
+            ? "Publication returned to private draft."
+            : "Commercial catalog preview submitted for review. Checkout remains unavailable.");
+      await onRefresh?.();
+    }
+    setPublishBusy(false);
+  }
 
   async function saveAnnotation() {
     setNotice("");
@@ -96,7 +139,20 @@ export default function InteractiveReader({ publications, loading, onRefresh }) 
   }
 
   return (
-    <div className="studio-reader-layout">
+    <>
+      {!libraryMode && selected.owner_id === currentUserId && <section className="studio-publication-release-panel">
+        <div><span className="studio-kicker">ALEX B. MORRISON PLACEMENT</span><h3>Publish once, then choose where this book belongs.</h3><p>Keep one source record. It can stay private, be assigned to a course, open in the public Library, or enter commercial review.</p></div>
+        <div className="studio-field-grid">
+          <label>Book experience<select value={readingMode} disabled={publishBusy} onChange={(event) => setReadingMode(event.target.value)}><option value="read_only">Read-only book</option><option value="interactive">Interactive EduBook · checks, quizzes, notes, progress</option></select></label>
+          <label>Access and placement<select value={accessModel} disabled={publishBusy} onChange={(event) => setAccessModel(event.target.value)}><option value="private">Private draft</option><option value="assigned">Assign to one of my courses</option><option value="open">Free and open in Library</option><option value="purchase">Bookstore purchase · submit for review</option><option value="rental">Bookstore rental · submit for review</option></select></label>
+          {(accessModel === "assigned" || courseId) && <label>Linked course<select value={courseId} disabled={publishBusy} onChange={(event) => setCourseId(event.target.value)}><option value="">No linked course</option>{courses.map((course) => <option value={course.id} key={course.id}>{course.course_code || "COURSE"} · {course.title}</option>)}</select></label>}
+          {(accessModel === "purchase" || accessModel === "rental") && <label>Price (USD)<input type="number" min="0.01" step="0.01" value={price} disabled={publishBusy} onChange={(event) => setPrice(event.target.value)} /></label>}
+          {accessModel === "rental" && <label>Rental days<input type="number" min="1" max="365" value={rentalDays} disabled={publishBusy} onChange={(event) => setRentalDays(event.target.value)} /></label>}
+        </div>
+        <div className="studio-publication-release-actions"><button className="studio-primary-button" type="button" disabled={publishBusy || (accessModel === "assigned" && !courseId) || (["purchase", "rental"].includes(accessModel) && Number(price) <= 0)} onClick={saveLibraryAccess}>{publishBusy ? "Saving placement…" : "Save publication placement"}</button><span>Current record · {selected.status} · {accessLabel(selected)}</span></div>
+        {["purchase", "rental"].includes(accessModel) && <p className="studio-commerce-review-note">A price prepares the catalog record only. The browser cannot grant paid access, charge a student, or release seller funds.</p>}
+      </section>}
+      <div className="studio-reader-layout">
       <aside className="studio-reader-library">
         <div className="studio-panel-heading">
           <div><span className="studio-kicker">READING LIBRARY</span><h3>Books and assigned readings</h3></div>
@@ -177,6 +233,7 @@ export default function InteractiveReader({ publications, loading, onRefresh }) 
           ))}
         </div>
       </aside>
-    </div>
+      </div>
+    </>
   );
 }
