@@ -22,6 +22,40 @@ alter table public.published_course_directory
   alter column completion_badge_name set not null,
   alter column completion_badge_description set not null;
 
+create or replace function private.normalize_published_course_completion_badge()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  new.completion_badge_name := left(
+    coalesce(
+      nullif(trim(new.completion_badge_name),''),
+      'Completed · ' || new.title
+    ),
+    120
+  );
+  new.completion_badge_description := left(
+    coalesce(
+      nullif(trim(new.completion_badge_description),''),
+      'Recognizes completion of ' || new.title || ' in EdNotebook.'
+    ),
+    300
+  );
+  return new;
+end;
+$$;
+
+revoke all on function private.normalize_published_course_completion_badge()
+from public,anon,authenticated;
+
+create trigger published_course_directory_completion_badge
+before insert or update of title,completion_badge_name,completion_badge_description
+on public.published_course_directory
+for each row
+execute function private.normalize_published_course_completion_badge();
+
 alter table public.published_course_directory
   drop constraint if exists published_course_directory_universal_open_check;
 alter table public.published_course_directory
