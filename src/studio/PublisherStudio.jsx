@@ -4,6 +4,7 @@ import { textToEduBook } from "./edubook.js";
 import {
   listProfessorPublicationCourses,
   loadMarketplaceDashboard,
+  openSellerPayoutDashboard,
   startSellerOnboarding,
   submitCommercialListing,
   submitRightsReview,
@@ -404,6 +405,22 @@ export function PublisherApplication() {
     }
   }
 
+  async function manageStripePayouts() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: payoutError } = await openSellerPayoutDashboard();
+      if (payoutError) throw payoutError;
+      if (!data?.payoutDashboardUrl) throw new Error("Stripe did not return the secure payout dashboard.");
+      window.location.assign(data.payoutDashboardUrl);
+    } catch (payoutError) {
+      setError(payoutError.message || "The Stripe payout dashboard could not be opened.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitRights(event) {
     event.preventDefault();
     setBusy(true);
@@ -490,7 +507,12 @@ export function PublisherApplication() {
       </form>
 
       <section className="marketplace-step-card">
-        <div><span>STEP 2</span><h3>Stripe Connect verification and payouts</h3><p>Stripe collects sensitive identity and bank information on its hosted form. EdNotebook stores readiness flags and the connected-account ID—not bank or identity documents.</p></div>
+        <div><span>STEP 2</span><h3>Secure payout form and Stripe Connect verification</h3><p>Stripe collects sensitive identity, taxpayer, and bank information on its hosted form. EdNotebook stores readiness flags and the connected-account ID—not bank, routing, or identity-document details.</p></div>
+        <div className="seller-payout-flow" aria-label="How professor payouts work">
+          <article><span>01</span><strong>Student pays</strong><p>Stripe Checkout collects the purchase or rental payment and calculates approved tax.</p></article>
+          <article><span>02</span><strong>Seller allocation</strong><p>The governed destination charge routes the professor's share to the connected Stripe balance.</p></article>
+          <article><span>03</span><strong>Bank payout</strong><p>Stripe pays the verified external account on its payout schedule and reports status back to EdNotebook.</p></article>
+        </div>
         <dl className="marketplace-readiness-grid">
           <div><dt>Identity details</dt><dd>{application?.details_submitted ? "submitted" : "not complete"}</dd></div>
           <div><dt>Charges</dt><dd>{application?.charges_enabled ? "enabled" : "blocked"}</dd></div>
@@ -498,7 +520,11 @@ export function PublisherApplication() {
           <div><dt>EdNotebook review</dt><dd>{application?.status || "not started"}</dd></div>
         </dl>
         {application?.requirements_due?.length ? <p className="studio-commerce-review-note">Stripe still requires: {application.requirements_due.join(", ")}</p> : null}
-        <button className="studio-primary-button" type="button" disabled={busy || !application} onClick={openStripeOnboarding}>{application?.verification_status === "verified" ? "Refresh Stripe readiness" : "Continue secure Stripe verification"}</button>
+        <p className="studio-commerce-review-note">The secure Stripe payout form collects the legal identity, tax information, and bank or eligible debit-card destination needed to receive money. EdNotebook never asks the professor to type banking credentials into this application.</p>
+        <div className="seller-payout-actions">
+          <button className="studio-primary-button" type="button" disabled={busy || !application} onClick={openStripeOnboarding}>{application?.verification_status === "verified" ? "Refresh Stripe readiness" : "Open secure payout form"}</button>
+          {application?.details_submitted ? <button className="studio-secondary-button" type="button" disabled={busy} onClick={manageStripePayouts}>Manage bank account and payouts</button> : null}
+        </div>
       </section>
 
       <form className="marketplace-step-card" onSubmit={submitRights}>

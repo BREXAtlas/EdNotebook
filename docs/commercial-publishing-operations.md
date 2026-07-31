@@ -66,6 +66,19 @@ recorded against both the order and seller. Lost disputes revoke the affected
 marketplace entitlement. Connected-account payout events are recorded as status
 and amount only; bank information is never stored.
 
+### Professor payout form
+
+The professor opens Stripe's hosted Express onboarding form from Learning
+Studio. Stripe collects legal identity, tax information, and the bank account or
+eligible debit-card destination. EdNotebook stores only the connected-account
+identifier and readiness flags.
+
+After details are submitted, **Manage bank account and payouts** requests a
+single-use Stripe Express Dashboard login link from the authenticated
+`marketplace-seller-onboarding` Edge Function. Professors manage their payout
+destination and schedule in Stripe. The server records the dashboard-open audit
+event; the browser never receives Stripe secret keys or bank data.
+
 ## Required Stripe setup
 
 Configure these Supabase Edge Function secrets separately for staging and

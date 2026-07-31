@@ -18,7 +18,7 @@ import {
 import { recordAuditRequired } from "../_shared/security.ts";
 
 interface OnboardingRequest {
-  action?: "start" | "refresh";
+  action?: "start" | "refresh" | "dashboard";
   returnUrl?: string;
   refreshUrl?: string;
 }
@@ -100,6 +100,32 @@ Deno.serve(async (req) => {
         payoutsEnabled: Boolean(account.payouts_enabled),
       },
     });
+
+    if (input.action === "dashboard") {
+      if (account.type !== "express") {
+        throw new HttpError(409, "This seller account does not use the managed Stripe Express payout dashboard.");
+      }
+      if (!account.details_submitted) {
+        throw new HttpError(409, "Complete the secure Stripe payout form before managing payouts.");
+      }
+      const loginLink = await stripe.accounts.createLoginLink(account.id);
+      await recordAuditRequired(admin, req, {
+        actorId: user.id,
+        eventType: "marketplace.seller_payout_dashboard_opened",
+        targetType: "publisher_application",
+        targetId: application.id,
+        details: {
+          verificationStatus,
+          chargesEnabled: Boolean(account.charges_enabled),
+          payoutsEnabled: Boolean(account.payouts_enabled),
+        },
+      });
+      return jsonResponse(req, {
+        applicationId: application.id,
+        verificationStatus,
+        payoutDashboardUrl: loginLink.url,
+      });
+    }
 
     if (verificationStatus === "verified" && input.action === "refresh") {
       return jsonResponse(req, {

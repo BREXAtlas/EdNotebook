@@ -39,6 +39,13 @@ export async function startSellerOnboarding({ refresh = false } = {}) {
   });
 }
 
+export async function openSellerPayoutDashboard() {
+  if (!isSupabaseConfigured) return unavailable("The marketplace service is not connected.");
+  return supabase.functions.invoke("marketplace-seller-onboarding", {
+    body: { action: "dashboard" },
+  });
+}
+
 export async function submitRightsReview({
   itemKind,
   itemId,
