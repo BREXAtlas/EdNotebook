@@ -14,9 +14,10 @@ async function source(path) {
 }
 
 test("commercial catalog exposes checkout only through the governed Edge Function", async () => {
-  const [landing, service] = await Promise.all([
+  const [landing, service, catalogMigration] = await Promise.all([
     source("src/portal/PublishingLanding.jsx"),
     source("src/marketplace/marketplaceService.js"),
+    source("supabase/migrations/20260731233500_expose_commercial_edubook_purchase_rental.sql"),
   ]);
   assert.match(landing, /item\.checkout_available/u);
   assert.match(landing, /verified payment webhook/u);
@@ -27,18 +28,29 @@ test("commercial catalog exposes checkout only through the governed Edge Functio
   assert.match(checkout, /amount: listing\.price_cents - feeCents/u);
   assert.match(checkout, /checkout_creation_failed: true/u);
   assert.match(checkout, /\.eq\("status", "pending"\)/u);
+  assert.match(catalogMigration, /coalesce\(listing\.access_model,publication\.access_model\)/u);
+  assert.doesNotMatch(catalogMigration, /listing\.access_model=publication\.access_model/u);
 });
 
 test("professor workflow separates seller, Stripe, rights, and listing approval", async () => {
-  const studio = await source("src/studio/PublisherStudio.jsx");
+  const [studio, service, onboarding] = await Promise.all([
+    source("src/studio/PublisherStudio.jsx"),
+    source("src/marketplace/marketplaceService.js"),
+    source("supabase/functions/marketplace-seller-onboarding/index.ts"),
+  ]);
   assert.match(studio, /Professor \/ seller application/u);
-  assert.match(studio, /Stripe Connect verification and payouts/u);
+  assert.match(studio, /Secure payout form and Stripe Connect verification/u);
+  assert.match(studio, /Manage bank account and payouts/u);
+  assert.match(studio, /EdNotebook never asks the professor to type banking credentials/u);
   assert.match(studio, /Rights scope and evidence/u);
   assert.match(studio, /Price and submit the governed listing/u);
   assert.match(studio, /EdNotebook review is still required/u);
   assert.match(studio, /SellerCommerceLedger/u);
   assert.match(studio, /Gross processed/u);
   assert.match(studio, /Buyer identity and payment credentials remain private/u);
+  assert.match(service, /action: "dashboard"/u);
+  assert.match(onboarding, /stripe\.accounts\.createLoginLink\(account\.id\)/u);
+  assert.match(onboarding, /marketplace\.seller_payout_dashboard_opened/u);
 });
 
 test("control center includes tax, refunds, disputes, and payouts", async () => {

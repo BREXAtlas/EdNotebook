@@ -138,10 +138,10 @@ from public.submit_marketplace_rights_review(
   '22000000-0000-4000-8000-000000000020',
   'Marketplace Seller',
   'original_owner',
-  'The professor authored the complete work and controls permanent-sale rights.',
+  'The professor authored the complete work and controls permanent-sale and rental rights.',
   'https://example.invalid/rights/book',
   true,
-  false,
+  true,
   null
 );
 
@@ -187,6 +187,7 @@ begin
       select (item->>'id')::uuid
       from jsonb_array_elements(public.get_marketplace_control_center()->'listings') item
       where item->>'publication_id'='22000000-0000-4000-8000-000000000020'
+        and item->>'access_model'='purchase'
     ),
     'approved',
     'Attempted before tax approval for a fail-closed proof.'
@@ -233,9 +234,42 @@ select public.review_marketplace_case(
     select (item->>'id')::uuid
     from jsonb_array_elements(public.get_marketplace_control_center()->'listings') item
     where item->>'publication_id'='22000000-0000-4000-8000-000000000020'
+      and item->>'access_model'='purchase'
   ),
   'approved',
   'Seller, permanent-sale rights, tax, price, and source release verified.'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000001',true);
+set local role authenticated;
+select id,status
+from public.submit_marketplace_listing(
+  'book',
+  '22000000-0000-4000-8000-000000000020',
+  (
+    select (item->>'id')::uuid
+    from jsonb_array_elements(public.get_my_marketplace_dashboard()->'rights_reviews') item
+    where item->>'publication_id'='22000000-0000-4000-8000-000000000020'
+  ),
+  'rental',
+  499,
+  14
+);
+
+reset role;
+select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000003',true);
+set local role authenticated;
+select public.review_marketplace_case(
+  'listing',
+  (
+    select (item->>'id')::uuid
+    from jsonb_array_elements(public.get_marketplace_control_center()->'listings') item
+    where item->>'publication_id'='22000000-0000-4000-8000-000000000020'
+      and item->>'access_model'='rental'
+  ),
+  'approved',
+  'Seller, rental rights, tax, price, duration, and source release verified.'
 );
 
 reset role;
@@ -248,11 +282,25 @@ begin
     where item_kind='book'
       and item_id='22000000-0000-4000-8000-000000000020'
       and listing_status='published'
+      and access_model='purchase'
       and price_cents=1299
       and checkout_available
       and marketplace_listing_id is not null
   ) then
-    raise exception 'Approved commercial book did not expose governed checkout';
+    raise exception 'Approved commercial book purchase did not expose governed checkout';
+  end if;
+  if not exists (
+    select 1 from public.list_alex_morrison_catalog('Governed Marketplace Book')
+    where item_kind='book'
+      and item_id='22000000-0000-4000-8000-000000000020'
+      and listing_status='published'
+      and access_model='rental'
+      and price_cents=499
+      and rental_days=14
+      and checkout_available
+      and marketplace_listing_id is not null
+  ) then
+    raise exception 'Approved commercial book rental did not expose governed checkout';
   end if;
 end;
 $$;
@@ -266,7 +314,7 @@ insert into public.marketplace_orders (
 ) values (
   '22000000-0000-4000-8000-000000000030',
   '22000000-0000-4000-8000-000000000002',
-  (select id from public.marketplace_listings where publication_id='22000000-0000-4000-8000-000000000020'),
+  (select id from public.marketplace_listings where publication_id='22000000-0000-4000-8000-000000000020' and access_model='purchase'),
   (select id from public.publisher_applications where applicant_id='22000000-0000-4000-8000-000000000001'),
   '22000000-0000-4000-8000-000000000031',
   'book',
@@ -376,6 +424,61 @@ begin
       and dedupe_key='marketplace:22000000-0000-4000-8000-000000000030:refunded'
   ) then
     raise exception 'Confirmed refund did not create the Library notification';
+  end if;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+insert into public.marketplace_orders (
+  id,buyer_id,listing_id,seller_application_id,client_request_key,
+  item_kind,publication_id,access_model,rental_days,currency,subtotal_cents,
+  tax_cents,total_cents,platform_fee_cents,seller_net_cents,status,
+  stripe_checkout_session_id
+) values (
+  '22000000-0000-4000-8000-000000000032',
+  '22000000-0000-4000-8000-000000000002',
+  (select id from public.marketplace_listings where publication_id='22000000-0000-4000-8000-000000000020' and access_model='rental'),
+  (select id from public.publisher_applications where applicant_id='22000000-0000-4000-8000-000000000001'),
+  '22000000-0000-4000-8000-000000000033',
+  'book','22000000-0000-4000-8000-000000000020',
+  'rental',14,'usd',499,0,499,75,424,'checkout_created','cs_marketplace_book_rental'
+);
+
+select id,status
+from public.marketplace_fulfill_order(
+  '22000000-0000-4000-8000-000000000032',
+  'cs_marketplace_book_rental','pi_marketplace_book_rental','ch_marketplace_book_rental',
+  'cus_marketplace_buyer','tr_marketplace_book_rental','fee_marketplace_book_rental',
+  499,40,539,'{"webhook":"checkout.session.completed"}'::jsonb
+);
+
+select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000002',true);
+set local role authenticated;
+do $$
+begin
+  if not exists (
+    select 1 from public.publications
+    where id='22000000-0000-4000-8000-000000000020'
+  ) then
+    raise exception 'Webhook-fulfilled rental did not restore book access';
+  end if;
+  if not exists (
+    select 1 from public.marketplace_entitlements
+    where order_id='22000000-0000-4000-8000-000000000032'
+      and status='active'
+      and expires_at between now()+interval '13 days' and now()+interval '15 days'
+  ) then
+    raise exception 'Book rental entitlement did not receive its governed expiration';
+  end if;
+  if not exists (
+    select 1 from public.student_account_notifications
+    where student_id='22000000-0000-4000-8000-000000000002'
+      and notification_type='marketplace_rental'
+      and route='library'
+      and dedupe_key='marketplace:22000000-0000-4000-8000-000000000032:active'
+  ) then
+    raise exception 'Verified book rental did not create the Library notification';
   end if;
 end;
 $$;

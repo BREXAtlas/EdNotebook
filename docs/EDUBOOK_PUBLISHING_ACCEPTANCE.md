@@ -75,6 +75,9 @@ Use the existing professor, student, and owner staging accounts.
    approve it in the TOS Control Center, then run the same verified Stripe
    checkout/entitlement trace already proven for courses.
 
+The detailed purchase, rental, and professor-payout gate is maintained in
+`docs/COMMERCIAL_EDUBOOK_ACCEPTANCE.md`.
+
 Live commerce remains disabled until the production tax, legal, finance,
 security, webhook, and payout blockers in
 `docs/STRIPE_CONNECT_STAGING_EVIDENCE.md` are approved.
