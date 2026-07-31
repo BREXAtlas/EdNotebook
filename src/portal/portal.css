@@ -1016,6 +1016,567 @@
   border-color: #a8c9bb;
   background: linear-gradient(135deg, #f2fbf6, #fff);
 }
+
+/* Governed campus social and organized multi-class libraries */
+.professor-nav-group {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 18px;
+}
+
+.professor-nav-group > span {
+  padding: 0 12px 5px;
+  color: #738179;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.class-library-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px);
+  gap: 14px;
+  align-items: end;
+  margin: 22px 0;
+  padding: 16px;
+  border: 1px solid #dfe7e2;
+  border-radius: 16px;
+  background: #f8fbf9;
+}
+
+.professor-library-controls {
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 210px));
+}
+
+.class-library-controls label {
+  display: grid;
+  gap: 7px;
+  color: #39473f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.class-library-controls input,
+.class-library-controls select {
+  min-height: 43px;
+  width: 100%;
+  border: 1px solid #cdd9d2;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 12px;
+  color: #1f2b24;
+  font: inherit;
+}
+
+.class-request-queue {
+  display: grid;
+  gap: 9px;
+  margin: 18px 0;
+  padding: 15px;
+  border: 1px solid #f1d29f;
+  border-radius: 15px;
+  background: #fff9ed;
+}
+
+.class-request-queue > strong {
+  color: #6d4810;
+}
+
+.class-request-queue article {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.class-request-queue article > span,
+.class-request-queue article > i {
+  color: #8a5b13;
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.class-request-queue article div {
+  display: grid;
+  gap: 3px;
+}
+
+.class-request-queue small {
+  color: #6b756f;
+}
+
+.class-link-status {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.class-link-status button {
+  min-width: 34px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+}
+
+.governed-request-list {
+  display: grid;
+  gap: 10px;
+}
+
+.governed-request-list article {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  border: 1px solid #dfe7e2;
+  border-radius: 14px;
+  background: #fbfdfc;
+}
+
+.governed-request-list article div {
+  display: grid;
+  gap: 5px;
+}
+
+.governed-request-list article span {
+  color: #6d7972;
+  font-size: 0.78rem;
+}
+
+.campus-social-page {
+  display: grid;
+  gap: 16px;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+.campus-social-heading {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 95% 10%, rgba(230, 168, 66, 0.2), transparent 28%),
+    linear-gradient(135deg, #163e32, #245e4d);
+  color: #fff;
+}
+
+.campus-social-heading h1 {
+  margin: 6px 0;
+  color: #fff;
+}
+
+.campus-social-heading p {
+  max-width: 760px;
+  margin: 0;
+  color: #e5f1ec;
+}
+
+.campus-social-heading .portal-kicker {
+  color: #f5c875;
+}
+
+.campus-social-heading-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.campus-social-heading-actions button {
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.campus-social-scope {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 5px;
+  border: 1px solid #dfe7e2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.campus-social-scope button {
+  flex: 1;
+  min-width: 130px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #5a675f;
+}
+
+.campus-social-scope button.is-active {
+  background: #e8f3ee;
+  color: #174c3c;
+  box-shadow: inset 0 0 0 1px #bad4c8;
+}
+
+.campus-profile-editor {
+  display: grid;
+  gap: 15px;
+}
+
+.campus-profile-editor > label {
+  display: grid;
+  gap: 7px;
+  color: #39473f;
+  font-weight: 800;
+}
+
+.campus-profile-editor textarea,
+.campus-profile-editor input,
+.campus-profile-editor select {
+  width: 100%;
+  border: 1px solid #ccd8d1;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #1f2b24;
+  font: inherit;
+}
+
+.campus-discoverable {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 9px !important;
+  align-items: center;
+  align-self: end;
+  min-height: 43px;
+}
+
+.campus-discoverable input {
+  width: auto;
+}
+
+.campus-story-rail {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 15px 18px;
+}
+
+.campus-story-rail article {
+  display: grid;
+  flex: 0 0 78px;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+}
+
+.campus-story-rail article > div {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #d58e28, #255f4d);
+}
+
+.campus-story-rail .campus-avatar.is-large {
+  width: 59px;
+  height: 59px;
+  border: 3px solid #fff;
+}
+
+.campus-story-rail strong {
+  max-width: 78px;
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campus-story-rail span {
+  color: #77827c;
+  font-size: 0.68rem;
+  text-transform: capitalize;
+}
+
+.campus-social-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+}
+
+.campus-social-layout > main,
+.campus-social-sidebar,
+.campus-post-list {
+  display: grid;
+  gap: 16px;
+}
+
+.campus-social-composer {
+  display: grid;
+  gap: 14px;
+}
+
+.campus-social-composer > div:first-child {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.campus-social-composer label {
+  display: grid;
+  gap: 5px;
+  color: #66736c;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.campus-social-composer textarea,
+.campus-social-composer input {
+  width: 100%;
+  border: 1px solid #d4ded8;
+  border-radius: 13px;
+  background: #f9fbfa;
+  padding: 11px 13px;
+  color: #1f2b24;
+  font: inherit;
+  resize: vertical;
+}
+
+.campus-composer-tools {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.campus-composer-tools > span {
+  align-self: center;
+  color: #657169;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.campus-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.campus-avatar.is-large {
+  width: 72px;
+  height: 72px;
+}
+
+.campus-avatar.is-fallback {
+  background: linear-gradient(135deg, #d8aa54, #21604d);
+  color: #fff;
+  font-weight: 900;
+}
+
+.campus-post {
+  overflow: hidden;
+  padding: 0;
+}
+
+.campus-post > header {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 17px 18px 12px;
+}
+
+.campus-post > header > div {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.campus-post > header span {
+  color: #77827c;
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+
+.campus-post > header button {
+  border: 0;
+  background: transparent;
+  color: #21604d;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.campus-post > p {
+  margin: 0;
+  padding: 5px 18px 16px;
+  color: #28352e;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.campus-post-media {
+  display: block;
+  width: 100%;
+  max-height: 640px;
+  background: #edf1ee;
+  object-fit: cover;
+}
+
+.campus-post > footer {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 18px;
+  border-top: 1px solid #edf1ee;
+  color: #67736c;
+  font-size: 0.75rem;
+}
+
+.campus-post > footer button {
+  border: 0;
+  background: transparent;
+  color: #526159;
+  font-size: 1rem;
+}
+
+.campus-post > footer button.is-active {
+  color: #c34b4b;
+}
+
+.campus-post > footer span:last-child {
+  margin-left: auto;
+}
+
+.campus-comments {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 17px;
+}
+
+.campus-comments > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.campus-comments .campus-avatar {
+  width: 29px;
+  height: 29px;
+  font-size: 0.7rem;
+}
+
+.campus-comments p {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f1f5f2;
+  color: #39463f;
+  font-size: 0.82rem;
+}
+
+.campus-comments form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.campus-comments input {
+  min-width: 0;
+  border: 1px solid #d2ddd6;
+  border-radius: 18px;
+  padding: 8px 12px;
+}
+
+.campus-social-sidebar {
+  position: sticky;
+  top: 92px;
+}
+
+.campus-social-sidebar > section {
+  display: grid;
+  gap: 8px;
+}
+
+.campus-social-sidebar h2,
+.campus-social-sidebar p {
+  margin: 0;
+}
+
+.campus-social-sidebar > section > span:not(.campus-avatar, .portal-kicker) {
+  color: #738078;
+  font-size: 0.76rem;
+  text-transform: capitalize;
+}
+
+.campus-social-boundary ul {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 8px;
+  padding-left: 19px;
+  color: #5f6d65;
+  font-size: 0.82rem;
+}
+
+.campus-reaction-key > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid #edf1ee;
+}
+
+.campus-feed-empty {
+  text-align: center;
+}
+
+@media (max-width: 1040px) {
+  .campus-social-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .campus-social-sidebar {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .campus-social-heading,
+  .governed-request-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .campus-social-heading-actions {
+    justify-content: flex-start;
+  }
+
+  .class-library-controls,
+  .professor-library-controls,
+  .campus-composer-tools,
+  .campus-social-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .class-request-queue article {
+    grid-template-columns: 1fr;
+  }
+}
 .student-published-feedback h2 { margin: 7px 0; font: 800 29px/1.08 var(--portal-display); }
 .student-published-feedback > div:first-child p { color: var(--portal-muted); line-height: 1.5; }
 .student-published-feedback > div:last-child { display: grid; gap: 9px; }
