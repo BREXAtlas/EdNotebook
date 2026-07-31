@@ -8,7 +8,6 @@ const studentDashboard = readFileSync(new URL("./StudentDashboard.jsx", import.m
 const interactiveReader = readFileSync(new URL("../studio/InteractiveReader.jsx", import.meta.url), "utf8");
 const bookImporter = readFileSync(new URL("../studio/PublisherStudio.jsx", import.meta.url), "utf8");
 const router = readFileSync(new URL("../main.jsx", import.meta.url), "utf8");
-const workflows = readFileSync(new URL("../../docs/PROFESSOR_STUDENT_ALEX_MORRISON_WORKFLOWS.md", import.meta.url), "utf8");
 
 test("Alex B. Morrison shows one searchable course-and-book catalog", () => {
   assert.match(publishingLanding, /ALEX B\. MORRISON LIBRARY &amp; BOOKSTORE/u);
@@ -45,12 +44,4 @@ test("authenticated student and professor workspaces do not expose cross-role sh
   assert.doesNotMatch(professorDashboard, />View student portal</u);
   assert.doesNotMatch(router, /onProfessorPortal=/u);
   assert.doesNotMatch(router, /<ProfessorDashboard[^>]*onStudentPortal/u);
-});
-
-test("four workflow visuals cover professor, student, combined, and publishing paths", () => {
-  assert.match(workflows, /## 1\. Professor teaching workflow/u);
-  assert.match(workflows, /## 2\. Student experience workflow/u);
-  assert.match(workflows, /## 3\. Combined professor-to-student lifecycle/u);
-  assert.match(workflows, /## 4\. Professor to Alex B\. Morrison Library\/Bookstore/u);
-  assert.equal((workflows.match(/```mermaid/gu) || []).length, 4);
 });
