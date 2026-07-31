@@ -137,6 +137,11 @@ export function BookImporter({ onSaved }) {
               quizzes: readingMode !== "read_only",
               discussion: readingMode !== "read_only",
             },
+            learningLayer: {
+              schemaVersion: "EduBookLearning/1.0",
+              chapters: [],
+              finalQuiz: [],
+            },
             rights: { confirmed: true, statement: rightsStatement.trim() },
           }
         : {

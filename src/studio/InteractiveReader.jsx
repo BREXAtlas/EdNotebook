@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient.js";
 import { eduBookDownload, readingProgress } from "./edubook.js";
-import { setPublicationLibraryAccess } from "./publishingService.js";
+import EduBookTeachingLayerEditor from "./EduBookTeachingLayerEditor.jsx";
+import {
+  chapterLearningLayer,
+  eduBookCompletionReadiness,
+  learningLayerFromManifest,
+  withEduBookAnswer,
+  withEduBookDiscussionResponse,
+} from "./edubookLearningModel.js";
+import {
+  loadPublicationReadingProgress,
+  savePublicationReadingProgress,
+  setPublicationLibraryAccess,
+} from "./publishingService.js";
 
 function accessLabel(publication) {
   const labels = {
@@ -28,6 +40,9 @@ export default function InteractiveReader({ publications, courses = [], currentU
   const [price, setPrice] = useState("");
   const [rentalDays, setRentalDays] = useState(30);
   const [publishBusy, setPublishBusy] = useState(false);
+  const [readerProgress, setReaderProgress] = useState(null);
+  const [interactionState, setInteractionState] = useState({});
+  const [progressBusy, setProgressBusy] = useState(false);
 
   const selected = useMemo(
     () => publications.find((publication) => publication.id === selectedId) || publications[0] || null,
@@ -36,24 +51,50 @@ export default function InteractiveReader({ publications, courses = [], currentU
   const manifest = selected?.edubook_manifest || {};
   const chapters = Array.isArray(manifest.chapters) ? manifest.chapters : [];
   const chapter = chapters[chapterIndex] || null;
-  const progress = readingProgress(chapterIndex, chapters.length);
+  const localProgress = readingProgress(chapterIndex, chapters.length);
+  const progress = Math.max(Number(readerProgress?.completion_percent) || 0, localProgress);
+  const learningLayer = useMemo(() => learningLayerFromManifest(manifest), [manifest]);
+  const activeChapterLayer = useMemo(
+    () => chapterLearningLayer(learningLayer, chapter?.id || ""),
+    [chapter?.id, learningLayer],
+  );
+  const isFinalChapter = chapters.length > 0 && chapterIndex === chapters.length - 1;
+  const completionReadiness = useMemo(
+    () => eduBookCompletionReadiness(learningLayer, interactionState),
+    [interactionState, learningLayer],
+  );
+  const isOwner = Boolean(selected?.owner_id && selected.owner_id === currentUserId);
+  const showLearnerProgress = Boolean(selected?.status === "published" && (libraryMode || !isOwner));
 
   useEffect(() => {
     if (!selected?.id) {
       setAnnotations([]);
       return;
     }
-    setChapterIndex(0);
-    supabase
-      .from("reading_annotations")
-      .select("*")
-      .eq("publication_id", selected.id)
-      .order("created_at", { ascending: false })
-      .then(({ data, error: annotationError }) => {
-        if (annotationError) setError(annotationError.message);
-        else setAnnotations(data || []);
-      });
-  }, [selected?.id]);
+    let active = true;
+    Promise.all([
+      supabase
+        .from("reading_annotations")
+        .select("*")
+        .eq("publication_id", selected.id)
+        .order("created_at", { ascending: false }),
+      selected.status === "published"
+        ? loadPublicationReadingProgress(selected.id, currentUserId)
+        : Promise.resolve({ data: null, error: null }),
+    ]).then(([annotationResult, progressResult]) => {
+      if (!active) return;
+      if (annotationResult.error) setError(annotationResult.error.message);
+      else setAnnotations(annotationResult.data || []);
+      if (progressResult.error) setError(progressResult.error.message);
+      const saved = progressResult.data || null;
+      setReaderProgress(saved);
+      setInteractionState(saved?.interaction_state || {});
+      setChapterIndex(saved && saved.chapter_index < chapters.length
+        ? saved.chapter_index
+        : 0);
+    });
+    return () => { active = false; };
+  }, [chapters.length, currentUserId, selected?.id, selected?.status]);
 
   useEffect(() => {
     setAccessModel(selected?.access_model || "private");
@@ -61,7 +102,14 @@ export default function InteractiveReader({ publications, courses = [], currentU
     setCourseId(selected?.course_id || "");
     setPrice(selected?.price_cents ? (selected.price_cents / 100).toFixed(2) : "");
     setRentalDays(selected?.rental_days || 30);
-  }, [selected?.id]);
+  }, [
+    selected?.access_model,
+    selected?.course_id,
+    selected?.id,
+    selected?.price_cents,
+    selected?.reading_mode,
+    selected?.rental_days,
+  ]);
 
   async function saveLibraryAccess() {
     setPublishBusy(true);
@@ -126,6 +174,45 @@ export default function InteractiveReader({ publications, courses = [], currentU
     else setAnnotations((items) => items.filter((item) => item.id !== id));
   }
 
+  async function persistProgress(nextChapterIndex = chapterIndex, complete = false) {
+    const nextChapter = chapters[nextChapterIndex];
+    if (!selected?.id || !nextChapter || selected.status !== "published") return false;
+    setProgressBusy(true);
+    setError("");
+    setNotice("");
+    const result = await savePublicationReadingProgress({
+      publicationId: selected.id,
+      chapterIndex: nextChapterIndex,
+      chapterId: nextChapter.id,
+      interactionState,
+      complete,
+    });
+    if (result.error) {
+      setError(result.error.message || "Your reading progress could not be saved.");
+      setProgressBusy(false);
+      return false;
+    }
+    setReaderProgress(result.data || null);
+    setNotice(complete
+      ? `Book completed${result.data?.auto_score === null || result.data?.auto_score === undefined ? "." : ` · knowledge score ${Number(result.data.auto_score).toFixed(0)}%.`}`
+      : "Reading place, answers, and private discussion notes saved.");
+    setProgressBusy(false);
+    return true;
+  }
+
+  async function moveChapter(nextChapterIndex) {
+    setChapterIndex(nextChapterIndex);
+    if (showLearnerProgress) await persistProgress(nextChapterIndex, false);
+  }
+
+  async function completeBook() {
+    if (selected.reading_mode === "interactive" && !completionReadiness.ready) {
+      setError(`Answer ${completionReadiness.remaining} remaining knowledge or quiz question${completionReadiness.remaining === 1 ? "" : "s"} before completing this EduBook.`);
+      return;
+    }
+    await persistProgress(chapterIndex, true);
+  }
+
   if (loading) return <div className="studio-library-empty">Loading the reading library…</div>;
   if (!selected) {
     return (
@@ -140,7 +227,7 @@ export default function InteractiveReader({ publications, courses = [], currentU
 
   return (
     <>
-      {!libraryMode && selected.owner_id === currentUserId && <section className="studio-publication-release-panel">
+      {!libraryMode && isOwner && <section className="studio-publication-release-panel">
         <div><span className="studio-kicker">ALEX B. MORRISON PLACEMENT</span><h3>Publish once, then choose where this book belongs.</h3><p>Keep one source record. It can stay private, be assigned to a course, open in the public Library, or enter commercial review.</p></div>
         <div className="studio-field-grid">
           <label>Book experience<select value={readingMode} disabled={publishBusy} onChange={(event) => setReadingMode(event.target.value)}><option value="read_only">Read-only book</option><option value="interactive">Interactive EduBook · checks, quizzes, notes, progress</option></select></label>
@@ -152,6 +239,7 @@ export default function InteractiveReader({ publications, courses = [], currentU
         <div className="studio-publication-release-actions"><button className="studio-primary-button" type="button" disabled={publishBusy || (accessModel === "assigned" && !courseId) || (["purchase", "rental"].includes(accessModel) && Number(price) <= 0)} onClick={saveLibraryAccess}>{publishBusy ? "Saving placement…" : "Save publication placement"}</button><span>Current record · {selected.status} · {accessLabel(selected)}</span></div>
         {["purchase", "rental"].includes(accessModel) && <p className="studio-commerce-review-note">A price prepares the catalog record only. The browser cannot grant paid access, charge a student, or release seller funds.</p>}
       </section>}
+      {!libraryMode && isOwner && selected.reading_mode === "interactive" && selected.conversion_status === "ready" && <EduBookTeachingLayerEditor publication={selected} chapters={chapters} activeChapterIndex={chapterIndex} onSaved={onRefresh} />}
       <div className="studio-reader-layout">
       <aside className="studio-reader-library">
         <div className="studio-panel-heading">
@@ -203,10 +291,14 @@ export default function InteractiveReader({ publications, courses = [], currentU
                 ? <h4 key={block.id}>{block.text}</h4>
                 : <p key={block.id}>{block.text}</p>
             ))}
+            {selected.reading_mode === "interactive" && activeChapterLayer.knowledgeChecks.length > 0 && <section className="studio-reader-learning-block"><span className="studio-kicker">KNOWLEDGE CHECK</span><h4>Check what you understood.</h4>{activeChapterLayer.knowledgeChecks.map((question) => <fieldset key={question.id}><legend>{question.prompt}</legend>{question.options.map((option) => <label key={option}><input type="radio" name={`edubook-${question.id}`} checked={interactionState.answers?.[question.id] === option} onChange={() => setInteractionState((current) => withEduBookAnswer(current, question.id, option))} /> {option}</label>)}</fieldset>)}</section>}
+            {selected.reading_mode === "interactive" && activeChapterLayer.discussionPrompts.length > 0 && <section className="studio-reader-learning-block"><span className="studio-kicker">REFLECT &amp; DISCUSS</span><h4>Develop the thought before sharing it.</h4>{activeChapterLayer.discussionPrompts.map((prompt) => <label key={prompt.id}>{prompt.prompt}<textarea rows={3} value={interactionState.discussionResponses?.[prompt.id] || ""} onChange={(event) => setInteractionState((current) => withEduBookDiscussionResponse(current, prompt.id, event.target.value))} placeholder="Keep a private draft here. Course discussion sharing remains a separate action." /></label>)}</section>}
+            {selected.reading_mode === "interactive" && isFinalChapter && learningLayer.finalQuiz.length > 0 && <section className="studio-reader-learning-block is-final"><span className="studio-kicker">FINAL QUIZ</span><h4>Finish the book with a short review.</h4>{learningLayer.finalQuiz.map((question) => <fieldset key={question.id}><legend>{question.prompt}</legend>{question.options.map((option) => <label key={option}><input type="radio" name={`edubook-${question.id}`} checked={interactionState.answers?.[question.id] === option} onChange={() => setInteractionState((current) => withEduBookAnswer(current, question.id, option))} /> {option}</label>)}</fieldset>)}</section>}
             <div className="studio-reader-navigation">
-              <button type="button" disabled={chapterIndex === 0} onClick={() => setChapterIndex((index) => Math.max(0, index - 1))}>← Previous</button>
-              <button type="button" disabled={chapterIndex === chapters.length - 1} onClick={() => setChapterIndex((index) => Math.min(chapters.length - 1, index + 1))}>Next chapter →</button>
+              <button type="button" disabled={chapterIndex === 0 || progressBusy} onClick={() => moveChapter(Math.max(0, chapterIndex - 1))}>← Previous</button>
+              {!isFinalChapter && <button type="button" disabled={progressBusy} onClick={() => moveChapter(Math.min(chapters.length - 1, chapterIndex + 1))}>{progressBusy ? "Saving…" : "Next chapter →"}</button>}
             </div>
+            {showLearnerProgress && <div className="studio-reader-completion-actions"><button type="button" disabled={progressBusy} onClick={() => persistProgress(chapterIndex, false)}>{progressBusy ? "Saving…" : "Save my place"}</button>{isFinalChapter && <button className="studio-primary-button" type="button" disabled={progressBusy || (selected.reading_mode === "interactive" && !completionReadiness.ready)} onClick={completeBook}>{readerProgress?.status === "completed" ? "Completed" : completionReadiness.remaining ? `${completionReadiness.remaining} questions remaining` : "Complete this book"}</button>}<span>{readerProgress?.status === "completed" ? "Completed" : `${Math.round(progress)}% read`}</span></div>}
           </article>
         )}
       </main>

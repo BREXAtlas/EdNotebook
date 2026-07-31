@@ -47,6 +47,12 @@ signature-verified `checkout.session.completed` or
 Full confirmed refunds and lost disputes revoke only marketplace-created access;
 they do not remove an independently assigned or enrolled course membership.
 
+Interactive EduBooks use the same commercial entitlement. Their professor
+teaching layer is versioned separately from source chapters, answer keys remain
+server-side, and learner progress writes recheck current publication access.
+Refund or dispute revocation therefore blocks subsequent book-content and
+progress writes without exposing learning records in the seller ledger.
+
 ## Refunds, disputes, and payouts
 
 Buyers submit a refund reason from Purchases & rentals. A platform owner records

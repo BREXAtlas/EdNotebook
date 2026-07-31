@@ -23,6 +23,7 @@
     "test:social-learning": "node --test src/social-learning/socialLearningModel.test.js src/social-learning/socialLearningMigration.test.js src/social-learning/socialLearningUx.static.test.js src/social-learning/campusSocialMigration.test.js src/social-learning/campusSocialUx.static.test.js",
     "test:course-communication": "node --test src/communication/courseCommunicationModel.test.js src/communication/courseCommunicationUx.static.test.js",
     "test:commercial-publishing": "node --test src/marketplace/commercialPublishingUx.static.test.js",
+    "test:edubook-publishing": "node --test src/studio/edubookLearningModel.test.js src/studio/edubookLearningUx.static.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },

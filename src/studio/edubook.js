@@ -1,3 +1,5 @@
+import { emptyEduBookLearningLayer } from "./edubookLearningModel.js";
+
 export const EDUBOOK_VERSION = "EduBook/1.0";
 
 function cleanTitle(value, fallback) {
@@ -66,6 +68,7 @@ export function textToEduBook({ title, author, sourceText, description = "", rea
       quizzes: readingMode !== "read_only",
       discussion: readingMode !== "read_only",
     },
+    learningLayer: emptyEduBookLearningLayer(),
     chapters,
   };
 }
