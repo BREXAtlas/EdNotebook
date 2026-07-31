@@ -8,6 +8,13 @@ import {
   serializeReportToCsv,
 } from "./controlModel.js";
 import ResearchPilotGatePanel from "../research/ResearchPilotGatePanel.jsx";
+import {
+  formatMarketplaceDate,
+  formatMarketplaceMoney,
+  marketplaceReceiptLabel,
+  marketplaceStatusLabel,
+  marketplaceStatusTone,
+} from "../marketplace/marketplacePresentation.js";
 import "./admin-control-center.css";
 
 const TABS = Object.freeze([
@@ -172,6 +179,16 @@ function StatCard({ label, value, note }) {
     <article className="ac-stat-card">
       <span>{label}</span>
       <strong>{safeNumber(value).toLocaleString("en-US")}</strong>
+      {note ? <small>{note}</small> : null}
+    </article>
+  );
+}
+
+function MoneyStatCard({ label, cents, note }) {
+  return (
+    <article className="ac-stat-card">
+      <span>{label}</span>
+      <strong>{formatMarketplaceMoney(cents)}</strong>
       {note ? <small>{note}</small> : null}
     </article>
   );
@@ -1469,6 +1486,7 @@ function MarketplacePanel() {
   const applications = marketplace?.applications || [];
   const rights = marketplace?.rights_reviews || [];
   const listings = marketplace?.listings || [];
+  const orders = marketplace?.orders || [];
   const refunds = marketplace?.refunds || [];
   const disputes = marketplace?.disputes || [];
   const taxControls = marketplace?.tax_controls || [];
@@ -1484,6 +1502,8 @@ function MarketplacePanel() {
       <StatCard label="Rights reviews" value={stats.pending_rights || 0} note="Course and book scope" />
       <StatCard label="Listing reviews" value={stats.pending_listings || 0} note="Price and release" />
       <StatCard label="Refunds / disputes" value={(stats.open_refunds || 0) + (stats.open_disputes || 0)} note="Money and access reconciliation" />
+      <MoneyStatCard label="Processed" cents={stats.gross_processed_cents || 0} note={`${stats.orders || 0} governed orders`} />
+      <MoneyStatCard label="Paid payouts" cents={stats.paid_payout_cents || 0} note="Connected-account evidence" />
     </div>
 
     <section className="ac-subsection"><h3>Seller verification <span className="ac-count-badge">{applications.length}</span></h3><p>Stripe-hosted onboarding verifies identity and payout details. Approve EdNotebook seller status only when details, charges, payouts, rights attestation, and catalog responsibility are all ready.</p><div className="ac-review-list">
@@ -1499,6 +1519,12 @@ function MarketplacePanel() {
     <section className="ac-subsection"><h3>Tax responsibility <span className="ac-count-badge">{taxControls.length}</span></h3><p>The approved record must match actual Stripe Tax registration and marketplace liability. Evidence is saved first, then approved as a separate decision. No approval means no checkout.</p><div className="ac-review-list">{taxControls.map((tax) => <article key={tax.id}><div className="ac-review-heading"><div><strong>{tax.jurisdiction_label}</strong><span>{tax.provider} · liability: {tax.liability}</span></div><StatusPill status={tax.status} /></div>{tax.status !== "retired" ? <><div className="ac-form-grid"><label>Stripe Tax registration / evidence reference<input value={taxDrafts[tax.id]?.reference ?? tax.registration_reference ?? ""} onChange={(event) => setTaxDrafts((previous) => ({ ...previous, [tax.id]: { ...previous[tax.id], reference:event.target.value } }))} /></label><label>Tax liability<select value={taxDrafts[tax.id]?.liability || tax.liability} onChange={(event) => setTaxDrafts((previous) => ({ ...previous, [tax.id]: { ...previous[tax.id], liability:event.target.value } }))}><option value="platform">EdNotebook platform</option><option value="seller">Connected seller</option></select></label></div><MarketplaceReviewNotes type="tax" id={tax.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--quiet" type="button" disabled={Boolean(busy)} onClick={() => configureTax(tax)}>Save tax evidence</button><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !tax.registration_reference} onClick={() => decide("tax",tax.id,"approved")}>Approve tax control</button>{tax.status === "approved" ? <button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("tax",tax.id,"suspended")}>Suspend</button> : null}</div></> : null}</article>)}</div></section>
 
     <section className="ac-subsection"><h3>Listing release <span className="ac-count-badge">{listings.length}</span></h3><p>The release action rechecks seller, Stripe, rights, tax, price, rental period, and source publication state in the database transaction.</p><div className="ac-review-list">{listings.map((listing) => <article key={listing.id}><div className="ac-review-heading"><div><strong>{listing.title_snapshot}</strong><span>{titleCase(listing.item_kind)} · {titleCase(listing.access_model)} · ${(listing.price_cents/100).toFixed(2)} {listing.currency.toUpperCase()}</span></div><StatusPill status={listing.status} /></div>{["submitted","reviewing"].includes(listing.status) ? <><MarketplaceReviewNotes type="listing" id={listing.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"approved")}>Approve and publish</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"retired")}>Retire listing</button></div></> : listing.status === "published" ? <><MarketplaceReviewNotes type="listing" id={listing.id} notes={notes} setNotes={setNotes} /><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"suspended")}>Suspend checkout</button></> : null}</article>)}{!listings.length ? <div className="ac-empty">No commercial listings have been submitted.</div> : null}</div></section>
+
+    <section className="ac-subsection"><h3>Transaction trace <span className="ac-count-badge">{orders.length}</span></h3><p>One sanitized order record connects the catalog item, processor state, learning entitlement, refund, and dispute outcome. Payment credentials and buyer identity are not shown here.</p>{orders.length ? <div className="ac-marketplace-transactions">{orders.map((order) => <article key={order.id}>
+      <header><div><strong>{order.title_snapshot}</strong><span>{order.organization_name} · {marketplaceReceiptLabel(order.id)} · {formatMarketplaceDate(order.created_at)}</span></div><i className={marketplaceStatusTone(order.status)}>{marketplaceStatusLabel(order.status)}</i></header>
+      <dl><div><dt>Subtotal</dt><dd>{formatMarketplaceMoney(order.subtotal_cents, order.currency)}</dd></div><div><dt>Tax</dt><dd>{formatMarketplaceMoney(order.tax_cents, order.currency)}</dd></div><div><dt>Total</dt><dd>{formatMarketplaceMoney(order.total_cents, order.currency)}</dd></div><div><dt>Seller allocation</dt><dd>{formatMarketplaceMoney(order.seller_net_cents, order.currency)}</dd></div></dl>
+      <footer><span>Order · {marketplaceStatusLabel(order.status)}</span><span>Access · {marketplaceStatusLabel(order.entitlement_status || "pending")}</span>{order.refund_status ? <span>Refund · {marketplaceStatusLabel(order.refund_status)}</span> : null}{order.dispute_status ? <span>Dispute · {marketplaceStatusLabel(order.dispute_status)}</span> : null}</footer>
+    </article>)}</div> : <div className="ac-empty">No marketplace orders have been created.</div>}</section>
 
     <section className="ac-subsection"><h3>Refund operations <span className="ac-count-badge">{refunds.length}</span></h3><p>Approval records the platform decision. Processor submission is separate and reverses the connected transfer and application fee. Only Stripe webhook confirmation finalizes the ledger and full-refund access revocation.</p><div className="ac-review-list">{refunds.map((refund) => <article key={refund.id}><div className="ac-review-heading"><div><strong>${(refund.amount_cents/100).toFixed(2)} refund</strong><span>Order {refund.order_id} · paid ${(refund.order_total_cents/100).toFixed(2)}</span></div><StatusPill status={refund.status} /></div><p>{refund.reason}</p>{["requested","reviewing"].includes(refund.status) ? <><MarketplaceReviewNotes type="refund" id={refund.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("refund",refund.id,"approved")}>Approve refund</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("refund",refund.id,"declined")}>Decline</button></div></> : refund.status === "approved" ? <button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => processRefund(refund.id)}>Send approved refund to Stripe</button> : null}</article>)}{!refunds.length ? <div className="ac-empty">No refund requests.</div> : null}</div></section>
 

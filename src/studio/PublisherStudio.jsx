@@ -17,6 +17,36 @@ import {
   uploadCloudFile,
   validateFile,
 } from "./storageService.js";
+import {
+  formatMarketplaceDate,
+  formatMarketplaceMoney,
+  marketplaceReceiptLabel,
+  marketplaceStatusLabel,
+  marketplaceStatusTone,
+} from "../marketplace/marketplacePresentation.js";
+
+function SellerCommerceLedger({ dashboard }) {
+  const sales = dashboard.sales || [];
+  const payouts = dashboard.payouts || [];
+  const summary = dashboard.seller_summary || {};
+  return <section className="marketplace-step-card marketplace-seller-ledger">
+    <div><span>OPERATIONS</span><h3>Sales, access, refunds, and payouts</h3><p>Each row follows the same governed order the student sees. Buyer identity and payment credentials remain private.</p></div>
+    <dl className="seller-commerce-summary">
+      <div><dt>Orders</dt><dd>{summary.order_count || 0}</dd></div>
+      <div><dt>Gross processed</dt><dd>{formatMarketplaceMoney(summary.gross_processed_cents || 0)}</dd></div>
+      <div><dt>Platform fees</dt><dd>{formatMarketplaceMoney(summary.platform_fees_cents || 0)}</dd></div>
+      <div><dt>Seller allocation</dt><dd>{formatMarketplaceMoney(summary.seller_allocation_cents || 0)}</dd></div>
+      <div><dt>Refunded</dt><dd>{formatMarketplaceMoney(summary.refunded_cents || 0)}</dd></div>
+      <div><dt>Paid payouts</dt><dd>{formatMarketplaceMoney(summary.paid_payout_cents || 0)}</dd></div>
+    </dl>
+    {sales.length ? <div className="seller-order-ledger">{sales.map((order) => <article key={order.id}>
+      <header><div><span>{order.item_kind} · {order.access_model}</span><strong>{order.title_snapshot}</strong><small>{marketplaceReceiptLabel(order.id)} · {formatMarketplaceDate(order.created_at)}</small></div><span className={marketplaceStatusTone(order.status)}>{marketplaceStatusLabel(order.status)}</span></header>
+      <dl><div><dt>Customer total</dt><dd>{formatMarketplaceMoney(order.total_cents, order.currency)}</dd></div><div><dt>Tax</dt><dd>{formatMarketplaceMoney(order.tax_cents, order.currency)}</dd></div><div><dt>Platform fee</dt><dd>{formatMarketplaceMoney(order.platform_fee_cents, order.currency)}</dd></div><div><dt>Seller allocation</dt><dd>{formatMarketplaceMoney(order.seller_net_cents, order.currency)}</dd></div></dl>
+      <footer><span>Access: {marketplaceStatusLabel(order.entitlement_status || "pending")}{order.entitlement_expires_at ? ` through ${formatMarketplaceDate(order.entitlement_expires_at)}` : ""}</span>{order.refund_status ? <span>Refund: {marketplaceStatusLabel(order.refund_status)}</span> : null}{order.dispute_status ? <span>Dispute: {marketplaceStatusLabel(order.dispute_status)}</span> : null}<a href={order.course_id ? `#/publishers?course=${order.course_id}` : "#/publishers"}>View Library</a></footer>
+    </article>)}</div> : <div className="studio-commerce-empty">No completed bookstore activity yet. Published listings will reconcile here after a verified checkout event.</div>}
+    {payouts.length ? <div className="seller-payout-ledger"><h4>Connected-account payouts</h4>{payouts.slice(0, 10).map((payout) => <article key={payout.id}><strong>{formatMarketplaceMoney(payout.amount_cents, payout.currency)}</strong><span>{marketplaceStatusLabel(payout.status)}</span><small>{payout.arrival_at ? `Arrival ${formatMarketplaceDate(payout.arrival_at)}` : formatMarketplaceDate(payout.created_at)}</small></article>)}</div> : null}
+  </section>;
+}
 
 const SOURCE_ACCEPT = ".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.epub,.zip";
 
@@ -492,15 +522,7 @@ export function PublisherApplication() {
         {(dashboard.listings || []).length ? <div className="marketplace-status-list">{dashboard.listings.map((listing) => <article key={listing.id}><strong>{listing.title_snapshot}</strong><span>{listing.access_model} · ${(listing.price_cents / 100).toFixed(2)}</span><em>{listing.status}</em></article>)}</div> : null}
       </form>
 
-      <section className="marketplace-step-card">
-        <div><span>OPERATIONS</span><h3>Sales, refunds, disputes, and payouts</h3><p>Students request refunds from their purchase record. Platform-owner review, Stripe transfer reversal, disputes, and connected-account payouts remain visible here after activity begins.</p></div>
-        <dl className="marketplace-readiness-grid">
-          <div><dt>Sales</dt><dd>{(dashboard.sales || []).length}</dd></div>
-          <div><dt>Refunds</dt><dd>{(dashboard.refunds || []).length}</dd></div>
-          <div><dt>Disputes</dt><dd>{(dashboard.disputes || []).length}</dd></div>
-          <div><dt>Payout events</dt><dd>{(dashboard.payouts || []).length}</dd></div>
-        </dl>
-      </section>
+      <SellerCommerceLedger dashboard={dashboard} />
     </div>
   );
 }

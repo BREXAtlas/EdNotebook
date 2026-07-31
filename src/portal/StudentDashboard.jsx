@@ -64,6 +64,17 @@ function DashboardTour({ step, setStep, showOnSignIn, onShowOnSignIn }) {
 
 function GradeStatus({ status }) { return <span className={`grade-status is-${status}`}>{status}</span>; }
 
+function notificationLabel(type) {
+  if (type === "course_completed") return "Badge earned";
+  if (type === "course_assigned") return "Course assigned";
+  if (type === "marketplace_purchase") return "Purchase ready";
+  if (type === "marketplace_rental") return "Rental ready";
+  if (type === "marketplace_refund") return "Refund completed";
+  if (type === "marketplace_dispute") return "Payment dispute";
+  if (type === "marketplace_access_ended") return "Library access";
+  return "Enrollment";
+}
+
 function StudentNotificationCenter({ notifications = [], onOpen }) {
   const [open, setOpen] = useState(false);
   const unread = notifications.filter((notification) => !notification.read_at);
@@ -79,7 +90,7 @@ function StudentNotificationCenter({ notifications = [], onOpen }) {
       {unread.length > 0 && <i>{unread.length > 9 ? "9+" : unread.length}</i>}
     </button>
     {open && <section className="student-notification-popover" aria-label="Recent student notifications">
-      <header><div><strong>Notifications</strong><span>Enrollment, completion, and course updates</span></div><b>{unread.length} new</b></header>
+      <header><div><strong>Notifications</strong><span>Courses, feedback, rewards, and Library access</span></div><b>{unread.length} new</b></header>
       <div>
         {notifications.slice(0, 8).map((notification) => <button
           className={notification.read_at ? "" : "is-unread"}
@@ -90,7 +101,7 @@ function StudentNotificationCenter({ notifications = [], onOpen }) {
             setOpen(false);
           }}
         >
-          <span>{notification.notification_type === "course_completed" ? "Badge earned" : notification.notification_type === "course_assigned" ? "Course assigned" : "Enrollment"}</span>
+          <span>{notificationLabel(notification.notification_type)}</span>
           <strong>{notification.title}</strong>
           <small>{notification.body}</small>
           <time dateTime={notification.created_at}>{new Date(notification.created_at).toLocaleString()}</time>
@@ -458,6 +469,10 @@ export default function StudentDashboard({
       }
     }
     setDemoMode(false);
+    if (notification.route === "library") {
+      window.location.hash = "#/publishers";
+      return;
+    }
     setNotificationCourseId(notification.course_id || null);
     setTab(notification.route === "rewards" ? "rewards" : "classes");
   }
