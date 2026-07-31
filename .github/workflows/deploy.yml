@@ -70,6 +70,9 @@ jobs:
       - name: Test governed commercial publishing experience
         run: npm run test:commercial-publishing
 
+      - name: Test governed EduBook publishing experience
+        run: npm run test:edubook-publishing
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 
@@ -194,6 +197,15 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/commercial_publishing_gate.sql
+
+      - name: Run governed EduBook learning gate
+        env:
+          PGCONNECTTIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/edubook_learning_gate.sql
 
       - name: Stop the disposable local database
         if: always()
