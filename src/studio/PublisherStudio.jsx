@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
 import { supabase } from "../supabaseClient.js";
 import { textToEduBook } from "./edubook.js";
 import {
@@ -46,6 +47,66 @@ function SellerCommerceLedger({ dashboard }) {
       <footer><span>Access: {marketplaceStatusLabel(order.entitlement_status || "pending")}{order.entitlement_expires_at ? ` through ${formatMarketplaceDate(order.entitlement_expires_at)}` : ""}</span>{order.refund_status ? <span>Refund: {marketplaceStatusLabel(order.refund_status)}</span> : null}{order.dispute_status ? <span>Dispute: {marketplaceStatusLabel(order.dispute_status)}</span> : null}<a href={order.course_id ? `#/publishers?course=${order.course_id}` : "#/publishers"}>View Library</a></footer>
     </article>)}</div> : <div className="studio-commerce-empty">No completed bookstore activity yet. Published listings will reconcile here after a verified checkout event.</div>}
     {payouts.length ? <div className="seller-payout-ledger"><h4>Connected-account payouts</h4>{payouts.slice(0, 10).map((payout) => <article key={payout.id}><strong>{formatMarketplaceMoney(payout.amount_cents, payout.currency)}</strong><span>{marketplaceStatusLabel(payout.status)}</span><small>{payout.arrival_at ? `Arrival ${formatMarketplaceDate(payout.arrival_at)}` : formatMarketplaceDate(payout.created_at)}</small></article>)}</div> : null}
+  </section>;
+}
+
+function StripeConnectPayoutPanel({ config, onClose, onError }) {
+  const accountManagementHost = useRef(null);
+  const payoutsHost = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    let initialClientSecret = config.clientSecret;
+
+    const fetchClientSecret = async () => {
+      if (initialClientSecret) {
+        const secret = initialClientSecret;
+        initialClientSecret = "";
+        return secret;
+      }
+      const { data, error } = await openSellerPayoutDashboard();
+      if (error) throw error;
+      if (!data?.payoutAccountSessionClientSecret) {
+        throw new Error("Stripe did not return a fresh connected-account session.");
+      }
+      return data.payoutAccountSessionClientSecret;
+    };
+
+    const stripeConnect = loadConnectAndInitialize({
+      publishableKey: config.publishableKey,
+      fetchClientSecret,
+      appearance: {
+        overlays: "dialog",
+        variables: {
+          colorPrimary: "#1d4ed8",
+          fontFamily: "Inter, system-ui, sans-serif",
+          borderRadius: "10px",
+        },
+      },
+    });
+    const accountManagement = stripeConnect.create("account-management");
+    const payouts = stripeConnect.create("payouts");
+    const handleLoadError = ({ error }) => {
+      if (active) onError(error?.message || "Stripe payout controls could not be loaded.");
+    };
+    accountManagement.setOnLoadError(handleLoadError);
+    payouts.setOnLoadError(handleLoadError);
+    accountManagementHost.current?.appendChild(accountManagement);
+    payoutsHost.current?.appendChild(payouts);
+
+    return () => {
+      active = false;
+      accountManagementHost.current?.replaceChildren();
+      payoutsHost.current?.replaceChildren();
+    };
+  }, [config, onError]);
+
+  return <section className="stripe-connect-payout-panel" aria-label="Secure Stripe payout controls">
+    <header><div><span>STRIPE SECURE COMPONENTS</span><h4>Bank account and payout settings</h4><p>Stripe renders these controls and authenticates sensitive changes. EdNotebook cannot read the bank or identity details entered here.</p></div><button type="button" className="studio-secondary-button" onClick={onClose}>Close payout controls</button></header>
+    <div className="stripe-connect-payout-grid">
+      <section><h5>Account and payout destination</h5><div ref={accountManagementHost} /></section>
+      <section><h5>Payouts and schedule</h5><div ref={payoutsHost} /></section>
+    </div>
   </section>;
 }
 
@@ -325,6 +386,7 @@ export function PublisherApplication() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [payoutConfig, setPayoutConfig] = useState(null);
 
   async function refreshMarketplace() {
     const [marketplace, courses, publications] = await Promise.all([
@@ -412,8 +474,18 @@ export function PublisherApplication() {
     try {
       const { data, error: payoutError } = await openSellerPayoutDashboard();
       if (payoutError) throw payoutError;
-      if (!data?.payoutDashboardUrl) throw new Error("Stripe did not return the secure payout dashboard.");
-      window.location.assign(data.payoutDashboardUrl);
+      if (data?.payoutDashboardUrl) {
+        window.location.assign(data.payoutDashboardUrl);
+        return;
+      }
+      if (data?.payoutExperience !== "embedded" || !data?.payoutPublishableKey || !data?.payoutAccountSessionClientSecret) {
+        throw new Error("Stripe did not return secure payout controls.");
+      }
+      setPayoutConfig({
+        publishableKey: data.payoutPublishableKey,
+        clientSecret: data.payoutAccountSessionClientSecret,
+      });
+      setNotice("Stripe secure payout controls are open below. Sensitive bank and identity details stay with Stripe.");
     } catch (payoutError) {
       setError(payoutError.message || "The Stripe payout dashboard could not be opened.");
     } finally {
@@ -525,6 +597,7 @@ export function PublisherApplication() {
           <button className="studio-primary-button" type="button" disabled={busy || !application} onClick={openStripeOnboarding}>{application?.verification_status === "verified" ? "Refresh Stripe readiness" : "Open secure payout form"}</button>
           {application?.details_submitted ? <button className="studio-secondary-button" type="button" disabled={busy} onClick={manageStripePayouts}>Manage bank account and payouts</button> : null}
         </div>
+        {payoutConfig ? <StripeConnectPayoutPanel config={payoutConfig} onClose={() => setPayoutConfig(null)} onError={setError} /> : null}
       </section>
 
       <form className="marketplace-step-card" onSubmit={submitRights}>
