@@ -163,6 +163,11 @@ export async function saveResourceRecord(record) {
     transcript_text: record.transcript_text || "",
     accessibility_notes: record.accessibility_notes || "",
     is_decorative: Boolean(record.is_decorative),
+    learning_requirement: record.learning_requirement || "optional",
+    completion_rule: record.completion_rule || "none",
+    completion_target_key: record.completion_target_key || null,
+    learning_due_at: record.learning_due_at || null,
+    estimated_minutes: Math.max(1, Number(record.estimated_minutes) || 15),
     metadata: record.metadata || {},
   };
 

@@ -219,11 +219,12 @@ export function buildDueNotificationCandidates(
     const notificationContext = {
       calendarItemId: item.id,
       dueAt: due.toISOString(),
+      workType: item.workType || "assignment",
       description: cleanText(
         item.description,
-        "Open the assignment for its professor-published details.",
+        "Open the professor-published course item for details.",
       ),
-      route: {
+      route: item.route || {
         view: "assignments",
         workId: item.sourceWorkId || item.id,
       },

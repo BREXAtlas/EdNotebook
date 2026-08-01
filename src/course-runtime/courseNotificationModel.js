@@ -106,7 +106,9 @@ export function buildStudentNotificationFeed({
     kind: "calendar-reminder",
     label: candidate.phase === "rescue"
       ? "Calendar recovery"
-      : "Calendar reminder",
+      : candidate.workType === "media_requirement"
+        ? "Required media reminder"
+        : "Calendar reminder",
   }));
   const candidateCalendarIds = new Set(
     dueCandidates.map((candidate) => candidate.calendarItemId),
@@ -130,11 +132,15 @@ export function buildStudentNotificationFeed({
       body: `${workflow.label}. ${workflow.nextAction}`,
       description:
         item.description ||
-        "Open the assignment for its professor-published details.",
+        "Open the professor-published course item for details.",
       phase: "upcoming",
-      kind: "upcoming-assignment",
-      label: "Upcoming assignment",
-      route: {
+      kind: item.workType === "media_requirement"
+        ? "upcoming-required-media"
+        : "upcoming-assignment",
+      label: item.workType === "media_requirement"
+        ? "Upcoming required media"
+        : "Upcoming assignment",
+      route: item.route || {
         view: "assignments",
         workId: item.sourceWorkId || item.id,
       },

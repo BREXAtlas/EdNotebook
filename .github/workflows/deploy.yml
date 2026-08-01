@@ -79,6 +79,9 @@ jobs:
       - name: Test media accessibility, versioning, and evidence
         run: npm run test:media-accessibility
 
+      - name: Test governed media-to-learning integration
+        run: npm run test:media-learning
+
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
 
@@ -230,6 +233,15 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/media_accessibility_evidence_gate.sql
+
+      - name: Run governed media-to-learning workflow gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/media_learning_workflow_gate.sql
 
       - name: Stop the disposable local database
         if: always()

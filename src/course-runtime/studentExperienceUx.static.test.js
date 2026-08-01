@@ -144,7 +144,7 @@ test("student reminders, assignment details, and calendar use one route", () => 
   assert.match(runtime, /notification\.route\.workId/u);
   assert.match(runtime, /openPublishedWorkDetail/u);
   assert.match(runtime, /<PublishedWorkDetail/u);
-  assert.match(runtime, /onOpenAssignment=\{openPublishedWorkDetail\}/u);
+  assert.match(runtime, /onOpenAssignment=\{openDueWorkItem\}/u);
   assert.match(notificationCenter, /course-notification-badge/u);
   assert.match(notificationCenter, /Recent course notifications/u);
   assert.match(notificationCenter, /Open calendar and reminder settings/u);

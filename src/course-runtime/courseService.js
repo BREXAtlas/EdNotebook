@@ -182,6 +182,16 @@ export async function recordCourseMediaProgress(resourceId, event) {
   return { data, error, source: error ? "device" : "cloud" };
 }
 
+export async function loadPublishedCourseResources(publicationId) {
+  if (!isSupabaseConfigured || !isUuid(publicationId)) {
+    return { data: { resources: [] }, error: new Error("Course media sync is unavailable."), source: "device" };
+  }
+  const { data, error } = await supabase.rpc("get_published_course_resources", {
+    p_publication_id: publicationId,
+  });
+  return { data: data || { resources: [] }, error, source: error ? "device" : "cloud" };
+}
+
 export async function loadStudentCourseLinks(courseIds = []) {
   const ids = courseIds.filter(isUuid);
   if (!isSupabaseConfigured || !ids.length)

@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadResource } from "../studio/storageService.js";
 import { mediaKind, youtubePrivacyEmbedUrl } from "./courseMediaModel.js";
 import { accessibilityLabel, boundedPlaybackEvidence, mediaProgressLabel, shouldReportPlayback } from "./mediaEvidenceModel.js";
+import { mediaCompletionRuleLabel, mediaLearningStatus } from "./mediaLearningModel.js";
 import YouTubeEvidencePlayer from "./YouTubeEvidencePlayer.jsx";
 import "./ednotebook-media.css";
 import "./media-governance.css";
+import "./media-learning.css";
 
 function SourceDetails({ resource }) {
   if (!resource.source_label && !resource.license_label) return null;
@@ -16,7 +18,12 @@ function SourceDetails({ resource }) {
   );
 }
 
-export default function EdNotebookMediaReader({ resource, compact = false, personal = false, onRemove, onEvidence }) {
+function formatLearningDue(value) {
+  if (!value) return "No separate media deadline";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+export default function EdNotebookMediaReader({ resource, compact = false, personal = false, onRemove, onEvidence, onOpenLearningActivity }) {
   const kind = mediaKind(resource);
   const [active, setActive] = useState(false);
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
@@ -97,8 +104,17 @@ export default function EdNotebookMediaReader({ resource, compact = false, perso
   }
 
   const isSecureMedia = ["video", "audio", "image"].includes(kind) && resource.secure_file_id;
+  const learning = mediaLearningStatus(resource);
+  const resumeNativeMedia = (event) => {
+    const resumeAt = Number(resource.viewing_progress?.last_position_seconds) || 0;
+    if (
+      resource.viewing_progress?.status !== "completed" &&
+      resumeAt > 1 &&
+      resumeAt < event.currentTarget.duration - 1
+    ) event.currentTarget.currentTime = resumeAt;
+  };
   return (
-    <article className={`ed-media-reader is-${kind}${compact ? " is-compact" : ""}`}>
+    <article id={`course-media-${resource.id}`} tabIndex="-1" className={`ed-media-reader is-${kind}${compact ? " is-compact" : ""}`}>
       <header>
         <div>
           <span>{personal ? "MY PRIVATE RESOURCE" : kind === "youtube" ? "IN-PLATFORM VIDEO" : "COURSE RESOURCE"}</span>
@@ -107,6 +123,23 @@ export default function EdNotebookMediaReader({ resource, compact = false, perso
         {personal && onRemove && <button type="button" className="ed-media-remove" onClick={() => onRemove(resource)}>Remove</button>}
       </header>
       {resource.description && <p>{resource.description}</p>}
+      {!personal && resource.learning_requirement === "required" && (
+        <section className={`ed-media-learning is-${learning.status}`} aria-label="Required media learning step">
+          <div>
+            <strong>{learning.label}</strong>
+            <span>{mediaCompletionRuleLabel(resource.completion_rule)} · {formatLearningDue(resource.learning_due_at)}</span>
+          </div>
+          {learning.status !== "completed" && onOpenLearningActivity && (
+            <button type="button" onClick={() => onOpenLearningActivity(resource)}>
+              {resource.completion_rule === "knowledge_check"
+                ? "Open linked knowledge check"
+                : resource.completion_rule === "assignment"
+                  ? "Open linked assignment"
+                  : "Continue linked lesson"}
+            </button>
+          )}
+        </section>
+      )}
 
       {kind === "youtube" && !active && (
         <div className="ed-media-poster">
@@ -132,8 +165,8 @@ export default function EdNotebookMediaReader({ resource, compact = false, perso
       {isSecureMedia && !active && (
         <button type="button" className="ed-media-open" onClick={loadSecureMedia}>Open securely in EdNotebook</button>
       )}
-      {kind === "video" && secureUrl && <video ref={nativeMediaRef} controls preload="metadata" src={secureUrl} crossOrigin={resource.caption_url ? "anonymous" : undefined} onPlay={(event) => recordNativePlayback("started", event)} onTimeUpdate={(event) => recordNativePlayback("progress", event)} onPause={(event) => recordNativePlayback("paused", event)} onEnded={(event) => recordNativePlayback("completed", event)}>{resource.caption_mode === "webvtt" && resource.caption_url && <track kind="captions" src={resource.caption_url} srcLang={resource.caption_language} label={`${resource.caption_language} captions`} />}Your browser cannot play this video.</video>}
-      {kind === "audio" && secureUrl && <audio ref={nativeMediaRef} controls preload="metadata" src={secureUrl} onPlay={(event) => recordNativePlayback("started", event)} onTimeUpdate={(event) => recordNativePlayback("progress", event)} onPause={(event) => recordNativePlayback("paused", event)} onEnded={(event) => recordNativePlayback("completed", event)}>Your browser cannot play this audio.</audio>}
+      {kind === "video" && secureUrl && <video ref={nativeMediaRef} controls preload="metadata" src={secureUrl} crossOrigin={resource.caption_url ? "anonymous" : undefined} onLoadedMetadata={resumeNativeMedia} onPlay={(event) => recordNativePlayback("started", event)} onTimeUpdate={(event) => recordNativePlayback("progress", event)} onPause={(event) => recordNativePlayback("paused", event)} onEnded={(event) => recordNativePlayback("completed", event)}>{resource.caption_mode === "webvtt" && resource.caption_url && <track kind="captions" src={resource.caption_url} srcLang={resource.caption_language} label={`${resource.caption_language} captions`} />}Your browser cannot play this video.</video>}
+      {kind === "audio" && secureUrl && <audio ref={nativeMediaRef} controls preload="metadata" src={secureUrl} onLoadedMetadata={resumeNativeMedia} onPlay={(event) => recordNativePlayback("started", event)} onTimeUpdate={(event) => recordNativePlayback("progress", event)} onPause={(event) => recordNativePlayback("paused", event)} onEnded={(event) => recordNativePlayback("completed", event)}>Your browser cannot play this audio.</audio>}
       {kind === "video" && secureUrl && resource.caption_mode === "webvtt" && <button type="button" className="ed-media-open" onClick={enableNativeCaptions}>{captionsEnabled ? "Captions on" : "Turn captions on"}</button>}
       {kind === "image" && secureUrl && <img className="ed-media-image" src={secureUrl} alt={resource.is_decorative ? "" : resource.alt_text || resource.title} />}
 

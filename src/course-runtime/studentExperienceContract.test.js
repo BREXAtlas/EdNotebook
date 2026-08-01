@@ -228,6 +228,63 @@ test("professor-published due work reaches one synchronized student calendar", (
   );
 });
 
+test("required media joins due work, calendar, and syllabus without treating playback as completion", () => {
+  const requiredMedia = {
+    id: "media-snapshot-1",
+    title: "Evaluate an algorithm explainer",
+    description: "Watch the media, then submit the exact knowledge check.",
+    target_kind: "lesson",
+    target_key: "lesson-1",
+    learning_requirement: "required",
+    completion_rule: "knowledge_check",
+    completion_target_key: "check-1",
+    learning_due_at: "2026-08-08T04:59:00.000Z",
+    estimated_minutes: 20,
+    viewing_progress: { status: "completed", percent_complete: 100 },
+    learning_progress: { status: "pending" },
+  };
+  const dueWork = {
+    assignments: [],
+    gradeItems: [],
+    mediaRequirements: [requiredMedia],
+  };
+
+  const rows = publishedDueWorkRows(dueWork);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].status, "not-started");
+  assert.equal(rows[0].workType, "media_requirement");
+
+  const calendarItems = publishedCourseCalendarItems(dueWork, {
+    courseCode: "UNIV 1101",
+  });
+  assert.deepEqual(calendarItems[0].route, {
+    view: "lesson",
+    lessonId: "lesson-1",
+    resourceId: "media-snapshot-1",
+    workId: "media-snapshot-1",
+  });
+  assert.match(
+    publishedCourseSyllabusText(dueWork, {
+      courseCode: "UNIV 1101",
+      courseTitle: "Digital Literacy",
+    }),
+    /Evaluate an algorithm explainer due August 7, 2026 at 11:59 PM/u,
+  );
+
+  const completed = {
+    ...dueWork,
+    mediaRequirements: [{
+      ...requiredMedia,
+      learning_progress: { status: "completed" },
+    }],
+  };
+  assert.equal(nextDueWork(completed, new Date("2026-08-01T00:00:00.000Z")), null);
+  assert.equal(
+    publishedCourseCalendarItems(completed, { courseCode: "UNIV 1101" })[0].status,
+    "complete",
+  );
+});
+
 test("published deadline refresh preserves personal planning without duplicates", () => {
   const initial = publishedCourseCalendarItems(
     {
