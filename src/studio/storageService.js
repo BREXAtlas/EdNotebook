@@ -8,6 +8,7 @@ import {
   uploadToSecureQuarantine,
 } from "./resumableUpload.js";
 import { buildDigitalLiteracyName, slugify } from "./fileNaming.js";
+import { lessonTargetsFromManifest } from "./courseResourceTargets.js";
 
 export { buildDigitalLiteracyName, slugify } from "./fileNaming.js";
 
@@ -181,14 +182,36 @@ export async function saveResourceRecord(record) {
 }
 
 export async function listCourseResourceTargets(courseId) {
-  if (!courseId) return { assignments: [] };
-  const { data, error } = await supabase
-    .from("assignments")
-    .select("id,title,status,due_at")
-    .eq("course_id", courseId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return { assignments: data || [] };
+  if (!courseId) return { assignments: [], lessons: [] };
+  const [assignmentsResult, publicationResult] = await Promise.all([
+    supabase
+      .from("assignments")
+      .select("id,title,status,due_at")
+      .eq("course_id", courseId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("course_publications")
+      .select("id,current_version")
+      .eq("course_id", courseId)
+      .eq("status", "published")
+      .maybeSingle(),
+  ]);
+  if (assignmentsResult.error) throw assignmentsResult.error;
+  if (publicationResult.error) throw publicationResult.error;
+
+  let lessons = [];
+  if (publicationResult.data?.id && publicationResult.data.current_version) {
+    const { data: version, error: versionError } = await supabase
+      .from("course_publication_versions")
+      .select("manifest")
+      .eq("publication_id", publicationResult.data.id)
+      .eq("version_number", publicationResult.data.current_version)
+      .maybeSingle();
+    if (versionError) throw versionError;
+    lessons = lessonTargetsFromManifest(version?.manifest);
+  }
+
+  return { assignments: assignmentsResult.data || [], lessons };
 }
 
 export async function listCloudResources(courseId) {

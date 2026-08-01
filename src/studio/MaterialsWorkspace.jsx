@@ -395,7 +395,7 @@ export default function MaterialsWorkspace({ courseOverride = null, manifestOver
   const localCourse = useMemo(readCourseDraft, []);
   const course = courseOverride || localCourse;
   const courseId = courseOverride?.id || currentCourseId();
-  const lessonTargets = useMemo(
+  const overrideLessonTargets = useMemo(
     () => (manifestOverride?.paths || []).flatMap((path) =>
       (path.nodes || []).map((lesson) => ({ ...lesson, pathLabel: path.label }))),
     [manifestOverride],
@@ -405,6 +405,7 @@ export default function MaterialsWorkspace({ courseOverride = null, manifestOver
   const [deviceResources, setDeviceResources] = useState([]);
   const [storageUsage, setStorageUsage] = useState(null);
   const [assignmentTargets, setAssignmentTargets] = useState([]);
+  const [publishedLessonTargets, setPublishedLessonTargets] = useState([]);
   const [mediaEvidence, setMediaEvidence] = useState({ resources: [], eligible_learners: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -448,6 +449,7 @@ export default function MaterialsWorkspace({ courseOverride = null, manifestOver
   const [quoteSource, setQuoteSource] = useState("");
   const [quotePlacement, setQuotePlacement] = useState("lesson");
   const [quoteTargetKey, setQuoteTargetKey] = useState("");
+  const lessonTargets = manifestOverride ? overrideLessonTargets : publishedLessonTargets;
 
   const activePlacement = addMode === "file" ? filePlacement : addMode === "link" ? linkPlacement : quotePlacement;
   const localPreview = useMemo(() => linkPreview(linkValue, linkTitle), [linkValue, linkTitle]);
@@ -498,13 +500,14 @@ export default function MaterialsWorkspace({ courseOverride = null, manifestOver
         listCloudResources(courseId),
         listDeviceFiles(courseId),
         getCurrentStorageUsage().catch(() => null),
-        listCourseResourceTargets(courseId).catch(() => ({ assignments: [] })),
+        listCourseResourceTargets(courseId).catch(() => ({ assignments: [], lessons: [] })),
         listCourseMediaEvidence(courseId).catch(() => ({ resources: [], eligible_learners: 0 })),
       ]);
       setCloudResources(cloud);
       setDeviceResources(device);
       setStorageUsage(usage);
       setAssignmentTargets(targets.assignments || []);
+      setPublishedLessonTargets(targets.lessons || []);
       setMediaEvidence(evidence);
     } catch (loadError) {
       setError(loadError.message || "Unable to load the resource library.");

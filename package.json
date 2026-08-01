@@ -26,7 +26,7 @@
     "test:edubook-publishing": "node --test src/studio/edubookLearningModel.test.js src/studio/edubookLearningUx.static.test.js",
     "test:media-resources": "node --test src/media/courseMediaModel.test.js src/media/inPlatformMediaUx.static.test.js",
     "test:media-accessibility": "node --test src/media/mediaEvidenceModel.test.js src/media/mediaAccessibilityUx.static.test.js",
-    "test:media-learning": "node --test src/media/mediaLearningModel.test.js src/media/mediaLearningUx.static.test.js",
+    "test:media-learning": "node --test src/media/mediaLearningModel.test.js src/media/mediaLearningUx.static.test.js src/studio/courseResourceTargets.test.js",
     "test:environment-storage": "node --test src/storage/environmentStorage.test.js",
     "preview": "vite preview"
   },
