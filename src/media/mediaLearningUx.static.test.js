@@ -17,6 +17,7 @@ test("professor can bind required media to one exact governed learning activity"
   assert.match(materials, /Required learning step/);
   assert.match(materials, /Exact knowledge check/);
   assert.match(materials, /Due date and time/);
+  assert.match(materials, /onChange\(\(current\) => \(\{ \.\.\.current, \.\.\.patch \}\)\)/);
   assert.match(materials, /never completes this learning step or determines a grade/i);
   assert.match(materials, /Required media must use governed cloud storage/i);
   assert.match(materials, /setPublishedLessonTargets\(targets\.lessons \|\| \[\]\)/);
