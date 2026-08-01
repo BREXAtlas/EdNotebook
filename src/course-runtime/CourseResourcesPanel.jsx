@@ -3,7 +3,7 @@ import EdNotebookMediaReader from "../media/EdNotebookMediaReader.jsx";
 import { normalizeHttpsUrl } from "../media/courseMediaModel.js";
 import { deleteMyCourseLink, listMyCourseResources, saveMyCourseLink } from "./courseService.js";
 
-export default function CourseResourcesPanel({ courseId, resources = [] }) {
+export default function CourseResourcesPanel({ courseId, resources = [], onMediaEvidence }) {
   const [personal, setPersonal] = useState([]);
   const [form, setForm] = useState({ url: "", title: "", description: "" });
   const [notice, setNotice] = useState("");
@@ -65,7 +65,7 @@ export default function CourseResourcesPanel({ courseId, resources = [] }) {
       <section aria-labelledby="professor-course-resources">
         <h2 id="professor-course-resources">From your professor</h2>
         <div className="course-resource-grid">
-          {courseResources.map((resource) => <EdNotebookMediaReader key={resource.id} resource={resource} />)}
+          {courseResources.map((resource) => <EdNotebookMediaReader key={resource.id} resource={resource} onEvidence={onMediaEvidence} />)}
         </div>
         {!courseResources.length && <p className="course-resource-empty">No course-wide media has been published yet. Lesson media appears inside its lesson.</p>}
       </section>
