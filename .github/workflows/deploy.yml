@@ -58,6 +58,9 @@ jobs:
       - name: Test fail-closed Digital Literacy research governance
         run: npm run test:research-gate
 
+      - name: Test full-course Digital Literacy pilot readiness
+        run: npm run test:digital-literacy-pilot
+
       - name: Test Digital Literacy student learning workspace
         run: npm run test:student-learning
 
@@ -170,6 +173,9 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/digital_literacy_research_gate.sql
+
+      - name: Run full-course Digital Literacy assignment and research-readiness gate
+        run: supabase test db supabase/tests/digital_literacy_pilot_readiness.sql --local
 
       - name: Run Campus Social first-profile return gate
         env:
