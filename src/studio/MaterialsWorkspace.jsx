@@ -356,8 +356,8 @@ function LearningRequirementFields({ mediaType, placement, targetKey, lessons, v
         )}
         {value.mode === "required" && (
           <div className="studio-field-grid">
-            <label>Due date and time<input type="datetime-local" value={value.dueAt} onChange={(event) => update({ dueAt: event.target.value })} /></label>
-            <label>Estimated minutes<input type="number" min="1" max="10080" value={value.estimatedMinutes} onChange={(event) => update({ estimatedMinutes: event.target.value })} /></label>
+            <label>Due date and time<input type="datetime-local" value={value.dueAt} onInput={(event) => update({ dueAt: event.currentTarget.value })} /></label>
+            <label>Estimated minutes<input type="number" min="1" max="10080" value={value.estimatedMinutes} onInput={(event) => update({ estimatedMinutes: event.currentTarget.value })} /></label>
           </div>
         )}
       </fieldset>
