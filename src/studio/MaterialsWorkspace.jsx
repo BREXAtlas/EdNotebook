@@ -312,7 +312,7 @@ function LearningRequirementFields({ mediaType, placement, targetKey, lessons, v
   const canRequire = ["lesson", "assignment"].includes(placement) && Boolean(targetKey);
   const lesson = lessons.find((item) => String(item.id) === String(targetKey));
   const checks = lesson?.knowledgeChecks || [];
-  const update = (patch) => onChange({ ...value, ...patch });
+  const update = (patch) => onChange((current) => ({ ...current, ...patch }));
   return (
     <details className="studio-learning-requirement" open>
       <summary>Learning requirement, due date, and completion</summary>
