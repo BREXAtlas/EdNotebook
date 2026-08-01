@@ -11,32 +11,45 @@ function configured() {
   return Boolean(isSupabaseConfigured && supabase);
 }
 
+function isSetupError(error) {
+  const message = String(error?.message || "");
+  return (
+    ["42P01", "42883", "PGRST202"].includes(String(error?.code || "")) ||
+    /schema cache|does not exist|could not find.*function/iu.test(message)
+  );
+}
+
 function result(data, error) {
   if (!error) return { data, error: null, source: "cloud" };
-  const message = String(error.message || "");
-  if (
-    ["42P01", "42883", "PGRST202"].includes(String(error.code || "")) ||
-    /schema cache|does not exist|could not find.*function/iu.test(message)
-  ) {
-    return unavailable();
-  }
+  if (isSetupError(error)) return unavailable();
   return { data: null, error, source: "cloud" };
 }
 
 export async function loadProfessorDigitalLiteracyWorkspace(courseId) {
   if (!configured() || !courseId) return unavailable();
-  const [workspace, standardProgress] = await Promise.all([
+  const [workspace, standardProgress, launchReadiness] = await Promise.all([
     supabase.rpc("get_digital_literacy_professor_workspace", {
       p_course_id: courseId,
     }),
     supabase.rpc("get_digital_literacy_professor_standard_progress", {
       p_course_id: courseId,
     }),
+    supabase.rpc("get_digital_literacy_research_launch_readiness", {
+      p_course_id: courseId,
+    }),
   ]);
   if (workspace.error) return result(null, workspace.error);
   if (standardProgress.error) return result(null, standardProgress.error);
+  if (launchReadiness.error && !isSetupError(launchReadiness.error))
+    return result(null, launchReadiness.error);
   return result(
-    { ...workspace.data, standard_progress: standardProgress.data },
+    {
+      ...workspace.data,
+      standard_progress: standardProgress.data,
+      research_launch_readiness: launchReadiness.error
+        ? null
+        : launchReadiness.data,
+    },
     null,
   );
 }

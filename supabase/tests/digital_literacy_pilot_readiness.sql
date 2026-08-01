@@ -1,6 +1,6 @@
 begin;
 
-select plan(34);
+select plan(42);
 
 insert into auth.users (id, email, raw_user_meta_data, created_at, updated_at)
 values
@@ -43,6 +43,15 @@ select has_function('public', 'get_digital_literacy_professor_standard_progress'
 select has_trigger('public', 'student_education_paths', 'student_path_assign_standard_digital_literacy', 'student pathway trigger assigns the standard course');
 select has_function('public', 'get_my_active_digital_literacy_research', 'participant research-status RPC exists');
 select has_function('public', 'export_digital_literacy_research_dataset', 'governed research export RPC exists');
+select has_function('public', 'get_digital_literacy_research_launch_readiness', 'professor launch-readiness RPC exists');
+select ok(
+  not has_function_privilege('anon', 'public.get_digital_literacy_research_launch_readiness(uuid)', 'execute'),
+  'anonymous users cannot execute the launch-readiness RPC'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.get_digital_literacy_research_launch_readiness(uuid)', 'execute'),
+  'authenticated users can reach the course-authorized launch-readiness RPC'
+);
 
 select is(
   (select count(*)::integer from private.digital_literacy_standard_enrollments where student_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
@@ -101,6 +110,13 @@ select is(
 );
 
 select set_config('request.jwt.claim.sub', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', true);
+
+select throws_ok(
+  $$select public.get_digital_literacy_research_launch_readiness('cccccccc-cccc-4ccc-8ccc-cccccccccccc')$$,
+  'P0001',
+  'Course management access required',
+  'a learner cannot inspect the professor research launch-readiness view'
+);
 
 select is(
   jsonb_array_length(public.get_my_digital_literacy_assignments(null)->'assignments'),
@@ -172,6 +188,30 @@ select is(
   (public.get_digital_literacy_professor_standard_progress('cccccccc-cccc-4ccc-8ccc-cccccccccccc')->'learners'->0->>'completed_units')::integer,
   2,
   'current professor sees the enrolled student standard progress'
+);
+
+select is(
+  public.get_digital_literacy_research_launch_readiness('cccccccc-cccc-4ccc-8ccc-cccccccccccc')->>'launch_state',
+  'research_not_configured',
+  'pilot readiness stays fail closed when no research version is configured'
+);
+
+select is(
+  (public.get_digital_literacy_research_launch_readiness('cccccccc-cccc-4ccc-8ccc-cccccccccccc')->>'research_collection_active')::boolean,
+  false,
+  'the readiness view does not activate research collection'
+);
+
+select is(
+  (public.get_digital_literacy_research_launch_readiness('cccccccc-cccc-4ccc-8ccc-cccccccccccc')->>'ordinary_coursework_open')::boolean,
+  true,
+  'ordinary Digital Literacy course work remains open while research is off'
+);
+
+select is(
+  public.get_digital_literacy_research_launch_readiness('cccccccc-cccc-4ccc-8ccc-cccccccccccc')->'canonical_course'->>'status',
+  'pass',
+  'the launch view verifies the active canonical 40-unit release'
 );
 
 select set_config('request.jwt.claim.sub', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', true);

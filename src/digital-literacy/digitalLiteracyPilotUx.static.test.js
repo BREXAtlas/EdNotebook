@@ -62,3 +62,12 @@ test("research participation is visibly optional and unavailable until activated
   assert.match(workspace, /No · continue course only/u);
   assert.match(workspace, /Your course access and grades are unchanged/u);
 });
+
+test("the professor launch gate separates ready course work from blocked research", () => {
+  assert.match(workspace, /FINAL PILOT EVIDENCE GATE/u);
+  assert.match(workspace, /Course delivery is ready\. Research remains independently governed/u);
+  assert.match(workspace, /Enrollment and course completion never count as research consent/u);
+  assert.match(workspace, /pseudonymized, not anonymous/u);
+  assert.match(workspace, /reads the database's live launch blockers/iu);
+  assert.match(styles, /grid-template-columns: repeat\(auto-fit, minmax\(240px, 1fr\)\)/u);
+});
