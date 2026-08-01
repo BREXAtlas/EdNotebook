@@ -7,6 +7,7 @@ import PortalHome from "./portal/PortalHome.jsx";
 import { FeatureBoundary, FeatureManifestProvider } from "./admin-control/FeatureBoundary.jsx";
 import { installEnvironmentStorageNamespace } from "./storage/environmentStorage.js";
 import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
+import { prepareProfessorCourseBuilder } from "./portal/courseBuilderHandoff.js";
 import "./index.css";
 import "./portal/portal.css";
 
@@ -56,6 +57,9 @@ function Router() {
   }, []);
 
   const navigate = (next) => { window.location.hash = next; };
+  const openProfessorCourseBuilder = (course) => navigate(
+    prepareProfessorCourseBuilder(window.localStorage, course)
+  );
 
   function studentDashboard(track) {
     const returnTo = `#/student/${track}/app`;
@@ -92,7 +96,7 @@ function Router() {
   if (route.startsWith("#/admin/control-center") || route.startsWith("#/institution-admin/control-center")) return <AuthGate accountType="institution" returnTo="#/admin/control-center" allowSignup={false}>{() => <MotionFrame routeKey="admin-control-center"><AdminControlCenter onExit={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/integrations/lti")) return <AuthGate accountType="professor" returnTo="#/admin/integrations/lti" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="lti-owner-setup"><LtiOwnerSetup onBack={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin")) return <AuthGate accountType="professor" returnTo="#/admin" allowedRoles={["admin", "owner"]} allowSignup={false}>{() => <MotionFrame routeKey="platform-admin"><PlatformAdminDashboard onHome={() => navigate("#/")} onEducatorPortal={() => navigate("#/professor/dashboard")} /></MotionFrame>}</AuthGate>;
-  if (route.startsWith("#/professor/dashboard")) return <AuthGate accountType="professor" returnTo="#/professor/dashboard">{({ profile, session }) => <FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.dashboard"><MotionFrame routeKey="professor-dashboard"><ProfessorDashboard profile={profile} session={session} onHome={() => navigate("#/professors")} onBuild={() => navigate("#/app")} onAdmin={() => navigate("#/admin")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
+  if (route.startsWith("#/professor/dashboard")) return <AuthGate accountType="professor" returnTo="#/professor/dashboard">{({ profile, session }) => <FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.dashboard"><MotionFrame routeKey="professor-dashboard"><ProfessorDashboard profile={profile} session={session} onHome={() => navigate("#/professors")} onBuild={openProfessorCourseBuilder} onAdmin={() => navigate("#/admin")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
 
   if (route.startsWith("#/app/course-output")) return <AuthGate accountType="professor" returnTo="#/app/course-output">{({ session }) => <FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.course_publish"><CoursePackageStudio session={session} onBack={() => navigate("#/app/builder")} onOpenStudentCourse={(publicationId) => navigate(`#/student/course/${publicationId}`)} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
   if (route.startsWith("#/app/syllabus")) return <AuthGate accountType="professor" returnTo="#/app/syllabus"><FeatureManifestProvider pathway="professor"><FeatureBoundary featureKey="professor.course_builder"><MotionFrame routeKey="professor-syllabus-extraction"><SyllabusToCourse onBack={() => navigate("#/app/builder")} onContinue={() => navigate("#/app/builder")} /></MotionFrame></FeatureBoundary></FeatureManifestProvider></AuthGate>;
