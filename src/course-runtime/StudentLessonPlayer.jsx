@@ -168,6 +168,7 @@ export default function StudentLessonPlayer({
   onExit,
   onOpenTool,
   onProgress,
+  onMediaEvidence,
   resources = [],
 }) {
   const recoveryKey = useMemo(
@@ -453,7 +454,7 @@ export default function StudentLessonPlayer({
                 <h2 id={`lesson-media-${lesson.id}`}>Watch and explore without leaving the lesson.</h2>
               </div>
               {resources.map((resource) => (
-                <EdNotebookMediaReader key={resource.id} resource={resource} />
+                <EdNotebookMediaReader key={resource.id} resource={resource} onEvidence={onMediaEvidence} />
               ))}
             </section>
           )}

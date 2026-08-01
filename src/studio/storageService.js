@@ -155,6 +155,14 @@ export async function saveResourceRecord(record) {
     visibility: record.visibility || (record.course_id ? "course" : "private"),
     target_kind: record.target_kind || "course",
     target_key: record.target_key || null,
+    supersedes_resource_id: record.supersedes_resource_id || null,
+    replacement_note: record.replacement_note || "",
+    caption_mode: record.caption_mode || "not_reviewed",
+    caption_language: record.caption_language || "en",
+    caption_url: record.caption_url || null,
+    transcript_text: record.transcript_text || "",
+    accessibility_notes: record.accessibility_notes || "",
+    is_decorative: Boolean(record.is_decorative),
     metadata: record.metadata || {},
   };
 
@@ -208,9 +216,21 @@ export async function deleteResourceRecord(resource, reason = "Removed from the 
   if (resource.secure_file_id) {
     return requestSecureDeletion(resource.secure_file_id, reason);
   }
-  const { error } = await supabase.from("learning_resources").delete().eq("id", resource.id);
+  const { data, error } = await supabase.rpc("retire_learning_resource", {
+    p_resource_id: resource.id,
+    p_reason: reason,
+  });
   if (error) throw error;
-  return { deleted: true, status: "metadata_removed" };
+  return { deleted: true, status: data?.status || "retired" };
+}
+
+export async function listCourseMediaEvidence(courseId) {
+  if (!courseId) return { resources: [], eligible_learners: 0 };
+  const { data, error } = await supabase.rpc("get_course_media_evidence", {
+    p_course_id: courseId,
+  });
+  if (error) throw error;
+  return data || { resources: [], eligible_learners: 0 };
 }
 
 export async function getCurrentStorageUsage() {

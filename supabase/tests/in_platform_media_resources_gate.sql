@@ -32,7 +32,8 @@ set local role authenticated;
 
 insert into public.learning_resources (
   id,owner_id,course_id,resource_type,title,description,placement,storage_mode,
-  external_url,visibility,target_kind,target_key,security_status,metadata
+  external_url,visibility,target_kind,target_key,security_status,metadata,
+  caption_mode,caption_language,accessibility_notes
 ) values (
   '24000000-0000-4000-8000-000000000020',
   '24000000-0000-4000-8000-000000000001',
@@ -41,7 +42,8 @@ insert into public.learning_resources (
   'Watch here, then identify one signal that changes a recommendation.',
   'lesson','external','https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   'course','lesson','lesson-media','not_applicable',
-  '{"format":"EdNotebookCourseResource/1.0","position":1}'::jsonb
+  '{"format":"EdNotebookCourseResource/1.0","position":1}'::jsonb,
+  'provider_captions','en','Professor verified captions in the source player.'
 );
 
 do $$

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import AssignmentTemplateWorkspace from "../portal/AssignmentTemplateWorkspace.jsx";
 import { COURSE_PRESETS, flattenLessons } from "./courseManifest.js";
 import CourseNotificationCenter from "./CourseNotificationCenter.jsx";
@@ -16,6 +16,7 @@ import {
   listCourseDueWork,
   loadLearnerProgress,
   loadPublishedCourse,
+  recordCourseMediaProgress,
 } from "./courseService.js";
 import StudentLessonPlayer from "./StudentLessonPlayer.jsx";
 import CourseResourcesPanel from "./CourseResourcesPanel.jsx";
@@ -58,7 +59,7 @@ function ToolLoading({ name }) {
   );
 }
 
-function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [] }) {
+function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [], onMediaEvidence }) {
   if (!item) return null;
   const workType = item.workType === "grade_item"
     ? "Grade item"
@@ -103,7 +104,7 @@ function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [] }) 
       {resources.length > 0 && (
         <section className="course-assignment-resources" aria-label="Assignment media and resources">
           <h4>Media &amp; resources</h4>
-          {resources.map((resource) => <EdNotebookMediaReader key={resource.id} resource={resource} compact />)}
+          {resources.map((resource) => <EdNotebookMediaReader key={resource.id} resource={resource} compact onEvidence={onMediaEvidence} />)}
         </section>
       )}
       <footer>
@@ -139,6 +140,11 @@ export default function CourseRuntimePage({
   const [requestedTemplateId, setRequestedTemplateId] = useState(null);
   const [notificationNow, setNotificationNow] = useState(() => new Date());
   const [assignmentEvents, setAssignmentEvents] = useState([]);
+  const handleMediaEvidence = useCallback(async (resource, event) => {
+    const result = await recordCourseMediaProgress(resource.id, event);
+    if (result.error) throw result.error;
+    return result.data?.progress || null;
+  }, []);
   const [readNotificationIds, setReadNotificationIds] = useState([]);
   const studentCalendarScope =
     `ednotebook-own-semester-${session?.user?.id || "student"}-${track}-calendar`;
@@ -694,6 +700,7 @@ export default function CourseRuntimePage({
                   progress: { ...current.progress, summary: progress },
                 }))
               }
+              onMediaEvidence={handleMediaEvidence}
             />
           )}
           {view === "assignments" && (
@@ -734,6 +741,7 @@ export default function CourseRuntimePage({
                   )}
                   onClose={() => setSelectedWorkId(null)}
                   onOpenCalendar={() => openTool("calendar")}
+                  onMediaEvidence={handleMediaEvidence}
                 />
               </section>
               <AssignmentTemplateWorkspace
@@ -775,6 +783,7 @@ export default function CourseRuntimePage({
             <CourseResourcesPanel
               courseId={course.id}
               resources={state.resources}
+              onMediaEvidence={handleMediaEvidence}
             />
           )}
           {view === "messages" && (
