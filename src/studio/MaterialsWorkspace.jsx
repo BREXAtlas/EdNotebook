@@ -7,6 +7,7 @@ import {
   downloadResource as downloadStoredResource,
   getCurrentStorageUsage,
   getLinkPreview,
+  listCourseResourceTargets,
   listCloudResources,
   readCourseDraft,
   saveResourceRecord,
@@ -20,6 +21,8 @@ import {
   saveDeviceFile,
 } from "./localVault.js";
 import { detectResourceKind, linkPreview } from "./urlPreview.js";
+import { resourceTargetForPlacement } from "../media/courseMediaModel.js";
+import "./studio.css";
 
 const PLACEMENTS = [
   ["course-overview", "Course overview"],
@@ -170,13 +173,47 @@ function PlacementPreview({ resources, selectedPlacement }) {
   );
 }
 
-export default function MaterialsWorkspace() {
-  const course = useMemo(readCourseDraft, []);
-  const courseId = currentCourseId();
+function PlacementTarget({ placement, value, onChange, lessons, assignments }) {
+  if (placement === "lesson") {
+    return (
+      <label>Exact lesson<select value={value} onChange={(event) => onChange(event.target.value)} required>
+        <option value="">Choose the lesson</option>
+        {lessons.map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.pathLabel} · {lesson.title}</option>)}
+      </select></label>
+    );
+  }
+  if (placement === "assignment") {
+    return (
+      <label>Exact assignment<select value={value} onChange={(event) => onChange(event.target.value)} required>
+        <option value="">Choose the assignment</option>
+        {assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.title}</option>)}
+      </select></label>
+    );
+  }
+  return null;
+}
+
+function requireTarget(placement, targetKey) {
+  if (["lesson", "assignment"].includes(placement) && !targetKey) {
+    throw new Error(`Choose the exact ${placement} where this resource belongs.`);
+  }
+  return resourceTargetForPlacement(placement, targetKey);
+}
+
+export default function MaterialsWorkspace({ courseOverride = null, manifestOverride = null }) {
+  const localCourse = useMemo(readCourseDraft, []);
+  const course = courseOverride || localCourse;
+  const courseId = courseOverride?.id || currentCourseId();
+  const lessonTargets = useMemo(
+    () => (manifestOverride?.paths || []).flatMap((path) =>
+      (path.nodes || []).map((lesson) => ({ ...lesson, pathLabel: path.label }))),
+    [manifestOverride],
+  );
   const [addMode, setAddMode] = useState("file");
   const [cloudResources, setCloudResources] = useState([]);
   const [deviceResources, setDeviceResources] = useState([]);
   const [storageUsage, setStorageUsage] = useState(null);
+  const [assignmentTargets, setAssignmentTargets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -189,6 +226,7 @@ export default function MaterialsWorkspace() {
   const [fileTitle, setFileTitle] = useState("");
   const [fileDescription, setFileDescription] = useState("");
   const [filePlacement, setFilePlacement] = useState("course-library");
+  const [fileTargetKey, setFileTargetKey] = useState("");
   const [storageMode, setStorageMode] = useState("cloud");
   const [fileVersion, setFileVersion] = useState(1);
   const [altText, setAltText] = useState("");
@@ -199,6 +237,7 @@ export default function MaterialsWorkspace() {
   const [linkTitle, setLinkTitle] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
   const [linkPlacement, setLinkPlacement] = useState("lesson");
+  const [linkTargetKey, setLinkTargetKey] = useState("");
   const [serverPreview, setServerPreview] = useState(null);
   const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
   const [linkPreviewError, setLinkPreviewError] = useState("");
@@ -207,6 +246,7 @@ export default function MaterialsWorkspace() {
   const [quoteAttribution, setQuoteAttribution] = useState("");
   const [quoteSource, setQuoteSource] = useState("");
   const [quotePlacement, setQuotePlacement] = useState("lesson");
+  const [quoteTargetKey, setQuoteTargetKey] = useState("");
 
   const activePlacement = addMode === "file" ? filePlacement : addMode === "link" ? linkPlacement : quotePlacement;
   const localPreview = useMemo(() => linkPreview(linkValue, linkTitle), [linkValue, linkTitle]);
@@ -218,12 +258,12 @@ export default function MaterialsWorkspace() {
     if (!file) return "";
     return buildDigitalLiteracyName({
       file,
-      courseCode: course.code,
+      courseCode: course.course_code || course.code,
       category: inferResourceType(file),
       title: fileTitle || file.name,
       version: fileVersion,
     });
-  }, [file, fileTitle, fileVersion, course.code]);
+  }, [file, fileTitle, fileVersion, course.code, course.course_code]);
 
   const combinedResources = useMemo(
     () => [
@@ -243,14 +283,16 @@ export default function MaterialsWorkspace() {
     setLoading(true);
     setError("");
     try {
-      const [cloud, device, usage] = await Promise.all([
+      const [cloud, device, usage, targets] = await Promise.all([
         listCloudResources(courseId),
         listDeviceFiles(courseId),
         getCurrentStorageUsage().catch(() => null),
+        listCourseResourceTargets(courseId).catch(() => ({ assignments: [] })),
       ]);
       setCloudResources(cloud);
       setDeviceResources(device);
       setStorageUsage(usage);
+      setAssignmentTargets(targets.assignments || []);
     } catch (loadError) {
       setError(loadError.message || "Unable to load the resource library.");
     } finally {
@@ -294,6 +336,7 @@ export default function MaterialsWorkspace() {
     try {
       validateFile(file);
       const checksumSha256 = await checksumFile(file);
+      const target = requireTarget(filePlacement, fileTargetKey);
       const title = fileTitle.trim() || file.name;
       const description = fileDescription.trim();
       const metadata = {
@@ -303,12 +346,14 @@ export default function MaterialsWorkspace() {
         description,
         placement: filePlacement,
         courseId,
-        courseCode: course.code,
+        courseCode: course.course_code || course.code,
         category: inferResourceType(file),
         version: fileVersion,
         altText: altText.trim(),
         sourceLabel: sourceLabel.trim(),
         licenseLabel: licenseLabel.trim(),
+        targetKind: target.target_kind,
+        targetKey: target.target_key,
       };
 
       if (storageMode === "device") {
@@ -318,7 +363,7 @@ export default function MaterialsWorkspace() {
         if (filePlacement !== "private-vault" && !courseId) {
           throw new Error("Save the course shell again before adding shared course materials.");
         }
-        const target = await uploadCloudFile(file, {
+        const uploadTarget = await uploadCloudFile(file, {
           ...metadata,
           scope: filePlacement === "private-vault" ? "private" : "course",
           onProgress: setUploadProgress,
@@ -327,7 +372,7 @@ export default function MaterialsWorkspace() {
         });
         await saveResourceRecord({
           course_id: filePlacement === "private-vault" ? null : courseId,
-          secure_file_id: target.secureFileId,
+          secure_file_id: uploadTarget.secureFileId,
           resource_type: inferResourceType(file),
           title,
           description,
@@ -336,13 +381,14 @@ export default function MaterialsWorkspace() {
           mime_type: file.type || "application/octet-stream",
           size_bytes: file.size,
           original_name: file.name,
-          safe_name: target.safeName,
-          checksum_sha256: target.checksumSha256,
+          safe_name: uploadTarget.safeName,
+          checksum_sha256: uploadTarget.checksumSha256,
           security_status: "quarantined",
           alt_text: altText.trim() || null,
           source_label: sourceLabel.trim() || null,
           license_label: licenseLabel.trim() || null,
           visibility: filePlacement === "private-vault" ? "private" : "course",
+          ...target,
           metadata: { version: fileVersion, namingConvention: "digital-literacy-v1" },
         });
         setNotice("Upload finished and entered quarantine. It will appear to learners only after malware and archive checks return clean.");
@@ -374,6 +420,7 @@ export default function MaterialsWorkspace() {
     }
     setBusy(true);
     try {
+      const target = requireTarget(linkPlacement, linkTargetKey);
       await saveResourceRecord({
         course_id: courseId,
         link_preview_id: serverPreview?.id || null,
@@ -384,6 +431,7 @@ export default function MaterialsWorkspace() {
         storage_mode: "external",
         external_url: preview.href,
         visibility: courseId ? "course" : "private",
+        ...target,
         metadata: {
           provider: preview.provider,
           host: preview.host,
@@ -415,6 +463,7 @@ export default function MaterialsWorkspace() {
     }
     setBusy(true);
     try {
+      const target = requireTarget(quotePlacement, quoteTargetKey);
       await saveResourceRecord({
         course_id: courseId,
         resource_type: "quote",
@@ -425,6 +474,7 @@ export default function MaterialsWorkspace() {
         external_url: quoteSource.trim() || null,
         visibility: courseId ? "course" : "private",
         source_label: quoteAttribution.trim() || null,
+        ...target,
         metadata: { quote: quoteText.trim(), attribution: quoteAttribution.trim(), sourceUrl: quoteSource.trim() },
       });
       setQuoteText("");
@@ -525,8 +575,9 @@ export default function MaterialsWorkspace() {
 
               <div className="studio-field-grid">
                 <label>Display title<input value={fileTitle} onChange={(event) => setFileTitle(event.target.value)} placeholder="What learners will see" /></label>
-                <label>Panel placement<select value={filePlacement} onChange={(event) => setFilePlacement(event.target.value)}>{PLACEMENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Panel placement<select value={filePlacement} onChange={(event) => { setFilePlacement(event.target.value); setFileTargetKey(""); }}>{PLACEMENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
+              <PlacementTarget placement={filePlacement} value={fileTargetKey} onChange={setFileTargetKey} lessons={lessonTargets} assignments={assignmentTargets} />
               <label>Description<textarea value={fileDescription} onChange={(event) => setFileDescription(event.target.value)} placeholder="Why is this attached, and what should the learner do with it?" rows={3} /></label>
 
               <div className="studio-storage-choice" role="group" aria-label="File storage choice">
@@ -567,8 +618,9 @@ export default function MaterialsWorkspace() {
               <label>URL<input value={linkValue} onChange={(event) => setLinkValue(event.target.value)} placeholder="Paste a YouTube, Canva, Word, Cengage, article, or other public link" /></label>
               <div className="studio-field-grid">
                 <label>Link title<input value={linkTitle} onChange={(event) => setLinkTitle(event.target.value)} placeholder="Learner-facing label" /></label>
-                <label>Panel placement<select value={linkPlacement} onChange={(event) => setLinkPlacement(event.target.value)}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Panel placement<select value={linkPlacement} onChange={(event) => { setLinkPlacement(event.target.value); setLinkTargetKey(""); }}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
+              <PlacementTarget placement={linkPlacement} value={linkTargetKey} onChange={setLinkTargetKey} lessons={lessonTargets} assignments={assignmentTargets} />
               <label>Description<textarea value={linkDescription} onChange={(event) => setLinkDescription(event.target.value)} placeholder="Explain why this link is here instead of making students guess." rows={3} /></label>
               {linkPreviewError && <div className="studio-alert is-error">{linkPreviewError}</div>}
               <ExternalPreview preview={preview} description={linkDescription} loading={linkPreviewLoading} />
@@ -581,8 +633,9 @@ export default function MaterialsWorkspace() {
               <label>Quotation or excerpt<textarea value={quoteText} onChange={(event) => setQuoteText(event.target.value)} placeholder="Paste the passage. Keep quotations short enough for your educational use and record the source." rows={6} /></label>
               <div className="studio-field-grid">
                 <label>Attribution<input value={quoteAttribution} onChange={(event) => setQuoteAttribution(event.target.value)} placeholder="Author, work, page or timestamp" /></label>
-                <label>Panel placement<select value={quotePlacement} onChange={(event) => setQuotePlacement(event.target.value)}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Panel placement<select value={quotePlacement} onChange={(event) => { setQuotePlacement(event.target.value); setQuoteTargetKey(""); }}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
+              <PlacementTarget placement={quotePlacement} value={quoteTargetKey} onChange={setQuoteTargetKey} lessons={lessonTargets} assignments={assignmentTargets} />
               <label>Source URL (optional)<input value={quoteSource} onChange={(event) => setQuoteSource(event.target.value)} placeholder="https://…" /></label>
               <blockquote className="studio-quote-preview"><span aria-hidden="true">“</span>{quoteText || "The quotation will be shown here with its attribution."}<footer>{quoteAttribution || "Source required before publication"}</footer></blockquote>
               <button className="studio-primary-button" type="submit" disabled={busy || !quoteText.trim()}>{busy ? "Saving…" : "Add quotation to this panel"}</button>
@@ -603,7 +656,7 @@ export default function MaterialsWorkspace() {
               return (
                 <article key={`${resource.storage_mode}-${resource.id}`}>
                   <ResourceIcon resource={resource} />
-                  <div className="studio-resource-main"><strong>{resource.title}</strong><p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p><small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement} · <em className={`security-${status.tone}`}>{status.label}</em></small></div>
+                  <div className="studio-resource-main"><strong>{resource.title}</strong><p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p><small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement}{resource.target_key ? ` · ${resource.target_key}` : ""} · <em className={`security-${status.tone}`}>{status.label}</em>{resource.course_publication_state && ` · ${resource.course_publication_state === "published" ? `Published in v${resource.course_publication_version}` : "Draft until next publish"}`}</small></div>
                   <div className="studio-resource-actions">
                     {canOpen && <button type="button" onClick={() => downloadResource(resource)}>{resource.storage_mode === "external" ? "Open" : "Download"}</button>}
                     <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Remove</button>
