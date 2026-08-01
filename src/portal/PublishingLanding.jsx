@@ -5,8 +5,10 @@ import { supabase } from "../supabaseClient.js";
 import {
   beginMarketplaceCheckout,
   loadMarketplaceDashboard,
+  loadMarketplaceReceipt,
   requestMarketplaceRefund,
 } from "../marketplace/marketplaceService.js";
+import { downloadMarketplaceReceiptPdf } from "../marketplace/marketplaceReceiptDocument.js";
 import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
@@ -59,11 +61,52 @@ function CatalogPreview({ item, ownedOrder, onClose, onOpenCourse, onCheckout, c
   </div>;
 }
 
+function MarketplaceReceipt({ receipt, busy, error, onClose }) {
+  const [downloading, setDownloading] = useState(false);
+  if (!receipt && !busy && !error) return null;
+
+  async function download() {
+    setDownloading(true);
+    try {
+      await downloadMarketplaceReceiptPdf(receipt);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="marketplace-receipt-title">
+    <div className="portal-modal-card marketplace-receipt-card">
+      <button className="modal-close" type="button" onClick={onClose} aria-label="Close transaction receipt">×</button>
+      <span className="portal-kicker">ALEX B. MORRISON BOOKSTORE RECORD</span>
+      <h2 id="marketplace-receipt-title">Transaction receipt</h2>
+      {busy ? <div className="directory-empty">Loading the governed receipt…</div> : null}
+      {error ? <div className="portal-form-notice" role="alert">{error}</div> : null}
+      {receipt ? <>
+        <div className="marketplace-receipt-heading"><div><strong>{receipt.receipt_number}</strong><span>Issued {formatMarketplaceDate(receipt.issued_at)}</span></div><span className={marketplaceStatusTone(receipt.order_status)}>{marketplaceStatusLabel(receipt.order_status)}</span></div>
+        <dl className="marketplace-receipt-details">
+          <div><dt>Item</dt><dd>{receipt.title_snapshot}</dd></div>
+          <div><dt>Seller</dt><dd>{receipt.seller_name}</dd></div>
+          <div><dt>Access</dt><dd>{receipt.access_model === "rental" ? `${receipt.rental_days} day rental` : "Permanent purchase"}</dd></div>
+          <div><dt>Subtotal</dt><dd>{formatMarketplaceMoney(receipt.subtotal_cents, receipt.currency)}</dd></div>
+          <div><dt>Tax</dt><dd>{formatMarketplaceMoney(receipt.tax_cents, receipt.currency)}</dd></div>
+          <div><dt>Total</dt><dd>{formatMarketplaceMoney(receipt.total_cents, receipt.currency)}</dd></div>
+          {Number(receipt.refunded_cents) > 0 ? <div><dt>Refunded</dt><dd>{formatMarketplaceMoney(receipt.refunded_cents, receipt.currency)}</dd></div> : null}
+        </dl>
+        <p>Stripe processed the payment. This EdNotebook receipt confirms the marketplace transaction and learning access; it is not a tax invoice.</p>
+        <div className="marketplace-receipt-actions"><button type="button" onClick={download} disabled={downloading}>{downloading ? "Preparing PDF…" : "Download PDF receipt"}</button><button type="button" onClick={onClose}>Close</button></div>
+      </> : null}
+    </div>
+  </div>;
+}
+
 function PurchaseLibrary({ dashboard, onRefresh }) {
   const [refundOrderId, setRefundOrderId] = useState("");
   const [refundReason, setRefundReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [receipt, setReceipt] = useState(null);
+  const [receiptBusy, setReceiptBusy] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
   const purchases = dashboard?.purchases || [];
   if (!purchases.length) return null;
 
@@ -88,6 +131,16 @@ function PurchaseLibrary({ dashboard, onRefresh }) {
     setBusy(false);
   }
 
+  async function openReceipt(orderId) {
+    setReceipt(null);
+    setReceiptError("");
+    setReceiptBusy(true);
+    const result = await loadMarketplaceReceipt(orderId);
+    if (result.error) setReceiptError(result.error.message || "The receipt could not be loaded.");
+    else setReceipt(result.data || null);
+    setReceiptBusy(false);
+  }
+
   return <section className="library-purchase-section" aria-labelledby="library-purchases-title">
     <div className="student-section-heading"><span className="portal-kicker">YOUR BOOKSTORE RECORDS</span><h2 id="library-purchases-title">Purchases &amp; rentals</h2><p>Open owned work, check rental time, and follow the same receipt through refunds or disputes.</p><button type="button" className="library-record-refresh" disabled={busy} onClick={() => onRefresh?.()}>{busy ? "Refreshing…" : "Refresh records"}</button></div>
     <div className="library-purchase-grid">{purchases.map((order) => {
@@ -101,11 +154,12 @@ function PurchaseLibrary({ dashboard, onRefresh }) {
         <p>{marketplaceAccessSummary(order)}</p>
         {order.refund_status ? <div className="library-order-event"><strong>Refund</strong><span>{marketplaceStatusLabel(order.refund_status)} · {formatMarketplaceMoney(order.refund_amount_cents, order.currency)}</span></div> : null}
         {order.dispute_status ? <div className="library-order-event"><strong>Dispute</strong><span>{marketplaceStatusLabel(order.dispute_status)}</span></div> : null}
-        <footer>{accessHref ? <a href={accessHref}>{order.item_kind === "book" ? "Open book" : "Continue course"}</a> : <span>{hasActiveMarketplaceAccess(order) ? "Published learning experience is being prepared" : "No active access from this order"}</span>}{canRequestRefund ? <button type="button" onClick={() => setRefundOrderId(order.id)}>Request refund</button> : null}</footer>
+        <footer>{accessHref ? <a href={accessHref}>{order.item_kind === "book" ? "Open book" : "Continue course"}</a> : <span>{hasActiveMarketplaceAccess(order) ? "Published learning experience is being prepared" : "No active access from this order"}</span>}<div><button type="button" onClick={() => openReceipt(order.id)}>View receipt</button>{canRequestRefund ? <button type="button" onClick={() => setRefundOrderId(order.id)}>Request refund</button> : null}</div></footer>
       </article>;
     })}</div>
     {refundOrderId && <form className="library-refund-form" onSubmit={requestRefund}><h3>Request a full refund</h3><p>The platform owner reviews the reason before Stripe reverses the seller transfer and platform fee. A full confirmed refund revokes this order’s access.</p><label>Reason<textarea required minLength={10} rows={3} value={refundReason} onChange={(event) => setRefundReason(event.target.value)} /></label><div><button type="button" onClick={() => setRefundOrderId("")}>Cancel</button><button type="submit" disabled={busy || refundReason.trim().length < 10}>{busy ? "Submitting…" : "Submit refund request"}</button></div></form>}
     {notice && <div className="portal-form-notice" role="status">{notice}</div>}
+    <MarketplaceReceipt receipt={receipt} busy={receiptBusy} error={receiptError} onClose={() => { setReceipt(null); setReceiptError(""); setReceiptBusy(false); }} />
   </section>;
 }
 

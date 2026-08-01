@@ -750,12 +750,25 @@ export function generateAdminControlReport(institutionId, reportType, filters = 
   );
 }
 
-export function getMarketplaceControlCenter() {
-  return callRpc(
-    "get_marketplace_control_center",
-    undefined,
-    "Commercial publishing controls could not be loaded.",
-  );
+export async function getMarketplaceControlCenter() {
+  const [marketplace, launch] = await Promise.all([
+    callRpc(
+      "get_marketplace_control_center",
+      undefined,
+      "Commercial publishing controls could not be loaded.",
+    ),
+    callRpc(
+      "get_marketplace_launch_control_center",
+      undefined,
+      "Marketplace production launch controls could not be loaded.",
+    ),
+  ]);
+  return {
+    ...(marketplace || {}),
+    launch_state: launch?.state || null,
+    launch_controls: launch?.controls || [],
+    launch_readiness: launch?.readiness || {},
+  };
 }
 
 export function reviewMarketplaceCase(caseType, caseId, decision, reviewNotes) {
@@ -781,6 +794,41 @@ export function configureMarketplaceTaxControl(taxControlId, registrationReferen
       p_review_notes: requiredText(reviewNotes, "Tax configuration notes"),
     },
     "Marketplace tax responsibility could not be configured.",
+  );
+}
+
+export function reviewMarketplaceLaunchControl({
+  controlKey,
+  decision,
+  evidenceReference,
+  reviewNotes,
+  expiresAt = null,
+  attestation = false,
+}) {
+  return callRpc(
+    "review_marketplace_launch_control",
+    {
+      p_control_key: requiredText(controlKey, "Launch control"),
+      p_decision: requiredText(decision, "Launch-control decision"),
+      p_evidence_reference: String(evidenceReference || "").trim(),
+      p_review_notes: requiredText(reviewNotes, "Launch-control review notes"),
+      p_expires_at: optionalText(expiresAt),
+      p_attestation: Boolean(attestation),
+    },
+    "Marketplace launch-control review could not be saved.",
+  );
+}
+
+export function setMarketplaceLiveCharging({ enable, expectedUpdatedAt, reason, attestation = false }) {
+  return callRpc(
+    "set_marketplace_live_charging",
+    {
+      p_enable: Boolean(enable),
+      p_expected_updated_at: requiredText(expectedUpdatedAt, "Current launch-state version"),
+      p_reason: requiredText(reason, "Live-charging decision reason"),
+      p_attestation: Boolean(attestation),
+    },
+    "The live-charging decision could not be saved.",
   );
 }
 
@@ -831,6 +879,8 @@ export const generate_admin_control_report = generateAdminControlReport;
 export const get_marketplace_control_center = getMarketplaceControlCenter;
 export const review_marketplace_case = reviewMarketplaceCase;
 export const configure_marketplace_tax_control = configureMarketplaceTaxControl;
+export const review_marketplace_launch_control = reviewMarketplaceLaunchControl;
+export const set_marketplace_live_charging = setMarketplaceLiveCharging;
 
 const adminControlService = Object.freeze({
   AdminControlError,
@@ -860,6 +910,8 @@ const adminControlService = Object.freeze({
   getMarketplaceControlCenter,
   reviewMarketplaceCase,
   configureMarketplaceTaxControl,
+  reviewMarketplaceLaunchControl,
+  setMarketplaceLiveCharging,
   processMarketplaceRefund,
   signInInstitutionAdmin,
   signUpInstitutionApplicant,
