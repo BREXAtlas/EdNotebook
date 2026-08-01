@@ -35,6 +35,9 @@ const AdminControlCenter = lazy(() => import("./admin-control/AdminControlCenter
 const InstitutionAccessPage = lazy(() => import("./admin-control/InstitutionAccessPage.jsx"));
 const TosIntegrationPreview = lazy(() => import("./integrations/tos/TosIntegrationPreview.jsx"));
 const SyntheticInstitutionPilot = lazy(() => import("./integrations/tos/SyntheticInstitutionPilot.jsx"));
+const DigitalLiteracyCoursePage = lazy(() =>
+  import("./digital-literacy/DigitalLiteracyPilotWorkspace.jsx").then((module) => ({ default: module.DigitalLiteracyCoursePage }))
+);
 
 function RouteLoading() { return <main className="portal-route-loading" aria-live="polite"><strong>EdNotebook</strong><span>Opening your portal…</span></main>; }
 
@@ -76,6 +79,12 @@ function Router() {
   if (route.startsWith("#/lti/instructor")) return <MotionFrame routeKey="lti-instructor"><LtiLaunchWorkspace audience="instructor" /></MotionFrame>;
   if (route.startsWith("#/lti/student")) return <MotionFrame routeKey="lti-student"><LtiLaunchWorkspace audience="student" /></MotionFrame>;
   if (route.startsWith("#/institution-access") || route === "#/institution-admin" || route === "#/institution-admin/") return <MotionFrame routeKey="institution-access"><InstitutionAccessPage onAuthorized={() => navigate("#/admin/control-center")} onBack={() => navigate("#/")} /></MotionFrame>;
+
+  const digitalLiteracyRoute = route.match(/^#\/student\/(university|k12)\/digital-literacy\/([0-9a-f-]{36})\/([a-z0-9-]+)/i);
+  if (digitalLiteracyRoute) {
+    const [, track, assignmentId, unitId] = digitalLiteracyRoute;
+    return <AuthGate accountType="student" educationTrack={track} returnTo={route}>{() => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.course_runtime"><DigitalLiteracyCoursePage assignmentId={assignmentId} unitId={unitId} track={track} onBack={() => navigate(`#/student/${track}/app`)} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
+  }
 
   const courseRoute = route.match(/^#\/student\/(?:university\/|k12\/)?course\/([0-9a-f-]{36})/i) || route.match(/^#\/student\/course\/([0-9a-f-]{36})/i);
   if (courseRoute) {

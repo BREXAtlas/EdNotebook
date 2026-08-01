@@ -28,7 +28,7 @@ The Supabase migration creates:
 - `research_pilot_approval_records` — append-only written determination and revocation records.
 - `research_participation_states` — explicit choice, withdrawal, export, and deletion status.
 - `research_subject_requests` — auditable withdrawal/export/deletion requests.
-- `research_response_records` — protected response envelopes; no direct authenticated table access.
+- `research_response_records` — protected response envelopes; a participant can read only their own rows, while course managers must use the governed pseudonymized export.
 
 Changing the purpose or any instrument/configuration creates a new project version. Approval of one version never carries forward automatically.
 
