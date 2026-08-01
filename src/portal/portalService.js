@@ -168,7 +168,7 @@ export async function listStudentAccountNotifications(studentId) {
   if (!isSupabaseConfigured || !studentId) return { data: [], source: "device" };
   const { data, error } = await supabase
     .from("student_account_notifications")
-    .select("id,course_id,notification_type,title,body,route,read_at,created_at")
+    .select("id,course_id,notification_type,title,body,route,dedupe_key,read_at,created_at")
     .eq("student_id", studentId)
     .order("created_at", { ascending: false })
     .limit(20);

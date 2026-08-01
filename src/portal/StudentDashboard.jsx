@@ -324,6 +324,7 @@ export default function StudentDashboard({
   const [courseBadges, setCourseBadges] = useState([]);
   const [courseBooks, setCourseBooks] = useState([]);
   const [notificationCourseId, setNotificationCourseId] = useState(null);
+  const [notificationAssignmentId, setNotificationAssignmentId] = useState(null);
   const [classLinkStatus, setClassLinkStatus] = useState("");
   const [classLinkError, setClassLinkError] = useState("");
   const [demoMode, setDemoMode] = useState(false);
@@ -474,6 +475,11 @@ export default function StudentDashboard({
       window.location.hash = "#/publishers";
       return;
     }
+    if (notification.dedupe_key?.startsWith("digital-literacy-assignment:")) {
+      setNotificationAssignmentId(notification.dedupe_key.split(":")[1] || null);
+      setTab("assignments");
+      return;
+    }
     setNotificationCourseId(notification.course_id || null);
     setTab(notification.route === "rewards" ? "rewards" : "classes");
   }
@@ -536,7 +542,7 @@ export default function StudentDashboard({
           {tab === "overview" && <OverviewPanel name={demoMode ? "Brooke" : displayName} onTab={chooseTab} classes={classes} track={track} rewardSummary={rewardSummary} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening Own Your Semester…</section>}><OwnYourSemester profile={profile} session={session} track={track} classes={classes} /></Suspense>}
           {tab === "classes" && <ClassesPanel classes={classes} track={track} enrollmentRequests={enrollmentRequests} badges={courseBadges} focusCourseId={notificationCourseId} courseBooks={demoMode ? [] : courseBooks} />}
-          {tab === "assignments" && <>{!demoMode && <StudentDigitalLiteracyAssignments track={track} session={session} />}{classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">OTHER ASSIGNMENTS</span><h1>No other assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>}</>}
+          {tab === "assignments" && <>{!demoMode && <StudentDigitalLiteracyAssignments track={track} session={session} focusAssignmentId={notificationAssignmentId} />}{classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">OTHER ASSIGNMENTS</span><h1>No other assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>}</>}
           {tab === "grades" && <GradesPanel classes={classes} rows={rows} track={track} />}
           {tab === "rewards" && <StudentSocialLearningPanel userId={session?.user?.id} demo={demoMode} courseBadges={demoMode ? [] : courseBadges} onSummary={setRewardSummary} />}
           {tab === "notes" && <StudentLearningWorkspace key={`learning-${settingsScope}-${track}`} classes={classes} session={session} track={track} storageScope={settingsScope} />}

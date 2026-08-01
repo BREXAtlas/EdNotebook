@@ -35,6 +35,13 @@ test("Digital Literacy is a platform standard with one professor-scoped progress
   assert.match(workspace, /assignment\.catalog_release/u);
 });
 
+test("assignment notifications focus the exact Digital Literacy assignment", () => {
+  assert.match(workspace, /focusAssignmentId/u);
+  assert.match(workspace, /scrollIntoView/u);
+  assert.match(workspace, /digital-literacy-assignment-/u);
+  assert.match(styles, /\.dl-student-assignments article\.is-notification-focus/u);
+});
+
 test("unit and recipient selectors keep native controls bounded and aligned", () => {
   assert.match(styles, /grid-template-columns: 18px minmax\(0, 1fr\)/u);
   assert.match(styles, /\.dl-unit-group input\[type="checkbox"\]/u);
