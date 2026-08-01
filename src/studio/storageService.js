@@ -153,6 +153,8 @@ export async function saveResourceRecord(record) {
     license_label: record.license_label || null,
     security_status: record.secure_file_id ? (record.security_status || "quarantined") : "not_applicable",
     visibility: record.visibility || (record.course_id ? "course" : "private"),
+    target_kind: record.target_kind || "course",
+    target_key: record.target_key || null,
     metadata: record.metadata || {},
   };
 
@@ -163,6 +165,17 @@ export async function saveResourceRecord(record) {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function listCourseResourceTargets(courseId) {
+  if (!courseId) return { assignments: [] };
+  const { data, error } = await supabase
+    .from("assignments")
+    .select("id,title,status,due_at")
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return { assignments: data || [] };
 }
 
 export async function listCloudResources(courseId) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveLessonProgress } from "./courseService.js";
+import EdNotebookMediaReader from "../media/EdNotebookMediaReader.jsx";
 import {
   STUDENT_EXPERIENCE_CONTRACT_VERSION,
   STUDENT_LESSON_STAGES,
@@ -167,6 +168,7 @@ export default function StudentLessonPlayer({
   onExit,
   onOpenTool,
   onProgress,
+  resources = [],
 }) {
   const recoveryKey = useMemo(
     () =>
@@ -444,6 +446,17 @@ export default function StudentLessonPlayer({
             manifest={manifest}
             onOpenTool={onOpenTool}
           />
+          {resources.length > 0 && (
+            <section className="course-lesson-media" aria-labelledby={`lesson-media-${lesson.id}`}>
+              <div>
+                <span className="course-kicker">PROFESSOR-PUBLISHED MEDIA</span>
+                <h2 id={`lesson-media-${lesson.id}`}>Watch and explore without leaving the lesson.</h2>
+              </div>
+              {resources.map((resource) => (
+                <EdNotebookMediaReader key={resource.id} resource={resource} />
+              ))}
+            </section>
+          )}
         </section>
       )}
 
