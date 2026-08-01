@@ -4,6 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const materials = read("../studio/MaterialsWorkspace.jsx");
+const storageService = read("../studio/storageService.js");
 const reader = read("./EdNotebookMediaReader.jsx");
 const youtubePlayer = read("./YouTubeEvidencePlayer.jsx");
 const lessonPlayer = read("../course-runtime/StudentLessonPlayer.jsx");
@@ -18,6 +19,10 @@ test("professor can bind required media to one exact governed learning activity"
   assert.match(materials, /Due date and time/);
   assert.match(materials, /never completes this learning step or determines a grade/i);
   assert.match(materials, /Required media must use governed cloud storage/i);
+  assert.match(materials, /setPublishedLessonTargets\(targets\.lessons \|\| \[\]\)/);
+  assert.match(storageService, /from\("course_publications"\)/);
+  assert.match(storageService, /from\("course_publication_versions"\)/);
+  assert.match(storageService, /lessonTargetsFromManifest\(version\?\.manifest\)/);
 });
 
 test("student resumes media and reaches its exact linked learning activity", () => {
