@@ -51,6 +51,9 @@ Before merge:
 3. Rebuild staging and run the bundle audit.
 4. Validate the full course repository with `npm run validate`.
 5. Apply the migration to a disposable local database and run `supabase/tests/digital_literacy_pilot_readiness.sql`.
-6. Review RLS and security advisors before any staging deployment.
+6. Run `supabase/tests/digital_literacy_research_gate.sql`; its synthetic three-person cohort must produce a direct-identifier-free, keyed-code export and a content-free audit receipt before rolling the entire fixture back.
+7. Review RLS and security advisors before any staging deployment.
 
 After the canonical repository PR is merged, merge the EdNotebook staging PR, deploy its migration through the governed staging workflow, and perform professor/student acceptance with the existing staging accounts. Do not activate a research version or collect a response as part of this unit.
+
+The professor dashboard's final pilot evidence gate is read-only. It reports the current database blockers and keeps “course available” separate from “research collecting.” It cannot record a determination, enable the course feature, or activate a project version.

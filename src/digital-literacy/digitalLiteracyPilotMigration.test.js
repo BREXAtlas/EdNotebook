@@ -23,6 +23,13 @@ const researchGateSql = readFileSync(
   ),
   "utf8",
 );
+const launchReadinessSql = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260801233000_digital_literacy_research_launch_readiness.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const integratedSql = `${researchGateSql}\n${sql}`;
 
 test("migration anchors EdNotebook to one versioned canonical 40-unit catalog", () => {
@@ -139,4 +146,28 @@ test("catalog releases advance standard access while preserving release-versione
     standardAccessSql,
     /Canonical Digital Literacy release is not assigned to this student/u,
   );
+});
+
+test("the final launch view reports database blockers without activating research", () => {
+  for (const token of [
+    "get_digital_literacy_research_launch_readiness",
+    "research_not_configured",
+    "blocked_pending_governance",
+    "approved_version_active",
+    "research_participation_required_for_coursework",
+    "version_specific_keyed_hmac",
+    "manual_disclosure_review_required",
+    "pseudonymized_is_anonymous",
+  ])
+    assert.ok(launchReadinessSql.includes(token), `missing ${token}`);
+  assert.match(launchReadinessSql, /security definer\s+set search_path = ''/iu);
+  assert.match(
+    launchReadinessSql,
+    /revoke all on function public\.get_digital_literacy_research_launch_readiness\(uuid\)\s+from public, anon/iu,
+  );
+  assert.match(
+    launchReadinessSql,
+    /grant execute on function public\.get_digital_literacy_research_launch_readiness\(uuid\)\s+to authenticated/iu,
+  );
+  assert.doesNotMatch(launchReadinessSql, /response_payload/iu);
 });
