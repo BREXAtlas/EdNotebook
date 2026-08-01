@@ -4,8 +4,11 @@ import test from "node:test";
 import {
   hasActiveMarketplaceAccess,
   marketplaceAccessHref,
+  marketplaceReportRange,
   marketplaceReceiptLabel,
+  marketplaceSalesReportCsv,
 } from "./marketplacePresentation.js";
+import { marketplaceReceiptLines } from "./marketplaceReceiptDocument.js";
 
 const ROOT = new URL("../../", import.meta.url);
 
@@ -119,4 +122,84 @@ test("marketplace presentation opens only a current entitlement", () => {
   assert.equal(marketplaceAccessHref(order), "#/library/book/87654321-4321-4321-8321-ba0987654321");
   assert.equal(marketplaceReceiptLabel(order.id), "EDN-34567890AB");
   assert.equal(marketplaceAccessHref({ ...order, entitlement_status: "refunded" }), "");
+});
+
+test("buyer receipts and seller-period reports remain sanitized and exportable", async () => {
+  const [landing, studio, service, migration] = await Promise.all([
+    source("src/portal/PublishingLanding.jsx"),
+    source("src/studio/PublisherStudio.jsx"),
+    source("src/marketplace/marketplaceService.js"),
+    source("supabase/migrations/20260801010000_marketplace_receipts_reporting_launch_controls.sql"),
+  ]);
+  assert.match(landing, /View receipt/u);
+  assert.match(landing, /Download PDF receipt/u);
+  assert.match(service, /get_my_marketplace_receipt/u);
+  assert.match(service, /get_my_marketplace_sales_report/u);
+  assert.match(studio, /Sales and payout activity/u);
+  assert.match(studio, /Export CSV/u);
+  assert.match(studio, /Buyer identity, payment credentials, and learning activity are excluded/u);
+  assert.match(migration, /Marketplace receipt identity is immutable/u);
+  assert.match(migration, /Operational sales report only; not a tax filing or Stripe payout statement/u);
+  assert.doesNotMatch(migration.match(/create or replace function public\.get_my_marketplace_sales_report[\s\S]*?end;\n\$\$;/u)?.[0] || "", /buyer_id/u);
+});
+
+test("receipt PDF content and CSV accounting rows use governed transaction fields", () => {
+  const receipt = {
+    receipt_number: "EDN-20260801-1234567890",
+    issued_at: "2026-08-01T00:00:00.000Z",
+    title_snapshot: "Digital Literacy",
+    seller_name: "Example Professor Press",
+    access_model: "purchase",
+    order_status: "fulfilled",
+    currency: "usd",
+    subtotal_cents: 500,
+    tax_cents: 40,
+    total_cents: 540,
+    refunded_cents: 0,
+  };
+  const lines = marketplaceReceiptLines(receipt).join("\n");
+  assert.match(lines, /EDN-20260801-1234567890/u);
+  assert.match(lines, /not a tax invoice/u);
+  const csv = marketplaceSalesReportCsv({ transactions: [{
+    id: "12345678-1234-4234-8234-1234567890ab",
+    ...receipt,
+    paid_at: receipt.issued_at,
+    item_kind: "book",
+    platform_fee_cents: 81,
+    seller_net_cents: 459,
+    status: "fulfilled",
+  }] });
+  assert.match(csv, /receipt_number,paid_at,title/u);
+  assert.match(csv, /Digital Literacy/u);
+  assert.doesNotMatch(csv, /buyer/u);
+  const formulaCsv = marketplaceSalesReportCsv({ transactions: [{
+    ...receipt,
+    title_snapshot: "=HYPERLINK(\"https://example.invalid\",\"Open\")",
+  }] });
+  assert.match(formulaCsv, /'=HYPERLINK/u);
+  const range = marketplaceReportRange("month_to_date", new Date("2026-08-15T12:00:00.000Z"));
+  const start = new Date(range.startAt);
+  assert.equal(start.getMonth(), 7);
+  assert.equal(start.getDate(), 1);
+  assert.equal(start.getHours(), 0);
+});
+
+test("production checkout is separately blocked behind the launch-control ledger", async () => {
+  const [control, checkout, shared, migration] = await Promise.all([
+    source("src/admin-control/AdminControlCenter.jsx"),
+    source("supabase/functions/marketplace-checkout/index.ts"),
+    source("supabase/functions/_shared/marketplace.ts"),
+    source("supabase/migrations/20260801010000_marketplace_receipts_reporting_launch_controls.sql"),
+  ]);
+  assert.match(control, /LIVE CHARGING BLOCKED/u);
+  assert.match(control, /Activate live charging/u);
+  assert.match(control, /I confirm that production legal, tax, finance, security, support, and operations owners approved this activation/u);
+  assert.match(checkout, /requireMarketplaceCheckoutMode\(admin\)/u);
+  assert.match(checkout, /receipt_email: user\.email/u);
+  assert.match(shared, /\(\?:sk\|rk\)_live_/u);
+  assert.match(shared, /\(\?:sk\|rk\)_test_/u);
+  assert.match(shared, /get_marketplace_launch_runtime_gate/u);
+  assert.match(migration, /private\.marketplace_launch_ready/u);
+  assert.match(migration, /marketplace_launch_controls_fail_closed/u);
+  assert.match(migration, /marketplace\.live_charging_enabled/u);
 });

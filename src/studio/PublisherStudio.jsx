@@ -5,6 +5,7 @@ import { textToEduBook } from "./edubook.js";
 import {
   listProfessorPublicationCourses,
   loadMarketplaceDashboard,
+  loadMarketplaceSalesReport,
   openSellerPayoutDashboard,
   startSellerOnboarding,
   submitCommercialListing,
@@ -22,10 +23,53 @@ import {
 import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
+  downloadMarketplaceSalesReport,
+  marketplaceReportRange,
   marketplaceReceiptLabel,
   marketplaceStatusLabel,
   marketplaceStatusTone,
 } from "../marketplace/marketplacePresentation.js";
+
+function SellerSalesReport({ enabled }) {
+  const [period, setPeriod] = useState("30_days");
+  const [report, setReport] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function refreshReport() {
+    if (!enabled) return;
+    setBusy(true);
+    setError("");
+    const range = marketplaceReportRange(period);
+    const result = await loadMarketplaceSalesReport(range);
+    if (result.error) setError(result.error.message || "The seller sales report could not be loaded.");
+    else setReport(result.data || null);
+    setBusy(false);
+  }
+
+  useEffect(() => {
+    refreshReport();
+  }, [enabled, period]);
+
+  if (!enabled) return <div className="studio-commerce-empty">Submit the seller application before sales reporting is available.</div>;
+  const totals = report?.totals || {};
+  return <section className="seller-sales-report" aria-labelledby="seller-sales-report-title">
+    <header><div><span>SELLER REPORT</span><h4 id="seller-sales-report-title">Sales and payout activity</h4><p>Choose a period, review item-level results, and export a buyer-private CSV for bookkeeping.</p></div><div><label>Reporting period<select value={period} onChange={(event) => setPeriod(event.target.value)}><option value="30_days">Last 30 days</option><option value="90_days">Last 90 days</option><option value="month_to_date">Month to date</option><option value="year_to_date">Year to date</option></select></label><button type="button" className="studio-secondary-button" disabled={busy} onClick={refreshReport}>{busy ? "Refreshing…" : "Refresh report"}</button><button type="button" className="studio-secondary-button" disabled={!report?.transactions?.length} onClick={() => downloadMarketplaceSalesReport(report)}>Export CSV</button></div></header>
+    {error ? <div className="studio-alert is-error">{error}</div> : null}
+    {report ? <>
+      <dl className="seller-commerce-summary">
+        <div><dt>Paid orders</dt><dd>{totals.order_count || 0}</dd></div>
+        <div><dt>Customer total</dt><dd>{formatMarketplaceMoney(totals.gross_customer_cents || 0)}</dd></div>
+        <div><dt>Tax collected</dt><dd>{formatMarketplaceMoney(totals.tax_cents || 0)}</dd></div>
+        <div><dt>Platform fees</dt><dd>{formatMarketplaceMoney(totals.platform_fee_cents || 0)}</dd></div>
+        <div><dt>Seller allocation</dt><dd>{formatMarketplaceMoney(totals.seller_allocation_cents || 0)}</dd></div>
+        <div><dt>Paid payouts</dt><dd>{formatMarketplaceMoney(totals.paid_payout_cents || 0)}</dd></div>
+      </dl>
+      {(report.items || []).length ? <div className="seller-report-items"><div role="row"><strong>Title and access</strong><strong>Orders</strong><strong>Customer total</strong><strong>Seller allocation</strong><strong>Refunded</strong></div>{report.items.map((item) => <div role="row" key={`${item.listing_id}:${item.access_model}`}><span>{item.title_snapshot}<small>{item.item_kind} · {item.access_model}</small></span><span>{item.order_count}</span><span>{formatMarketplaceMoney(item.gross_customer_cents,item.currency)}</span><span>{formatMarketplaceMoney(item.seller_allocation_cents,item.currency)}</span><span>{formatMarketplaceMoney(item.refunded_customer_cents,item.currency)}</span></div>)}</div> : <div className="studio-commerce-empty">No paid transactions fall inside this reporting period.</div>}
+      <p className="studio-commerce-review-note">{report.report_note} Buyer identity, payment credentials, and learning activity are excluded.</p>
+    </> : busy ? <div className="studio-commerce-empty">Preparing the seller report…</div> : null}
+  </section>;
+}
 
 function SellerCommerceLedger({ dashboard }) {
   const sales = dashboard.sales || [];
@@ -47,6 +91,7 @@ function SellerCommerceLedger({ dashboard }) {
       <footer><span>Access: {marketplaceStatusLabel(order.entitlement_status || "pending")}{order.entitlement_expires_at ? ` through ${formatMarketplaceDate(order.entitlement_expires_at)}` : ""}</span>{order.refund_status ? <span>Refund: {marketplaceStatusLabel(order.refund_status)}</span> : null}{order.dispute_status ? <span>Dispute: {marketplaceStatusLabel(order.dispute_status)}</span> : null}<a href={order.course_id ? `#/publishers?course=${order.course_id}` : "#/publishers"}>View Library</a></footer>
     </article>)}</div> : <div className="studio-commerce-empty">No completed bookstore activity yet. Published listings will reconcile here after a verified checkout event.</div>}
     {payouts.length ? <div className="seller-payout-ledger"><h4>Connected-account payouts</h4>{payouts.slice(0, 10).map((payout) => <article key={payout.id}><strong>{formatMarketplaceMoney(payout.amount_cents, payout.currency)}</strong><span>{marketplaceStatusLabel(payout.status)}</span><small>{payout.arrival_at ? `Arrival ${formatMarketplaceDate(payout.arrival_at)}` : formatMarketplaceDate(payout.created_at)}</small></article>)}</div> : null}
+    <SellerSalesReport enabled={Boolean(dashboard.seller_application)} />
   </section>;
 }
 

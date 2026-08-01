@@ -35,10 +35,32 @@ export function trustedMarketplaceUrl(value: unknown, fallbackPath: string): str
   return url.href;
 }
 
-export function stripeClient(): Stripe {
+function stripeSecret(): string {
   const secret = Deno.env.get("STRIPE_SECRET_KEY");
   if (!secret) throw new HttpError(503, "Stripe Connect is not configured.");
-  return new Stripe(secret, { telemetry: false });
+  return secret;
+}
+
+export function stripeEnvironmentMode(): "test" | "live" {
+  const secret = stripeSecret();
+  if (/^(?:sk|rk)_test_/u.test(secret)) return "test";
+  if (/^(?:sk|rk)_live_/u.test(secret)) return "live";
+  throw new HttpError(503, "Stripe Connect uses an unrecognized key mode.");
+}
+
+export async function requireMarketplaceCheckoutMode(admin: any): Promise<"test" | "live"> {
+  const mode = stripeEnvironmentMode();
+  if (mode === "test") return mode;
+  const { data, error } = await admin.rpc("get_marketplace_launch_runtime_gate");
+  if (error) throw new HttpError(503, "Production marketplace launch evidence could not be verified.");
+  if (!data?.effective_live_charging_enabled) {
+    throw new HttpError(503, "Live marketplace charging is blocked until every production launch control is approved and activated.");
+  }
+  return mode;
+}
+
+export function stripeClient(): Stripe {
+  return new Stripe(stripeSecret(), { telemetry: false });
 }
 
 export function marketplaceFee(priceCents: number, basisPoints: number): number {

@@ -1399,6 +1399,9 @@ function MarketplacePanel() {
   const [marketplace, setMarketplace] = useState(null);
   const [notes, setNotes] = useState({});
   const [taxDrafts, setTaxDrafts] = useState({});
+  const [launchDrafts, setLaunchDrafts] = useState({});
+  const [launchReason, setLaunchReason] = useState("");
+  const [launchAttestation, setLaunchAttestation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -1482,6 +1485,61 @@ function MarketplacePanel() {
     }
   }
 
+  async function reviewLaunchControl(control, decision) {
+    const draft = launchDrafts[control.control_key] || {};
+    const evidenceReference = String(draft.evidenceReference ?? control.evidence_reference ?? "").trim();
+    const reviewNotes = String(draft.reviewNotes ?? control.review_notes ?? "").trim();
+    if (reviewNotes.length < 20 || (decision === "approved" && evidenceReference.length < 8)) {
+      setError("Add an evidence reference and review notes of at least twenty characters before approving this launch control.");
+      return;
+    }
+    setBusy(`launch:${control.control_key}:${decision}`);
+    setError("");
+    setNotice("");
+    try {
+      await adminService.reviewMarketplaceLaunchControl({
+        controlKey: control.control_key,
+        decision,
+        evidenceReference,
+        reviewNotes,
+        expiresAt: draft.expiresOn ? `${draft.expiresOn}T23:59:59.000Z` : null,
+        attestation: decision === "approved" && Boolean(draft.attestation),
+      });
+      setNotice(`${control.title} is now ${titleCase(decision)}. Live checkout readiness was recalculated and fails closed.`);
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The launch-control review could not be saved."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function changeLiveCharging(enable) {
+    if (launchReason.trim().length < 20 || (enable && !launchAttestation)) {
+      setError("Add a decision reason of at least twenty characters and confirm the final live-charging attestation.");
+      return;
+    }
+    setBusy(enable ? "launch:enable" : "launch:disable");
+    setError("");
+    setNotice("");
+    try {
+      await adminService.setMarketplaceLiveCharging({
+        enable,
+        expectedUpdatedAt: marketplace.launch_state.updated_at,
+        reason: launchReason.trim(),
+        attestation: enable && launchAttestation,
+      });
+      setNotice(enable ? "Production live charging was activated after every required control passed." : "Production live charging is disabled. Test-mode evidence remains separate.");
+      setLaunchReason("");
+      setLaunchAttestation(false);
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The live-charging decision could not be saved."));
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (loading && !marketplace) return <section className="ac-panel"><div className="ac-empty">Loading commercial publishing evidence…</div></section>;
   const applications = marketplace?.applications || [];
   const rights = marketplace?.rights_reviews || [];
@@ -1492,6 +1550,9 @@ function MarketplacePanel() {
   const taxControls = marketplace?.tax_controls || [];
   const payouts = marketplace?.payouts || [];
   const stats = marketplace?.statistics || {};
+  const launchControls = marketplace?.launch_controls || [];
+  const launchState = marketplace?.launch_state || {};
+  const launchReadiness = marketplace?.launch_readiness || {};
 
   return <section className="ac-panel marketplace-control-panel">
     <div className="ac-section-heading"><div><p className="ac-eyebrow">Platform-owner evidence gate</p><h2>Commercial publishing</h2><p>Stripe Connect processes marketplace money. EdNotebook controls who may sell, which rights are valid, when checkout appears, which order grants access, and how refunds, disputes, tax responsibility, and payouts are reconciled.</p></div><HelpTip title="Fail-closed commerce">A seller’s Stripe approval does not approve EdNotebook publication rights. A rights approval does not activate checkout. Seller, rights, tax, and listing records must all be approved, while Stripe charging and payouts remain enabled.</HelpTip></div>
@@ -1505,6 +1566,20 @@ function MarketplacePanel() {
       <MoneyStatCard label="Processed" cents={stats.gross_processed_cents || 0} note={`${stats.orders || 0} governed orders`} />
       <MoneyStatCard label="Paid payouts" cents={stats.paid_payout_cents || 0} note="Connected-account evidence" />
     </div>
+
+    <section className="ac-subsection marketplace-launch-gate">
+      <div className="marketplace-launch-heading"><div><p className="ac-eyebrow">Production launch gate</p><h3>Legal, tax, finance, security, and support readiness</h3><p>Staging test-mode transactions may continue. A live Stripe key is rejected by the checkout service until every required control below is approved, current, and separately activated.</p></div><div className={launchState.effective_live_charging_enabled ? "is-live" : "is-blocked"}><strong>{launchState.effective_live_charging_enabled ? "LIVE CHARGING ENABLED" : "LIVE CHARGING BLOCKED"}</strong><span>{launchReadiness.approved_current_controls || 0} of {launchReadiness.required_controls || 0} required controls current</span></div></div>
+      <div className="marketplace-launch-progress" aria-label="Marketplace launch readiness"><span style={{ width: `${launchReadiness.required_controls ? Math.round((launchReadiness.approved_current_controls || 0) / launchReadiness.required_controls * 100) : 0}%` }} /></div>
+      <div className="marketplace-launch-controls">{launchControls.map((control) => {
+        const draft = launchDrafts[control.control_key] || {};
+        const evidenceReference = draft.evidenceReference ?? control.evidence_reference ?? "";
+        const reviewNotes = draft.reviewNotes ?? control.review_notes ?? "";
+        const expiresOn = draft.expiresOn ?? (control.expires_at ? control.expires_at.slice(0,10) : "");
+        const attested = Boolean(draft.attestation);
+        return <article key={control.control_key}><header><div><span>{titleCase(control.category)}</span><strong>{control.title}</strong></div><StatusPill status={control.effective_status || control.status} /></header><p>{control.description}</p><div className="ac-form-grid"><label>Evidence reference<input value={evidenceReference} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], evidenceReference:event.target.value } }))} placeholder="Approved policy, ticket, review, or signed record" /></label><label>Evidence current through (optional)<input type="date" value={expiresOn} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], expiresOn:event.target.value } }))} /></label></div><label>Review notes<textarea rows="2" value={reviewNotes} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], reviewNotes:event.target.value } }))} placeholder="Record who reviewed what, the decision, and any limitations." /></label><label className="ac-check-row"><input type="checkbox" checked={attested} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], attestation:event.target.checked } }))} /><span>I attest that this evidence was independently reviewed and is ready for production reliance.</span></label><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !attested || String(evidenceReference).trim().length < 8 || String(reviewNotes).trim().length < 20} onClick={() => reviewLaunchControl(control,"approved")}>Approve control</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy) || String(reviewNotes).trim().length < 20} onClick={() => reviewLaunchControl(control,"blocked")}>Mark blocked</button>{control.status !== "pending" ? <button className="ac-button ac-button--quiet" type="button" disabled={Boolean(busy) || String(reviewNotes).trim().length < 20} onClick={() => reviewLaunchControl(control,"pending")}>Reopen review</button> : null}</div></article>;
+      })}</div>
+      <div className="marketplace-live-decision"><div><strong>Separate live-charging decision</strong><p>Approval of all checklist items does not switch charging on. The final decision uses optimistic locking, requires a reason and attestation, and is recorded in the audit ledger.</p></div><label>Decision reason<textarea rows="2" value={launchReason} onChange={(event) => setLaunchReason(event.target.value)} placeholder="Identify the approving meeting, scope, date, and accountable owner." /></label><label className="ac-check-row"><input type="checkbox" checked={launchAttestation} onChange={(event) => setLaunchAttestation(event.target.checked)} /><span>I confirm that production legal, tax, finance, security, support, and operations owners approved this activation.</span></label><div className="ac-form-actions">{launchState.live_charging_enabled ? <button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy) || launchReason.trim().length < 20} onClick={() => changeLiveCharging(false)}>Disable live charging</button> : <button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !launchReadiness.ready || !launchAttestation || launchReason.trim().length < 20} onClick={() => changeLiveCharging(true)}>Activate live charging</button>}</div></div>
+    </section>
 
     <section className="ac-subsection"><h3>Seller verification <span className="ac-count-badge">{applications.length}</span></h3><p>Stripe-hosted onboarding verifies identity and payout details. Approve EdNotebook seller status only when details, charges, payouts, rights attestation, and catalog responsibility are all ready.</p><div className="ac-review-list">
       {applications.map((application) => <article key={application.id}><div className="ac-review-heading"><div><strong>{application.organization_name}</strong><span>{application.applicant_name || application.applicant_email} · {titleCase(application.applicant_type)}</span></div><StatusPill status={application.status} /></div><dl className="ac-detail-grid"><div><dt>Stripe verification</dt><dd>{titleCase(application.verification_status)}</dd></div><div><dt>Identity details</dt><dd>{application.details_submitted ? "Submitted" : "Incomplete"}</dd></div><div><dt>Charges</dt><dd>{application.charges_enabled ? "Enabled" : "Blocked"}</dd></div><div><dt>Payouts</dt><dd>{application.payouts_enabled ? "Enabled" : "Blocked"}</dd></div></dl>{application.requirements_due?.length ? <div className="ac-callout ac-callout--warning">Stripe still requires: {application.requirements_due.join(", ")}</div> : null}{["submitted","reviewing","suspended"].includes(application.status) ? <><MarketplaceReviewNotes type="seller" id={application.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || application.verification_status !== "verified" || !application.charges_enabled || !application.payouts_enabled} onClick={() => decide("seller",application.id,"approved")}>Approve seller</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("seller",application.id,"declined")}>Decline</button></div></> : null}</article>)}

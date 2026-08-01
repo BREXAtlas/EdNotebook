@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient.js";
 export {
   loadMarketplaceDashboard,
+  loadMarketplaceSalesReport,
   openSellerPayoutDashboard,
   startSellerOnboarding,
   submitCommercialListing,

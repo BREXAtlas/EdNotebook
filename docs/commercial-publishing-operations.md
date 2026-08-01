@@ -82,6 +82,44 @@ login link. In either case Stripe owns sensitive fields and authentication. The
 server records the payout-controls audit event; the browser never receives a
 Stripe secret key or bank data.
 
+## Buyer receipts and seller reports
+
+Payment fulfillment assigns one immutable EdNotebook receipt number to the
+governed order. The buyer can open the receipt from **Purchases & rentals** and
+download a PDF containing the item, seller, access model, subtotal, calculated
+tax, total, current refund amount, and order status. Stripe remains the payment
+processor and may send its own processor receipt. The EdNotebook PDF is labeled
+as a transaction receipt, not a tax invoice.
+
+Professors can open a 30-day, 90-day, month-to-date, or year-to-date sales
+report in Commercial publishing and export the same sanitized transaction rows
+as CSV. Reports include item totals, tax, platform fees, seller allocations,
+refunds, and payout events. They exclude buyer identity, payment credentials,
+and every learning record. The report is operational evidence, not a tax filing
+or a substitute for Stripe's connected-account payout statement.
+
+## Production launch control
+
+Test-mode acceptance and live charging are separate decisions. The Control
+Center starts with live charging blocked and requires current evidence for:
+
+- buyer terms, seller terms, refunds, rentals, and prohibited content;
+- rights review, takedown, repeat-infringer response, and appeals;
+- tax registrations, nexus, product codes, and marketplace liability;
+- settlement reconciliation, refunds, reserves, disputes, and payouts;
+- production key custody, signed webhooks, monitoring, replay handling, and
+  incident ownership;
+- buyer/seller support and dispute-response ownership; and
+- receipts, ledger retention, privacy minimization, and accounting ownership.
+
+Approving the checklist does not enable charging. A separate owner action needs
+an attestation, decision reason, and current-record version. Any required
+control that becomes blocked or non-current automatically disables the live
+state. In addition, `marketplace-checkout` inspects the Stripe secret-key mode:
+test keys remain confined to test transactions, while a live key is rejected
+unless the server-only runtime gate confirms both the complete checklist and
+the separate activation decision.
+
 ## Required Stripe setup
 
 Configure these Supabase Edge Function secrets separately for staging and

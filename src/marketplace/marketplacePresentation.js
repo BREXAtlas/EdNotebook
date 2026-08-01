@@ -67,6 +67,68 @@ export function marketplaceReceiptLabel(orderId) {
   return value ? `EDN-${value.slice(-10)}` : "Receipt pending";
 }
 
+export function marketplaceReportRange(period, at = new Date()) {
+  const end = new Date(at);
+  const start = new Date(at);
+  if (period === "month_to_date") {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+  } else if (period === "year_to_date") {
+    start.setMonth(0, 1);
+    start.setHours(0, 0, 0, 0);
+  } else {
+    const days = period === "90_days" ? 90 : 30;
+    start.setDate(start.getDate() - days);
+  }
+  return { startAt: start.toISOString(), endAt: end.toISOString() };
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  const safeText = /^[=+\-@\t\r]/u.test(text) ? `'${text}` : text;
+  return /[",\r\n]/u.test(safeText) ? `"${safeText.replaceAll('"', '""')}"` : safeText;
+}
+
+export function marketplaceSalesReportCsv(report) {
+  const transactions = report?.transactions || [];
+  const rows = [[
+    "receipt_number", "paid_at", "title", "item_kind", "access_model", "status",
+    "currency", "subtotal", "tax", "customer_total", "platform_fee",
+    "seller_allocation", "refunded_customer_amount",
+  ]];
+  for (const transaction of transactions) {
+    rows.push([
+      transaction.receipt_number || marketplaceReceiptLabel(transaction.id),
+      transaction.paid_at || "",
+      transaction.title_snapshot || "",
+      transaction.item_kind || "",
+      transaction.access_model || "",
+      transaction.status || "",
+      String(transaction.currency || "usd").toUpperCase(),
+      (Number(transaction.subtotal_cents || 0) / 100).toFixed(2),
+      (Number(transaction.tax_cents || 0) / 100).toFixed(2),
+      (Number(transaction.total_cents || 0) / 100).toFixed(2),
+      (Number(transaction.platform_fee_cents || 0) / 100).toFixed(2),
+      (Number(transaction.seller_net_cents || 0) / 100).toFixed(2),
+      (Number(transaction.refunded_cents || 0) / 100).toFixed(2),
+    ]);
+  }
+  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+export function downloadMarketplaceSalesReport(report) {
+  const csv = marketplaceSalesReportCsv(report);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const start = String(report?.period?.start_at || "sales").slice(0, 10);
+  const end = String(report?.period?.end_at || "report").slice(0, 10);
+  anchor.href = href;
+  anchor.download = `ednotebook-sales-${start}-to-${end}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(href);
+}
+
 export function hasActiveMarketplaceAccess(order, at = new Date()) {
   if (order?.entitlement_status !== "active") return false;
   if (!order.entitlement_expires_at) return true;

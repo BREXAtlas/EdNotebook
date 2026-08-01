@@ -677,6 +677,38 @@ begin
 end;
 $$;
 
+do $$
+declare report jsonb;
+begin
+  report := public.get_my_marketplace_sales_report(now()-interval '1 day',now()+interval '1 day');
+  if (report->'totals'->>'order_count')::integer<4
+     or not exists (
+       select 1 from jsonb_array_elements(report->'transactions') item
+       where item->>'id'='22000000-0000-4000-8000-000000000030'
+         and item->>'receipt_number' is not null
+     )
+     or report::text like '%buyer_id%' then
+    raise exception 'Seller-period report did not reconcile sanitized receipts and sales totals';
+  end if;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000002',true);
+set local role authenticated;
+do $$
+declare receipt jsonb;
+begin
+  receipt := public.get_my_marketplace_receipt('22000000-0000-4000-8000-000000000030');
+  if receipt->>'receipt_number' is null
+     or receipt->>'seller_name'<>'Marketplace Seller Press'
+     or receipt->>'title_snapshot'<>'Governed Marketplace Book'
+     or (receipt->>'tax_invoice')::boolean then
+    raise exception 'Buyer receipt did not preserve the governed transaction record';
+  end if;
+end;
+$$;
+
 reset role;
 select set_config('request.jwt.claim.sub','22000000-0000-4000-8000-000000000003',true);
 set local role authenticated;
@@ -702,6 +734,79 @@ begin
 end;
 $$;
 
+do $$
+declare
+  control record;
+  gate jsonb;
+  state_updated_at timestamptz;
+begin
+  gate := public.get_marketplace_launch_control_center();
+  if (gate->'readiness'->>'ready')::boolean
+     or (gate->'state'->>'effective_live_charging_enabled')::boolean then
+    raise exception 'Production marketplace launch must begin fail-closed';
+  end if;
+
+  begin
+    state_updated_at := (gate->'state'->>'updated_at')::timestamptz;
+    perform public.set_marketplace_live_charging(
+      true,state_updated_at,
+      'Fixture attempted activation before required launch evidence.',true
+    );
+    raise exception 'Expected premature live charging activation to fail';
+  exception when others then
+    if sqlerrm='Expected premature live charging activation to fail' then raise; end if;
+  end;
+
+  for control in
+    select item->>'control_key' as control_key
+    from jsonb_array_elements(gate->'controls') item
+    where (item->>'required')::boolean
+  loop
+    perform public.review_marketplace_launch_control(
+      control.control_key,'approved',
+      'fixture-evidence-'||control.control_key,
+      'Disposable SQL gate independently reviewed this synthetic launch evidence.',
+      now()+interval '30 days',true
+    );
+  end loop;
+
+  gate := public.get_marketplace_launch_control_center();
+  if not (gate->'readiness'->>'ready')::boolean then
+    raise exception 'Current required launch controls did not satisfy readiness';
+  end if;
+  state_updated_at := (gate->'state'->>'updated_at')::timestamptz;
+  perform public.set_marketplace_live_charging(
+    true,state_updated_at,
+    'Disposable SQL gate activated live mode only after every synthetic approval.',true
+  );
+  gate := public.get_marketplace_launch_control_center();
+  if not (gate->'state'->>'effective_live_charging_enabled')::boolean then
+    raise exception 'Approved launch state did not expose the service-role runtime gate';
+  end if;
+
+  perform public.review_marketplace_launch_control(
+    'security.production_webhooks','blocked','fixture-blocked-evidence',
+    'Synthetic webhook evidence was withdrawn to prove automatic fail-closed behavior.',
+    null,false
+  );
+  gate := public.get_marketplace_launch_control_center();
+  if (gate->'state'->>'live_charging_enabled')::boolean then
+    raise exception 'A blocked required control did not automatically disable live charging';
+  end if;
+end;
+$$;
+
 reset role;
 select set_config('request.jwt.claim.sub','',true);
+set local role service_role;
+do $$
+declare gate jsonb;
+begin
+  gate := public.get_marketplace_launch_runtime_gate();
+  if (gate->>'effective_live_charging_enabled')::boolean then
+    raise exception 'Service-role launch gate did not remain fail-closed after evidence withdrawal';
+  end if;
+end;
+$$;
+reset role;
 rollback;

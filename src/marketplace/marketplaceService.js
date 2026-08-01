@@ -10,6 +10,21 @@ export async function loadMarketplaceDashboard() {
   return { data: data || {}, error };
 }
 
+export async function loadMarketplaceReceipt(orderId) {
+  if (!isSupabaseConfigured) return unavailable("The marketplace service is not connected.");
+  return supabase.rpc("get_my_marketplace_receipt", {
+    p_order_id: orderId,
+  });
+}
+
+export async function loadMarketplaceSalesReport({ startAt, endAt }) {
+  if (!isSupabaseConfigured) return unavailable("The marketplace service is not connected.");
+  return supabase.rpc("get_my_marketplace_sales_report", {
+    p_period_start: startAt,
+    p_period_end: endAt,
+  });
+}
+
 export async function submitSellerApplication({
   organizationName,
   applicantType,

@@ -11,6 +11,7 @@ import {
 } from "../_shared/runtime.ts";
 import {
   marketplaceFee,
+  requireMarketplaceCheckoutMode,
   stripeClient,
   trustedMarketplaceUrl,
   verifiedSeller,
@@ -36,6 +37,7 @@ Deno.serve(async (req) => {
     if (!input.listingId || !input.clientRequestKey) {
       throw new HttpError(400, "Listing and checkout request identifiers are required.");
     }
+    await requireMarketplaceCheckoutMode(admin);
 
     const { data: existing } = await admin
       .from("marketplace_orders")
@@ -166,6 +168,7 @@ Deno.serve(async (req) => {
       : { enabled: true, liability: { type: "self" } };
     const paymentIntentData = tax.liability === "platform"
       ? {
+        receipt_email: user.email || undefined,
         transfer_data: {
           destination: seller.stripe_account_id,
           amount: listing.price_cents - feeCents,
@@ -176,6 +179,7 @@ Deno.serve(async (req) => {
         },
       }
       : {
+        receipt_email: user.email || undefined,
         application_fee_amount: feeCents,
         transfer_data: { destination: seller.stripe_account_id },
         on_behalf_of: seller.stripe_account_id,
