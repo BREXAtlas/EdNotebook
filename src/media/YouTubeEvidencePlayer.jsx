@@ -39,6 +39,7 @@ export default function YouTubeEvidencePlayer({
   const timerRef = useRef(null);
   const lastReportRef = useRef(null);
   const evidenceRef = useRef(onEvidence);
+  const initialProgressRef = useRef(initialProgress);
   const [message, setMessage] = useState(mediaProgressLabel(initialProgress));
   const [error, setError] = useState("");
 
@@ -101,6 +102,16 @@ export default function YouTubeEvidencePlayer({
           },
           events: {
             onReady: () => {
+              const resumeAt = Number(initialProgressRef.current?.last_position_seconds) || 0;
+              const duration = Number(playerRef.current?.getDuration?.()) || 0;
+              if (
+                initialProgressRef.current?.status !== "completed" &&
+                resumeAt > 1 &&
+                (!duration || resumeAt < duration - 1)
+              ) {
+                playerRef.current?.seekTo?.(resumeAt, true);
+                setMessage(`Resume ready at ${Math.floor(resumeAt / 60)}:${String(Math.floor(resumeAt % 60)).padStart(2, "0")}.`);
+              }
               if (captionsEnabled) evidenceRef.current?.({ type: "captions_enabled" });
             },
             onStateChange: (event) => {

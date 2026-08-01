@@ -511,6 +511,7 @@ function CalendarPanel({
   const assignmentEvents = assignments.map((item) => ({
     id: item.id,
     sourceWorkId: item.sourceWorkId,
+    workType: item.workType,
     date: dateKeyInTimeZone(item.due, timeZone),
     time: formatDateTime(item.due, timeZone, hour12).split(", ").pop(),
     due: item.due,
@@ -518,7 +519,7 @@ function CalendarPanel({
     title: item.title,
     description:
       item.description ||
-      "Open the assignment for its professor-published details.",
+      "Open the professor-published course item for details.",
     type: "assignment",
     workflow: deriveCalendarWorkflow(item, now),
   }));
@@ -914,7 +915,9 @@ function CalendarPanel({
                       onClick={() =>
                         onOpenAssignment(selectedEvent.sourceWorkId)}
                     >
-                      Open assignment details
+                      {selectedEvent.workType === "media_requirement"
+                        ? "Open required media"
+                        : "Open assignment details"}
                     </button>
                   )
                   : null}
