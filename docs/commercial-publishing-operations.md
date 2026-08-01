@@ -68,16 +68,19 @@ and amount only; bank information is never stored.
 
 ### Professor payout form
 
-The professor opens Stripe's hosted Express onboarding form from Learning
+The professor opens Stripe's hosted or embedded Connect onboarding from Learning
 Studio. Stripe collects legal identity, tax information, and the bank account or
 eligible debit-card destination. EdNotebook stores only the connected-account
 identifier and readiness flags.
 
 After details are submitted, **Manage bank account and payouts** requests a
-single-use Stripe Express Dashboard login link from the authenticated
-`marketplace-seller-onboarding` Edge Function. Professors manage their payout
-destination and schedule in Stripe. The server records the dashboard-open audit
-event; the browser never receives Stripe secret keys or bank data.
+short-lived connected-account session from the authenticated
+`marketplace-seller-onboarding` Edge Function. Accounts configured for Stripe's
+fully embedded dashboard render Stripe Account Management and Payouts inside
+Learning Studio; legacy Express accounts receive a single-use Express Dashboard
+login link. In either case Stripe owns sensitive fields and authentication. The
+server records the payout-controls audit event; the browser never receives a
+Stripe secret key or bank data.
 
 ## Required Stripe setup
 
@@ -85,6 +88,7 @@ Configure these Supabase Edge Function secrets separately for staging and
 production:
 
 - `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_CONNECT_WEBHOOK_SECRET`
 - `MARKETPLACE_RETURN_URL`

@@ -41,6 +41,9 @@ test("professor workflow separates seller, Stripe, rights, and listing approval"
   assert.match(studio, /Professor \/ seller application/u);
   assert.match(studio, /Secure payout form and Stripe Connect verification/u);
   assert.match(studio, /Manage bank account and payouts/u);
+  assert.match(studio, /loadConnectAndInitialize/u);
+  assert.match(studio, /stripeConnect\.create\("account-management"\)/u);
+  assert.match(studio, /stripeConnect\.create\("payouts"\)/u);
   assert.match(studio, /EdNotebook never asks the professor to type banking credentials/u);
   assert.match(studio, /Rights scope and evidence/u);
   assert.match(studio, /Price and submit the governed listing/u);
@@ -49,7 +52,10 @@ test("professor workflow separates seller, Stripe, rights, and listing approval"
   assert.match(studio, /Gross processed/u);
   assert.match(studio, /Buyer identity and payment credentials remain private/u);
   assert.match(service, /action: "dashboard"/u);
+  assert.match(onboarding, /stripeDashboardType = account\.controller\?\.stripe_dashboard\?\.type \|\| account\.type/u);
   assert.match(onboarding, /stripe\.accounts\.createLoginLink\(account\.id\)/u);
+  assert.match(onboarding, /stripe\.accountSessions\.create/u);
+  assert.match(onboarding, /STRIPE_PUBLISHABLE_KEY/u);
   assert.match(onboarding, /marketplace\.seller_payout_dashboard_opened/u);
 });
 

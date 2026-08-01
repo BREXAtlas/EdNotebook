@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    const stripeDashboardType = account.controller?.stripe_dashboard?.type || account.type;
     const verificationStatus = verifiedSeller(account)
       ? "verified"
       : account.requirements?.disabled_reason
@@ -98,17 +99,55 @@ Deno.serve(async (req) => {
         detailsSubmitted: Boolean(account.details_submitted),
         chargesEnabled: Boolean(account.charges_enabled),
         payoutsEnabled: Boolean(account.payouts_enabled),
+        dashboardType: stripeDashboardType,
       },
     });
 
     if (input.action === "dashboard") {
-      if (account.type !== "express") {
-        throw new HttpError(409, "This seller account does not use the managed Stripe Express payout dashboard.");
-      }
       if (!account.details_submitted) {
         throw new HttpError(409, "Complete the secure Stripe payout form before managing payouts.");
       }
-      const loginLink = await stripe.accounts.createLoginLink(account.id);
+
+      let payoutAccess;
+      if (stripeDashboardType === "express") {
+        const loginLink = await stripe.accounts.createLoginLink(account.id);
+        payoutAccess = {
+          payoutExperience: "express_dashboard",
+          payoutDashboardUrl: loginLink.url,
+        };
+      } else if (stripeDashboardType === "none") {
+        const publishableKey = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || "";
+        if (!/^pk_(test|live)_/.test(publishableKey)) {
+          throw new HttpError(503, "Stripe Connect embedded payouts are not configured.");
+        }
+        const accountSession = await stripe.accountSessions.create({
+          account: account.id,
+          components: {
+            account_management: {
+              enabled: true,
+              features: { external_account_collection: true },
+            },
+            payouts: {
+              enabled: true,
+              features: {
+                edit_payout_schedule: true,
+                external_account_collection: true,
+                standard_payouts: true,
+              },
+            },
+          },
+        });
+        if (!accountSession.client_secret) {
+          throw new HttpError(502, "Stripe did not return a secure connected-account session.");
+        }
+        payoutAccess = {
+          payoutExperience: "embedded",
+          payoutPublishableKey: publishableKey,
+          payoutAccountSessionClientSecret: accountSession.client_secret,
+        };
+      } else {
+        throw new HttpError(409, "This seller account does not use the managed Stripe Express payout dashboard.");
+      }
       await recordAuditRequired(admin, req, {
         actorId: user.id,
         eventType: "marketplace.seller_payout_dashboard_opened",
@@ -118,12 +157,13 @@ Deno.serve(async (req) => {
           verificationStatus,
           chargesEnabled: Boolean(account.charges_enabled),
           payoutsEnabled: Boolean(account.payouts_enabled),
+          payoutExperience: payoutAccess.payoutExperience,
         },
       });
       return jsonResponse(req, {
         applicationId: application.id,
         verificationStatus,
-        payoutDashboardUrl: loginLink.url,
+        ...payoutAccess,
       });
     }
 

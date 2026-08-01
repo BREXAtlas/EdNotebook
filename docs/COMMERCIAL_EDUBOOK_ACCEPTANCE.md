@@ -20,9 +20,10 @@ or both.
 5. Stripe pays the connected balance to the verified external account on the
    account's payout schedule. Signed Connect webhook events update EdNotebook's
    payout-status ledger without exposing bank information.
-6. A verified professor can use **Manage bank account and payouts** to open a
-   single-use Stripe Express Dashboard login link. The link is generated only
-   by the authenticated server function and is recorded in the audit history.
+6. A verified professor can use **Manage bank account and payouts** to open
+   Stripe's embedded Account Management and Payouts controls. Legacy Express
+   accounts receive a single-use Express Dashboard login link. Access is created
+   only by the authenticated server function and is recorded in audit history.
 
 ## Purchase and rental boundary
 
@@ -57,9 +58,9 @@ inside a transaction and rolls back all synthetic records.
 Use a separate sandbox publication; leave the free Digital Literacy book open.
 
 1. Professor: open Commercial publishing and confirm the payout flow is clear.
-2. Professor: open **Manage bank account and payouts** and verify it reaches the
-   correct Stripe Express sandbox account without exposing credentials in
-   EdNotebook.
+2. Professor: open **Manage bank account and payouts** and verify the correct
+   Stripe sandbox Account Management and Payouts controls render without
+   exposing credentials to EdNotebook.
 3. Professor: submit book rights for both purchase and rental and create two
    sandbox listings with different prices and a short rental period.
 4. Owner: approve rights, tax evidence, and both listings in the TOS Control
