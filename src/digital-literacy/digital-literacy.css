@@ -379,6 +379,11 @@
 .dl-student-evidence progress {
   accent-color: #267a50;
 }
+.dl-student-assignments article.is-notification-focus {
+  outline: 3px solid #267a50;
+  outline-offset: 3px;
+  box-shadow: 0 16px 34px rgba(38, 122, 80, 0.2);
+}
 @media (max-width: 900px) {
   .dl-pilot-hero,
   .dl-source-boundary {

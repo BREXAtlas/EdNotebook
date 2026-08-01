@@ -118,7 +118,7 @@ export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
   </div>;
 }
 
-export function StudentDigitalLiteracyAssignments({ track = "university", session }) {
+export function StudentDigitalLiteracyAssignments({ track = "university", session, focusAssignmentId = null }) {
   const [assignments, setAssignments] = useState([]);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -130,8 +130,14 @@ export function StudentDigitalLiteracyAssignments({ track = "university", sessio
     });
     return () => { active = false; };
   }, [session?.user?.id]);
+  useEffect(() => {
+    if (!focusAssignmentId || !assignments.some((assignment) => assignment.assignment_id === focusAssignmentId)) return;
+    const assignment = document.getElementById(`digital-literacy-assignment-${focusAssignmentId}`);
+    assignment?.scrollIntoView({ behavior: "smooth", block: "center" });
+    assignment?.focus({ preventScroll: true });
+  }, [assignments, focusAssignmentId]);
   if (error) return <section className="dashboard-card dl-student-assignments"><span className="portal-kicker">DIGITAL LITERACY COURSE</span><p>{error}</p></section>;
-  return <section className="dashboard-card dl-student-assignments"><div className="dashboard-card-heading"><div><span className="portal-kicker">YOUR PLATFORM-STANDARD COURSE</span><h2>Digital Literacy is ready when you are.</h2><p>Your full canonical course appears automatically. Professor assignments use the same student-owned, release-versioned progress instead of creating duplicate completion records.</p></div><span>{assignments.filter((assignment) => assignment.status !== "completed").length} open</span></div>{assignments.length ? <div>{assignments.map((assignment) => { const summary = assignmentProgressSummary(assignment); const next = firstOpenUnit(assignment); return <article key={assignment.assignment_id}><header><div><span>{assignment.course_code || "COURSE"}</span><strong>{assignment.title}</strong><small>{assignment.course_title} · {assignment.due_at ? `due ${readableDue(assignment.due_at)}` : `release ${assignment.catalog_release}`}</small></div><i>{assignment.status}</i></header><p>{assignment.instructions}</p><div className="dl-progress-row"><progress max={summary.total} value={summary.completed} /><strong>{summary.completed}/{summary.total}</strong><span>{summary.percent}%</span></div><footer><button className="primary" type="button" disabled={!next} onClick={() => { window.location.hash = `#/student/${track}/digital-literacy/${assignment.assignment_id}/${next.unit_id}`; }}>{assignment.status === "completed" ? "Review course" : "Continue next unit"}</button><span>{next ? `${next.unit_id.toUpperCase()} · ${next.title}` : "No units assigned"}</span></footer></article>; })}</div> : <p>Your standard Digital Literacy course is being prepared.</p>}</section>;
+  return <section className="dashboard-card dl-student-assignments"><div className="dashboard-card-heading"><div><span className="portal-kicker">YOUR PLATFORM-STANDARD COURSE</span><h2>Digital Literacy is ready when you are.</h2><p>Your full canonical course appears automatically. Professor assignments use the same student-owned, release-versioned progress instead of creating duplicate completion records.</p></div><span>{assignments.filter((assignment) => assignment.status !== "completed").length} open</span></div>{assignments.length ? <div>{assignments.map((assignment) => { const summary = assignmentProgressSummary(assignment); const next = firstOpenUnit(assignment); const notificationFocus = assignment.assignment_id === focusAssignmentId; return <article id={`digital-literacy-assignment-${assignment.assignment_id}`} className={notificationFocus ? "is-notification-focus" : undefined} tabIndex={notificationFocus ? -1 : undefined} key={assignment.assignment_id}><header><div><span>{assignment.course_code || "COURSE"}</span><strong>{assignment.title}</strong><small>{assignment.course_title} · {assignment.due_at ? `due ${readableDue(assignment.due_at)}` : `release ${assignment.catalog_release}`}</small></div><i>{assignment.status}</i></header><p>{assignment.instructions}</p><div className="dl-progress-row"><progress max={summary.total} value={summary.completed} /><strong>{summary.completed}/{summary.total}</strong><span>{summary.percent}%</span></div><footer><button className="primary" type="button" disabled={!next} onClick={() => { window.location.hash = `#/student/${track}/digital-literacy/${assignment.assignment_id}/${next.unit_id}`; }}>{assignment.status === "completed" ? "Review course" : "Continue next unit"}</button><span>{next ? `${next.unit_id.toUpperCase()} · ${next.title}` : "No units assigned"}</span></footer></article>; })}</div> : <p>Your standard Digital Literacy course is being prepared.</p>}</section>;
 }
 
 function InstrumentForm({ instrument, onSubmitted }) {

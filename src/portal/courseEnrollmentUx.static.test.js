@@ -16,12 +16,16 @@ test("student notifications clear persistently and route into the triggering cou
   assert.match(studentDashboard, /StudentNotificationCenter/u);
   assert.match(studentDashboard, /markStudentAccountNotificationRead/u);
   assert.match(studentDashboard, /notification\.route === "library"/u);
+  assert.match(studentDashboard, /notification\.dedupe_key\?\.startsWith\("digital-literacy-assignment:"\)/u);
+  assert.match(studentDashboard, /setNotificationAssignmentId/u);
+  assert.match(studentDashboard, /setTab\("assignments"\)/u);
   assert.match(studentDashboard, /notification\.route === "rewards" \? "rewards" : "classes"/u);
   assert.match(studentDashboard, /marketplace_purchase/u);
   assert.match(studentDashboard, /setNotificationCourseId\(notification\.course_id \|\| null\)/u);
   assert.match(studentDashboard, /if \(focusCourseId\) setOpenClass\(focusCourseId\)/u);
   assert.match(socialLearningPanels, /Completed course badges/u);
   assert.match(portalService, /student_account_notifications/u);
+  assert.match(portalService, /route,dedupe_key,read_at/u);
   assert.match(portalService, /course_completion_badges/u);
 });
 
