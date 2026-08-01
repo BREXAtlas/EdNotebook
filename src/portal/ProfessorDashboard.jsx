@@ -18,13 +18,14 @@ import BlackboardExportWorkspace from "../integrations/blackboard/BlackboardExpo
 import { ProfessorSocialLearningPanel } from "../social-learning/SocialLearningPanels.jsx";
 import CampusSocialFeed from "../social-learning/CampusSocialFeed.jsx";
 import CourseCommunicationPanel from "../communication/CourseCommunicationPanel.jsx";
+import { ProfessorDigitalLiteracyPilot } from "../digital-literacy/DigitalLiteracyPilotWorkspace.jsx";
 
 const ProfessorSemesterCalendar = lazy(() =>
   import("../ai/ProfessorSemesterCalendar.jsx")
 );
 
 const NAV_GROUPS = [
-  { label: "Teach", items: [["overview", "Overview"], ["classes", "Class library"], ["semester", "Syllabus & calendar"], ["templates", "Assignment templates"]] },
+  { label: "Teach", items: [["overview", "Overview"], ["classes", "Class library"], ["semester", "Syllabus & calendar"], ["digital-literacy", "Digital Literacy pilot"], ["templates", "Assignment templates"]] },
   { label: "Students", items: [["students", "Students & rosters"], ["rewards", "Social learning"], ["grades", "Grades"], ["attendance", "Attendance & SIS"]] },
   { label: "Connect", items: [["announcements", "Campus social"], ["communication", "Course communication"], ["profile", "Educator page"]] },
   { label: "Account", items: [["verification", "School verification"], ["security", "Security"], ["settings", "Settings"]] },
@@ -413,6 +414,7 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
           {tab === "overview" && <Overview setTab={setTab} classes={courseLibrary} enrollmentRequests={enrollmentRequests} />}
           {tab === "classes" && <Classes onBuild={onBuild} classes={courseLibrary} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={teachingClasses} /></Suspense>}
+          {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={teachingClasses} />}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} classes={teachingClasses} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel />}
