@@ -9,6 +9,10 @@ import {
 } from "./controlModel.js";
 import ResearchPilotGatePanel from "../research/ResearchPilotGatePanel.jsx";
 import {
+  SECURITY_APPROVAL_CANDIDATE,
+  validateSecurityApprovalDecision,
+} from "./securityApprovalDecision.js";
+import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
   marketplaceReceiptLabel,
@@ -105,6 +109,19 @@ const DEFAULT_CONTROL = Object.freeze({
   localStartTime: "",
   localEndTime: "",
   timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago",
+});
+
+const DEFAULT_SECURITY_DECISION = Object.freeze({
+  decision: "hold",
+  reviewerName: "",
+  reviewerAuthority: "",
+  evidenceReference: "",
+  summary: "",
+  expiresOn: SECURITY_APPROVAL_CANDIDATE.expirationLatestDate,
+  authorityAttestation: false,
+  independentReviewCompleted: false,
+  residualRisksAccepted: false,
+  incidentBoundaryAccepted: false,
 });
 
 function formatDate(value, includeTime = true) {
@@ -1393,6 +1410,9 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [readiness, setReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [securityDraft, setSecurityDraft] = useState(() => ({ ...DEFAULT_SECURITY_DECISION }));
 
   const loadReadiness = useCallback(async () => {
     if (!institutionId) return;
@@ -1409,6 +1429,10 @@ function StudentDataReadinessPanel({ institutionId }) {
   }, [institutionId]);
 
   useEffect(() => { loadReadiness(); }, [loadReadiness]);
+  useEffect(() => {
+    setSecurityDraft({ ...DEFAULT_SECURITY_DECISION });
+    setNotice("");
+  }, [institutionId]);
 
   const missingDomains = Array.isArray(readiness?.missing_lifecycle_domains)
     ? readiness.missing_lifecycle_domains
@@ -1417,7 +1441,33 @@ function StudentDataReadinessPanel({ institutionId }) {
     ? readiness.missing_evidence_gates
     : [];
   const requests = Array.isArray(readiness?.subject_requests) ? readiness.subject_requests : [];
+  const evidence = Array.isArray(readiness?.evidence) ? readiness.evidence : [];
+  const securityEvidence = evidence.find((item) => item.gate_key === "securityApproval") || null;
   const productionEnabled = readiness?.production_student_intake_enabled === true;
+  const securityValidation = validateSecurityApprovalDecision(securityDraft);
+  const isPassDecision = securityDraft.decision === "passed";
+
+  function updateSecurityDraft(field, value) {
+    setSecurityDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function recordSecurityDecision(event) {
+    event.preventDefault();
+    if (!securityValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordSecurityApprovalDecision(institutionId, securityDraft);
+      setNotice(`${titleCase(recorded?.status || securityDraft.decision)} security decision recorded as append-only evidence. Production intake remains disabled.`);
+      setSecurityDraft({ ...DEFAULT_SECURITY_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The accountable security decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
 
   return (
     <section className="ac-panel" aria-busy={loading}>
@@ -1433,6 +1483,7 @@ function StudentDataReadinessPanel({ institutionId }) {
       </div>
 
       {error ? <div className="ac-alert ac-alert--error" role="alert">{error}</div> : null}
+      {notice ? <div className="ac-alert ac-alert--success" role="status">{notice}</div> : null}
       <div className={`ac-callout ${readiness?.ready_for_promotion_review ? "ac-callout--neutral" : "ac-callout--warning"}`}>
         <strong>{readiness?.decision === "ready_for_human_promotion_review" ? "Ready for a separate human promotion review" : "HOLD — intake is not ready"}</strong>
         <p>Production student intake is <strong>{productionEnabled ? "enabled" : "disabled"}</strong>. Even complete evidence does not switch it on.</p>
@@ -1458,6 +1509,74 @@ function StudentDataReadinessPanel({ institutionId }) {
       <div className="ac-callout ac-callout--privacy">
         <strong>Metadata only.</strong> Evidence references and summaries must never contain student work, grades, messages, credentials, provider payloads, or confidential institutional records.
       </div>
+
+      <section className="ac-subsection" aria-labelledby="security-decision-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Independent human gate</span>
+            <h3 id="security-decision-title">Accountable security decision</h3>
+          </div>
+          <StatusPill
+            status={securityEvidence?.status || "pending"}
+            label={securityEvidence ? titleCase(securityEvidence.status) : "Awaiting review"}
+          />
+        </div>
+        <p className="ac-section-copy">Only a signed-in team member with an active <strong>Security</strong> institution role may record this decision. Platform ownership alone is not sufficient. PASS, HOLD, and FAIL create new append-only versions and never activate production student intake.</p>
+
+        <article className="ac-security-decision-card">
+          <dl className="ac-detail-grid">
+            <div><dt>Protected candidate</dt><dd><code>{SECURITY_APPROVAL_CANDIDATE.testedCommit.slice(0, 12)}</code></dd></div>
+            <div><dt>Hosted migration</dt><dd><code>{SECURITY_APPROVAL_CANDIDATE.migrationVersion}</code></dd></div>
+            <div><dt>Technical packet</dt><dd>EdNotebook PR #108</dd></div>
+            <div><dt>Latest permitted expiration</dt><dd>{formatDate(SECURITY_APPROVAL_CANDIDATE.expirationCeiling, false)}</dd></div>
+          </dl>
+
+          {securityEvidence ? <div className="ac-callout ac-callout--neutral"><strong>Current recorded decision: {titleCase(securityEvidence.status)}</strong><p>Version {securityEvidence.version} · reviewed {formatDate(securityEvidence.reviewed_at)} · expires {formatDate(securityEvidence.expires_at)}. A later decision supersedes it without deleting history.</p></div> : null}
+
+          <form onSubmit={recordSecurityDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={securityDraft.decision} onChange={(event) => updateSecurityDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD — more review is required</option>
+                  <option value="passed">PASS — accept the documented boundary</option>
+                  <option value="failed">FAIL — reject this candidate</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Evidence current through
+                <input type="date" required max={SECURITY_APPROVAL_CANDIDATE.expirationLatestDate} value={securityDraft.expiresOn} onChange={(event) => updateSecurityDraft("expiresOn", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={securityDraft.reviewerName} onChange={(event) => updateSecurityDraft("reviewerName", event.target.value)} placeholder="Human reviewer name" />
+              </label>
+              <label className="ac-compact-field">Title, unit, and security authority
+                <input required value={securityDraft.reviewerAuthority} onChange={(event) => updateSecurityDraft("reviewerAuthority", event.target.value)} placeholder="Example: Information Security Officer, Security Office" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable institution-controlled evidence reference
+              <input required value={securityDraft.evidenceReference} onChange={(event) => updateSecurityDraft("evidenceReference", event.target.value)} placeholder="Approved ticket, signed review, meeting record, or policy decision" />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={securityDraft.summary} onChange={(event) => updateSecurityDraft("summary", event.target.value)} placeholder="State what was reviewed, the decision, remaining limitations, and the accepted incident boundary. Do not include confidential findings." />
+            </label>
+
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={securityDraft.authorityAttestation} onChange={(event) => updateSecurityDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am the accountable security reviewer for this institution and am authorized to record this decision.</span></label>
+              {isPassDecision ? <>
+                <label className="ac-check-row"><input type="checkbox" checked={securityDraft.independentReviewCompleted} onChange={(event) => updateSecurityDraft("independentReviewCompleted", event.target.checked)} /><span>I independently reviewed the exact candidate, hosted migration, technical evidence packet, and staging boundary.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={securityDraft.residualRisksAccepted} onChange={(event) => updateSecurityDraft("residualRisksAccepted", event.target.checked)} /><span>I accept the documented residual risks for this time-bounded staging decision.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={securityDraft.incidentBoundaryAccepted} onChange={(event) => updateSecurityDraft("incidentBoundaryAccepted", event.target.checked)} /><span>I accept the rollback, revocation, and incident-response boundary documented in the packet.</span></label>
+              </> : null}
+            </div>
+
+            {!securityValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Decision is not ready to record.</strong><p>{securityValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions">
+              <button type="submit" className={isPassDecision ? "ac-button ac-button--primary" : "ac-button ac-button--quiet"} disabled={!securityValidation.valid || recording}>
+                {recording ? "Recording…" : `Record ${securityDraft.decision.toUpperCase()} decision`}
+              </button>
+            </div>
+          </form>
+        </article>
+      </section>
     </section>
   );
 }

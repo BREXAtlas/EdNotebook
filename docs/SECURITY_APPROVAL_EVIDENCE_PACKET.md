@@ -158,6 +158,8 @@ Complete this record in an institution-controlled ticket or signed decision arti
 
 Only an authorized, signed-in human may append the decision through `record_student_data_intake_evidence(...)`. A PASS must use `gate_key = securityApproval`, bind the exact protected merge commit and hosted migration, use a durable institution-controlled evidence reference, contain metadata only, expire no later than the earliest underlying evidence, and set the human attestation. An incomplete or conditional review is HOLD. Production student intake remains disabled even after this single gate passes.
 
+The existing **Control Center → Student data readiness** workspace is the governed entry point for this decision. It requires an active institution `security` membership, reviewer identity and authority, PASS/HOLD/FAIL, an institution-controlled evidence reference, a bounded expiration, and explicit attestations. Platform-owner status alone is rejected. The form appends a new evidence version; it cannot edit prior evidence or activate production intake.
+
 ## Current outcome
 
 **HOLD pending the human decision only.** The candidate is merged, deployed to staging, and technically reconciled. The security approval remains open because no accountable security reviewer has yet accepted the documented residual risks and incident boundary. Production student intake remains disabled, and this packet does not resolve the parked ASU/Blackboard or other independent approval gates.

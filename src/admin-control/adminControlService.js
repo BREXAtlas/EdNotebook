@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
+import { buildSecurityApprovalRpcPayload } from "./securityApprovalDecision.js";
 
 const ADMIN_MIGRATION_MESSAGE =
   "The administration database setup is not available yet. Apply the latest institution admin control-center migration, including its Data API grants, and refresh the Supabase schema cache.";
@@ -530,6 +531,14 @@ export async function getStudentDataIntakeReadiness(institutionId) {
   );
 }
 
+export function recordSecurityApprovalDecision(institutionId, input) {
+  return callRpc(
+    "record_student_data_intake_evidence",
+    buildSecurityApprovalRpcPayload(institutionId, input),
+    "The accountable security decision could not be recorded.",
+  );
+}
+
 export async function searchAdminAccountsCourses(query = "", institutionId = null, pathway = null) {
   const data = await callRpc(
     "admin_search_accounts_courses",
@@ -871,6 +880,7 @@ export const setConnectionStatus = setIntegrationConnectionStatus;
 export const get_my_admin_workspaces = getMyAdminWorkspaces;
 export const get_admin_control_center = getAdminControlCenter;
 export const get_student_data_intake_readiness = getStudentDataIntakeReadiness;
+export const record_student_data_security_decision = recordSecurityApprovalDecision;
 export const admin_search_accounts_courses = searchAdminAccountsCourses;
 export const preview_feature_control_change = previewFeatureControlChange;
 export const apply_feature_control_change = applyFeatureControlChange;
@@ -903,6 +913,7 @@ const adminControlService = Object.freeze({
   getMyAdminWorkspaces,
   getAdminControlCenter,
   getStudentDataIntakeReadiness,
+  recordSecurityApprovalDecision,
   searchAdminAccountsCourses,
   previewFeatureControlChange,
   applyFeatureControlChange,
