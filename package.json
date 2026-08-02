@@ -13,7 +13,7 @@
     "test:blackboard": "node --test src/integrations/learningRecordContract.test.js src/integrations/blackboard/blackboardCsvParser.test.js src/integrations/blackboard/blackboardMatching.test.js src/integrations/blackboard/blackboardMigration.test.js",
     "test:lti": "node --test src/integrations/lti/ltiContract.test.js src/integrations/lti/ltiMigration.test.js",
     "test:tos-integration": "node --test src/integrations/tos/tosControlPlane.test.js src/integrations/tos/syntheticInstitutionPilot.test.js",
-    "test:ai-outline": "node --test src/ai/courseOutlineContract.test.js",
+    "test:ai-outline": "node --test src/ai/courseOutlineContract.test.js src/ai/providerBoundary.static.test.js",
     "test:syllabus-extraction": "node --test src/ai/syllabusExtractionContract.test.js src/ai/syllabusGovernedReview.test.js src/ai/syllabusExtractionUx.static.test.js src/ai/syllabusAiReturnedDraft.static.test.js src/syllabus/syllabusMigration.test.js",
     "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js",
     "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/contentUnitGenerationContract.test.js src/ai/finalContentUnitGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
