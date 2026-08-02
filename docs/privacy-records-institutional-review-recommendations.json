@@ -1,0 +1,392 @@
+{
+  "review_type": "codex_evidence_based_institutional_review_recommendation",
+  "review_status": "platform_baseline_complete_institution_adoption_pending",
+  "reviewed_at": "2026-08-02",
+  "protected_staging_commit": "0398bbb2b1237d93bd287b02d3c76e1dea81bebc",
+  "institution_id": "22222222-2222-4222-8222-222222222222",
+  "staging_project": "gfalgonektwdylsxsgzc",
+  "production_project_unchanged": "didwxihufueqbpfnfdmm",
+  "calendar_guardrail_days": {
+    "365": 366,
+    "730": 731,
+    "1095": 1096,
+    "1460": 1461,
+    "1825": 1827,
+    "3650": 3653
+  },
+  "classification_taxonomy_additions": [
+    "inherited_from_source",
+    "intellectual_property_commercial",
+    "operational_system",
+    "personal_information_non_education",
+    "records_governance"
+  ],
+  "domains": {
+    "assignmentDocumentFeedback": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split feedback that reconstructs graded performance from ordinary coursework feedback before assigning the four-year grade-book or one-year coursework series."
+    },
+    "assignmentDrafts": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use the 366-day no-earlier-than guardrail after academic-term end and preserve the student export, dispute, access-request, and legal-hold overrides."
+    },
+    "assignmentFormSubmissions": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split graded, ungraded, and research-routed submissions so grade-book, coursework, and IRB obligations cannot overwrite one another."
+    },
+    "auditEvents": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Separate FERPA disclosures, disposition logs, security events, governance approvals, and transitory telemetry or apply the longest authorized series."
+    },
+    "authIdentities": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "hold",
+      "condition": "Add status-aware account triggers, verified session revocation, retained-record pseudonymization, and an institutional access-record designation."
+    },
+    "authProviderLogs": {
+      "official_copy_role": "provider_external_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "hold",
+      "condition": "Approve the current provider TTL, export and legal-hold path, residual-copy statement, and deletion-verification procedure."
+    },
+    "authSessions": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_candidate",
+      "condition": "Delete after expiry or revocation, keep access tokens short-lived, and retain only separately classified security events needed for an active incident."
+    },
+    "billingCustomers": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "financial_transaction",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1096 days after the close of the fiscal year containing final activity, or a longer tax, audit, refund, chargeback, or litigation period."
+    },
+    "billingSubscriptions": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "financial_transaction",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1096 days after the close of the fiscal year containing cancellation or final activity and preserve linked accounting evidence."
+    },
+    "blackboardGradeExportSnapshots": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Complete the Blackboard round trip and obtain written confirmation that the snapshot is not the permanent original grade sheet."
+    },
+    "blackboardIdentityMappings": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after supersession or access termination and retain longer only for an active security incident or access investigation."
+    },
+    "blackboardProviderCopies": {
+      "official_copy_role": "provider_external_copy",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Complete the institutional Blackboard archive, export, deletion, residual-copy, and confirmation review."
+    },
+    "courseCommunicationPreferences": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after supersession or relationship termination while retaining separately required consent and accessibility preference evidence."
+    },
+    "courseCommunicationReads": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 366 days after term end or message disposition and prohibit read-state from serving as official attendance or academic-action evidence."
+    },
+    "courseLessonProgress": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after graduation or last attendance and keep transcript or permanent achievement records in their separately designated system."
+    },
+    "courseMemberships": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after the institution-defined academic-year end and reconcile the official class roll before disposition."
+    },
+    "courseProgress": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after graduation or last attendance and exclude permanent transcript outcomes from this convenience copy."
+    },
+    "educatorVerificationRequests": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after final disposition, minimize identity evidence after verification, and preserve complaint or fraud-investigation holds."
+    },
+    "fileDeletionRequests": {
+      "official_copy_role": "institution_record_copy",
+      "privacy_classification": "records_governance",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 3653 days after final disposition or archival transfer and include the required record series, authorization, method, date, and outcome."
+    },
+    "filePreviews": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "inherited_from_source",
+      "recommendation": "accept_candidate",
+      "condition": "Delete within seven days of source deletion, expiry, or replacement; a preview inherits every source hold and access restriction until deletion."
+    },
+    "gradeShareLinks": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after revocation or expiry while keeping the FERPA disclosure record for as long as the underlying education record exists."
+    },
+    "identityOnboardingRequests": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after final disposition and route approved identities into the separate status-aware account lifecycle."
+    },
+    "institutionAccessApplications": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after final disposition and redact verification evidence that is no longer required."
+    },
+    "institutionAffiliations": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Split student, employee, contractor, guest, and publisher affiliations and assign each record series and termination trigger independently."
+    },
+    "institutionMemberships": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Split student academic membership from employee, contractor, and community membership before disposition."
+    },
+    "institutionTransferRequests": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after final transfer disposition or graduation or last attendance, whichever occurs later."
+    },
+    "learningMessages": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Classify routine course, assessed, accommodation, grievance, research, safety, and legal messages when created."
+    },
+    "learningResources": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Require resource type, owner, student/professor authorship, license, publication state, official-copy role, and archival-review metadata."
+    },
+    "learningSystemIdentifiers": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after supersession or termination and require verified deprovisioning in every connected system."
+    },
+    "legalHoldFiles": {
+      "official_copy_role": "institution_record_copy",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Require underlying record classification, written counsel release, access controls, and records-authorized post-release disposition."
+    },
+    "linkPreviews": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "inherited_from_source",
+      "recommendation": "accept_candidate",
+      "condition": "Delete within seven days, prohibit private or sensitive-source snapshots, and inherit the source hold until the preview is removed."
+    },
+    "ltiContextMemberships": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after academic-year end and reconcile context membership with the institution's official class roll."
+    },
+    "ltiGradeSyncEvents": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Designate the original grade sheet, distinguish reconciliation telemetry from grade-book evidence, and preserve unresolved grade disputes."
+    },
+    "ltiLaunchSessions": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_candidate",
+      "condition": "Delete within 30 days of expiry or revocation and retain only separately classified incident evidence."
+    },
+    "ltiProviderCopies": {
+      "official_copy_role": "provider_external_copy",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Inventory every LTI provider's DPA, purpose, data elements, retention, export, deletion, and residual-copy behavior."
+    },
+    "ltiUserMappings": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after supersession or access termination and verify deletion in both upstream and downstream mappings."
+    },
+    "processingJobs": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "operational_system",
+      "recommendation": "accept_candidate",
+      "condition": "Delete within 30 days after terminal status and ensure queues, retries, dead letters, and worker logs contain no unclassified payload copies."
+    },
+    "profile": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Separate identity, directory, academic-reference, public-profile, and commercial fields and design status-aware pseudonymization."
+    },
+    "providerBackups": {
+      "official_copy_role": "provider_external_copy",
+      "privacy_classification": "inherited_from_source",
+      "recommendation": "accept_candidate",
+      "condition": "Apply a seven-day rolling database-backup minimum for the verified staging plan, document Storage separately, and reverify provider configuration quarterly."
+    },
+    "publicationEntitlements": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Split free academic access, purchase, rental, refund, chargeback, and continuing-access entitlements before assigning financial retention."
+    },
+    "readingAnnotations": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split private notes, professor-visible assessed annotations, accessibility notes, and research measures and provide an export path."
+    },
+    "secureFiles": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "inherited_from_source",
+      "recommendation": "hold",
+      "condition": "Reject unclassified production uploads and require every object to inherit an owner, record series, trigger, hold, and archival rule."
+    },
+    "storageDeliveryCaches": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "inherited_from_source",
+      "recommendation": "accept_candidate",
+      "condition": "Purge within one day of origin deletion or replacement and verify private caching, signed-URL expiry, and CDN invalidation."
+    },
+    "storageObjectVersions": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "inherited_from_source",
+      "recommendation": "hold",
+      "condition": "Bind each version to the source series, trigger, owner, legal hold, archival status, and verified byte-deletion outcome."
+    },
+    "stripeWebhookPayloads": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "financial_transaction",
+      "recommendation": "accept_candidate",
+      "condition": "Delete the payload within 30 days after signature verification and reconciliation, while retaining normalized accounting, tax, refund, and dispute evidence separately."
+    },
+    "studentDataSubjectRequestItems": {
+      "official_copy_role": "institution_record_copy",
+      "privacy_classification": "records_governance",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 3653 days after final parent-request disposition and preserve linked correction statements and disclosure records for the life of the underlying record."
+    },
+    "studentDataSubjectRequests": {
+      "official_copy_role": "institution_record_copy",
+      "privacy_classification": "records_governance",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 3653 days after final disposition and preserve identity verification, response timing, authorization, exceptions, and final outcome."
+    },
+    "studentEducationPath": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split temporary planning, five-year advisement/progress, and permanent degree-plan or transcript-equivalent outcomes."
+    },
+    "studentEnrollmentRequests": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after final decision or graduation or last attendance, whichever is later, and document the longer treatment of never-enrolled requests."
+    },
+    "studentGrades": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Obtain the Registrar's written designation of EdNotebook as permanent original grade sheet, four-year grade book, or governed convenience copy."
+    },
+    "studentGroupMemberships": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split assessed academic groups, ordinary course groups, optional social groups, and official student-organization memberships."
+    },
+    "studentGroups": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split disposable course structures from official student-organization and historically significant group records."
+    },
+    "studentLearningRecords": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Separate permanent achievement, five-year academic progress, four-year grade-book evidence, one-year coursework, and IRB-governed research measures."
+    },
+    "studentPosts": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "hold",
+      "condition": "Split public/social posts, assessed course discussions, moderation evidence, grievances, and research-routed posts."
+    },
+    "studentPublicProfile": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "directory_opt_out",
+      "recommendation": "hold",
+      "condition": "Implement institution-defined directory fields, annual notice, opt-out enforcement, audience controls, and status-aware removal."
+    },
+    "studentRosterEntries": {
+      "official_copy_role": "governed_convenience_copy",
+      "privacy_classification": "ferpa_education_record",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 1827 days after academic-year end and reconcile with the institution-designated class roll before disposition."
+    },
+    "unlinkedPortalInterestSubmissions": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "personal_information_non_education",
+      "recommendation": "accept_candidate",
+      "condition": "Delete within 30 days after response, withdrawal, or abandonment and maintain a minimal suppression mechanism only when lawfully required."
+    },
+    "uploadQuotaReservations": {
+      "official_copy_role": "transitory_derivative",
+      "privacy_classification": "operational_system",
+      "recommendation": "accept_candidate",
+      "condition": "Delete within one day after expiry, consumption, or cancellation and reconcile abandoned multipart uploads without retaining file contents."
+    },
+    "userAuthoredProfessorPublisherContent": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "intellectual_property_commercial",
+      "recommendation": "hold",
+      "condition": "Approve author rights, license, withdrawal, edition/version, archive, purchased-access survival, and embedded learner-data rules."
+    },
+    "userEntitlements": {
+      "official_copy_role": "mixed_unresolved",
+      "privacy_classification": "mixed_unresolved",
+      "recommendation": "hold",
+      "condition": "Split academic membership, universal free course, public-free, purchase, rental, refund, and continuing or perpetual access."
+    },
+    "userFeaturePolicies": {
+      "official_copy_role": "processor_copy",
+      "privacy_classification": "security_authentication",
+      "recommendation": "accept_amended_guardrail",
+      "condition": "Use 731 days after supersession or access termination and retain the linked access-decision audit record under its separately approved series."
+    }
+  }
+}
