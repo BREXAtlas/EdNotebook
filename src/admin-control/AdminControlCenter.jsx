@@ -17,6 +17,11 @@ import {
   validateAccessibilityApprovalDecision,
 } from "./accessibilityApprovalDecision.js";
 import {
+  PRIVACY_RECORDS_APPROVAL_CANDIDATE,
+  validateLifecycleDecisionBatch,
+  validatePrivacyRecordsApprovalDecision,
+} from "./privacyRecordsApprovalDecision.js";
+import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
   marketplaceReceiptLabel,
@@ -142,6 +147,26 @@ const DEFAULT_ACCESSIBILITY_DECISION = Object.freeze({
   mediaAndContentReviewed: false,
   remediationOwnershipAccepted: false,
   thirdPartyBoundaryAccepted: false,
+});
+
+const DEFAULT_LIFECYCLE_DECISION_BATCH = Object.freeze({
+  reviewerName: "",
+  reviewerAuthority: "",
+  evidenceReference: "",
+  summary: "",
+  authorityAttestation: false,
+  lifecycleReconciliationCompleted: false,
+  calendarGuardrailsAccepted: false,
+  ferpaOverridesAccepted: false,
+  providerResidualsReviewed: false,
+  researchBoundaryAccepted: false,
+  asuAdoptionParked: false,
+});
+
+const DEFAULT_PRIVACY_RECORDS_DECISION = Object.freeze({
+  ...DEFAULT_LIFECYCLE_DECISION_BATCH,
+  decision: "hold",
+  expiresOn: PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationLatestDate,
 });
 
 function formatDate(value, includeTime = true) {
@@ -1434,6 +1459,8 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [recording, setRecording] = useState(false);
   const [securityDraft, setSecurityDraft] = useState(() => ({ ...DEFAULT_SECURITY_DECISION }));
   const [accessibilityDraft, setAccessibilityDraft] = useState(() => ({ ...DEFAULT_ACCESSIBILITY_DECISION }));
+  const [lifecycleDraft, setLifecycleDraft] = useState(() => ({ ...DEFAULT_LIFECYCLE_DECISION_BATCH }));
+  const [privacyRecordsDraft, setPrivacyRecordsDraft] = useState(() => ({ ...DEFAULT_PRIVACY_RECORDS_DECISION }));
 
   const loadReadiness = useCallback(async () => {
     if (!institutionId) return;
@@ -1453,6 +1480,8 @@ function StudentDataReadinessPanel({ institutionId }) {
   useEffect(() => {
     setSecurityDraft({ ...DEFAULT_SECURITY_DECISION });
     setAccessibilityDraft({ ...DEFAULT_ACCESSIBILITY_DECISION });
+    setLifecycleDraft({ ...DEFAULT_LIFECYCLE_DECISION_BATCH });
+    setPrivacyRecordsDraft({ ...DEFAULT_PRIVACY_RECORDS_DECISION });
     setNotice("");
   }, [institutionId]);
 
@@ -1466,9 +1495,12 @@ function StudentDataReadinessPanel({ institutionId }) {
   const evidence = Array.isArray(readiness?.evidence) ? readiness.evidence : [];
   const securityEvidence = evidence.find((item) => item.gate_key === "securityApproval") || null;
   const accessibilityEvidence = evidence.find((item) => item.gate_key === "accessibilityApproval") || null;
+  const privacyRecordsEvidence = evidence.find((item) => item.gate_key === "privacyRecordsApproval") || null;
   const productionEnabled = readiness?.production_student_intake_enabled === true;
   const securityValidation = validateSecurityApprovalDecision(securityDraft);
   const accessibilityValidation = validateAccessibilityApprovalDecision(accessibilityDraft);
+  const lifecycleValidation = validateLifecycleDecisionBatch(lifecycleDraft);
+  const privacyRecordsValidation = validatePrivacyRecordsApprovalDecision(privacyRecordsDraft);
   const isPassDecision = securityDraft.decision === "passed";
   const isAccessibilityPassDecision = accessibilityDraft.decision === "passed";
 
@@ -1478,6 +1510,50 @@ function StudentDataReadinessPanel({ institutionId }) {
 
   function updateAccessibilityDraft(field, value) {
     setAccessibilityDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateLifecycleDraft(field, value) {
+    setLifecycleDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updatePrivacyRecordsDraft(field, value) {
+    setPrivacyRecordsDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function recordLifecycleDecisionBatch(event) {
+    event.preventDefault();
+    if (!lifecycleValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordTosStagingLifecycleDecisionBatch(institutionId, lifecycleDraft);
+      setNotice(`${recorded?.recorded_domain_count || 61} lifecycle decisions are recorded: ${recorded?.approved_domain_count || 33} approved and ${recorded?.blocked_domain_count || 28} blocked. Production intake remains disabled.`);
+      setLifecycleDraft({ ...DEFAULT_LIFECYCLE_DECISION_BATCH });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The signed lifecycle decision batch could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordPrivacyRecordsDecision(event) {
+    event.preventDefault();
+    if (!privacyRecordsValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordPrivacyRecordsApprovalDecision(institutionId, privacyRecordsDraft);
+      setNotice(`${titleCase(recorded?.status || privacyRecordsDraft.decision)} privacy and records decision recorded as append-only evidence. Production intake remains disabled.`);
+      setPrivacyRecordsDraft({ ...DEFAULT_PRIVACY_RECORDS_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The accountable privacy and records decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
   }
 
   async function recordSecurityDecision(event) {
@@ -1537,7 +1613,8 @@ function StudentDataReadinessPanel({ institutionId }) {
       </div>
 
       <div className="ac-stats">
-        <div className="ac-stat-card"><span>Lifecycle decisions</span><strong>{readiness?.approved_lifecycle_domain_count ?? 0} / {readiness?.lifecycle_domain_count ?? 61}</strong><small>Linked and external domains</small></div>
+        <div className="ac-stat-card"><span>Lifecycle decisions recorded</span><strong>{readiness?.recorded_lifecycle_domain_count ?? 0} / {readiness?.lifecycle_domain_count ?? 61}</strong><small>Every domain must have an explicit decision</small></div>
+        <div className="ac-stat-card"><span>Approved / blocked</span><strong>{readiness?.approved_lifecycle_domain_count ?? 0} / {readiness?.blocked_lifecycle_domain_count ?? 0}</strong><small>Blocked domains keep promotion on HOLD</small></div>
         <div className="ac-stat-card"><span>Evidence gates</span><strong>{readiness?.passed_evidence_gate_count ?? 0} / {readiness?.required_evidence_gate_count ?? 13}</strong><small>Current human-reviewed evidence</small></div>
         <div className="ac-stat-card"><span>Subject requests</span><strong>{requests.length}</strong><small>Plans only; no lifecycle worker</small></div>
       </div>
@@ -1556,6 +1633,100 @@ function StudentDataReadinessPanel({ institutionId }) {
       <div className="ac-callout ac-callout--privacy">
         <strong>Metadata only.</strong> Evidence references and summaries must never contain student work, grades, messages, credentials, provider payloads, or confidential institutional records.
       </div>
+
+      <section className="ac-subsection" aria-labelledby="lifecycle-decisions-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Signed TOS synthetic-staging baseline</span>
+            <h3 id="lifecycle-decisions-title">Record all 61 lifecycle decisions</h3>
+          </div>
+          <StatusPill status={(readiness?.recorded_lifecycle_domain_count ?? 0) === 61 ? "ready" : "pending"} label={`${readiness?.recorded_lifecycle_domain_count ?? 0} / 61 recorded`} />
+        </div>
+        <p className="ac-section-copy">This checksum-bound batch records 33 approved and 28 blocked decisions atomically. A blocked decision has no retention clock and cannot delete or anonymize data. This action does not adopt an Angelo State records schedule or enable a lifecycle worker.</p>
+        <article className="ac-security-decision-card">
+          <dl className="ac-detail-grid">
+            <div><dt>Manifest checksum</dt><dd><code>{PRIVACY_RECORDS_APPROVAL_CANDIDATE.manifestSha256.slice(0, 16)}…</code></dd></div>
+            <div><dt>Decision outcome</dt><dd>33 approved · 28 blocked</dd></div>
+            <div><dt>Review due</dt><dd>{formatDate(PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationCeiling, false)}</dd></div>
+            <div><dt>Automatic execution</dt><dd>Disabled</dd></div>
+          </dl>
+          <form onSubmit={recordLifecycleDecisionBatch}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={lifecycleDraft.reviewerName} onChange={(event) => updateLifecycleDraft("reviewerName", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Title, unit, and privacy/records authority
+                <input required value={lifecycleDraft.reviewerAuthority} onChange={(event) => updateLifecycleDraft("reviewerAuthority", event.target.value)} />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable evidence reference
+              <input required value={lifecycleDraft.evidenceReference} onChange={(event) => updateLifecycleDraft("evidenceReference", event.target.value)} placeholder="Approved ticket, signed review, or governance record" />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={lifecycleDraft.summary} onChange={(event) => updateLifecycleDraft("summary", event.target.value)} placeholder="State the TOS staging decision, blocked domains, remaining institutional adoption, and limitations." />
+            </label>
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.authorityAttestation} onChange={(event) => updateLifecycleDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am authorized to record this TOS synthetic-staging governance baseline.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.lifecycleReconciliationCompleted} onChange={(event) => updateLifecycleDraft("lifecycleReconciliationCompleted", event.target.checked)} /><span>I reconciled all 61 unique active domains: 33 approved and 28 blocked.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.calendarGuardrailsAccepted} onChange={(event) => updateLifecycleDraft("calendarGuardrailsAccepted", event.target.checked)} /><span>I accept the conservative 366, 731, 1096, 1461, 1827, and 3653-day calendar guardrails.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.ferpaOverridesAccepted} onChange={(event) => updateLifecycleDraft("ferpaOverridesAccepted", event.target.checked)} /><span>I accept that access requests, disputes, audits, legal holds, and longer record series override every clock.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.providerResidualsReviewed} onChange={(event) => updateLifecycleDraft("providerResidualsReviewed", event.target.checked)} /><span>I reviewed provider-controlled residual-copy, export, deletion, and verification boundaries.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.researchBoundaryAccepted} onChange={(event) => updateLifecycleDraft("researchBoundaryAccepted", event.target.checked)} /><span>I accept the separate consent, IRB, identifiable-data, de-identification, and research-retention boundary.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.asuAdoptionParked} onChange={(event) => updateLifecycleDraft("asuAdoptionParked", event.target.checked)} /><span>I confirm that Angelo State official-copy designations and schedule adoption remain parked for authorized institutional review.</span></label>
+            </div>
+            {!lifecycleValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Batch is not ready to record.</strong><p>{lifecycleValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!lifecycleValidation.valid || recording}>{recording ? "Recording…" : "Record signed 61-domain batch"}</button></div>
+          </form>
+        </article>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="privacy-records-decision-title">
+        <div className="ac-review-heading">
+          <div><span>Independent human gate</span><h3 id="privacy-records-decision-title">Accountable privacy and records decision</h3></div>
+          <StatusPill status={privacyRecordsEvidence?.status || "pending"} label={privacyRecordsEvidence ? titleCase(privacyRecordsEvidence.status) : "Awaiting review"} />
+        </div>
+        <p className="ac-section-copy">The completed 61-domain matrix supports a governed HOLD. PASS remains unavailable while 28 domains are blocked and until an authorized institutional review adopts the remaining decisions. This record never enables production student intake.</p>
+        <article className="ac-security-decision-card">
+          {privacyRecordsEvidence ? <div className="ac-callout ac-callout--neutral"><strong>Current recorded decision: {titleCase(privacyRecordsEvidence.status)}</strong><p>Version {privacyRecordsEvidence.version} · reviewed {formatDate(privacyRecordsEvidence.reviewed_at)} · expires {formatDate(privacyRecordsEvidence.expires_at)}.</p></div> : null}
+          <form onSubmit={recordPrivacyRecordsDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={privacyRecordsDraft.decision} onChange={(event) => updatePrivacyRecordsDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD — 28 domains remain blocked</option>
+                  <option value="failed">FAIL — reject this baseline</option>
+                  <option value="passed" disabled>PASS — unavailable while domains are blocked</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Evidence current through
+                <input type="date" required max={PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationLatestDate} value={privacyRecordsDraft.expiresOn} onChange={(event) => updatePrivacyRecordsDraft("expiresOn", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={privacyRecordsDraft.reviewerName} onChange={(event) => updatePrivacyRecordsDraft("reviewerName", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Title, unit, and privacy/records authority
+                <input required value={privacyRecordsDraft.reviewerAuthority} onChange={(event) => updatePrivacyRecordsDraft("reviewerAuthority", event.target.value)} />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable evidence reference
+              <input required value={privacyRecordsDraft.evidenceReference} onChange={(event) => updatePrivacyRecordsDraft("evidenceReference", event.target.value)} />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={privacyRecordsDraft.summary} onChange={(event) => updatePrivacyRecordsDraft("summary", event.target.value)} />
+            </label>
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.authorityAttestation} onChange={(event) => updatePrivacyRecordsDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am authorized to record this time-bounded TOS staging privacy/records decision.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.lifecycleReconciliationCompleted} onChange={(event) => updatePrivacyRecordsDraft("lifecycleReconciliationCompleted", event.target.checked)} /><span>I reconciled all 61 current lifecycle decisions.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.calendarGuardrailsAccepted} onChange={(event) => updatePrivacyRecordsDraft("calendarGuardrailsAccepted", event.target.checked)} /><span>I accept the conservative calendar guardrails.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.ferpaOverridesAccepted} onChange={(event) => updatePrivacyRecordsDraft("ferpaOverridesAccepted", event.target.checked)} /><span>I accept the FERPA access, correction, disclosure, dispute, audit, and legal-hold overrides.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.providerResidualsReviewed} onChange={(event) => updatePrivacyRecordsDraft("providerResidualsReviewed", event.target.checked)} /><span>I reviewed provider residual-copy boundaries.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.researchBoundaryAccepted} onChange={(event) => updatePrivacyRecordsDraft("researchBoundaryAccepted", event.target.checked)} /><span>I accept the separate research and IRB boundary.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.asuAdoptionParked} onChange={(event) => updatePrivacyRecordsDraft("asuAdoptionParked", event.target.checked)} /><span>I confirm Angelo State adoption remains parked.</span></label>
+            </div>
+            {!privacyRecordsValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Decision is not ready to record.</strong><p>{privacyRecordsValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--quiet" disabled={!privacyRecordsValidation.valid || recording}>{recording ? "Recording…" : `Record ${privacyRecordsDraft.decision.toUpperCase()} decision`}</button></div>
+          </form>
+        </article>
+      </section>
 
       <section className="ac-subsection" aria-labelledby="security-decision-title">
         <div className="ac-review-heading">

@@ -168,6 +168,15 @@ jobs:
           --echo-errors
           --file=supabase/tests/institution_student_data_safety.sql
 
+      - name: Run privacy/records and 61-domain lifecycle decision gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/privacy_records_lifecycle_decisions.sql
+
       - name: Run fail-closed Digital Literacy research gates
         env:
           PGCONNECT_TIMEOUT: "10"

@@ -1,6 +1,11 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
 import { buildSecurityApprovalRpcPayload } from "./securityApprovalDecision.js";
 import { buildAccessibilityApprovalRpcPayload } from "./accessibilityApprovalDecision.js";
+import {
+  PRIVACY_RECORDS_APPROVAL_CANDIDATE,
+  buildLifecycleDecisionBatchRpcPayload,
+  buildPrivacyRecordsApprovalRpcPayload,
+} from "./privacyRecordsApprovalDecision.js";
 
 const ADMIN_MIGRATION_MESSAGE =
   "The administration database setup is not available yet. Apply the latest institution admin control-center migration, including its Data API grants, and refresh the Supabase schema cache.";
@@ -548,6 +553,38 @@ export function recordAccessibilityApprovalDecision(institutionId, input) {
   );
 }
 
+async function loadTosStagingLifecycleDecisionManifest() {
+  const baseUrl = String(import.meta.env.BASE_URL || "/").replace(/\/?$/u, "/");
+  const response = await fetch(`${baseUrl}${PRIVACY_RECORDS_APPROVAL_CANDIDATE.manifestPath}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    throw new AdminControlError("The signed 61-domain lifecycle decision manifest could not be loaded.", {
+      code: "lifecycle_manifest_unavailable",
+      kind: "configuration",
+    });
+  }
+  return response.text();
+}
+
+export async function recordTosStagingLifecycleDecisionBatch(institutionId, input) {
+  const manifestText = await loadTosStagingLifecycleDecisionManifest();
+  return callRpc(
+    "record_tos_staging_lifecycle_decision_batch",
+    buildLifecycleDecisionBatchRpcPayload(institutionId, manifestText, input),
+    "The signed 61-domain lifecycle decision batch could not be recorded.",
+  );
+}
+
+export function recordPrivacyRecordsApprovalDecision(institutionId, input) {
+  return callRpc(
+    "record_student_data_intake_evidence",
+    buildPrivacyRecordsApprovalRpcPayload(institutionId, input),
+    "The accountable privacy and records decision could not be recorded.",
+  );
+}
+
 export async function searchAdminAccountsCourses(query = "", institutionId = null, pathway = null) {
   const data = await callRpc(
     "admin_search_accounts_courses",
@@ -891,6 +928,8 @@ export const get_admin_control_center = getAdminControlCenter;
 export const get_student_data_intake_readiness = getStudentDataIntakeReadiness;
 export const record_student_data_security_decision = recordSecurityApprovalDecision;
 export const record_student_data_accessibility_decision = recordAccessibilityApprovalDecision;
+export const record_tos_staging_lifecycle_decisions = recordTosStagingLifecycleDecisionBatch;
+export const record_student_data_privacy_records_decision = recordPrivacyRecordsApprovalDecision;
 export const admin_search_accounts_courses = searchAdminAccountsCourses;
 export const preview_feature_control_change = previewFeatureControlChange;
 export const apply_feature_control_change = applyFeatureControlChange;
@@ -925,6 +964,8 @@ const adminControlService = Object.freeze({
   getStudentDataIntakeReadiness,
   recordSecurityApprovalDecision,
   recordAccessibilityApprovalDecision,
+  recordTosStagingLifecycleDecisionBatch,
+  recordPrivacyRecordsApprovalDecision,
   searchAdminAccountsCourses,
   previewFeatureControlChange,
   applyFeatureControlChange,
