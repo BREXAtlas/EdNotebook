@@ -1085,6 +1085,44 @@
   border-top: 1px solid var(--ac-line);
 }
 
+.ac-section-copy {
+  margin: 0.45rem 0 0;
+  color: var(--ac-muted);
+  line-height: 1.55;
+}
+
+.ac-security-decision-card {
+  margin-top: 0.9rem;
+  padding: clamp(0.9rem, 2vw, 1.25rem);
+  display: grid;
+  gap: 1rem;
+  background: #f8fbff;
+  border: 1px solid #b9cce1;
+  border-left: 5px solid var(--ac-blue);
+  border-radius: 0.75rem;
+}
+
+.ac-security-decision-card form,
+.ac-security-decision-checks {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.ac-security-decision-card code {
+  overflow-wrap: anywhere;
+}
+
+.ac-security-decision-card .ac-form-grid {
+  margin-top: 0;
+}
+
+.ac-security-decision-checks {
+  padding: 0.85rem;
+  background: #fff9e5;
+  border: 1px solid #e2c971;
+  border-radius: 0.6rem;
+}
+
 .ac-count-badge {
   display: inline-grid;
   place-items: center;

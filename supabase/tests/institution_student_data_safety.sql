@@ -295,6 +295,103 @@ reset role;
 reset request.jwt.claim.sub;
 reset request.jwt.claim.role;
 
+-- The accountable security decision is independent from platform ownership,
+-- candidate-bound, expiration-bounded, and still cannot activate production.
+insert into public.student_data_intake_evidence_versions(
+  institution_id,gate_key,version,status,evidence_reference,summary,tested_commit,
+  migration_version,environment_reference,region,evidence_summary,reviewed_by,expires_at
+) values (
+  '20000000-0000-4000-8000-000000000001','repositoryValidation',1,'passed',
+  'safety:repository-validation','Synthetic prerequisite evidence for the rollback-only security decision test.',
+  '1111111111111111111111111111111111111111','20260802204824',
+  'supabase:safety-preview-ref;staging','us-east-1','{}'::jsonb,
+  '10000000-0000-4000-8000-000000000091',now()+interval '30 days'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000091',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+      'safety:security-review','Synthetic security decision must reject platform ownership alone.',
+      '1111111111111111111111111111111111111111','20260802204824',
+      'supabase:safety-preview-ref;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Platform Owner","reviewer_title_and_security_authority":"Platform owner only","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '29 days',true
+    );
+    raise exception 'SECURITY APPROVAL TEST FAILED: platform ownership alone was accepted';
+  exception when others then
+    if sqlerrm like 'SECURITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%active institution security reviewer membership is required%' then raise; end if;
+  end;
+  raise notice 'PASS platform ownership alone cannot record securityApproval';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000095',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+      'safety:security-review','Synthetic PASS must require explicit risk and incident acceptance.',
+      '1111111111111111111111111111111111111111','20260802204824',
+      'supabase:safety-preview-ref;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":false,"incident_boundary_accepted":false,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '29 days',true
+    );
+    raise exception 'SECURITY APPROVAL TEST FAILED: incomplete PASS acceptance was recorded';
+  exception when others then
+    if sqlerrm like 'SECURITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%PASS requires independent review%' then raise; end if;
+  end;
+
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+      'safety:security-review','Synthetic PASS must not outlive its underlying evidence.',
+      '1111111111111111111111111111111111111111','20260802204824',
+      'supabase:safety-preview-ref;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '31 days',true
+    );
+    raise exception 'SECURITY APPROVAL TEST FAILED: decision exceeded the evidence ceiling';
+  exception when others then
+    if sqlerrm like 'SECURITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%expiry exceeds the underlying evidence ceiling%' then raise; end if;
+  end;
+
+  perform public.record_student_data_intake_evidence(
+    '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+    'safety:security-review','Synthetic independent security reviewer accepts the bounded staging evidence.',
+    '1111111111111111111111111111111111111111','20260802204824',
+    'supabase:safety-preview-ref;staging','us-east-1',
+    '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+    now()+interval '29 days',true
+  );
+
+  if not exists (
+    select 1 from public.student_data_intake_evidence_versions
+    where institution_id='20000000-0000-4000-8000-000000000001'
+      and gate_key='securityApproval' and version=1 and status='passed'
+      and reviewed_by='10000000-0000-4000-8000-000000000095'
+      and evidence_summary->>'environment_scope'='staging'
+  ) or coalesce((private.student_data_intake_readiness('20000000-0000-4000-8000-000000000001')->>'production_student_intake_enabled')::boolean,true) then
+    raise exception 'SECURITY APPROVAL TEST FAILED: bounded decision or fail-closed intake state is incorrect';
+  end if;
+  raise notice 'PASS securityApproval requires independent authority, explicit acceptance, bounded expiry, and leaves production disabled';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
 -- A subject may create a governed request plan, but the Phase 2 contract must
 -- keep every production action blocked until all human-reviewed policies and
 -- operational evidence exist. This also gives the two new linked domains a
