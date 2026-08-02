@@ -236,6 +236,22 @@ begin
   ) then
     raise exception 'Commercial review record granted book-content access without an entitlement';
   end if;
+  if exists (
+    select 1 from public.list_alex_morrison_catalog('Professor Authored')
+    where item_kind='book'
+      and item_id='21000000-0000-4000-8000-000000000020'
+      and listing_status='review'
+  ) then
+    raise exception 'Commercial review metadata leaked to another signed-in account';
+  end if;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claim.sub','21000000-0000-4000-8000-000000000001',true);
+set local role authenticated;
+do $$
+begin
   if not exists (
     select 1 from public.list_alex_morrison_catalog('Professor Authored')
     where item_kind='book'
@@ -244,14 +260,11 @@ begin
       and price_cents=1299
       and checkout_available=false
   ) then
-    raise exception 'Commercial review preview was missing or claimed checkout availability';
+    raise exception 'Commercial review preview was missing for its owner or claimed checkout availability';
   end if;
 end;
 $$;
 
-reset role;
-select set_config('request.jwt.claim.sub','21000000-0000-4000-8000-000000000001',true);
-set local role authenticated;
 do $$
 begin
   update public.publications

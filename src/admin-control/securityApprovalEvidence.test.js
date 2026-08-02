@@ -23,7 +23,10 @@ test("every external GitHub Action is pinned to an immutable commit", async () =
 });
 
 test("the security packet remains a human-owned, fail-closed staging decision", async () => {
-  const packet = await readFile(new URL("../../docs/SECURITY_APPROVAL_EVIDENCE_PACKET.md", import.meta.url), "utf8");
+  const [packet, libraryGate] = await Promise.all([
+    readFile(new URL("../../docs/SECURITY_APPROVAL_EVIDENCE_PACKET.md", import.meta.url), "utf8"),
+    readFile(new URL("../../supabase/tests/alex_morrison_library_gate.sql", import.meta.url), "utf8"),
+  ]);
 
   assert.match(packet, /Status: \*\*AWAITING ACCOUNTABLE SECURITY REVIEW — HOLD\*\*/u);
   assert.match(packet, /gfalgonektwdylsxsgzc/u);
@@ -35,4 +38,6 @@ test("the security packet remains a human-owned, fail-closed staging decision", 
   assert.match(packet, /0 of 161 dependencies/u);
   assert.match(packet, /securityApproval/u);
   assert.match(packet, /must not be inferred from a merge/u);
+  assert.match(libraryGate, /Commercial review metadata leaked to another signed-in account/u);
+  assert.match(libraryGate, /Commercial review preview was missing for its owner/u);
 });
