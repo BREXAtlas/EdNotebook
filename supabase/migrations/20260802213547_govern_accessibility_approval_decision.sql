@@ -36,6 +36,10 @@ begin
     private.is_platform_owner(v_actor)
     or private.has_institution_capability(p_institution_id,'view_audit',v_actor)
     or private.has_institution_capability(p_institution_id,'manage_retention',v_actor)
+    or (
+      p_gate_key='accessibilityApproval'
+      and private.has_institution_capability(p_institution_id,'view_control_center',v_actor)
+    )
   ) then raise exception 'Student-data evidence review denied'; end if;
   if p_status not in ('passed','failed','hold') then raise exception 'Evidence status is invalid'; end if;
   if p_status='passed' and not p_attestation then raise exception 'Human evidence attestation required'; end if;
