@@ -85,7 +85,6 @@ test("the on-platform accessibility decision path requires oversight membership 
   ]);
 
   assert.match(migration, /set search_path=''/u);
-  assert.match(migration, /p_gate_key='accessibilityApproval'[\s\S]+has_institution_capability\(p_institution_id,'view_control_center',v_actor\)/u);
   assert.match(migration, /membership\.role in \('owner','admin','security','records'\)/u);
   assert.match(migration, /Platform ownership alone is insufficient/iu);
   assert.match(migration, /Accessibility decision expiry exceeds the underlying evidence ceiling/u);

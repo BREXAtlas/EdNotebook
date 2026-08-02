@@ -425,7 +425,7 @@ reset request.jwt.claim.sub;
 reset request.jwt.claim.role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000092',true);
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000095',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 do $$
 declare
@@ -476,7 +476,7 @@ begin
      or v_record.gate_key<>'accessibilityApproval'
      or v_record.version<>1
      or v_record.status<>'hold'
-     or v_record.reviewed_by<>'10000000-0000-4000-8000-000000000092'
+     or v_record.reviewed_by<>'10000000-0000-4000-8000-000000000095'
      or v_record.evidence_summary->>'environment_scope'<>'staging'
      or coalesce((v_readiness->>'production_student_intake_enabled')::boolean,true) then
     raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: bounded decision or fail-closed intake state is incorrect';
