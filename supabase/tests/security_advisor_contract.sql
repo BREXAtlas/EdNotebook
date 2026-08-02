@@ -29,6 +29,14 @@ begin
     ) privilege
     where namespace.nspname='public'
       and procedure.prosecdef
+      and not exists (
+        select 1
+        from pg_depend dependency
+        where dependency.classid='pg_proc'::regclass
+          and dependency.objid=procedure.oid
+          and dependency.refclassid='pg_extension'::regclass
+          and dependency.deptype='e'
+      )
       and privilege.grantee=0
       and privilege.privilege_type='EXECUTE'
   ) then
@@ -40,6 +48,14 @@ begin
   join pg_namespace namespace on namespace.oid=procedure.pronamespace
   where namespace.nspname='public'
     and procedure.prosecdef
+    and not exists (
+      select 1
+      from pg_depend dependency
+      where dependency.classid='pg_proc'::regclass
+        and dependency.objid=procedure.oid
+        and dependency.refclassid='pg_extension'::regclass
+        and dependency.deptype='e'
+    )
     and has_function_privilege('anon',procedure.oid,'EXECUTE');
 
   if v_anon_security_definer_count<>1 or not has_function_privilege(
@@ -56,6 +72,14 @@ begin
     join pg_namespace namespace on namespace.oid=procedure.pronamespace
     where namespace.nspname='public'
       and procedure.prosecdef
+      and not exists (
+        select 1
+        from pg_depend dependency
+        where dependency.classid='pg_proc'::regclass
+          and dependency.objid=procedure.oid
+          and dependency.refclassid='pg_extension'::regclass
+          and dependency.deptype='e'
+      )
       and has_function_privilege('authenticated',procedure.oid,'EXECUTE')
       and not exists (
         select 1
@@ -72,6 +96,14 @@ begin
     join pg_namespace namespace on namespace.oid=procedure.pronamespace
     where namespace.nspname='public'
       and procedure.prosecdef
+      and not exists (
+        select 1
+        from pg_depend dependency
+        where dependency.classid='pg_proc'::regclass
+          and dependency.objid=procedure.oid
+          and dependency.refclassid='pg_extension'::regclass
+          and dependency.deptype='e'
+      )
       and has_function_privilege('authenticated',procedure.oid,'EXECUTE')
       and lower(pg_get_functiondef(procedure.oid)) !~ 'auth[.]uid[(][)]|auth[.]jwt[(][)]|request[.]jwt[.]claim'
   ) then
@@ -84,6 +116,14 @@ begin
     join pg_namespace namespace on namespace.oid=procedure.pronamespace
     where namespace.nspname='public'
       and procedure.prosecdef
+      and not exists (
+        select 1
+        from pg_depend dependency
+        where dependency.classid='pg_proc'::regclass
+          and dependency.objid=procedure.oid
+          and dependency.refclassid='pg_extension'::regclass
+          and dependency.deptype='e'
+      )
       and has_function_privilege('authenticated',procedure.oid,'EXECUTE')
       and lower(pg_get_functiondef(procedure.oid)) ~ '\mexecute\M'
   ) then

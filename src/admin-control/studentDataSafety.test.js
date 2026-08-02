@@ -629,6 +629,7 @@ test("the security-advisor follow-up makes deny-only surfaces and RPC assumption
 
   assert.equal([...migration.matchAll(/as restrictive for all to anon, authenticated/gu)].length, 14);
   assert.match(gate, /privilege\.grantee=0/u);
+  assert.equal([...gate.matchAll(/dependency\.refclassid='pg_extension'::regclass/gu)].length, 5);
   assert.match(gate, /public\.list_alex_morrison_catalog\(text\)/u);
   assert.match(gate, /does not bind to request identity/u);
   assert.match(gate, /uses dynamic SQL and requires a dedicated review/u);
