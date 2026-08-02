@@ -337,6 +337,9 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000095',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 do $$
+declare
+  v_record public.student_data_intake_evidence_versions;
+  v_readiness jsonb;
 begin
   begin
     perform public.record_student_data_intake_evidence(
@@ -368,7 +371,7 @@ begin
     if sqlerrm not like '%expiry exceeds the underlying evidence ceiling%' then raise; end if;
   end;
 
-  perform public.record_student_data_intake_evidence(
+  v_record:=public.record_student_data_intake_evidence(
     '20000000-0000-4000-8000-000000000001','securityApproval','passed',
     'safety:security-review','Synthetic independent security reviewer accepts the bounded staging evidence.',
     '1111111111111111111111111111111111111111','20260802204824',
@@ -376,14 +379,15 @@ begin
     '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
     now()+interval '29 days',true
   );
+  v_readiness:=public.get_student_data_intake_readiness('20000000-0000-4000-8000-000000000001');
 
-  if not exists (
-    select 1 from public.student_data_intake_evidence_versions
-    where institution_id='20000000-0000-4000-8000-000000000001'
-      and gate_key='securityApproval' and version=1 and status='passed'
-      and reviewed_by='10000000-0000-4000-8000-000000000095'
-      and evidence_summary->>'environment_scope'='staging'
-  ) or coalesce((private.student_data_intake_readiness('20000000-0000-4000-8000-000000000001')->>'production_student_intake_enabled')::boolean,true) then
+  if v_record.institution_id<>'20000000-0000-4000-8000-000000000001'
+     or v_record.gate_key<>'securityApproval'
+     or v_record.version<>1
+     or v_record.status<>'passed'
+     or v_record.reviewed_by<>'10000000-0000-4000-8000-000000000095'
+     or v_record.evidence_summary->>'environment_scope'<>'staging'
+     or coalesce((v_readiness->>'production_student_intake_enabled')::boolean,true) then
     raise exception 'SECURITY APPROVAL TEST FAILED: bounded decision or fail-closed intake state is incorrect';
   end if;
   raise notice 'PASS securityApproval requires independent authority, explicit acceptance, bounded expiry, and leaves production disabled';
