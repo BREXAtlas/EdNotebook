@@ -1,0 +1,96 @@
+name: Rehearse staging file lifecycle evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RUN SYNTHETIC STAGING LIFECYCLE EVIDENCE
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ednotebook-staging-lifecycle-evidence
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    name: Exercise synthetic upload, deletion, retention, and hold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FUNCTION_URL: https://gfalgonektwdylsxsgzc.supabase.co/functions/v1/staging-lifecycle-evidence
+      STAGING_LIFECYCLE_EVIDENCE_SECRET: ${{ secrets.STAGING_LIFECYCLE_EVIDENCE_SECRET }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Enforce the exact staging confirmation
+        shell: bash
+        run: |
+          test "$CONFIRMATION" = "RUN SYNTHETIC STAGING LIFECYCLE EVIDENCE" || {
+            echo "Exact staging evidence confirmation is required."
+            exit 1
+          }
+          test -n "$STAGING_LIFECYCLE_EVIDENCE_SECRET" || {
+            echo "Missing GitHub Actions secret STAGING_LIFECYCLE_EVIDENCE_SECRET"
+            exit 1
+          }
+
+      - name: Run the protected staging-only evidence function
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$RUNNER_TEMP/staging-lifecycle-evidence.json"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --max-time 300 \
+            --request POST \
+            --header "content-type: application/json" \
+            --header "x-staging-evidence-secret: $STAGING_LIFECYCLE_EVIDENCE_SECRET" \
+            --data '{"confirmation":"RUN SYNTHETIC STAGING LIFECYCLE EVIDENCE"}' \
+            --output "$response" \
+            "$FUNCTION_URL"
+
+      - name: Verify the metadata-only human-review result
+        shell: python
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["RUNNER_TEMP"]) / "staging-lifecycle-evidence.json"
+          result = json.loads(path.read_text(encoding="utf-8"))
+          assert result["environment"] == "staging"
+          assert result["projectRef"] == "gfalgonektwdylsxsgzc"
+          assert result["syntheticObjectCount"] == 3
+          assert result["technicallyReconciled"] is True
+          assert result["decision"] == "eligible_for_human_review"
+          assert result["gatePassed"] is False
+          assert result["reviewerTypeRequired"] == "human"
+          assert result["productionStudentIntakeEnabled"] is False
+          assert result["productionActionExecuted"] is False
+          assert result["missingChecks"] == []
+          assert all(result["checks"].values())
+
+          forbidden = {"email", "password", "token", "path", "userid", "content", "body"}
+          def inspect(value):
+            if isinstance(value, dict):
+              for key, child in value.items():
+                assert key.lower().replace("_", "") not in forbidden
+                inspect(child)
+            elif isinstance(value, list):
+              for child in value:
+                inspect(child)
+          inspect(result)
+          print(json.dumps(result, indent=2, sort_keys=True))
+
+      - name: Retain the safe evidence summary
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase3-staging-lifecycle-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/staging-lifecycle-evidence.json
+          if-no-files-found: error
+          retention-days: 90
