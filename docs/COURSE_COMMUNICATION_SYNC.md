@@ -51,7 +51,7 @@ and announcements. `course_communication_preferences` stores two optional in-app
 preferences: announcements and questions/replies. Turning a badge off does not hide the
 underlying education record.
 
-Both student-owned tables are explicit domains in the version 2.3, 47-domain student-data
+Both student-owned tables are explicit domains in the version 2.5, 50-domain linked-record student-data
 safety snapshot. Shared course messages and announcements remain separate course-scoped
 records rather than being duplicated into a student's private state.
 

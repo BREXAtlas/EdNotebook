@@ -27,9 +27,9 @@ test("cloud content is bounded and version collisions are rejected", () => {
 });
 
 test("cloud learning records join the fail-closed student-data inventory", () => {
-  assert.match(safetyModel, /STUDENT_DATA_SNAPSHOT_VERSION = "2\.4"/u);
+  assert.match(safetyModel, /STUDENT_DATA_SNAPSHOT_VERSION = "2\.5"/u);
   assert.match(safetyModel, /"studentLearningRecords"/u);
   assert.match(safetyHarness, /select 'studentLearningRecords'[\s\S]*public\.student_learning_records where student_id=p_student/u);
-  assert.match(safetyHarness, /canonical 48-domain capture inventory/u);
+  assert.match(safetyHarness, /canonical 50-domain capture inventory/u);
   assert.match(safetyHarness, /safety_backup_student_learning_records/u);
 });

@@ -220,6 +220,98 @@ begin
   raise notice 'PASS progress-table and security-definer routine ACL test';
 end $$;
 
+do $$
+declare v_signature text;
+begin
+  foreach v_signature in array array[
+    'public.get_lti_owner_setup()',
+    'public.save_lti_platform_registration(uuid,jsonb)',
+    'public.save_lti_deployment(uuid,jsonb)',
+    'public.map_lti_context(uuid,uuid)',
+    'public.activate_tested_lti_deployment(uuid)',
+    'public.list_social_learning_managed_roster()',
+    'public.issue_social_learning_reward(uuid,uuid,text,text,text,text,integer,text,uuid)',
+    'public.correct_social_learning_reward(uuid,text,integer,text,uuid)'
+  ] loop
+    if has_function_privilege('anon',v_signature,'EXECUTE') then
+      raise exception 'ANON RPC TEST FAILED: anonymous execution remains on %',v_signature;
+    end if;
+    if not has_function_privilege('authenticated',v_signature,'EXECUTE') then
+      raise exception 'ANON RPC TEST FAILED: authenticated product execution was removed from %',v_signature;
+    end if;
+  end loop;
+  if not has_function_privilege('anon','public.list_alex_morrison_catalog(text)','EXECUTE') then
+    raise exception 'CATALOG TEST FAILED: the signed-out public catalog is unavailable';
+  end if;
+  raise notice 'PASS anonymous privileged-RPC revocation and public-catalog exception ACL test';
+end $$;
+
+update public.published_course_directory
+set is_listed=true,library_listing_status='review',library_access_model='purchase',
+    library_price_cents=500,library_rental_days=null
+where course_id='40000000-0000-4000-8000-000000000001';
+
+set local role anon;
+do $$ begin
+  if exists(
+    select 1 from public.list_alex_morrison_catalog('Safety Course A')
+    where course_id='40000000-0000-4000-8000-000000000001'
+  ) then
+    raise exception 'CATALOG TEST FAILED: anonymous catalog exposed a review-stage course';
+  end if;
+  raise notice 'PASS anonymous catalog excludes review-stage content';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$ begin
+  if not exists(
+    select 1 from public.list_alex_morrison_catalog('Safety Course A')
+    where course_id='40000000-0000-4000-8000-000000000001' and listing_status='review'
+  ) then
+    raise exception 'CATALOG TEST FAILED: the course owner could not review their own listing';
+  end if;
+  raise notice 'PASS signed-in course owner retains review-stage catalog access';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+-- A subject may create a governed request plan, but the Phase 2 contract must
+-- keep every production action blocked until all human-reviewed policies and
+-- operational evidence exist. This also gives the two new linked domains a
+-- representative row for the versioned restore inventory below.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_result jsonb;
+  v_requests jsonb;
+begin
+  v_result:=public.request_my_student_data_action(
+    '20000000-0000-4000-8000-000000000001',
+    'account_closure',
+    'Synthetic rollback-only account closure readiness rehearsal.'
+  );
+  v_requests:=public.get_my_student_data_subject_requests();
+  if coalesce((v_result->>'created')::boolean,false) is not true
+     or coalesce((v_result->>'production_action_executed')::boolean,true) is not false
+     or v_result->'request'->>'status'<>'blocked'
+     or v_result->'request'->>'intake_decision'<>'hold'
+     or jsonb_array_length(v_requests)<>1
+     or jsonb_array_length(v_requests->0->'items')<>61
+     or (select count(*) from jsonb_array_elements(v_requests->0->'items') item where item->>'status'='blocked_missing_policy')<>61 then
+    raise exception 'SUBJECT REQUEST TEST FAILED: request planning did not remain fail closed';
+  end if;
+  raise notice 'PASS governed account and data-subject request remains fail closed';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
 -- GATE 1: versioned student-data inventory, representative logical restore, and reconciliation.
 -- Parent file, resource, and group rows stay intact because a partial delete would
 -- cascade into shared or separately retained records. Provider backup and object
@@ -277,12 +369,14 @@ as $capture$
   union all select 'ltiLaunchSessions',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select s.* from public.lti_launch_sessions s where s.user_mapping_id in(select u.id from public.lti_user_mappings u where u.ednotebook_user_id=p_student)) t),'[]'::jsonb)
   union all select 'ltiGradeSyncEvents',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select e.* from public.lti_grade_sync_events e where e.user_mapping_id in(select u.id from public.lti_user_mappings u where u.ednotebook_user_id=p_student) or e.student_grade_id in(select g.id from public.student_grades g where g.student_id=p_student)) t),'[]'::jsonb)
   union all select 'userFeaturePolicies',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.feature_policies where user_id=p_student) t),'[]'::jsonb)
+  union all select 'studentDataSubjectRequests',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_data_subject_requests where subject_user_id=p_student or requested_by=p_student) t),'[]'::jsonb)
+  union all select 'studentDataSubjectRequestItems',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select item.* from public.student_data_subject_request_items item join public.student_data_subject_requests request on request.id=item.request_id where request.subject_user_id=p_student or request.requested_by=p_student) t),'[]'::jsonb)
   union all select 'auditEvents',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.audit_events where actor_id=p_student or secure_file_id in(select f.id from public.secure_file_objects f where f.owner_id=p_student) or target_id=p_student::text or details::text like ('%'||p_student::text||'%')) t),'[]'::jsonb);
 $capture$;
 
 create temporary table safety_expected_restore_domains(domain text primary key);
 insert into safety_expected_restore_domains(domain) values
-  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('assignmentDocumentFeedback'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('courseCommunicationReads'),('courseCommunicationPreferences'),('learningResources'),('studentLearningRecords'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('auditEvents');
+  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('assignmentDocumentFeedback'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('courseCommunicationReads'),('courseCommunicationPreferences'),('learningResources'),('studentLearningRecords'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('studentDataSubjectRequests'),('studentDataSubjectRequestItems'),('auditEvents');
 
 insert into public.student_learning_records(
   student_id,record_id,root_id,version,record_kind,course_code,course_title,
@@ -296,7 +390,7 @@ insert into public.student_learning_records(
 );
 
 create temporary table safety_restore_inventory_before as
-select '2.4'::text contract_version,domain,true captured,
+select '2.5'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -307,10 +401,10 @@ begin
     select 1 from safety_expected_restore_domains e
     full join safety_restore_inventory_before b using(domain)
     where e.domain is null or b.domain is null or not b.captured
-  ) or (select count(*) from safety_restore_inventory_before)<>48 then
+  ) or (select count(*) from safety_restore_inventory_before)<>50 then
     raise exception 'RESTORE TEST FAILED: canonical student-data inventory is incomplete';
   end if;
-  raise notice 'PASS canonical 48-domain capture inventory is complete';
+  raise notice 'PASS canonical 50-domain capture inventory is complete';
 end $$;
 
 create temporary table safety_incomplete_restore_inventory as
@@ -380,7 +474,7 @@ delete from public.course_memberships where user_id='10000000-0000-4000-8000-000
 delete from public.institution_memberships where user_id='10000000-0000-4000-8000-000000000011';
 
 create temporary table safety_restore_inventory_damaged as
-select '2.4'::text contract_version,domain,true captured,
+select '2.5'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -421,7 +515,7 @@ insert into public.course_lesson_progress select * from safety_backup_lesson_pro
 insert into public.course_progress select * from safety_backup_course_progress;
 
 create temporary table safety_restore_inventory_after as
-select '2.4'::text contract_version,domain,true captured,
+select '2.5'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -438,7 +532,7 @@ begin
   ) then
     raise exception 'RESTORE TEST FAILED: restored student bundle did not reconcile';
   end if;
-  raise notice 'PASS representative logical restore reconciles within the canonical 48-domain inventory';
+  raise notice 'PASS representative logical restore reconciles within the canonical 50-domain inventory';
 end $$;
 
 -- GATE 2: cross-institution RLS denial for student, professor, and admin data.
@@ -446,7 +540,10 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 do $$
-declare v_direct_message_denied boolean:=false; v_cross_course_recipient_denied boolean:=false;
+declare
+  v_direct_message_denied boolean:=false;
+  v_cross_course_recipient_denied boolean:=false;
+  v_cross_institution_subject_request_denied boolean:=false;
 begin
   if (select auth.uid()) is distinct from '10000000-0000-4000-8000-000000000011'::uuid then raise exception 'AUTH TEST FAILED: auth.uid did not resolve the student JWT subject'; end if;
   if (select count(*) from public.student_grades where student_id='10000000-0000-4000-8000-000000000011') <> 1 then raise exception 'ACCESS TEST FAILED: student could not read their same-institution grade'; end if;
@@ -463,8 +560,17 @@ begin
     insert into public.learning_messages(course_id,sender_id,recipient_id,body)
     values('40000000-0000-4000-8000-000000000001',(select auth.uid()),'10000000-0000-4000-8000-000000000012','Cross-tenant course recipient must fail');
   exception when insufficient_privilege then v_cross_course_recipient_denied:=true; end;
-  if not (v_direct_message_denied and v_cross_course_recipient_denied) then
-    raise exception 'ACCESS TEST FAILED: student sent a course-less or course-scoped message across institutions';
+  begin
+    perform public.request_my_student_data_action(
+      '20000000-0000-4000-8000-000000000002',
+      'access_export',
+      'Synthetic cross-institution request must always be rejected.'
+    );
+  exception when raise_exception or insufficient_privilege then
+    v_cross_institution_subject_request_denied:=true;
+  end;
+  if not (v_direct_message_denied and v_cross_course_recipient_denied and v_cross_institution_subject_request_denied) then
+    raise exception 'ACCESS TEST FAILED: student crossed a message or subject-request institution boundary';
   end if;
   raise notice 'PASS auth.uid, same-tenant, and student cross-institution access-control test';
 end $$;

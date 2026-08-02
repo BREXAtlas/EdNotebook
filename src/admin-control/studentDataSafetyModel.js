@@ -1,4 +1,4 @@
-export const STUDENT_DATA_SNAPSHOT_VERSION = "2.4";
+export const STUDENT_DATA_SNAPSHOT_VERSION = "2.5";
 
 export const STUDENT_DATA_DOMAINS = Object.freeze([
   "profile",
@@ -48,7 +48,51 @@ export const STUDENT_DATA_DOMAINS = Object.freeze([
   "ltiLaunchSessions",
   "ltiGradeSyncEvents",
   "userFeaturePolicies",
+  "studentDataSubjectRequests",
+  "studentDataSubjectRequestItems",
   "auditEvents",
+]);
+
+export const STUDENT_DATA_LIFECYCLE_DISPOSITIONS = Object.freeze([
+  "delete",
+  "anonymize",
+  "retain",
+  "block",
+]);
+
+export const EXTERNAL_STUDENT_DATA_LIFECYCLE_DOMAINS = Object.freeze([
+  "authIdentities",
+  "authSessions",
+  "authProviderLogs",
+  "storageObjectVersions",
+  "storageDeliveryCaches",
+  "providerBackups",
+  "stripeWebhookPayloads",
+  "blackboardProviderCopies",
+  "ltiProviderCopies",
+  "unlinkedPortalInterestSubmissions",
+  "userAuthoredProfessorPublisherContent",
+]);
+
+export const STUDENT_DATA_LIFECYCLE_DOMAINS = Object.freeze([
+  ...STUDENT_DATA_DOMAINS,
+  ...EXTERNAL_STUDENT_DATA_LIFECYCLE_DOMAINS,
+]);
+
+export const STUDENT_DATA_INTAKE_GATES = Object.freeze([
+  "repositoryValidation",
+  "databaseRestore",
+  "storageRestore",
+  "crossTenantAccess",
+  "blackboardRoundTrip",
+  "storageDeletionRetention",
+  "securityAdvisors",
+  "performanceAdvisors",
+  "protectedReleaseBranch",
+  "technologyApproval",
+  "privacyRecordsApproval",
+  "accessibilityApproval",
+  "securityApproval",
 ]);
 
 function canonicalize(value) {
@@ -306,5 +350,104 @@ export function evaluateDeletionRequest({
     status: "eligible",
     eligibleAt: evaluatedAt.toISOString(),
     nextAvailabilityStatus: "pending_delete",
+  });
+}
+
+function lifecycleField(record, camelCase, snakeCase) {
+  return record?.[camelCase] ?? record?.[snakeCase];
+}
+
+function validGovernanceDate(value, { required = false, after = null, beforeOrEqual = null } = {}) {
+  if (!value) return !required;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  if (after && date <= after) return false;
+  if (beforeOrEqual && date > beforeOrEqual) return false;
+  return true;
+}
+
+function currentLifecyclePolicy(policy, now) {
+  if (!policy || policy.status !== "approved") return false;
+  if (!STUDENT_DATA_LIFECYCLE_DISPOSITIONS.includes(policy.disposition)) return false;
+  if (String(lifecycleField(policy, "reviewerType", "reviewer_type") || "") !== "human") return false;
+  if (String(lifecycleField(policy, "evidenceReference", "evidence_reference") || "").trim().length < 8) return false;
+  if (String(policy.purpose || "").trim().length < 20) return false;
+  if (!validGovernanceDate(lifecycleField(policy, "approvedAt", "approved_at"), {
+    required: true,
+    beforeOrEqual: now,
+  })) return false;
+  if (!validGovernanceDate(lifecycleField(policy, "reviewDueAt", "review_due_at"), { after: now })) return false;
+
+  const retentionDays = lifecycleField(policy, "retentionDays", "retention_days");
+  if (policy.disposition === "block") return retentionDays == null;
+  return Number.isInteger(Number(retentionDays))
+    && Number(retentionDays) >= 0
+    && Number(retentionDays) <= 36_500
+    && (policy.disposition !== "retain" || Number(retentionDays) > 0);
+}
+
+function currentIntakeEvidence(record, now) {
+  if (!record || record.status !== "passed") return false;
+  if (String(lifecycleField(record, "reviewerType", "reviewer_type") || "") !== "human") return false;
+  if (String(lifecycleField(record, "evidenceReference", "evidence_reference") || "").trim().length < 8) return false;
+  if (!validGovernanceDate(lifecycleField(record, "reviewedAt", "reviewed_at"), {
+    required: true,
+    beforeOrEqual: now,
+  })) return false;
+  return validGovernanceDate(lifecycleField(record, "expiresAt", "expires_at"), { after: now });
+}
+
+/**
+ * Evaluates whether a candidate has enough governed evidence to be presented
+ * for a separate human production-promotion decision. It deliberately never
+ * enables production student intake.
+ */
+export function evaluateStudentDataIntakeReadiness({
+  policies = [],
+  evidence = [],
+  now = new Date(),
+} = {}) {
+  const evaluatedAt = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(evaluatedAt.getTime())) throw new TypeError("Intake-readiness evaluation time is invalid.");
+  if (!Array.isArray(policies) || !Array.isArray(evidence)) {
+    throw new TypeError("Lifecycle policies and intake evidence must be arrays.");
+  }
+
+  const policiesByDomain = new Map();
+  for (const policy of policies) {
+    const key = String(lifecycleField(policy, "domainKey", "domain_key") || "");
+    if (!STUDENT_DATA_LIFECYCLE_DOMAINS.includes(key)) continue;
+    const previous = policiesByDomain.get(key);
+    const currentVersion = Number(policy.version || 0);
+    if (!previous || currentVersion > Number(previous.version || 0)) policiesByDomain.set(key, policy);
+  }
+
+  const evidenceByGate = new Map();
+  for (const record of evidence) {
+    const key = String(lifecycleField(record, "gateKey", "gate_key") || "");
+    if (!STUDENT_DATA_INTAKE_GATES.includes(key)) continue;
+    const previous = evidenceByGate.get(key);
+    const currentVersion = Number(record.version || 0);
+    if (!previous || currentVersion > Number(previous.version || 0)) evidenceByGate.set(key, record);
+  }
+
+  const missingLifecycleDomains = STUDENT_DATA_LIFECYCLE_DOMAINS.filter(
+    (domain) => !currentLifecyclePolicy(policiesByDomain.get(domain), evaluatedAt),
+  );
+  const missingEvidenceGates = STUDENT_DATA_INTAKE_GATES.filter(
+    (gate) => !currentIntakeEvidence(evidenceByGate.get(gate), evaluatedAt),
+  );
+  const readyForPromotionReview = missingLifecycleDomains.length === 0 && missingEvidenceGates.length === 0;
+
+  return Object.freeze({
+    decision: readyForPromotionReview ? "ready_for_human_promotion_review" : "hold",
+    readyForPromotionReview,
+    productionStudentIntakeEnabled: false,
+    lifecycleDomainCount: STUDENT_DATA_LIFECYCLE_DOMAINS.length,
+    approvedLifecycleDomainCount: STUDENT_DATA_LIFECYCLE_DOMAINS.length - missingLifecycleDomains.length,
+    requiredEvidenceGateCount: STUDENT_DATA_INTAKE_GATES.length,
+    passedEvidenceGateCount: STUDENT_DATA_INTAKE_GATES.length - missingEvidenceGates.length,
+    missingLifecycleDomains: Object.freeze(missingLifecycleDomains),
+    missingEvidenceGates: Object.freeze(missingEvidenceGates),
   });
 }

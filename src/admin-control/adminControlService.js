@@ -522,6 +522,14 @@ export async function getAdminControlCenter(institutionId = null) {
   );
 }
 
+export async function getStudentDataIntakeReadiness(institutionId) {
+  return callRpc(
+    "get_student_data_intake_readiness",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "Student-data intake readiness could not be loaded.",
+  );
+}
+
 export async function searchAdminAccountsCourses(query = "", institutionId = null, pathway = null) {
   const data = await callRpc(
     "admin_search_accounts_courses",
@@ -862,6 +870,7 @@ export const setConnectionStatus = setIntegrationConnectionStatus;
 // Exact RPC-name aliases are useful for narrow integration tests and scripts.
 export const get_my_admin_workspaces = getMyAdminWorkspaces;
 export const get_admin_control_center = getAdminControlCenter;
+export const get_student_data_intake_readiness = getStudentDataIntakeReadiness;
 export const admin_search_accounts_courses = searchAdminAccountsCourses;
 export const preview_feature_control_change = previewFeatureControlChange;
 export const apply_feature_control_change = applyFeatureControlChange;
@@ -893,6 +902,7 @@ const adminControlService = Object.freeze({
   searchInstitutionDirectory,
   getMyAdminWorkspaces,
   getAdminControlCenter,
+  getStudentDataIntakeReadiness,
   searchAdminAccountsCourses,
   previewFeatureControlChange,
   applyFeatureControlChange,
