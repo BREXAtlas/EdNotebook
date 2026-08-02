@@ -10,6 +10,8 @@ Institution scope: EdNotebook staging institution `22222222-2222-4222-8222-22222
 
 This packet prepares the institution's privacy/records decision for all 61 active lifecycle domains. It does not provide legal advice, does not substitute for the institution's Records Management Officer, Registrar, Privacy/FERPA official, legal counsel, or other named record owner, and does not record a Supabase policy or evidence row.
 
+Substantive review recommendations: [`PRIVACY_RECORDS_INSTITUTIONAL_REVIEW.md`](PRIVACY_RECORDS_INSTITUTIONAL_REVIEW.md) and [`privacy-records-institutional-review-recommendations.json`](privacy-records-institutional-review-recommendations.json). These recommendations do not populate or replace the institution's decision fields.
+
 ## Decision requested
 
 The accountable institution reviewers must:
