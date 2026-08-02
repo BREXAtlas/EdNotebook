@@ -44,6 +44,14 @@ on public.lti_service_endpoints
 as restrictive for all to anon, authenticated
 using (false) with check (false);
 
+-- Older Supabase role defaults granted these professor-only mutation RPCs
+-- directly to anon even after PUBLIC was revoked. Make the intended browser
+-- boundary deterministic across local, staging, and recovery runtimes.
+revoke all on function public.save_course_syllabus_draft(uuid,jsonb,text,text,text,text)
+from anon;
+revoke all on function public.set_course_syllabus_state(uuid,text)
+from anon;
+
 revoke all privileges on table public.marketplace_commerce_launch from anon, authenticated;
 drop policy if exists marketplace_commerce_launch_api_deny_all on public.marketplace_commerce_launch;
 create policy marketplace_commerce_launch_api_deny_all

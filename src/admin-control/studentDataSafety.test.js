@@ -628,6 +628,8 @@ test("the security-advisor follow-up makes deny-only surfaces and RPC assumption
   }
 
   assert.equal([...migration.matchAll(/as restrictive for all to anon, authenticated/gu)].length, 14);
+  assert.match(migration, /revoke all on function public\.save_course_syllabus_draft\(uuid,jsonb,text,text,text,text\)\s+from anon;/u);
+  assert.match(migration, /revoke all on function public\.set_course_syllabus_state\(uuid,text\)\s+from anon;/u);
   assert.match(gate, /privilege\.grantee=0/u);
   assert.equal([...gate.matchAll(/dependency\.refclassid='pg_extension'::regclass/gu)].length, 5);
   assert.match(gate, /public\.list_alex_morrison_catalog\(text\)/u);
