@@ -104,6 +104,10 @@ The database rehearsal may verify mechanics such as complete inventory, immediat
 
 The lifecycle registry includes webhook payloads, unlinked forms, user-authored professor/publisher content, Auth identities/sessions/logs, Storage versions/caches, provider backups, Stripe, Blackboard, and LTI provider copies. A student can create a tenant-bound request plan, but Phase 2 deliberately cannot approve the request for a worker, delete an Auth account, or execute any disposition. Until every domain has a current human-approved policy and the separately reviewed lifecycle worker exists and passes, the student-data deletion/retention gate remains **HOLD** even when the file-deletion worker tests pass.
 
+## Phase 3 operational recovery evidence
+
+The metadata-only recovery manifest and reconciliation contract is documented in [FINAL_PHASE_3_OPERATIONAL_RECOVERY_EVIDENCE.md](FINAL_PHASE_3_OPERATIONAL_RECOVERY_EVIDENCE.md). It binds the exact recovery point, staging source project, release commit, applied migration, all 50 database domains, and separately inventoried private Storage objects. It rejects production and raw content, and it can return only `eligible_for_human_review` or `hold`; it cannot pass either recovery gate or enable production intake.
+
 ## Evidence record
 
 For each release candidate, record:
