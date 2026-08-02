@@ -9,11 +9,11 @@ EdNotebook must not receive production student data until all four gates below p
 3. Blackboard export and reconciliation; and
 4. deletion, retention, and legal hold.
 
-The automated application tests and the transaction-safe PostgreSQL rehearsal are in the repository. A code-only pass is not a production approval. The database rehearsal must also pass on a non-production Supabase branch, and the institution must review the resulting evidence and its own retention requirements.
+The automated application tests and the transaction-safe PostgreSQL rehearsal are in the repository. A code-only pass is not a production approval. The database rehearsal must also pass against the existing approved staging project (or CI's disposable local database), and the institution must review the resulting evidence and its own retention requirements. Do not create a second staging project for this gate.
 
 ## Automated files
 
-- `src/admin-control/studentDataSafetyModel.js` defines the version 2.3, 47-domain linked-record snapshot contract, including append-only student learning records, student-owned course-communication read/preference state, deterministic reconciliation, tenant-aware access decisions, Blackboard grade reconciliation, and deletion-state evaluation.
+- `src/admin-control/studentDataSafetyModel.js` defines the version 2.5, 50-domain linked-record snapshot contract and the separate 61-domain lifecycle registry (50 EdNotebook domains plus 11 Auth, Storage, backup, provider, billing, form, and shared-content domains). It also defines deterministic reconciliation, tenant-aware access decisions, Blackboard grade reconciliation, deletion-state evaluation, and fail-closed intake-readiness evaluation.
 - `src/admin-control/studentDataSafety.test.js` exercises each model, checks that damaged restores and mismatched Blackboard records fail, and verifies that the required database policies and SQL gates remain present.
 - `supabase/functions/_shared/deletion.test.ts` proves that a thrown removal or a resolved Supabase Storage error fails the deletion operation, every stored target is attempted, missing database state changes fail, and required audit errors are not ignored.
 - `supabase/functions/deletion-workers.static.test.js` keeps both deletion workers on the checked removal, legal-hold recheck, state-change, and required-audit path.
@@ -28,7 +28,7 @@ npm run test:student-data-safety
 
 The same application and deletion-worker safety checks run in GitHub Actions for every pull request. Edge Function type checks and the focused Deno deletion tests also run in the security job. A separate database job uses a disposable Docker-backed local Supabase instance so the migration and RLS assertions are executed, not merely inspected as text.
 
-Run the PostgreSQL file only after all repository migrations have been applied to a disposable Supabase branch. Use a protected connection method approved by the technology team; do not paste a database password into source code, documentation, issue comments, or shell history.
+Run the PostgreSQL file only after all repository migrations have been applied to CI's disposable local database or the existing approved staging project. Use a protected connection method approved by the technology team; do not paste a database password into source code, documentation, issue comments, or shell history.
 
 ```sh
 psql --set=ON_ERROR_STOP=1 --file=supabase/tests/institution_student_data_safety.sql
@@ -38,11 +38,11 @@ The expected final notice is `PASS repository rehearsal; operational student-dat
 
 ## Gate 1: restore and reconciliation
 
-The application and SQL contracts use the same version 2.3 list of 47 student/learner linked-record domains. Capture fails closed if any named domain is omitted. The SQL harness retains each canonical JSON payload, row count, and SHA-256 digest, deliberately damages a non-cascading representative subset, restores those rows in dependency order, and requires exact JSON and digest equality. Learner-created groups are captured separately from the learner's memberships and authored posts so another student's group data is not treated as the subject's row. Course-communication reads and notification preferences are captured by their server-derived `user_id`; shared message and announcement content remains governed by its own participant and course scope.
+The application and SQL contracts use the same version 2.5 list of 50 student/learner linked-record domains. The two additional linked domains are governed data-subject requests and their per-domain plans. Capture fails closed if any named domain is omitted. The SQL harness retains each canonical JSON payload, row count, and SHA-256 digest, deliberately damages a non-cascading representative subset, restores those rows in dependency order, and requires exact JSON and digest equality. Learner-created groups are captured separately from the learner's memberships and authored posts so another student's group data is not treated as the subject's row. Course-communication reads and notification preferences are captured by their server-derived `user_id`; shared message and announcement content remains governed by its own participant and course scope.
 
-This is a representative logical row-restore rehearsal within the current linked-record contract. It does not delete and reconstruct all 47 domains. Grades with LTI history, affiliations with transfer history, shared messages/grade links, secure-file parents and objects, audits, billing, Blackboard/LTI history, and other retained/shared records require purpose-specific restore or lifecycle treatment. Empty-domain capture proves fail-closed inventory shape, not recovery of a populated production table.
+This is a representative logical row-restore rehearsal within the current linked-record contract. It does not delete and reconstruct all 50 domains. Grades with LTI history, affiliations with transfer history, shared messages/grade links, secure-file parents and objects, audits, billing, Blackboard/LTI history, and other retained/shared records require purpose-specific restore or lifecycle treatment. Empty-domain capture proves fail-closed inventory shape, not recovery of a populated production table.
 
-The 47-domain list is not a complete account/data-subject inventory. Auth identities, sessions and provider logs; learner-created professor/publisher records; Stripe webhook payloads; and unlinked portal-interest submissions still require classification, linkage, exclusion from student intake, or a separately approved recovery/lifecycle procedure.
+The 50-domain linked-record list is paired with a 61-domain lifecycle registry that now names Auth identities/sessions/logs, Storage versions/caches, provider backups, Stripe webhook payloads, Blackboard/LTI provider copies, unlinked portal-interest submissions, and user-authored professor/publisher content. Naming a domain is not approval: every institution must still append a human-reviewed delete/anonymize/retain/block decision with a purpose, evidence reference, retention period where applicable, and review date.
 
 Before a live pilot, the Supabase project owner must demonstrate the contracted database backup or point-in-time recovery procedure and separately restore the underlying private Storage objects from a versioned/off-site source. Record recovery point/time, exact canonical row/object counts, byte lengths, SHA-256 manifests, and all differences. A database restore can recover Storage metadata without proving that deleted object bytes are recoverable.
 
@@ -102,7 +102,7 @@ Before production student intake, an institution-approved lifecycle design must 
 
 The database rehearsal may verify mechanics such as complete inventory, immediate access termination, hold priority, tenant boundaries, idempotency, counts, hashes, anonymization, and audit survival. It cannot decide the legally correct retention period for a school. Supabase Auth records and logs, Storage versions and delivery caches, provider backups, Stripe, Blackboard, and LTI provider copies require separate operational evidence from the responsible system owner.
 
-The lifecycle matrix must also classify webhook payloads, unlinked forms, user-authored professor/publisher content, Auth identities/sessions/logs, Storage versions/caches, provider backups, Stripe, Blackboard, and LTI provider copies. Until that complete account-closure workflow and retention matrix exist and pass, the student-data deletion/retention gate remains **HOLD** even when the file-deletion worker tests pass.
+The lifecycle registry includes webhook payloads, unlinked forms, user-authored professor/publisher content, Auth identities/sessions/logs, Storage versions/caches, provider backups, Stripe, Blackboard, and LTI provider copies. A student can create a tenant-bound request plan, but Phase 2 deliberately cannot approve the request for a worker, delete an Auth account, or execute any disposition. Until every domain has a current human-approved policy and the separately reviewed lifecycle worker exists and passes, the student-data deletion/retention gate remains **HOLD** even when the file-deletion worker tests pass.
 
 ## Evidence record
 

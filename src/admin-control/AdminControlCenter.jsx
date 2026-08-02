@@ -24,6 +24,7 @@ const TABS = Object.freeze([
   ["publisher", "Publisher"],
   ["connections", "Connections"],
   ["research-pilot", "Research pilot"],
+  ["student-data-readiness", "Student data readiness"],
   ["marketplace", "Commercial publishing"],
   ["accounts", "Accounts & courses"],
   ["institutions", "Institutions"],
@@ -1083,6 +1084,9 @@ export default function AdminControlCenter({ onExit }) {
     if (id === "research-pilot") {
       return Boolean(access.platform_owner || access.can_view_audit || access.can_view_feature_controls || access.can_control_features);
     }
+    if (id === "student-data-readiness") {
+      return Boolean(institutionId && (access.platform_owner || access.can_view_audit || access.can_manage_retention));
+    }
     if (id === "marketplace") return Boolean(access.platform_owner);
     if (id === "accounts") return Boolean(access.platform_owner || access.can_view_accounts);
     if (id === "institutions") return Boolean(access.platform_owner || (institutionId && access.can_manage_affiliations));
@@ -1106,6 +1110,7 @@ export default function AdminControlCenter({ onExit }) {
     access.can_export_reports,
     access.can_manage_affiliations,
     access.can_manage_team,
+    access.can_manage_retention,
   ]);
 
   useEffect(() => {
@@ -1282,6 +1287,10 @@ export default function AdminControlCenter({ onExit }) {
           />
         ) : null}
 
+        {activeTab === "student-data-readiness" ? (
+          <StudentDataReadinessPanel institutionId={institutionId} />
+        ) : null}
+
         {activeTab === "marketplace" ? <MarketplacePanel /> : null}
 
         {activeTab === "accounts" ? (
@@ -1377,6 +1386,79 @@ export default function AdminControlCenter({ onExit }) {
         />
       ) : null}
     </main>
+  );
+}
+
+function StudentDataReadinessPanel({ institutionId }) {
+  const [readiness, setReadiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadReadiness = useCallback(async () => {
+    if (!institutionId) return;
+    setLoading(true);
+    setError("");
+    try {
+      setReadiness(await adminService.getStudentDataIntakeReadiness(institutionId));
+    } catch (nextError) {
+      setReadiness(null);
+      setError(friendlyError(nextError, "Student-data intake readiness could not be loaded."));
+    } finally {
+      setLoading(false);
+    }
+  }, [institutionId]);
+
+  useEffect(() => { loadReadiness(); }, [loadReadiness]);
+
+  const missingDomains = Array.isArray(readiness?.missing_lifecycle_domains)
+    ? readiness.missing_lifecycle_domains
+    : [];
+  const missingGates = Array.isArray(readiness?.missing_evidence_gates)
+    ? readiness.missing_evidence_gates
+    : [];
+  const requests = Array.isArray(readiness?.subject_requests) ? readiness.subject_requests : [];
+  const productionEnabled = readiness?.production_student_intake_enabled === true;
+
+  return (
+    <section className="ac-panel" aria-busy={loading}>
+      <div className="ac-section-heading">
+        <div>
+          <p className="ac-eyebrow">Final Phase 2 of 5</p>
+          <h2>Student-data intake readiness</h2>
+          <p>Review lifecycle coverage and evidence for this institution. This view cannot activate production intake or execute a data-subject request.</p>
+        </div>
+        <button type="button" className="ac-button ac-button--quiet" onClick={loadReadiness} disabled={loading}>
+          {loading ? "Checking…" : "Refresh evidence"}
+        </button>
+      </div>
+
+      {error ? <div className="ac-alert ac-alert--error" role="alert">{error}</div> : null}
+      <div className={`ac-callout ${readiness?.ready_for_promotion_review ? "ac-callout--neutral" : "ac-callout--warning"}`}>
+        <strong>{readiness?.decision === "ready_for_human_promotion_review" ? "Ready for a separate human promotion review" : "HOLD — intake is not ready"}</strong>
+        <p>Production student intake is <strong>{productionEnabled ? "enabled" : "disabled"}</strong>. Even complete evidence does not switch it on.</p>
+      </div>
+
+      <div className="ac-stats">
+        <div className="ac-stat-card"><span>Lifecycle decisions</span><strong>{readiness?.approved_lifecycle_domain_count ?? 0} / {readiness?.lifecycle_domain_count ?? 61}</strong><small>Linked and external domains</small></div>
+        <div className="ac-stat-card"><span>Evidence gates</span><strong>{readiness?.passed_evidence_gate_count ?? 0} / {readiness?.required_evidence_gate_count ?? 13}</strong><small>Current human-reviewed evidence</small></div>
+        <div className="ac-stat-card"><span>Subject requests</span><strong>{requests.length}</strong><small>Plans only; no lifecycle worker</small></div>
+      </div>
+
+      <dl className="ac-detail-grid">
+        <div>
+          <dt>Lifecycle decisions still required</dt>
+          <dd>{missingDomains.length ? missingDomains.join(", ") : "None recorded as missing"}</dd>
+        </div>
+        <div>
+          <dt>Evidence gates still required</dt>
+          <dd>{missingGates.length ? missingGates.join(", ") : "None recorded as missing"}</dd>
+        </div>
+      </dl>
+
+      <div className="ac-callout ac-callout--privacy">
+        <strong>Metadata only.</strong> Evidence references and summaries must never contain student work, grades, messages, credentials, provider payloads, or confidential institutional records.
+      </div>
+    </section>
   );
 }
 
