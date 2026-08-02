@@ -631,11 +631,31 @@ test("the security-advisor follow-up makes deny-only surfaces and RPC assumption
   assert.match(migration, /revoke all on function public\.save_course_syllabus_draft\(uuid,jsonb,text,text,text,text\)\s+from anon;/u);
   assert.match(migration, /revoke all on function public\.set_course_syllabus_state\(uuid,text\)\s+from anon;/u);
   assert.match(gate, /privilege\.grantee=0/u);
+  assert.match(gate, /An application table does not have RLS enabled/u);
+  assert.match(gate, /private\.publication_learning_author_versions/u);
   assert.equal([...gate.matchAll(/dependency\.refclassid='pg_extension'::regclass/gu)].length, 5);
   assert.match(gate, /public\.list_alex_morrison_catalog\(text\)/u);
   assert.match(gate, /does not bind to request identity/u);
   assert.match(gate, /uses dynamic SQL and requires a dedicated review/u);
   assert.match(workflow, /--file=supabase\/tests\/security_advisor_contract\.sql/u);
+});
+
+test("the public Library catalog limits review-stage metadata to its owner and platform review", async () => {
+  const [migration, hostedGate] = await Promise.all([
+    readFile(new URL("../../supabase/migrations/20260802190000_scope_catalog_review_previews.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../supabase/tests/institution_student_data_safety.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(migration, /security definer\s+set search_path=''/u);
+  assert.match(migration, /alter table private\.publication_learning_author_versions enable row level security/u);
+  assert.match(migration, /publication_learning_author_versions_api_deny_all/u);
+  assert.match(migration, /as restrictive\s+for all\s+to anon,authenticated\s+using \(false\)\s+with check \(false\)/u);
+  assert.match(migration, /directory\.professor_id=\(select auth\.uid\(\)\)/u);
+  assert.match(migration, /publication\.owner_id=\(select auth\.uid\(\)\)/u);
+  assert.equal([...migration.matchAll(/private\.is_platform_owner\(\(select auth\.uid\(\)\)\)/gu)].length, 2);
+  assert.match(migration, /revoke all on function public\.list_alex_morrison_catalog\(text\) from public,anon/u);
+  assert.match(migration, /grant execute on function public\.list_alex_morrison_catalog\(text\) to anon,authenticated/u);
+  assert.match(hostedGate, /another signed-in account could see a professor review-stage listing/u);
 });
 
 test("the existing Control Center exposes readiness as institution-scoped review only", async () => {
