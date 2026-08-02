@@ -601,6 +601,43 @@ test("the performance-advisor follow-up preserves RLS semantics and initializes 
   assert.doesNotMatch(executableSql.replaceAll("(select auth.uid())", ""), /auth\.uid\(\)/u);
 });
 
+test("the security-advisor follow-up makes deny-only surfaces and RPC assumptions executable", async () => {
+  const [migration, gate, workflow] = await Promise.all([
+    readFile(new URL("../../supabase/migrations/20260802073000_make_rls_deny_surfaces_explicit.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../supabase/tests/security_advisor_contract.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8"),
+  ]);
+
+  for (const tableName of [
+    "digital_literacy_standard_enrollments",
+    "digital_literacy_standard_progress",
+    "research_export_secrets",
+    "lti_launch_sessions",
+    "lti_launch_states",
+    "lti_service_endpoints",
+    "marketplace_commerce_launch",
+    "marketplace_launch_controls",
+    "student_data_intake_evidence_versions",
+    "student_data_intake_gate_definitions",
+    "student_data_lifecycle_domains",
+    "student_data_lifecycle_policy_versions",
+    "student_data_subject_request_items",
+    "student_data_subject_requests",
+  ]) {
+    assert.match(migration, new RegExp(`${tableName}_api_deny_all`, "u"));
+  }
+
+  assert.equal([...migration.matchAll(/as restrictive for all to anon, authenticated/gu)].length, 14);
+  assert.match(migration, /revoke all on function public\.save_course_syllabus_draft\(uuid,jsonb,text,text,text,text\)\s+from anon;/u);
+  assert.match(migration, /revoke all on function public\.set_course_syllabus_state\(uuid,text\)\s+from anon;/u);
+  assert.match(gate, /privilege\.grantee=0/u);
+  assert.equal([...gate.matchAll(/dependency\.refclassid='pg_extension'::regclass/gu)].length, 5);
+  assert.match(gate, /public\.list_alex_morrison_catalog\(text\)/u);
+  assert.match(gate, /does not bind to request identity/u);
+  assert.match(gate, /uses dynamic SQL and requires a dedicated review/u);
+  assert.match(workflow, /--file=supabase\/tests\/security_advisor_contract\.sql/u);
+});
+
 test("the existing Control Center exposes readiness as institution-scoped review only", async () => {
   const [component, service] = await Promise.all([
     readFile(new URL("./AdminControlCenter.jsx", import.meta.url), "utf8"),

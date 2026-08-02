@@ -252,6 +252,15 @@ jobs:
           --echo-errors
           --file=supabase/tests/media_learning_workflow_gate.sql
 
+      - name: Run staging security-advisor database contract
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/security_advisor_contract.sql
+
       - name: Stop the disposable local database
         if: always()
         run: supabase stop --no-backup
