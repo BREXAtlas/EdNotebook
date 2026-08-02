@@ -5,6 +5,8 @@ EdNotebook uses one source repository and one GitHub Pages artifact with two ind
 - Production: `https://ednotebook.com/`
 - Staging: `https://ednotebook.com/staging/`
 
+Staging is the permanent, active integration sandbox for EdNotebook. It is not removed after a gate, repurposed as production, or replaced by feature-specific test sites. Every normal upgrade, fix, migration, and user-experience change is accepted here before it can be proposed for production.
+
 ## Environment boundary
 
 | Environment | Source branch | Supabase project | Purpose |
@@ -22,10 +24,16 @@ The frontend shell is built from the same repository. Staging changes do not rea
 4. Test the real staging route with staging Supabase accounts.
 5. Fix issues on the feature branch or a follow-up staging branch.
 6. Open a promotion pull request from `staging` into `main`.
-7. Merge only after owner approval.
+7. Merge only after the staging evidence is attached and the owner approves production promotion.
 8. GitHub Actions rebuilds production from `main` and staging from `staging` in the same Pages artifact.
 
 Do not manually copy buttons, layouts, or service calls between environments. Promote the exact reviewed commits so the two shells remain traceable.
+
+## Branch enforcement
+
+Both `staging` and `main` are protected. Merges require a pull request with an up-to-date branch, resolved review conversations, and successful `Validate current change`, `Test security services`, and `Rehearse student-data database gates` checks. Protection applies to administrators; force pushes and branch deletion are disabled.
+
+The required approving-review count is intentionally zero for the current single-owner repository. This prevents a self-review deadlock while preserving the owner's deliberate merge action as the approval. Add a required reviewer when another accountable maintainer is available.
 
 ## Staging safety
 
@@ -35,6 +43,9 @@ Do not manually copy buttons, layouts, or service calls between environments. Pr
 - Production credentials, service-role keys, provider secrets, and private router keys must never appear in frontend variables.
 - Only Supabase publishable browser configuration is committed in `.env.staging`.
 - The TOS AI Learning Router continues to hold provider selection, model policy, quotas, and credentials server-side.
+- Staging uses public or synthetic test data only. Real student records, grades, private messages, and confidential institutional content are prohibited.
+- A database migration is first merged and applied to `gfalgonektwdylsxsgzc`, then tested and recorded. Applying the same reviewed migration to production requires a separate promotion decision, backup/rollback evidence, and explicit approval.
+- Ordinary staging work must never link the checkout to or run a Supabase write command against `didwxihufueqbpfnfdmm`.
 
 ## URLs for testing
 

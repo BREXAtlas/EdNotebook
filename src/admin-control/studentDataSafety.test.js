@@ -555,6 +555,21 @@ test("the intake-readiness migration is append-only, tenant-bound, explicit-gran
   assert.doesNotMatch(sql, /update auth\.users|delete from auth\.users/iu);
 });
 
+test("the staging-acceptance follow-up covers student-data governance foreign keys", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260802033711_index_student_data_governance_foreign_keys.sql", import.meta.url), "utf8");
+
+  for (const [indexName, tableName, columnName] of [
+    ["student_data_intake_evidence_versions_gate_key_idx", "student_data_intake_evidence_versions", "gate_key"],
+    ["student_data_lifecycle_policy_versions_domain_key_idx", "student_data_lifecycle_policy_versions", "domain_key"],
+    ["student_data_subject_request_items_domain_key_idx", "student_data_subject_request_items", "domain_key"],
+  ]) {
+    assert.match(
+      sql,
+      new RegExp(`create index if not exists ${indexName}\\s+on public\\.${tableName}\\(${columnName}\\);`, "u"),
+    );
+  }
+});
+
 test("the existing Control Center exposes readiness as institution-scoped review only", async () => {
   const [component, service] = await Promise.all([
     readFile(new URL("./AdminControlCenter.jsx", import.meta.url), "utf8"),
