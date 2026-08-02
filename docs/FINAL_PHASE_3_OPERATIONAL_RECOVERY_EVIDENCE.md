@@ -4,6 +4,8 @@
 
 **HOLD.** The repository has deterministic, fail-closed reconciliation tooling. It does not yet contain evidence of an actual provider-managed database recovery or a separate recovery of private Supabase Storage object bytes. Neither `databaseRestore` nor `storageRestore` may be marked passed from local tests alone.
 
+The owner has approved the separate Supabase Pro recovery target `pxicbctxmokbafynklhv` (`EdNotebook Staging Recovery Evidence`). The active staging sandbox must not be overwritten. The provider-managed database restore remains **HOLD** until staging is restored into that isolated target and its safe reconciliation artifact receives human review. The staging-only file-lifecycle exercise below proceeds independently against permanent staging.
+
 This unit is restricted to the permanent public/synthetic staging environment:
 
 - site: `https://ednotebook.com/staging/`
@@ -63,6 +65,23 @@ Before execution, approve an independent object-byte backup/versioning source an
 8. Verify anonymous/public reads remain denied and retained/legal-hold objects were not removed.
 9. A human reviewer records the result against the existing `storageRestore` gate.
 
+## Staging file-lifecycle evidence workflow
+
+The permanent manual workflow `.github/workflows/staging-lifecycle-evidence.yml` is hard-bound to staging project `gfalgonektwdylsxsgzc`. It has no schedule and requires the exact confirmation `RUN SYNTHETIC STAGING LIFECYCLE EVIDENCE` plus a separate random secret stored in both Supabase Edge Function secrets and GitHub Actions secrets.
+
+The workflow invokes `staging-lifecycle-evidence`, which:
+
+1. rejects production and every project other than the approved staging project;
+2. creates an ephemeral synthetic account and synthetic institution;
+3. uploads three non-sensitive text objects through the existing authenticated `secure-upload-session`, signed private upload, and `secure-upload-complete` path;
+4. verifies byte lengths, SHA-256 checksums, and denial of anonymous public reads;
+5. exercises an eligible deletion, a future-retention deferral, and a file-specific active legal hold through `secure-file-delete` and the token-fenced deletion worker;
+6. verifies the eligible object is absent, retained and held objects remain present, and required audit events exist;
+7. removes every synthetic Storage object and fixture record, including the temporary Auth account; and
+8. emits only safe booleans, counts, hashes, and the human-review decision into a 90-day GitHub Actions artifact.
+
+Even a fully successful run returns `gatePassed: false` and `eligible_for_human_review`. It does not satisfy the separate Storage backup/restore gate and cannot activate production.
+
 ## Reconciliation command
 
 Keep both input files outside the repository and run:
@@ -77,7 +96,7 @@ Exit code `0` means the safe metadata reconciled and is eligible for human revie
 
 1. Owner-approved real hosted staging database recovery evidence.
 2. Owner-approved private Storage byte recovery evidence.
-3. Real synthetic staging deletion/retention/legal-hold worker evidence, including partial-failure reconciliation.
+3. Real synthetic staging deletion/retention/legal-hold worker evidence through the manual staging workflow; partial-failure reconciliation remains a separate destructive-failure-injection exercise.
 4. Institution-controlled non-production Blackboard round-trip evidence.
 5. Human review and append-only evidence decisions in the existing Control Center governance model.
 

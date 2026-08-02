@@ -140,6 +140,9 @@ jobs:
       - name: Test deletion failure handling
         run: deno test --config supabase/functions/deno.json supabase/functions/_shared/deletion.test.ts
 
+      - name: Test staging lifecycle evidence guardrails
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/staging-lifecycle-evidence.test.ts
+
   database-safety:
     name: Rehearse student-data database gates
     runs-on: ubuntu-24.04
