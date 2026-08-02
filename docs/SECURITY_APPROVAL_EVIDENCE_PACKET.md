@@ -17,11 +17,11 @@ An accountable security reviewer must decide whether the exact candidate, deploy
 | Field | Bound value |
 | --- | --- |
 | Repository | `BREXAtlas/EdNotebook` |
-| Protected staging baseline | `1a126227874f6ac7a6c570f85de8972bd1d6856f` (PR #106 merge) |
-| Candidate | The exact commit containing this packet and `20260802190000_scope_catalog_review_previews.sql`; record the protected merge commit after review |
+| Protected staging candidate | `5f0296824ab884eaa022d02ac86ae9247d5f03ec` (PR #107 merge) |
+| Reviewed PR head | `3e601655c9631d65fd00e8d0a8b7bce5d1cd9353`, verified as an ancestor of the protected merge |
 | Staging frontend | `https://ednotebook.com/staging/` |
 | Staging Supabase | `gfalgonektwdylsxsgzc`, `us-east-1` |
-| Live migration before candidate deployment | `20260802075349` |
+| Hosted candidate migration | `20260802202056_scope_catalog_review_previews` |
 | Production Supabase | `didwxihufueqbpfnfdmm` — out of scope and unchanged |
 | Permitted data | Public and synthetic staging data only |
 | Prohibited data | Real student records, grades, private messages, credentials, confidential institutional content, and human-subjects research data |
@@ -32,11 +32,15 @@ This packet becomes stale if the protected commit, migration inventory, Edge Fun
 
 The live pre-candidate database review found one avoidable metadata exposure. `list_alex_morrison_catalog(text)` correctly excluded review-stage listings for anonymous users, but allowed any authenticated account to see another professor's review-stage title, description, pricing, and creator metadata. No book content, answer key, entitlement, bank data, or checkout authorization was exposed.
 
-Migration `20260802190000_scope_catalog_review_previews.sql` narrows review-stage course metadata to `published_course_directory.professor_id = auth.uid()` or the platform owner, and review-stage EduBook metadata to `publications.owner_id = auth.uid()` or the platform owner. Published catalog behavior remains unchanged. The rollback-safe hosted safety harness now proves that the owner retains the preview and another signed-in account cannot see it.
+Migration `20260802190000_scope_catalog_review_previews.sql`, deployed to staging as `20260802202056_scope_catalog_review_previews`, narrows review-stage course metadata to `published_course_directory.professor_id = auth.uid()` or the platform owner, and review-stage EduBook metadata to `publications.owner_id = auth.uid()` or the platform owner. Published catalog behavior remains unchanged. The rollback-safe hosted safety harness proves that the owner retains the preview and another signed-in account cannot see it.
 
-The same migration adds explicit RLS and a restrictive browser deny policy to `private.publication_learning_author_versions`, the answer-key-bearing author layer. Before the candidate, the private-schema table had no browser table grants and neither browser role had direct access; the additional policy supplies defense in depth without opening a new interface.
+The same migration adds explicit RLS and a restrictive browser deny policy to `private.publication_learning_author_versions`, the answer-key-bearing author layer. Before deployment, the private-schema table had no browser table grants and neither browser role had direct access; the additional policy supplies defense in depth without opening a new interface.
 
-## Live staging security snapshot before candidate deployment
+## Live hosted staging acceptance
+
+The protected `staging` workflow run `30765343447` passed all three required jobs against merge commit `5f0296824ab884eaa022d02ac86ae9247d5f03ec`. Pages deployment run `30765404879` succeeded, and the live `/staging/environment.json` reports that exact staging source commit and project `gfalgonektwdylsxsgzc`.
+
+The complete 114,395-character `institution_student_data_safety.sql` harness executed against hosted staging without an assertion error and rolled back. A focused 9,293-byte Library gate separately passed after a zero-collision precheck. Post-run checks found zero fixture Auth users, profiles, courses, subject requests, secure files, legal holds, publications, or directory records.
 
 | Control | Verified result |
 | --- | --- |
@@ -47,13 +51,14 @@ The same migration adds explicit RLS and a restrictive browser deny policy to `p
 | Authenticated definer search paths | 0 missing a pinned `search_path` |
 | Request-identity binding | 0 authenticated definer RPCs missing `auth.uid()`, `auth.jwt()`, or request-claim binding |
 | Dynamic SQL | 0 authenticated definer RPCs using `EXECUTE` |
-| Application tables | 160 total; 159 with RLS before the candidate; 0 RLS-enabled tables without a policy |
-| Single non-RLS table | Private answer-key table, with no `anon` or `authenticated` table privilege; candidate adds explicit RLS and deny policy |
+| Application tables | 160 total; 160 with RLS; 0 RLS-enabled tables without a policy |
+| Private answer layer | RLS enabled; one explicit deny policy; no `anon` or `authenticated` table privilege |
 | Storage | Six buckets; all six private |
 | Edge Functions | Ten active; eight require platform JWT; two use separately tested custom authentication |
-| Hosted migration | `20260802075349` |
+| Hosted migration | `20260802202056_scope_catalog_review_previews` |
+| Performance Advisor | 211 `INFO`, 0 `WARN`, and 0 error findings |
 
-The 103 advisor warnings are an inventory of privileged RPC entry points, not a blanket waiver. Existing executable contracts reject `PUBLIC` execution, constrain the sole anonymous projection, require fixed search paths, require request identity, reject dynamic SQL, and rehearse cross-tenant behavior. After the candidate migration is deployed, the advisor and hosted SQL contracts must be rerun. Any new category, count drift without explanation, PUBLIC grant, missing identity binding, dynamic SQL, or policyless RLS surface is a HOLD.
+The 103 advisor warnings are an inventory of privileged RPC entry points, not a blanket waiver. The hosted executable contract rejects `PUBLIC` execution, constrains the sole anonymous projection, requires fixed search paths, requires request identity, rejects dynamic SQL, and rehearses cross-tenant behavior. Any new category, count drift without explanation, PUBLIC grant, missing identity binding, dynamic SQL, or policyless RLS surface is a HOLD.
 
 ## Edge Function boundary
 
@@ -88,20 +93,20 @@ The two expected non-JWT exceptions are `stripe-webhook` v16, which verifies the
 5. AI provider selection, credentials, quotas, and fallback policy stay in the TOS governed router. Human review remains mandatory, and prompt/provider response bodies must not be persisted.
 6. Stripe remains test mode. Stripe Connect collects seller identity and bank details; EdNotebook must not collect or log bank credentials. Live charging and payout activation require their separate controls.
 
-## Required post-merge evidence
+## Completed post-merge evidence
 
-The candidate is not decision-ready until all items below are captured against the same protected staging commit:
+The following evidence is bound to protected staging commit `5f0296824ab884eaa022d02ac86ae9247d5f03ec`:
 
-- [ ] All three protected GitHub checks pass on the pull request and merge commit.
-- [ ] Migration `20260802190000_scope_catalog_review_previews.sql` is applied only to `gfalgonektwdylsxsgzc`.
-- [ ] The complete rollback-safe `institution_student_data_safety.sql` harness passes with zero fixture residue.
-- [ ] `security_advisor_contract.sql` passes against hosted staging.
-- [ ] Live database summary is 160 of 160 application tables with RLS, 0 policyless-RLS surfaces, 0 PUBLIC-executable definers, exactly one anonymous catalog definer, 0 missing fixed search paths, 0 missing request-identity bindings, and 0 authenticated dynamic-SQL definers.
-- [ ] Live Security Advisor is rerun; every remaining warning is reconciled by exact function and role.
-- [ ] The anonymous catalog excludes review-stage data; the professor/author and platform owner retain governed review access; a different authenticated account does not.
-- [ ] All Storage buckets remain private and the Edge Function JWT/custom-auth inventory is unchanged or explicitly reconciled.
-- [ ] Dependency audit remains zero known vulnerabilities and the action-pin test passes.
-- [ ] No production project, production credential, live charge, or real student record was used.
+- [x] All three protected GitHub checks passed on the pull request and merge commit.
+- [x] Migration `20260802190000_scope_catalog_review_previews.sql` was applied only to `gfalgonektwdylsxsgzc` as hosted migration `20260802202056`.
+- [x] The complete rollback-safe `institution_student_data_safety.sql` harness passed with zero sampled fixture residue.
+- [x] `security_advisor_contract.sql` passed against hosted staging.
+- [x] Live database summary is 160 of 160 application tables with RLS, 0 policyless-RLS surfaces, 0 PUBLIC-executable definers, exactly one anonymous catalog definer, 0 missing fixed search paths, 0 missing request-identity bindings, and 0 authenticated dynamic-SQL definers.
+- [x] Live Security Advisor was rerun: 103 warnings, exactly one anonymous catalog and 102 authenticated SECURITY DEFINER RPCs, with no new category.
+- [x] The anonymous catalog excludes review-stage data; the professor/author and platform owner retain governed review access; a different authenticated account does not.
+- [x] All six Storage buckets remain private and the Edge Function inventory remains eight JWT-required functions plus the two reviewed custom-auth exceptions.
+- [x] Dependency audit remains zero known vulnerabilities and the immutable action-pin test passed.
+- [x] Production project `didwxihufueqbpfnfdmm`, production credentials, live charging, and real student data were not used or changed.
 
 ## Residual risks requiring an explicit reviewer decision
 
@@ -155,4 +160,4 @@ Only an authorized, signed-in human may append the decision through `record_stud
 
 ## Current outcome
 
-**HOLD.** The candidate closes the identified catalog and private answer-layer issues and assembles the evidence, but it is not yet merged, deployed, or rerun against hosted staging, and no accountable security reviewer has accepted the residual risk and incident boundary.
+**HOLD pending the human decision only.** The candidate is merged, deployed to staging, and technically reconciled. The security approval remains open because no accountable security reviewer has yet accepted the documented residual risks and incident boundary. Production student intake remains disabled, and this packet does not resolve the parked ASU/Blackboard or other independent approval gates.
