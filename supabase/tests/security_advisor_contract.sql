@@ -12,6 +12,17 @@ begin
     join pg_namespace namespace on namespace.oid=relation.relnamespace
     where namespace.nspname in ('public','private')
       and relation.relkind in ('r','p')
+      and not relation.relrowsecurity
+  ) then
+    raise exception 'An application table does not have RLS enabled';
+  end if;
+
+  if exists (
+    select 1
+    from pg_class relation
+    join pg_namespace namespace on namespace.oid=relation.relnamespace
+    where namespace.nspname in ('public','private')
+      and relation.relkind in ('r','p')
       and relation.relrowsecurity
       and not exists (
         select 1 from pg_policy policy where policy.polrelid=relation.oid
@@ -137,6 +148,19 @@ begin
      or has_table_privilege('anon','public.lti_service_endpoints','select,insert,update,delete')
      or has_table_privilege('authenticated','public.lti_service_endpoints','select,insert,update,delete') then
     raise exception 'Internal LTI state is still directly exposed to a browser database role';
+  end if;
+
+  if has_table_privilege(
+       'anon',
+       'private.publication_learning_author_versions',
+       'select,insert,update,delete'
+     )
+     or has_table_privilege(
+       'authenticated',
+       'private.publication_learning_author_versions',
+       'select,insert,update,delete'
+     ) then
+    raise exception 'The author-only EduBook answer layer is directly exposed to a browser database role';
   end if;
 end;
 $$;

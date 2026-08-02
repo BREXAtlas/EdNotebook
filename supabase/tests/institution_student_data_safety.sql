@@ -279,6 +279,22 @@ reset role;
 reset request.jwt.claim.sub;
 reset request.jwt.claim.role;
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$ begin
+  if exists(
+    select 1 from public.list_alex_morrison_catalog('Safety Course A')
+    where course_id='40000000-0000-4000-8000-000000000001'
+  ) then
+    raise exception 'CATALOG TEST FAILED: another signed-in account could see a professor review-stage listing';
+  end if;
+  raise notice 'PASS signed-in non-owner cannot see another professor review-stage listing';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
 -- A subject may create a governed request plan, but the Phase 2 contract must
 -- keep every production action blocked until all human-reviewed policies and
 -- operational evidence exist. This also gives the two new linked domains a
