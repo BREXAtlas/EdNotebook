@@ -13,6 +13,10 @@ import {
   validateSecurityApprovalDecision,
 } from "./securityApprovalDecision.js";
 import {
+  ACCESSIBILITY_APPROVAL_CANDIDATE,
+  validateAccessibilityApprovalDecision,
+} from "./accessibilityApprovalDecision.js";
+import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
   marketplaceReceiptLabel,
@@ -122,6 +126,22 @@ const DEFAULT_SECURITY_DECISION = Object.freeze({
   independentReviewCompleted: false,
   residualRisksAccepted: false,
   incidentBoundaryAccepted: false,
+});
+
+const DEFAULT_ACCESSIBILITY_DECISION = Object.freeze({
+  decision: "hold",
+  reviewerName: "",
+  reviewerAuthority: "",
+  evidenceReference: "",
+  summary: "",
+  expiresOn: ACCESSIBILITY_APPROVAL_CANDIDATE.expirationLatestDate,
+  authorityAttestation: false,
+  completeProcessReviewCompleted: false,
+  keyboardAndAssistiveTechnologyReviewed: false,
+  visualAndResponsiveReviewed: false,
+  mediaAndContentReviewed: false,
+  remediationOwnershipAccepted: false,
+  thirdPartyBoundaryAccepted: false,
 });
 
 function formatDate(value, includeTime = true) {
@@ -1413,6 +1433,7 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [notice, setNotice] = useState("");
   const [recording, setRecording] = useState(false);
   const [securityDraft, setSecurityDraft] = useState(() => ({ ...DEFAULT_SECURITY_DECISION }));
+  const [accessibilityDraft, setAccessibilityDraft] = useState(() => ({ ...DEFAULT_ACCESSIBILITY_DECISION }));
 
   const loadReadiness = useCallback(async () => {
     if (!institutionId) return;
@@ -1431,6 +1452,7 @@ function StudentDataReadinessPanel({ institutionId }) {
   useEffect(() => { loadReadiness(); }, [loadReadiness]);
   useEffect(() => {
     setSecurityDraft({ ...DEFAULT_SECURITY_DECISION });
+    setAccessibilityDraft({ ...DEFAULT_ACCESSIBILITY_DECISION });
     setNotice("");
   }, [institutionId]);
 
@@ -1443,12 +1465,19 @@ function StudentDataReadinessPanel({ institutionId }) {
   const requests = Array.isArray(readiness?.subject_requests) ? readiness.subject_requests : [];
   const evidence = Array.isArray(readiness?.evidence) ? readiness.evidence : [];
   const securityEvidence = evidence.find((item) => item.gate_key === "securityApproval") || null;
+  const accessibilityEvidence = evidence.find((item) => item.gate_key === "accessibilityApproval") || null;
   const productionEnabled = readiness?.production_student_intake_enabled === true;
   const securityValidation = validateSecurityApprovalDecision(securityDraft);
+  const accessibilityValidation = validateAccessibilityApprovalDecision(accessibilityDraft);
   const isPassDecision = securityDraft.decision === "passed";
+  const isAccessibilityPassDecision = accessibilityDraft.decision === "passed";
 
   function updateSecurityDraft(field, value) {
     setSecurityDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateAccessibilityDraft(field, value) {
+    setAccessibilityDraft((current) => ({ ...current, [field]: value }));
   }
 
   async function recordSecurityDecision(event) {
@@ -1464,6 +1493,24 @@ function StudentDataReadinessPanel({ institutionId }) {
       await loadReadiness();
     } catch (nextError) {
       setError(friendlyError(nextError, "The accountable security decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordAccessibilityDecision(event) {
+    event.preventDefault();
+    if (!accessibilityValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordAccessibilityApprovalDecision(institutionId, accessibilityDraft);
+      setNotice(`${titleCase(recorded?.status || accessibilityDraft.decision)} accessibility decision recorded as append-only evidence. Production intake remains disabled.`);
+      setAccessibilityDraft({ ...DEFAULT_ACCESSIBILITY_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The accountable accessibility decision could not be recorded."));
     } finally {
       setRecording(false);
     }
@@ -1572,6 +1619,77 @@ function StudentDataReadinessPanel({ institutionId }) {
             <div className="ac-form-actions">
               <button type="submit" className={isPassDecision ? "ac-button ac-button--primary" : "ac-button ac-button--quiet"} disabled={!securityValidation.valid || recording}>
                 {recording ? "Recording…" : `Record ${securityDraft.decision.toUpperCase()} decision`}
+              </button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="accessibility-decision-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Independent human gate</span>
+            <h3 id="accessibility-decision-title">Accountable accessibility decision</h3>
+          </div>
+          <StatusPill
+            status={accessibilityEvidence?.status || "pending"}
+            label={accessibilityEvidence ? titleCase(accessibilityEvidence.status) : "Awaiting review"}
+          />
+        </div>
+        <p className="ac-section-copy">A signed-in team member with active institutional oversight membership and documented accessibility authority may record this decision. Platform ownership alone is not sufficient. Automated checks alone are insufficient. PASS, HOLD, and FAIL create append-only versions and never activate production student intake.</p>
+
+        <article className="ac-security-decision-card">
+          <dl className="ac-detail-grid">
+            <div><dt>Protected candidate</dt><dd><code>{ACCESSIBILITY_APPROVAL_CANDIDATE.testedCommit.slice(0, 12)}</code></dd></div>
+            <div><dt>Hosted migration</dt><dd><code>{ACCESSIBILITY_APPROVAL_CANDIDATE.migrationVersion}</code></dd></div>
+            <div><dt>Evidence packet</dt><dd><code>{ACCESSIBILITY_APPROVAL_CANDIDATE.evidencePacketCommit.slice(0, 12)}</code></dd></div>
+            <div><dt>Latest permitted expiration</dt><dd>{formatDate(ACCESSIBILITY_APPROVAL_CANDIDATE.expirationCeiling, false)}</dd></div>
+          </dl>
+
+          {accessibilityEvidence ? <div className="ac-callout ac-callout--neutral"><strong>Current recorded decision: {titleCase(accessibilityEvidence.status)}</strong><p>Version {accessibilityEvidence.version} · reviewed {formatDate(accessibilityEvidence.reviewed_at)} · expires {formatDate(accessibilityEvidence.expires_at)}. A later decision supersedes it without deleting history.</p></div> : null}
+
+          <form onSubmit={recordAccessibilityDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={accessibilityDraft.decision} onChange={(event) => updateAccessibilityDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD — more review or remediation is required</option>
+                  <option value="passed">PASS — accept the complete-process evidence</option>
+                  <option value="failed">FAIL — reject this candidate</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Evidence current through
+                <input type="date" required max={ACCESSIBILITY_APPROVAL_CANDIDATE.expirationLatestDate} value={accessibilityDraft.expiresOn} onChange={(event) => updateAccessibilityDraft("expiresOn", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={accessibilityDraft.reviewerName} onChange={(event) => updateAccessibilityDraft("reviewerName", event.target.value)} placeholder="Human reviewer name" />
+              </label>
+              <label className="ac-compact-field">Title, unit, and accessibility authority
+                <input required value={accessibilityDraft.reviewerAuthority} onChange={(event) => updateAccessibilityDraft("reviewerAuthority", event.target.value)} placeholder="Example: Accessibility Coordinator, Academic Affairs" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable institution-controlled evidence reference
+              <input required value={accessibilityDraft.evidenceReference} onChange={(event) => updateAccessibilityDraft("evidenceReference", event.target.value)} placeholder="Approved ticket, signed review, test report, or remediation record" />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={accessibilityDraft.summary} onChange={(event) => updateAccessibilityDraft("summary", event.target.value)} placeholder="State the complete processes and assistive technologies reviewed, the decision, open findings, owners, and limitations. Do not include student or disability information." />
+            </label>
+
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.authorityAttestation} onChange={(event) => updateAccessibilityDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am authorized to record this institution's accessibility decision and understand that it is not a blanket legal certification.</span></label>
+              {isAccessibilityPassDecision ? <>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.completeProcessReviewCompleted} onChange={(event) => updateAccessibilityDraft("completeProcessReviewCompleted", event.target.checked)} /><span>I manually reviewed the complete authentication, student, professor, publisher/library, writing, commerce test-mode, and administration processes.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.keyboardAndAssistiveTechnologyReviewed} onChange={(event) => updateAccessibilityDraft("keyboardAndAssistiveTechnologyReviewed", event.target.checked)} /><span>I reviewed keyboard operation, focus, semantics, status messages, and the documented screen-reader matrix.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.visualAndResponsiveReviewed} onChange={(event) => updateAccessibilityDraft("visualAndResponsiveReviewed", event.target.checked)} /><span>I reviewed contrast, non-color cues, zoom, reflow, target size, responsive layouts, and reduced motion.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.mediaAndContentReviewed} onChange={(event) => updateAccessibilityDraft("mediaAndContentReviewed", event.target.checked)} /><span>I reviewed captions, transcripts, audio and image alternatives, generated/imported content, and embedded-media boundaries.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.remediationOwnershipAccepted} onChange={(event) => updateAccessibilityDraft("remediationOwnershipAccepted", event.target.checked)} /><span>I verified that unresolved findings have severity, owner, remediation or accepted condition, and a retest date.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.thirdPartyBoundaryAccepted} onChange={(event) => updateAccessibilityDraft("thirdPartyBoundaryAccepted", event.target.checked)} /><span>I accept the documented course-authoring and third-party boundary without treating it as a waiver of EdNotebook platform defects.</span></label>
+              </> : null}
+            </div>
+
+            {!accessibilityValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Decision is not ready to record.</strong><p>{accessibilityValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions">
+              <button type="submit" className={isAccessibilityPassDecision ? "ac-button ac-button--primary" : "ac-button ac-button--quiet"} disabled={!accessibilityValidation.valid || recording}>
+                {recording ? "Recording…" : `Record ${accessibilityDraft.decision.toUpperCase()} decision`}
               </button>
             </div>
           </form>

@@ -396,6 +396,97 @@ reset role;
 reset request.jwt.claim.sub;
 reset request.jwt.claim.role;
 
+-- Accessibility approval requires institutional oversight and accountable
+-- accessibility authority. Automated-only PASS is rejected, evidence remains
+-- expiration-bounded, and even a valid decision cannot activate production.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000091',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','accessibilityApproval','hold',
+      'safety:accessibility-review','Synthetic accessibility HOLD must reject platform ownership alone.',
+      '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+      'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+      '{"decision":"hold","reviewer_name":"Platform Owner","reviewer_title_and_accessibility_authority":"Platform owner only","reviewer_authority_attested":true,"complete_process_review_completed":false,"keyboard_and_assistive_technology_reviewed":false,"visual_and_responsive_reviewed":false,"media_and_content_reviewed":false,"remediation_ownership_accepted":false,"third_party_boundary_accepted":false,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '28 days',true
+    );
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: platform ownership alone was accepted';
+  exception when others then
+    if sqlerrm like 'ACCESSIBILITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%Platform ownership alone is insufficient%' then raise; end if;
+  end;
+  raise notice 'PASS platform ownership alone cannot record accessibilityApproval';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000092',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_record public.student_data_intake_evidence_versions;
+  v_readiness jsonb;
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','accessibilityApproval','passed',
+      'safety:accessibility-review','Synthetic PASS must reject automated or incomplete accessibility evidence.',
+      '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+      'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Accessibility Reviewer","reviewer_title_and_accessibility_authority":"Institution Accessibility Coordinator","reviewer_authority_attested":true,"complete_process_review_completed":false,"keyboard_and_assistive_technology_reviewed":false,"visual_and_responsive_reviewed":false,"media_and_content_reviewed":false,"remediation_ownership_accepted":false,"third_party_boundary_accepted":false,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '28 days',true
+    );
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: incomplete PASS was recorded';
+  exception when others then
+    if sqlerrm like 'ACCESSIBILITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%PASS requires complete-process%' then raise; end if;
+  end;
+
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','accessibilityApproval','passed',
+      'safety:accessibility-review','Synthetic PASS must not outlive its underlying evidence.',
+      '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+      'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Accessibility Reviewer","reviewer_title_and_accessibility_authority":"Institution Accessibility Coordinator","reviewer_authority_attested":true,"complete_process_review_completed":true,"keyboard_and_assistive_technology_reviewed":true,"visual_and_responsive_reviewed":true,"media_and_content_reviewed":true,"remediation_ownership_accepted":true,"third_party_boundary_accepted":true,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '31 days',true
+    );
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: decision exceeded the evidence ceiling';
+  exception when others then
+    if sqlerrm like 'ACCESSIBILITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%Accessibility decision expiry exceeds the underlying evidence ceiling%' then raise; end if;
+  end;
+
+  v_record:=public.record_student_data_intake_evidence(
+    '20000000-0000-4000-8000-000000000001','accessibilityApproval','hold',
+    'safety:accessibility-review','Synthetic authorized reviewer records HOLD pending manual accessibility evidence.',
+    '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+    'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+    '{"decision":"hold","reviewer_name":"Accessibility Reviewer","reviewer_title_and_accessibility_authority":"Institution Accessibility Coordinator","reviewer_authority_attested":true,"complete_process_review_completed":false,"keyboard_and_assistive_technology_reviewed":false,"visual_and_responsive_reviewed":false,"media_and_content_reviewed":false,"remediation_ownership_accepted":false,"third_party_boundary_accepted":false,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+    now()+interval '28 days',true
+  );
+  v_readiness:=public.get_student_data_intake_readiness('20000000-0000-4000-8000-000000000001');
+
+  if v_record.institution_id<>'20000000-0000-4000-8000-000000000001'
+     or v_record.gate_key<>'accessibilityApproval'
+     or v_record.version<>1
+     or v_record.status<>'hold'
+     or v_record.reviewed_by<>'10000000-0000-4000-8000-000000000092'
+     or v_record.evidence_summary->>'environment_scope'<>'staging'
+     or coalesce((v_readiness->>'production_student_intake_enabled')::boolean,true) then
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: bounded decision or fail-closed intake state is incorrect';
+  end if;
+  raise notice 'PASS accessibilityApproval requires institutional authority, manual evidence for PASS, bounded expiry, and leaves production disabled';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
 -- A subject may create a governed request plan, but the Phase 2 contract must
 -- keep every production action blocked until all human-reviewed policies and
 -- operational evidence exist. This also gives the two new linked domains a
