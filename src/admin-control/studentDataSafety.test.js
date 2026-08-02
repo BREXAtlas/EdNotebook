@@ -570,6 +570,37 @@ test("the staging-acceptance follow-up covers student-data governance foreign ke
   }
 });
 
+test("the performance-advisor follow-up preserves RLS semantics and initializes auth once", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260802070000_optimize_advisor_rls_policies.sql", import.meta.url), "utf8");
+  const policies = [
+    ["digital_literacy_profiles_owner_all", "digital_literacy_profiles"],
+    ["digital_literacy_progress_owner_all", "digital_literacy_progress"],
+    ["digital_literacy_story_choices_owner_all", "digital_literacy_story_choices"],
+    ["digital_literacy_achievements_owner_all", "digital_literacy_achievements"],
+    ["digital_literacy_completion_records_owner_all", "digital_literacy_completion_records"],
+    ["course_publications_insert", "course_publications"],
+    ["course_publication_versions_insert", "course_publication_versions"],
+    ["course_lesson_progress_select", "course_lesson_progress"],
+    ["course_lesson_progress_insert", "course_lesson_progress"],
+    ["course_lesson_progress_update", "course_lesson_progress"],
+    ["course_progress_select", "course_progress"],
+    ["course_progress_insert", "course_progress"],
+    ["course_progress_update", "course_progress"],
+  ];
+
+  assert.equal([...sql.matchAll(/alter policy /gu)].length, policies.length);
+  for (const [policyName, tableName] of policies) {
+    assert.match(
+      sql,
+      new RegExp(`alter policy ${policyName}\\s+on public\\.${tableName}\\s+to authenticated`, "u"),
+    );
+  }
+  assert.match(sql, /private\.can_manage_course\(course_id\)/u);
+  assert.match(sql, /private\.can_access_course\(course_id\)/u);
+  const executableSql = sql.replaceAll(/^--.*$/gmu, "");
+  assert.doesNotMatch(executableSql.replaceAll("(select auth.uid())", ""), /auth\.uid\(\)/u);
+});
+
 test("the existing Control Center exposes readiness as institution-scoped review only", async () => {
   const [component, service] = await Promise.all([
     readFile(new URL("./AdminControlCenter.jsx", import.meta.url), "utf8"),
