@@ -10,6 +10,10 @@ Registry source: the 61 active rows deployed in `public.student_data_lifecycle_d
 
 Matrix: [`student-data-lifecycle-policy-matrix.csv`](student-data-lifecycle-policy-matrix.csv)
 
+Institution decision workbook: [`privacy-records-lifecycle-decision-workbook.csv`](privacy-records-lifecycle-decision-workbook.csv)
+
+Privacy/records gate: [`PRIVACY_RECORDS_LIFECYCLE_DECISION_PACKET.md`](PRIVACY_RECORDS_LIFECYCLE_DECISION_PACKET.md)
+
 ## Review outcome
 
 The matrix covers all 61 deployed lifecycle domains exactly once. It proposes 45 policies that are sufficiently bounded to enter institutional review and leaves 16 domains blocked pending an explicit institutional, provider, technical, legal, or research decision.
@@ -30,6 +34,7 @@ The production-readiness decision remains **HOLD**. No immutable `student_data_l
 4. **Provider copies need operational evidence.** Supabase Auth logs, Blackboard copies, LTI-tool copies, Storage versions/caches, backups, and Stripe events have provider-controlled behavior. A local policy cannot claim those copies were destroyed without a verified provider outcome.
 5. **Legal, dispute, access-request, and research overrides are mandatory.** No expiration may destroy a record under litigation, claim, audit, public-information request, administrative review, grade dispute, outstanding FERPA access request, or approved IRB/research protocol.
 6. **Research is not silently folded into ordinary learning retention.** The Digital Literacy pilot must route consent, identifiable study data, de-identified exports, raw research data, and IRB records to the approved protocol. ASU requires IRB approval before human-subject data collection; its schedule lists raw research data and IRB records at project completion plus three years, while published research data may be permanent.
+7. **Calendar and fiscal periods cannot be shortened by fixed-day conversion.** Thirty-five candidate rows currently express one, two, three, four, five, or ten years as a fixed number of days. The records reviewers must approve a calendar-aware representation or a conservative no-earlier-than guardrail before those candidates can become institution-approved policies.
 
 ## Governing interpretation
 
@@ -74,4 +79,5 @@ The production-readiness decision remains **HOLD**. No immutable `student_data_l
 - Each blocked domain uses `block` with no day count and states the decision needed to unblock it.
 - No policy bypasses an outstanding FERPA access request, legal hold, dispute, audit, public-information request, research protocol, or longer applicable series.
 - No provider-controlled row claims verified deletion without provider evidence.
+- No fixed-day value can expire a calendar-year, fiscal-year, permanent, archival, or linked-record obligation early.
 - No production change, student-data intake, or automatic lifecycle execution occurs merely because this preparation matrix exists.
