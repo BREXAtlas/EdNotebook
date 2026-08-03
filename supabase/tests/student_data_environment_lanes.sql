@@ -43,6 +43,15 @@ values
   ('22222222-2222-4222-8222-222222222222','10000000-0000-4000-8000-000000000172','professor','active','{}',now()),
   ('22222222-2222-4222-8222-222222222222','10000000-0000-4000-8000-000000000173','learner','active','{}',now());
 
+insert into public.institution_affiliations(
+  id,user_id,pathway,institution_id,relationship,status,source,
+  verification_method,is_primary,started_at
+) values (
+  '30000000-0000-4000-8000-000000000172','10000000-0000-4000-8000-000000000172',
+  'professor','22222222-2222-4222-8222-222222222222','faculty','active',
+  'platform_owner','test-fixture',true,now()
+);
+
 insert into public.courses(id,owner_id,institution_id,title,course_code,status,access_scope,education_division)
 values (
   '40000000-0000-4000-8000-000000000171','10000000-0000-4000-8000-000000000172',
