@@ -115,6 +115,8 @@ test("the migration keeps direct data access closed and records only metadata", 
   );
   assert.match(migration, /alter table public\.student_data_promotion_preflight_versions enable row level security/u);
   assert.match(migration, /revoke all on table public\.student_data_promotion_preflight_versions from public,anon,authenticated/u);
+  assert.match(migration, /create policy student_data_promotion_preflight_versions_api_deny_all/u);
+  assert.match(migration, /as restrictive for all to anon,authenticated\s+using \(false\) with check \(false\)/u);
   assert.match(migration, /set search_path=''/u);
   assert.match(migration, /private\.is_platform_owner\(v_actor\)/u);
   assert.match(migration, /p_expected_snapshot_sha256/u);

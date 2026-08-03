@@ -40,6 +40,10 @@ create index student_data_environment_lane_scope_idx
 alter table public.student_data_environment_lane_versions enable row level security;
 revoke all on table public.student_data_environment_lane_versions from public,anon,authenticated;
 grant select,insert on table public.student_data_environment_lane_versions to service_role;
+create policy student_data_environment_lane_versions_api_deny_all
+on public.student_data_environment_lane_versions
+as restrictive for all to anon,authenticated
+using (false) with check (false);
 
 create trigger student_data_environment_lane_versions_append_only
 before update or delete on public.student_data_environment_lane_versions
@@ -387,6 +391,10 @@ create index student_data_promotion_preflight_supersedes_idx
 alter table public.student_data_promotion_preflight_versions enable row level security;
 revoke all on table public.student_data_promotion_preflight_versions from public,anon,authenticated;
 grant select,insert on table public.student_data_promotion_preflight_versions to service_role;
+create policy student_data_promotion_preflight_versions_api_deny_all
+on public.student_data_promotion_preflight_versions
+as restrictive for all to anon,authenticated
+using (false) with check (false);
 
 create trigger student_data_promotion_preflight_versions_append_only
 before update or delete on public.student_data_promotion_preflight_versions

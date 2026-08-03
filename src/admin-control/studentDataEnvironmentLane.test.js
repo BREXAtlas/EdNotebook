@@ -68,6 +68,7 @@ test("the global page label is server-resolved and production has no banner", as
   assert.match(migration, /carried_account_ids uuid\[\]/u);
   assert.match(migration, /carried_course_ids uuid\[\]/u);
   assert.match(migration, /data_lane text not null check \(data_lane in \('beta','pilot'\)\)/u);
+  assert.match(migration, /create policy student_data_environment_lane_versions_api_deny_all/u);
   assert.match(migration, /select course\.owner_id as user_id/u);
   assert.match(migration, /from public\.course_memberships membership/u);
   assert.match(migration, /course\.owner_id=v_actor/u);
