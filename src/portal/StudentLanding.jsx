@@ -56,7 +56,7 @@ const UNIVERSITY_STORIES = [
   },
 ];
 
-export default function StudentLanding({ onEnter, track = "university" }) {
+export default function StudentLanding({ onEnter, onTeacher, track = "university" }) {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [pricingWaitlistOpen, setPricingWaitlistOpen] = useState(false);
   const k12 = track === "k12";
@@ -73,14 +73,14 @@ export default function StudentLanding({ onEnter, track = "university" }) {
       <main>
         <section className="student-hero">
           <div className="student-hero-copy">
-            <span className="portal-kicker">{k12 ? "YOUR SCHOOL DAY, ALL TOGETHER" : "THE UNIVERSITY STUDENT SIDE OF EDNOTEBOOK"}</span>
-            <h1>{k12 ? "Know what’s next. Keep school moving." : "Find your course. Keep the whole semester in view."}</h1>
+            <span className="portal-kicker">{k12 ? "EDNOTEBOOK EARLY PREP · GRADES 9–12" : "THE UNIVERSITY STUDENT SIDE OF EDNOTEBOOK"}</span>
+            <h1>{k12 ? "High school learning, with a clear next step." : "Find your course. Keep the whole semester in view."}</h1>
             <p>
               {k12
                 ? "Find your school, teacher, and class before creating an account. When you join, your student ID is matched to the teacher’s class list and your private school dashboard opens."
                 : "Search your university and professor before creating an account. When you are ready to join a course, your university ID is matched to the professor’s approved roster and your private dashboard opens."}
             </p>
-            <div className="student-hero-actions"><a href="#class-search">Find a class</a><button type="button" onClick={() => onEnter?.()}>Open student dashboard</button><ShareEdNotebook buttonLabel="Share with friends" /></div>
+            <div className="student-hero-actions"><a href="#class-search">Find a class</a><button type="button" onClick={() => onEnter?.()}>{k12 ? "Student sign in or create account" : "Open student dashboard"}</button>{k12 && <button type="button" onClick={() => onTeacher?.()}>High-school teacher sign in or create account</button>}<ShareEdNotebook buttonLabel="Share with friends" /></div>
             <div className="student-hero-points"><span>No account to browse</span><span>Free school tools</span><span>{k12 ? "School-only social spaces" : "Private grades by default"}</span></div>
           </div>
           <div className={`student-dashboard-preview ${k12 ? "k12-dashboard-preview" : ""}`} aria-label={`${copy.shortLabel} student dashboard preview`}>
@@ -137,14 +137,14 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         )}
 
         <section className="student-life-explainer">
-          <div><span className="portal-kicker">STUDENT LIFE</span><h2>{k12 ? "Your school, your classes, and a K–12 learning network—with no university crossover." : "A campus feed, a class room, and a public learning network—with separate audiences."}</h2><p>{k12 ? "Share a study streak, project, club update, or milestone only when you choose. Class groups require enrollment, school groups require a linked school, and K–12 social profiles never appear in university feeds." : "Share a study streak, points, assignment progress, a finished project, or a grade only when you choose. Class groups require enrollment. Public groups focus on learning and networking."}</p></div>
-          <div className="student-life-layers"><article><strong>{k12 ? "School" : "Campus"}</strong><span>School news, tips, clubs, events, and student highlights</span></article><article><strong>Class</strong><span>Classmates, {copy.teacherLabel} announcements, study groups, and progress</span></article><article><strong>{k12 ? "K–12 network" : "Public"}</strong><span>{k12 ? "School-verified learning topics and digital skills" : "Learning topics, digital literacy, portfolios, and academic networking"}</span></article></div>
+          <div><span className="portal-kicker">STUDENT LIFE</span><h2>{k12 ? "Your school, your classes, and an Early Prep learning network—with no university crossover." : "A campus feed, a class room, and a public learning network—with separate audiences."}</h2><p>{k12 ? "Share a study streak, project, club update, or milestone only when you choose. Class groups require enrollment, school groups require a linked school, and Early Prep social profiles never appear in university feeds or anonymous public discovery." : "Share a study streak, points, assignment progress, a finished project, or a grade only when you choose. Class groups require enrollment. Public groups focus on learning and networking."}</p></div>
+          <div className="student-life-layers"><article><strong>{k12 ? "School" : "Campus"}</strong><span>School news, tips, clubs, events, and student highlights</span></article><article><strong>Class</strong><span>Classmates, {copy.teacherLabel} announcements, study groups, and progress</span></article><article><strong>{k12 ? "Early Prep network" : "Public"}</strong><span>{k12 ? "School-verified learning topics and digital skills" : "Learning topics, digital literacy, portfolios, and academic networking"}</span></article></div>
         </section>
 
         <section className="student-pricing-section">
-          <div className="student-section-heading"><span className="portal-kicker">FREE STUDENT ACCOUNTS</span><h2>Every current student plan opens the same free account.</h2><p>Choose any tab below to create a free account. Optional paid services are still being designed and are not for sale.</p></div>
+          <div className="student-section-heading"><span className="portal-kicker">FREE STUDENT ACCOUNTS</span><h2>Every current student plan opens the same free account.</h2><p>{k12 ? "Early Prep learning tools are free. Marketplace buying, renting, selling, and seller onboarding are unavailable." : "Choose any tab below to create a free account. Optional paid services are still being designed and are not for sale."}</p></div>
           <div className="student-pricing-grid">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p><ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><button type="button" onClick={() => onEnter?.()}>Open free account</button></article>)}</div>
-          <div className="paid-services-coming"><div><span className="portal-kicker">PAID SERVICES</span><h3>Coming soon—not required.</h3><p>Join the waitlist if you want updates about future sync, customization, and expanded storage options.</p></div><button type="button" onClick={() => setPricingWaitlistOpen(true)}>Join paid-services waitlist</button></div>
+          {!k12 && <div className="paid-services-coming"><div><span className="portal-kicker">PAID SERVICES</span><h3>Coming soon—not required.</h3><p>Join the waitlist if you want updates about future sync, customization, and expanded storage options.</p></div><button type="button" onClick={() => setPricingWaitlistOpen(true)}>Join paid-services waitlist</button></div>}
         </section>
 
         <section id="share-ednotebook" className="student-share-section"><img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" /><div><span className="portal-kicker">BRING YOUR PEOPLE</span><h2>EdNotebook works better when your class can find each other.</h2><p>Share a direct link on social media, send it to a professor, or download the invitation graphic for a group chat or campus post.</p><ShareEdNotebook buttonLabel="Share or download the invite" /></div></section>
@@ -172,8 +172,8 @@ export default function StudentLanding({ onEnter, track = "university" }) {
           </div>
         </div>
       )}
-      {pricingWaitlistOpen && <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-waitlist-title"><div className="portal-modal-card waitlist-modal-card"><button className="modal-close" type="button" onClick={() => setPricingWaitlistOpen(false)} aria-label="Close paid services waitlist">×</button><div id="pricing-waitlist-title"><InterestForm kind="pricing_waitlist" title="Paid services waitlist" description="Tell us which optional future service you want to hear about. Your student account and current tools remain free." submitLabel="Join waitlist" emailRequired educationDivision={track} /></div></div></div>}
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search">Find classes</a><a href="#/professors">Educator portal</a></footer>
+      {!k12 && pricingWaitlistOpen && <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-waitlist-title"><div className="portal-modal-card waitlist-modal-card"><button className="modal-close" type="button" onClick={() => setPricingWaitlistOpen(false)} aria-label="Close paid services waitlist">×</button><div id="pricing-waitlist-title"><InterestForm kind="pricing_waitlist" title="Paid services waitlist" description="Tell us which optional future service you want to hear about. Your student account and current tools remain free." submitLabel="Join waitlist" emailRequired educationDivision={track} /></div></div></div>}
+      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search">Find classes</a><a href={k12 ? "#/early-prep/teacher" : "#/professors"}>{k12 ? "High-school teacher portal" : "Educator portal"}</a></footer>
     </div>
   );
 }

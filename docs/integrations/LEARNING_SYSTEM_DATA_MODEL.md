@@ -1,5 +1,7 @@
 # EdNotebook learning-system data model
 
+> Early Prep uses this same canonical model. See [Early Prep learning-system and continuity contracts](../EARLY_PREP_INTEGRATION_AND_TRANSITION.md) for OneRoster 1.2, PowerSchool, Schoology, reviewed export, and Move to University boundaries.
+
 ## Why this exists
 
 Blackboard CSV, LTI 1.3, LTI Advantage, a future Blackboard REST connector, and an institution's SIS should not create competing versions of a course, learner, assignment, or grade. EdNotebook uses one canonical learning-record contract and treats each connection as an adapter.

@@ -18,6 +18,7 @@ test("a professor course card opens that exact course at the governed builder st
     id: "11111111-1111-4111-8111-111111111111",
     title: "Digital Literacy",
     course_code: "UNIV 1101",
+    education_division: "university",
     subject: "Digital and information literacy",
     audience: "First-year university students",
     teaching_window: "Fall 2026 pilot",
@@ -31,6 +32,8 @@ test("a professor course card opens that exact course at the governed builder st
     id: "11111111-1111-4111-8111-111111111111",
     name: "Digital Literacy",
     code: "UNIV 1101",
+    educationDivision: "university",
+    subjectId: null,
     subject: "Digital and information literacy",
     audience: "First-year university students",
     length: "Fall 2026 pilot",
@@ -38,6 +41,12 @@ test("a professor course card opens that exact course at the governed builder st
     createdAt: null,
     updatedAt: null,
   });
+});
+
+test("Early Prep teacher entry primes a new course with the internal k12 division", () => {
+  const storage = memoryStorage();
+  assert.equal(prepareProfessorCourseBuilder(storage, null, "k12"), "#/app");
+  assert.equal(storage.getItem("ednotebook-course-division"), "k12");
 });
 
 test("creating another class clears the prior course while the global builder resumes it", () => {

@@ -11,6 +11,7 @@ import {
 } from "../_shared/runtime.ts";
 import {
   sellerRequirementSummary,
+  requireUniversityMarketplaceApplication,
   stripeClient,
   trustedMarketplaceUrl,
   verifiedSeller,
@@ -43,6 +44,7 @@ Deno.serve(async (req) => {
     if (!application) {
       throw new HttpError(409, "Submit the EdNotebook seller application before Stripe verification.");
     }
+    requireUniversityMarketplaceApplication(application);
 
     const stripe = stripeClient();
     let account;

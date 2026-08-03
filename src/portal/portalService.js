@@ -196,7 +196,7 @@ export async function listProfessorCourseLibrary() {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
   const coursesResult = await supabase
     .from("courses")
-    .select("id,owner_id,institution_id,course_code,title,subject,audience,teaching_window,status,education_division,access_scope,created_at,updated_at")
+    .select("id,owner_id,institution_id,course_code,title,subject,subject_id,audience,teaching_window,status,education_division,access_scope,created_at,updated_at")
     .order("updated_at", { ascending: false });
   if (coursesResult.error || !coursesResult.data?.length) {
     return { data: [], error: coursesResult.error, source: coursesResult.error ? "device" : "cloud" };

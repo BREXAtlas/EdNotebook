@@ -11,6 +11,7 @@ import {
 } from "../_shared/runtime.ts";
 import {
   marketplaceFee,
+  requireUniversityMarketplaceListing,
   requireMarketplaceCheckoutMode,
   stripeClient,
   trustedMarketplaceUrl,
@@ -63,6 +64,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (listingError) throw listingError;
     if (!listing) throw new HttpError(404, "This marketplace listing is not available.");
+    await requireUniversityMarketplaceListing(admin, listing, user.id);
     const { data: activeEntitlement, error: entitlementError } = await admin
       .from("marketplace_entitlements")
       .select("id,expires_at")
