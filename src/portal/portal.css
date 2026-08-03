@@ -120,6 +120,19 @@
 .portal-choice-hero-image { width: calc(100% + 60px); height: 210px; margin: -30px -30px 2px; object-fit: cover; }
 
 .portal-choice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1180px; margin: 0 auto; padding: 0 28px 54px; }
+.founding-beta-program { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 34px; align-items: center; max-width: 1124px; margin: 0 auto 54px; padding: 38px; overflow: hidden; color: #fff; background: linear-gradient(135deg, #152853 0%, #214da4 58%, #356fd0 100%); border: 1px solid rgba(255,255,255,.16); border-radius: 26px; box-shadow: 0 22px 58px rgba(24,48,104,.2); }
+.founding-beta-badge { display: inline-flex; width: max-content; padding: 7px 11px; color: #18284a; background: #f3c75b; border-radius: 999px; font-size: 10px; font-weight: 950; letter-spacing: .12em; }
+.founding-beta-copy h2 { max-width: 660px; margin: 14px 0 10px; font: 800 clamp(34px, 4.5vw, 52px)/1 var(--portal-display); letter-spacing: -.035em; }
+.founding-beta-copy p { max-width: 700px; margin: 0; color: #e2eaff; font-size: 16px; line-height: 1.65; }
+.founding-beta-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.founding-beta-actions a { display: inline-flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 46px; padding: 11px 16px; color: #14234a; background: #fff; border-radius: 12px; font-size: 13px; font-weight: 900; text-decoration: none; }
+.founding-beta-actions a:last-child { color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.32); }
+.founding-beta-program ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.founding-beta-program li { display: grid; grid-template-columns: 42px 1fr; gap: 12px; align-items: center; padding: 14px; background: rgba(8,22,54,.34); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; }
+.founding-beta-program li > span { width: 42px; height: 42px; display: grid; place-items: center; color: #172a57; background: #f3c75b; border-radius: 13px; font-size: 19px; font-weight: 950; }
+.founding-beta-program li div { display: grid; gap: 3px; }
+.founding-beta-program li strong { font-size: 14px; }
+.founding-beta-program li small { color: #dce6ff; font-size: 11px; line-height: 1.45; }
 .portal-choice-card { position: relative; display: flex; flex-direction: column; min-height: 410px; padding: 30px; overflow: hidden; background: #fff; border: 1px solid var(--portal-line); border-radius: 22px; box-shadow: 0 12px 36px rgba(16,27,51,.07); }
 .portal-choice-card::before { position: absolute; top: 0; left: 0; width: 100%; height: 6px; content: ""; background: var(--portal-blue); }
 .portal-choice-card.is-professor::before { background: var(--portal-gold); }
@@ -754,6 +767,7 @@
   .portal-choice-hero,
   .student-hero { grid-template-columns: 1fr; padding-top: 58px; }
   .portal-choice-grid,
+  .founding-beta-program,
   .portal-home-principle,
   .student-feature-grid,
   .student-pricing-grid,
@@ -767,6 +781,7 @@
   .portal-choice-card:last-child,
   .student-pricing-grid article:last-child { grid-column: 1; }
   .portal-home-principle { margin-right: 20px; margin-left: 20px; }
+  .founding-beta-program { margin-right: 20px; margin-left: 20px; padding: 28px; }
   .student-dashboard-preview { transform: none; }
   .directory-controls,
   .directory-course,
@@ -846,6 +861,9 @@
   .student-pricing-section,
   .student-directory-shell,
   .student-opportunity-section { padding-right: 16px; padding-left: 16px; }
+  .founding-beta-program { margin-right: 16px; margin-left: 16px; padding: 24px 18px; border-radius: 20px; }
+  .founding-beta-actions { display: grid; }
+  .founding-beta-actions a { width: 100%; }
   .student-story-section { padding-right: 16px; padding-left: 16px; }
   .student-stat-grid,
   .report-card-summary,
