@@ -6,6 +6,8 @@ import {
   buildLifecycleDecisionBatchRpcPayload,
   buildPrivacyRecordsApprovalRpcPayload,
 } from "./privacyRecordsApprovalDecision.js";
+import { buildStudentDataPromotionPreflightRpcPayload } from "./studentDataPromotionPreflight.js";
+import { buildStudentDataEnvironmentLaneRpcPayload } from "./studentDataEnvironmentLane.js";
 
 const ADMIN_MIGRATION_MESSAGE =
   "The administration database setup is not available yet. Apply the latest institution admin control-center migration, including its Data API grants, and refresh the Supabase schema cache.";
@@ -537,6 +539,50 @@ export async function getStudentDataIntakeReadiness(institutionId) {
   );
 }
 
+export async function getStudentDataPromotionPreflight(institutionId) {
+  return callRpc(
+    "get_student_data_promotion_preflight",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "The student-data promotion preflight could not be loaded.",
+  );
+}
+
+export function recordStudentDataPromotionPreflight(institutionId, preflight, input) {
+  return callRpc(
+    "record_student_data_promotion_preflight",
+    buildStudentDataPromotionPreflightRpcPayload(institutionId, preflight, input),
+    "The student-data promotion preflight could not be recorded.",
+  );
+}
+
+export async function getStudentDataEnvironmentLanes(institutionId) {
+  return callRpc(
+    "get_student_data_environment_lanes",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "The beta and pilot data lanes could not be loaded.",
+  );
+}
+
+export function recordStudentDataEnvironmentLane(institutionId, input) {
+  return callRpc(
+    "record_student_data_environment_lane",
+    buildStudentDataEnvironmentLaneRpcPayload(institutionId, input),
+    "The beta or pilot data lane could not be recorded.",
+  );
+}
+
+export async function getStudentDataLaneAudit(institutionId, dataLane, limit = 100) {
+  return callRpc(
+    "get_student_data_lane_audit",
+    {
+      p_institution_id: requiredText(institutionId, "Institution"),
+      p_data_lane: requiredText(dataLane, "Data lane"),
+      p_limit: Math.min(Math.max(Number(limit) || 100, 1), 250),
+    },
+    "The selected data-lane audit trail could not be loaded.",
+  );
+}
+
 export function recordSecurityApprovalDecision(institutionId, input) {
   return callRpc(
     "record_student_data_intake_evidence",
@@ -926,6 +972,11 @@ export const setConnectionStatus = setIntegrationConnectionStatus;
 export const get_my_admin_workspaces = getMyAdminWorkspaces;
 export const get_admin_control_center = getAdminControlCenter;
 export const get_student_data_intake_readiness = getStudentDataIntakeReadiness;
+export const get_student_data_promotion_preflight = getStudentDataPromotionPreflight;
+export const record_student_data_promotion_preflight = recordStudentDataPromotionPreflight;
+export const get_student_data_environment_lanes = getStudentDataEnvironmentLanes;
+export const record_student_data_environment_lane = recordStudentDataEnvironmentLane;
+export const get_student_data_lane_audit = getStudentDataLaneAudit;
 export const record_student_data_security_decision = recordSecurityApprovalDecision;
 export const record_student_data_accessibility_decision = recordAccessibilityApprovalDecision;
 export const record_tos_staging_lifecycle_decisions = recordTosStagingLifecycleDecisionBatch;
@@ -962,6 +1013,11 @@ const adminControlService = Object.freeze({
   getMyAdminWorkspaces,
   getAdminControlCenter,
   getStudentDataIntakeReadiness,
+  getStudentDataPromotionPreflight,
+  recordStudentDataPromotionPreflight,
+  getStudentDataEnvironmentLanes,
+  recordStudentDataEnvironmentLane,
+  getStudentDataLaneAudit,
   recordSecurityApprovalDecision,
   recordAccessibilityApprovalDecision,
   recordTosStagingLifecycleDecisionBatch,

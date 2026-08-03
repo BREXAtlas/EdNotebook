@@ -12,6 +12,14 @@
   pointer-events: none;
 }
 
+.environment-banner--beta {
+  background: #7a3e00;
+}
+
+.environment-banner--pilot {
+  background: #174f3d;
+}
+
 @media (max-width: 520px) {
   .environment-banner {
     padding: 6px 8px;

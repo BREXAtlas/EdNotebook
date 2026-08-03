@@ -91,7 +91,9 @@ test("accepted quiz reaches the student scoring contract without leaking profess
 });
 
 test("staging and account controls cannot cover student lesson actions", () => {
-  assert.match(environmentBanner, /className="environment-banner"/u);
+  assert.match(environmentBanner, /environment-banner environment-banner--\$\{dataLane\}/u);
+  assert.match(environmentBanner, /EDNOTEBOOK BETA MODE/u);
+  assert.match(environmentBanner, /EDNOTEBOOK PILOT MODE/u);
   assert.match(
     environmentBannerCss,
     /\.environment-banner[\s\S]*position:\s*relative[\s\S]*pointer-events:\s*none/u,
