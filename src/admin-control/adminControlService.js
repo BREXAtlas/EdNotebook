@@ -9,6 +9,7 @@ import {
 import { buildStudentDataPromotionPreflightRpcPayload } from "./studentDataPromotionPreflight.js";
 import { buildStudentDataProductionPromotionDecisionRpcPayload } from "./studentDataProductionPromotionDecision.js";
 import { buildStudentDataEnvironmentLaneRpcPayload } from "./studentDataEnvironmentLane.js";
+import { buildLiveServiceOperatingLaneRpcPayload } from "./liveServiceOperatingLane.js";
 
 const ADMIN_MIGRATION_MESSAGE =
   "The administration database setup is not available yet. Apply the latest institution admin control-center migration, including its Data API grants, and refresh the Supabase schema cache.";
@@ -577,6 +578,22 @@ export async function getStudentDataEnvironmentLanes(institutionId) {
     "get_student_data_environment_lanes",
     { p_institution_id: requiredText(institutionId, "Institution") },
     "The beta and pilot data lanes could not be loaded.",
+  );
+}
+
+export async function getLiveServiceOperatingLane() {
+  return callRpc(
+    "get_live_service_operating_lane",
+    {},
+    "The live EdNotebook operating lane could not be loaded.",
+  );
+}
+
+export function recordLiveServiceOperatingLane(input) {
+  return callRpc(
+    "record_live_service_operating_lane",
+    buildLiveServiceOperatingLaneRpcPayload(input),
+    "The live EdNotebook operating lane could not be recorded.",
   );
 }
 

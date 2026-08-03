@@ -18,7 +18,7 @@ export function validateStudentDataEnvironmentLane(institutionId, input = {}) {
   if (!LANE_SCOPES.has(scopeType)) issues.push("Choose an institution, course, or account scope.");
   if (!UUID_PATTERN.test(scopeId)) issues.push("Enter the exact course or account ID for this lane.");
   if (!DATA_LANES.has(normalizedText(input.dataLane).toLowerCase())) {
-    issues.push("Staging lanes may be Beta or Pilot; Production is assigned only through production promotion.");
+    issues.push("Audit labels may be Beta or Pilot; unlabeled Production is assigned only through the protected production-promotion workflow.");
   }
   if (!LANE_STATUSES.has(normalizedText(input.status).toLowerCase())) issues.push("Choose Active or Retired.");
   if (normalizedText(input.purpose).length < 20) issues.push("Describe who is testing and what this lane is for.");
