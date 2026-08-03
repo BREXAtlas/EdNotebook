@@ -24,6 +24,7 @@ import {
 import { validateStudentDataPromotionPreflight } from "./studentDataPromotionPreflight.js";
 import { validateStudentDataProductionPromotionDecision } from "./studentDataProductionPromotionDecision.js";
 import { validateStudentDataEnvironmentLane } from "./studentDataEnvironmentLane.js";
+import { validateLiveServiceOperatingLane } from "./liveServiceOperatingLane.js";
 import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
@@ -193,6 +194,14 @@ const DEFAULT_DATA_LANE = Object.freeze({
   scopeId: "",
   dataLane: "beta",
   status: "active",
+  purpose: "",
+  evidenceReference: "",
+  authorityAttestation: false,
+});
+
+const DEFAULT_LIVE_OPERATING_LANE = Object.freeze({
+  operatingLane: "beta",
+  sourceCommit: "",
   purpose: "",
   evidenceReference: "",
   authorityAttestation: false,
@@ -1485,6 +1494,7 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [promotionPreflight, setPromotionPreflight] = useState(null);
   const [productionPromotionReview, setProductionPromotionReview] = useState(null);
   const [dataLanes, setDataLanes] = useState(null);
+  const [liveOperatingLane, setLiveOperatingLane] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1496,6 +1506,7 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [promotionPreflightDraft, setPromotionPreflightDraft] = useState(() => ({ ...DEFAULT_PROMOTION_PREFLIGHT }));
   const [productionPromotionDraft, setProductionPromotionDraft] = useState(() => ({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION }));
   const [dataLaneDraft, setDataLaneDraft] = useState(() => ({ ...DEFAULT_DATA_LANE }));
+  const [liveOperatingLaneDraft, setLiveOperatingLaneDraft] = useState(() => ({ ...DEFAULT_LIVE_OPERATING_LANE }));
 
   const loadReadiness = useCallback(async () => {
     if (!institutionId) return;
@@ -1518,11 +1529,17 @@ function StudentDataReadinessPanel({ institutionId }) {
       } catch {
         setDataLanes(null);
       }
+      try {
+        setLiveOperatingLane(await adminService.getLiveServiceOperatingLane());
+      } catch {
+        setLiveOperatingLane(null);
+      }
     } catch (nextError) {
       setReadiness(null);
       setPromotionPreflight(null);
       setProductionPromotionReview(null);
       setDataLanes(null);
+      setLiveOperatingLane(null);
       setError(friendlyError(nextError, "Student-data intake readiness could not be loaded."));
     } finally {
       setLoading(false);
@@ -1538,6 +1555,7 @@ function StudentDataReadinessPanel({ institutionId }) {
     setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
     setProductionPromotionDraft({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION });
     setDataLaneDraft({ ...DEFAULT_DATA_LANE });
+    setLiveOperatingLaneDraft({ ...DEFAULT_LIVE_OPERATING_LANE });
     setNotice("");
   }, [institutionId]);
 
@@ -1560,6 +1578,14 @@ function StudentDataReadinessPanel({ institutionId }) {
   const latestProductionPromotion = productionPromotionReview?.latest_record || null;
   const laneAssignments = Array.isArray(dataLanes?.assignments) ? dataLanes.assignments : [];
   const laneAuditCounts = dataLanes?.audit_counts || {};
+  const promotionLiveBetaAllowed = promotionSnapshot?.live_beta_testing_allowed
+    ?? promotionSnapshot?.staging_beta_testing_allowed;
+  const promotionLivePilotAllowed = promotionSnapshot?.live_pilot_testing_allowed
+    ?? promotionSnapshot?.staging_pilot_testing_allowed;
+  const decisionLiveBetaAllowed = productionPromotionSnapshot?.live_beta_testing_allowed
+    ?? productionPromotionSnapshot?.staging_beta_testing_allowed;
+  const decisionLivePilotAllowed = productionPromotionSnapshot?.live_pilot_testing_allowed
+    ?? productionPromotionSnapshot?.staging_pilot_testing_allowed;
   const productionEnabled = readiness?.production_student_intake_enabled === true;
   const securityValidation = validateSecurityApprovalDecision(securityDraft);
   const accessibilityValidation = validateAccessibilityApprovalDecision(accessibilityDraft);
@@ -1574,6 +1600,7 @@ function StudentDataReadinessPanel({ institutionId }) {
     productionPromotionDraft,
   );
   const dataLaneValidation = validateStudentDataEnvironmentLane(institutionId, dataLaneDraft);
+  const liveOperatingLaneValidation = validateLiveServiceOperatingLane(liveOperatingLaneDraft);
   const isPassDecision = securityDraft.decision === "passed";
   const isAccessibilityPassDecision = accessibilityDraft.decision === "passed";
 
@@ -1603,6 +1630,30 @@ function StudentDataReadinessPanel({ institutionId }) {
 
   function updateDataLaneDraft(field, value) {
     setDataLaneDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateLiveOperatingLaneDraft(field, value) {
+    setLiveOperatingLaneDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function recordLiveOperatingLane(event) {
+    event.preventDefault();
+    if (!liveOperatingLaneValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await adminService.recordLiveServiceOperatingLane(liveOperatingLaneDraft);
+      const record = result?.record || null;
+      setNotice(`${titleCase(record?.operating_lane || liveOperatingLaneDraft.operatingLane)} is now the recorded lane for the same live EdNotebook service. No site, URL, database, account, course, or work was copied.`);
+      setLiveOperatingLaneDraft({ ...DEFAULT_LIVE_OPERATING_LANE });
+      window.dispatchEvent(new Event("ednotebook:live-lane-changed"));
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The live EdNotebook operating lane could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
   }
 
   async function recordDataLane(event) {
@@ -1636,7 +1687,7 @@ function StudentDataReadinessPanel({ institutionId }) {
         promotionPreflightDraft,
       );
       const record = result?.record || null;
-      setNotice(`Promotion preflight version ${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. Staging beta and pilot testing remain allowed; production remains disabled.`);
+      setNotice(`Promotion preflight version ${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. Live Beta and Pilot testing remain allowed; production remains disabled.`);
       setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
       await loadReadiness();
     } catch (nextError) {
@@ -1659,7 +1710,7 @@ function StudentDataReadinessPanel({ institutionId }) {
         productionPromotionDraft,
       );
       const record = result?.record || null;
-      setNotice(`Production-promotion decision v${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. No deployment or production intake occurred; staging Beta and Pilot remain available.`);
+      setNotice(`Production-promotion decision v${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. No deployment or production intake occurred; live Beta and Pilot remain available.`);
       setProductionPromotionDraft({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION });
       await loadReadiness();
     } catch (nextError) {
@@ -1790,10 +1841,40 @@ function StudentDataReadinessPanel({ institutionId }) {
             label={promotionSnapshot?.decision === "ready_for_human_promotion_review" ? "Ready for human production review" : "Production HOLD"}
           />
         </div>
-        <p className="ac-section-copy">This checksum-bound snapshot controls production promotion only. A HOLD does not disable bounded beta or pilot testing in staging.</p>
+        <p className="ac-section-copy">This checksum-bound snapshot controls production promotion only. A HOLD does not disable bounded Beta or Pilot testing on the normal live site. The separate <code>/staging</code> site remains the upgrade sandbox.</p>
+        <div className="ac-callout ac-callout--neutral">
+          <strong>One live site, one permanent staging sandbox</strong>
+          <p>The live service is currently <strong>{titleCase(liveOperatingLane?.operating_lane || "beta")}</strong>{liveOperatingLane?.version ? ` (recorded version ${liveOperatingLane.version})` : " (default until its first governed record)"}. Beta to Pilot keeps the same URL, database, accounts, courses, and work. Production has no page label and still requires the protected promotion workflow.</p>
+        </div>
+        <details className="ac-disclosure">
+          <summary>Record the live Beta or Pilot operating lane</summary>
+          <p className="ac-section-copy">This is a platform-wide governance transition on the existing live site. It does not deploy a duplicate site or move data out of the live database.</p>
+          <form onSubmit={recordLiveOperatingLane}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Live operating lane
+                <select value={liveOperatingLaneDraft.operatingLane} onChange={(event) => updateLiveOperatingLaneDraft("operatingLane", event.target.value)}>
+                  <option value="beta">Beta</option>
+                  <option value="pilot">Pilot</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Exact merged live release commit
+                <input required value={liveOperatingLaneDraft.sourceCommit} onChange={(event) => updateLiveOperatingLaneDraft("sourceCommit", event.target.value)} placeholder="7- to 64-character commit" />
+              </label>
+              <label className="ac-compact-field">Durable transition evidence
+                <input required value={liveOperatingLaneDraft.evidenceReference} onChange={(event) => updateLiveOperatingLaneDraft("evidenceReference", event.target.value)} placeholder="Approved release or acceptance record" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Authorized testing group and purpose
+              <textarea required rows="3" value={liveOperatingLaneDraft.purpose} onChange={(event) => updateLiveOperatingLaneDraft("purpose", event.target.value)} placeholder="State who is authorized, what is being tested, and the acceptance boundary." />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={liveOperatingLaneDraft.authorityAttestation} onChange={(event) => updateLiveOperatingLaneDraft("authorityAttestation", event.target.checked)} /><span>I authorize this lane on the same live EdNotebook service and understand that all existing accounts, courses, and work carry forward and are recorded in the transition evidence.</span></label>
+            {!liveOperatingLaneValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Live-lane transition is not ready.</strong><p>{liveOperatingLaneValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!liveOperatingLaneValidation.valid || recording}>{recording ? "Recording…" : "Record live operating lane"}</button></div>
+          </form>
+        </details>
         <div className="ac-stats">
-          <div className="ac-stat-card"><span>Staging beta testing</span><strong>{promotionSnapshot?.staging_beta_testing_allowed === true ? "Allowed" : "Unavailable"}</strong><small>Authorized walkthrough accounts; no official records</small></div>
-          <div className="ac-stat-card"><span>Staging pilot testing</span><strong>{promotionSnapshot?.staging_pilot_testing_allowed === true ? "Allowed" : "Unavailable"}</strong><small>Explicitly authorized pilot participants</small></div>
+          <div className="ac-stat-card"><span>Live Beta testing</span><strong>{promotionLiveBetaAllowed === true ? "Allowed" : "Unavailable"}</strong><small>Authorized staff, investor, and demonstration accounts</small></div>
+          <div className="ac-stat-card"><span>Live Pilot testing</span><strong>{promotionLivePilotAllowed === true ? "Allowed" : "Unavailable"}</strong><small>Explicitly authorized pilot participants</small></div>
           <div className="ac-stat-card"><span>Production intake</span><strong>{promotionSnapshot?.production_student_intake_enabled === true ? "Enabled" : "Disabled"}</strong><small>Requires a separate production promotion</small></div>
           <div className="ac-stat-card"><span>Latest snapshot</span><strong>{latestPromotionPreflight ? `v${latestPromotionPreflight.version}` : "Not recorded"}</strong><small>{latestPromotionPreflight ? formatDate(latestPromotionPreflight.recorded_at) : "Record after exact-merge verification"}</small></div>
         </div>
@@ -1817,9 +1898,9 @@ function StudentDataReadinessPanel({ institutionId }) {
               </label>
             </div>
             <label className="ac-compact-field">Preflight outcome and production blockers
-              <textarea required rows="4" value={promotionPreflightDraft.summary} onChange={(event) => updatePromotionPreflightDraft("summary", event.target.value)} placeholder="State the current HOLD or ready-for-review outcome, remaining production blockers, and staging testing boundary." />
+              <textarea required rows="4" value={promotionPreflightDraft.summary} onChange={(event) => updatePromotionPreflightDraft("summary", event.target.value)} placeholder="State the current HOLD or ready-for-review outcome, remaining production blockers, and live Beta/Pilot boundary." />
             </label>
-            <label className="ac-check-row"><input type="checkbox" checked={promotionPreflightDraft.authorityAttestation} onChange={(event) => updatePromotionPreflightDraft("authorityAttestation", event.target.checked)} /><span>I reviewed this exact checksum-bound snapshot and understand that it permits bounded staging beta and pilot testing but does not activate production.</span></label>
+            <label className="ac-check-row"><input type="checkbox" checked={promotionPreflightDraft.authorityAttestation} onChange={(event) => updatePromotionPreflightDraft("authorityAttestation", event.target.checked)} /><span>I reviewed this exact checksum-bound snapshot and understand that it permits bounded live Beta and Pilot testing but does not activate Production.</span></label>
             {!promotionPreflightValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Preflight is not ready to record.</strong><p>{promotionPreflightValidation.issues[0]}</p></div> : null}
             <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!promotionPreflightValidation.valid || recording}>{recording ? "Recording…" : "Record promotion preflight"}</button></div>
           </form>
@@ -1837,7 +1918,7 @@ function StudentDataReadinessPanel({ institutionId }) {
             <div className="ac-form-grid">
               <label className="ac-compact-field">Apply label to
                 <select value={dataLaneDraft.scopeType} onChange={(event) => updateDataLaneDraft("scopeType", event.target.value)}>
-                  <option value="institution">This staging institution</option>
+                  <option value="institution">This institution</option>
                   <option value="course">One course</option>
                   <option value="account">One account</option>
                 </select>
@@ -1882,10 +1963,10 @@ function StudentDataReadinessPanel({ institutionId }) {
             label={latestProductionPromotion?.decision === "approved_for_manual_promotion" ? "Manual promotion approved" : "Production HOLD"}
           />
         </div>
-        <p className="ac-section-copy">This immutable owner record closes the five-phase review. It cannot deploy code, connect to production, enable student-data intake, or execute a lifecycle action. Beta and Pilot stay available in staging.</p>
+        <p className="ac-section-copy">This immutable owner record closes the five-phase review. It cannot deploy code, connect to production, enable student-data intake, or execute a lifecycle action. Beta and Pilot stay available on the same live site; <code>/staging</code> remains the separate upgrade sandbox.</p>
         <div className="ac-stats">
           <div className="ac-stat-card"><span>Current candidate</span><strong>{productionPromotionSnapshot?.eligible_for_manual_promotion === true ? "Eligible for human decision" : "HOLD"}</strong><small>Derived from the exact recorded Phase 4 preflight</small></div>
-          <div className="ac-stat-card"><span>Beta / Pilot</span><strong>{productionPromotionSnapshot?.staging_beta_testing_allowed === true && productionPromotionSnapshot?.staging_pilot_testing_allowed === true ? "Available" : "Unavailable"}</strong><small>Existing staging accounts and courses remain in place</small></div>
+          <div className="ac-stat-card"><span>Live Beta / Pilot</span><strong>{decisionLiveBetaAllowed === true && decisionLivePilotAllowed === true ? "Available" : "Unavailable"}</strong><small>Existing live accounts, courses, and work remain in place</small></div>
           <div className="ac-stat-card"><span>Production intake</span><strong>{productionPromotionSnapshot?.production_student_intake_enabled === true ? "Enabled" : "Disabled"}</strong><small>No decision record can change this value</small></div>
           <div className="ac-stat-card"><span>Latest owner decision</span><strong>{latestProductionPromotion ? `v${latestProductionPromotion.version}` : "Not recorded"}</strong><small>{latestProductionPromotion ? formatDate(latestProductionPromotion.recorded_at) : "Record only after exact-merge staging evidence"}</small></div>
         </div>

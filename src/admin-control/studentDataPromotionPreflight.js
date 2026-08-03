@@ -76,10 +76,10 @@ export function validateStudentDataPromotionPreflight(preflight, input = {}, now
     issues.push("HOLD must apply only to production promotion.");
   }
   if (snapshot.staging_beta_testing_allowed !== true || snapshot.staging_pilot_testing_allowed !== true) {
-    issues.push("Bounded staging beta and pilot testing must remain allowed.");
+    issues.push("Bounded live Beta and Pilot testing must remain allowed while the staging sandbox remains separate.");
   }
   if (snapshot.testing_data_scope !== STUDENT_DATA_PROMOTION_PREFLIGHT_CANDIDATE.testingDataScope) {
-    issues.push("Staging must remain limited to Beta demonstrations or explicitly authorized Pilot data.");
+    issues.push("The live service must remain limited to authorized Beta demonstrations or explicitly authorized Pilot data.");
   }
 
   if (!/^[0-9a-f]{7,64}$/u.test(normalizedText(input.sourceCommit))) {
