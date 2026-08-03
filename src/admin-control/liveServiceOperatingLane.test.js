@@ -34,8 +34,9 @@ test("the live-lane RPC payload is human-attested and commit-bound", () => {
 });
 
 test("the banner keeps the staging sandbox separate from the live Beta/Pilot label", async () => {
-  const [banner, migration, deployment] = await Promise.all([
+  const [banner, portalHome, migration, deployment] = await Promise.all([
     readFile(new URL("../EnvironmentBanner.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../portal/PortalHome.jsx", import.meta.url), "utf8"),
     readFile(new URL("../../supabase/migrations/20260803033914_correct_live_beta_pilot_release_lanes.sql", import.meta.url), "utf8"),
     readFile(new URL("../../.github/workflows/pages-deploy.yml", import.meta.url), "utf8"),
   ]);
@@ -44,6 +45,14 @@ test("the banner keeps the staging sandbox separate from the live Beta/Pilot lab
   assert.match(banner, /EDNOTEBOOK PILOT · LIVE SERVICE/u);
   assert.match(banner, /get_live_service_operating_lane/u);
   assert.match(banner, /if \(liveLane === "production"\) return null/u);
+  assert.match(banner, /Early Access Beta/u);
+  assert.match(banner, /You’re helping test EdNotebook before its official release/u);
+  assert.match(banner, /You’re using a pre-release version of EdNotebook/u);
+  assert.match(portalHome, /FOUNDING BETA PROGRAM/u);
+  assert.match(portalHome, /lifetime free access/u);
+  assert.match(portalHome, /priority support/u);
+  assert.match(portalHome, /Join as a student/u);
+  assert.match(portalHome, /Join as an educator/u);
   assert.doesNotMatch(banner, /BETA MODE · STAGING|PILOT MODE · STAGING/u);
   assert.match(migration, /new_site_created',false/u);
   assert.match(migration, /new_database_created',false/u);

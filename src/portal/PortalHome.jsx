@@ -96,6 +96,26 @@ export default function PortalHome() {
           ))}
         </section>
 
+        <section className="founding-beta-program" aria-labelledby="founding-beta-title">
+          <div className="founding-beta-copy">
+            <span className="founding-beta-badge">FOUNDING BETA PROGRAM</span>
+            <h2 id="founding-beta-title">Help shape EdNotebook—and keep your access.</h2>
+            <p>
+              Join the EdNotebook beta today. Early adopters receive lifetime free access, priority support,
+              and the opportunity to help shape the future of the platform.
+            </p>
+            <div className="founding-beta-actions">
+              <a href="#/students/university">Join as a student <span aria-hidden="true">→</span></a>
+              <a href="#/professors">Join as an educator <span aria-hidden="true">→</span></a>
+            </div>
+          </div>
+          <ul aria-label="Founding Beta member benefits">
+            <li><span aria-hidden="true">∞</span><div><strong>Lifetime free access</strong><small>Keep access as an EdNotebook founding early adopter.</small></div></li>
+            <li><span aria-hidden="true">★</span><div><strong>Priority support</strong><small>Get help quickly while you learn and test the platform.</small></div></li>
+            <li><span aria-hidden="true">✦</span><div><strong>Shape what comes next</strong><small>Share feedback that directly informs the EdNotebook experience.</small></div></li>
+          </ul>
+        </section>
+
         <section style={{ maxWidth: 1180, margin: "0 auto 54px", padding: "0 28px" }} aria-label="Interactive demonstration accounts">
           <div style={{ padding: 28, color: "#18284a", background: "#fffdf8", border: "1px solid #ded6c8", borderRadius: 22, boxShadow: "0 18px 50px rgba(16,27,51,.08)" }}>
             <span className="portal-kicker">MEET THE DEMO TEAM</span>
