@@ -1116,6 +1116,29 @@
   margin-top: 0;
 }
 
+.ac-disclosure {
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #b9cce1;
+  border-radius: 0.75rem;
+  background: #f8fbff;
+}
+
+.ac-disclosure > summary {
+  color: var(--ac-blue-dark);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.ac-disclosure[open] > summary {
+  margin-bottom: 0.9rem;
+}
+
+.ac-disclosure form {
+  display: grid;
+  gap: 0.8rem;
+}
+
 .ac-security-decision-checks {
   padding: 0.85rem;
   background: #fff9e5;

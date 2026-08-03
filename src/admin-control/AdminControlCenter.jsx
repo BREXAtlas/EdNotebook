@@ -21,6 +21,8 @@ import {
   validateLifecycleDecisionBatch,
   validatePrivacyRecordsApprovalDecision,
 } from "./privacyRecordsApprovalDecision.js";
+import { validateStudentDataPromotionPreflight } from "./studentDataPromotionPreflight.js";
+import { validateStudentDataEnvironmentLane } from "./studentDataEnvironmentLane.js";
 import {
   formatMarketplaceDate,
   formatMarketplaceMoney,
@@ -167,6 +169,23 @@ const DEFAULT_PRIVACY_RECORDS_DECISION = Object.freeze({
   ...DEFAULT_LIFECYCLE_DECISION_BATCH,
   decision: "hold",
   expiresOn: PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationLatestDate,
+});
+
+const DEFAULT_PROMOTION_PREFLIGHT = Object.freeze({
+  sourceCommit: "",
+  evidenceReference: "",
+  summary: "",
+  authorityAttestation: false,
+});
+
+const DEFAULT_DATA_LANE = Object.freeze({
+  scopeType: "institution",
+  scopeId: "",
+  dataLane: "beta",
+  status: "active",
+  purpose: "",
+  evidenceReference: "",
+  authorityAttestation: false,
 });
 
 function formatDate(value, includeTime = true) {
@@ -1453,6 +1472,8 @@ export default function AdminControlCenter({ onExit }) {
 
 function StudentDataReadinessPanel({ institutionId }) {
   const [readiness, setReadiness] = useState(null);
+  const [promotionPreflight, setPromotionPreflight] = useState(null);
+  const [dataLanes, setDataLanes] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1461,6 +1482,8 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [accessibilityDraft, setAccessibilityDraft] = useState(() => ({ ...DEFAULT_ACCESSIBILITY_DECISION }));
   const [lifecycleDraft, setLifecycleDraft] = useState(() => ({ ...DEFAULT_LIFECYCLE_DECISION_BATCH }));
   const [privacyRecordsDraft, setPrivacyRecordsDraft] = useState(() => ({ ...DEFAULT_PRIVACY_RECORDS_DECISION }));
+  const [promotionPreflightDraft, setPromotionPreflightDraft] = useState(() => ({ ...DEFAULT_PROMOTION_PREFLIGHT }));
+  const [dataLaneDraft, setDataLaneDraft] = useState(() => ({ ...DEFAULT_DATA_LANE }));
 
   const loadReadiness = useCallback(async () => {
     if (!institutionId) return;
@@ -1468,8 +1491,20 @@ function StudentDataReadinessPanel({ institutionId }) {
     setError("");
     try {
       setReadiness(await adminService.getStudentDataIntakeReadiness(institutionId));
+      try {
+        setPromotionPreflight(await adminService.getStudentDataPromotionPreflight(institutionId));
+      } catch {
+        setPromotionPreflight(null);
+      }
+      try {
+        setDataLanes(await adminService.getStudentDataEnvironmentLanes(institutionId));
+      } catch {
+        setDataLanes(null);
+      }
     } catch (nextError) {
       setReadiness(null);
+      setPromotionPreflight(null);
+      setDataLanes(null);
       setError(friendlyError(nextError, "Student-data intake readiness could not be loaded."));
     } finally {
       setLoading(false);
@@ -1482,6 +1517,8 @@ function StudentDataReadinessPanel({ institutionId }) {
     setAccessibilityDraft({ ...DEFAULT_ACCESSIBILITY_DECISION });
     setLifecycleDraft({ ...DEFAULT_LIFECYCLE_DECISION_BATCH });
     setPrivacyRecordsDraft({ ...DEFAULT_PRIVACY_RECORDS_DECISION });
+    setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
+    setDataLaneDraft({ ...DEFAULT_DATA_LANE });
     setNotice("");
   }, [institutionId]);
 
@@ -1496,11 +1533,21 @@ function StudentDataReadinessPanel({ institutionId }) {
   const securityEvidence = evidence.find((item) => item.gate_key === "securityApproval") || null;
   const accessibilityEvidence = evidence.find((item) => item.gate_key === "accessibilityApproval") || null;
   const privacyRecordsEvidence = evidence.find((item) => item.gate_key === "privacyRecordsApproval") || null;
+  const currentPromotionPreflight = promotionPreflight?.current || null;
+  const promotionSnapshot = currentPromotionPreflight?.snapshot || null;
+  const latestPromotionPreflight = promotionPreflight?.latest_record || null;
+  const laneAssignments = Array.isArray(dataLanes?.assignments) ? dataLanes.assignments : [];
+  const laneAuditCounts = dataLanes?.audit_counts || {};
   const productionEnabled = readiness?.production_student_intake_enabled === true;
   const securityValidation = validateSecurityApprovalDecision(securityDraft);
   const accessibilityValidation = validateAccessibilityApprovalDecision(accessibilityDraft);
   const lifecycleValidation = validateLifecycleDecisionBatch(lifecycleDraft);
   const privacyRecordsValidation = validatePrivacyRecordsApprovalDecision(privacyRecordsDraft);
+  const promotionPreflightValidation = validateStudentDataPromotionPreflight(
+    promotionPreflight,
+    promotionPreflightDraft,
+  );
+  const dataLaneValidation = validateStudentDataEnvironmentLane(institutionId, dataLaneDraft);
   const isPassDecision = securityDraft.decision === "passed";
   const isAccessibilityPassDecision = accessibilityDraft.decision === "passed";
 
@@ -1518,6 +1565,55 @@ function StudentDataReadinessPanel({ institutionId }) {
 
   function updatePrivacyRecordsDraft(field, value) {
     setPrivacyRecordsDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updatePromotionPreflightDraft(field, value) {
+    setPromotionPreflightDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateDataLaneDraft(field, value) {
+    setDataLaneDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function recordDataLane(event) {
+    event.preventDefault();
+    if (!dataLaneValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const record = await adminService.recordStudentDataEnvironmentLane(institutionId, dataLaneDraft);
+      setNotice(`${titleCase(record?.data_lane || dataLaneDraft.dataLane)} ${titleCase(record?.scope_type || dataLaneDraft.scopeType)} lane recorded. New audit events will remain separated by lane.`);
+      setDataLaneDraft({ ...DEFAULT_DATA_LANE });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The Beta or Pilot data lane could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordPromotionPreflight(event) {
+    event.preventDefault();
+    if (!promotionPreflightValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await adminService.recordStudentDataPromotionPreflight(
+        institutionId,
+        promotionPreflight,
+        promotionPreflightDraft,
+      );
+      const record = result?.record || null;
+      setNotice(`Promotion preflight version ${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. Staging beta and pilot testing remain allowed; production remains disabled.`);
+      setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The governed promotion-preflight snapshot could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
   }
 
   async function recordLifecycleDecisionBatch(event) {
@@ -1629,6 +1725,98 @@ function StudentDataReadinessPanel({ institutionId }) {
           <dd>{missingGates.length ? missingGates.join(", ") : "None recorded as missing"}</dd>
         </div>
       </dl>
+
+      <section className="ac-subsection" aria-labelledby="promotion-preflight-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Final Phase 4 of 5</span>
+            <h3 id="promotion-preflight-title">Student-data promotion preflight</h3>
+          </div>
+          <StatusPill
+            status={promotionSnapshot?.decision === "ready_for_human_promotion_review" ? "ready" : "hold"}
+            label={promotionSnapshot?.decision === "ready_for_human_promotion_review" ? "Ready for human production review" : "Production HOLD"}
+          />
+        </div>
+        <p className="ac-section-copy">This checksum-bound snapshot controls production promotion only. A HOLD does not disable bounded beta or pilot testing in staging.</p>
+        <div className="ac-stats">
+          <div className="ac-stat-card"><span>Staging beta testing</span><strong>{promotionSnapshot?.staging_beta_testing_allowed === true ? "Allowed" : "Unavailable"}</strong><small>Authorized walkthrough accounts; no official records</small></div>
+          <div className="ac-stat-card"><span>Staging pilot testing</span><strong>{promotionSnapshot?.staging_pilot_testing_allowed === true ? "Allowed" : "Unavailable"}</strong><small>Explicitly authorized pilot participants</small></div>
+          <div className="ac-stat-card"><span>Production intake</span><strong>{promotionSnapshot?.production_student_intake_enabled === true ? "Enabled" : "Disabled"}</strong><small>Requires a separate production promotion</small></div>
+          <div className="ac-stat-card"><span>Latest snapshot</span><strong>{latestPromotionPreflight ? `v${latestPromotionPreflight.version}` : "Not recorded"}</strong><small>{latestPromotionPreflight ? formatDate(latestPromotionPreflight.recorded_at) : "Record after exact-merge verification"}</small></div>
+        </div>
+        {currentPromotionPreflight ? (
+          <dl className="ac-detail-grid">
+            <div><dt>Current checksum</dt><dd><code>{String(currentPromotionPreflight.snapshot_sha256 || "").slice(0, 16)}…</code></dd></div>
+            <div><dt>Evidence ceiling</dt><dd>{formatDate(currentPromotionPreflight.valid_until)}</dd></div>
+          </dl>
+        ) : (
+          <div className="ac-callout ac-callout--neutral"><strong>Preflight recorder not deployed yet.</strong><p>The live readiness view remains authoritative until this migration is applied to staging.</p></div>
+        )}
+        <details className="ac-disclosure">
+          <summary>Record the exact merged staging preflight</summary>
+          <form onSubmit={recordPromotionPreflight}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Exact merged staging commit
+                <input required value={promotionPreflightDraft.sourceCommit} onChange={(event) => updatePromotionPreflightDraft("sourceCommit", event.target.value)} placeholder="40-character merge commit" />
+              </label>
+              <label className="ac-compact-field">Durable evidence reference
+                <input required value={promotionPreflightDraft.evidenceReference} onChange={(event) => updatePromotionPreflightDraft("evidenceReference", event.target.value)} placeholder="Pull request, run, or signed review record" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Preflight outcome and production blockers
+              <textarea required rows="4" value={promotionPreflightDraft.summary} onChange={(event) => updatePromotionPreflightDraft("summary", event.target.value)} placeholder="State the current HOLD or ready-for-review outcome, remaining production blockers, and staging testing boundary." />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={promotionPreflightDraft.authorityAttestation} onChange={(event) => updatePromotionPreflightDraft("authorityAttestation", event.target.checked)} /><span>I reviewed this exact checksum-bound snapshot and understand that it permits bounded staging beta and pilot testing but does not activate production.</span></label>
+            {!promotionPreflightValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Preflight is not ready to record.</strong><p>{promotionPreflightValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!promotionPreflightValidation.valid || recording}>{recording ? "Recording…" : "Record promotion preflight"}</button></div>
+          </form>
+        </details>
+        <details className="ac-disclosure">
+          <summary>Manage Beta and Pilot data labels</summary>
+          <p className="ac-section-copy">This appends governance metadata only. Accounts, courses, work, and URLs stay in place; the global page banner and new audit events use the resolved lane.</p>
+          <div className="ac-stats">
+            <div className="ac-stat-card"><span>Current assignments</span><strong>{laneAssignments.length}</strong><small>Institution, course, or account overrides</small></div>
+            <div className="ac-stat-card"><span>Beta audit events</span><strong>{laneAuditCounts.beta ?? 0}</strong><small>New events stamped Beta</small></div>
+            <div className="ac-stat-card"><span>Pilot audit events</span><strong>{laneAuditCounts.pilot ?? 0}</strong><small>New events stamped Pilot</small></div>
+            <div className="ac-stat-card"><span>Legacy events</span><strong>{dataLanes?.legacy_unclassified_audit_count ?? 0}</strong><small>Preserved without false relabeling</small></div>
+          </div>
+          <form onSubmit={recordDataLane}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Apply label to
+                <select value={dataLaneDraft.scopeType} onChange={(event) => updateDataLaneDraft("scopeType", event.target.value)}>
+                  <option value="institution">This staging institution</option>
+                  <option value="course">One course</option>
+                  <option value="account">One account</option>
+                </select>
+              </label>
+              {dataLaneDraft.scopeType !== "institution" ? <label className="ac-compact-field">Exact {dataLaneDraft.scopeType} ID
+                <input required value={dataLaneDraft.scopeId} onChange={(event) => updateDataLaneDraft("scopeId", event.target.value)} />
+              </label> : null}
+              <label className="ac-compact-field">Data label
+                <select value={dataLaneDraft.dataLane} onChange={(event) => updateDataLaneDraft("dataLane", event.target.value)}>
+                  <option value="beta">Beta</option>
+                  <option value="pilot">Pilot</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Assignment status
+                <select value={dataLaneDraft.status} onChange={(event) => updateDataLaneDraft("status", event.target.value)}>
+                  <option value="active">Active</option>
+                  <option value="retired">Retired</option>
+                </select>
+              </label>
+            </div>
+            <label className="ac-compact-field">Testing group and purpose
+              <textarea required rows="3" value={dataLaneDraft.purpose} onChange={(event) => updateDataLaneDraft("purpose", event.target.value)} placeholder="For example: administrative staff and investor walkthroughs, or the authorized Digital Literacy pilot cohort." />
+            </label>
+            <label className="ac-compact-field">Durable evidence reference
+              <input required value={dataLaneDraft.evidenceReference} onChange={(event) => updateDataLaneDraft("evidenceReference", event.target.value)} />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={dataLaneDraft.authorityAttestation} onChange={(event) => updateDataLaneDraft("authorityAttestation", event.target.checked)} /><span>I understand this changes only the governed data label. Existing accounts, courses, and work carry forward unchanged, and the transition is audited.</span></label>
+            {!dataLaneValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Lane change is not ready.</strong><p>{dataLaneValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!dataLaneValidation.valid || recording}>{recording ? "Recording…" : "Record lane label"}</button></div>
+          </form>
+        </details>
+      </section>
 
       <div className="ac-callout ac-callout--privacy">
         <strong>Metadata only.</strong> Evidence references and summaries must never contain student work, grades, messages, credentials, provider payloads, or confidential institutional records.
