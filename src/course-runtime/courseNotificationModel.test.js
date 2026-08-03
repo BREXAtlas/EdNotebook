@@ -82,6 +82,30 @@ test("completed work is removed from the active notification feed", () => {
   );
 });
 
+test("required media reminders use the same notification route as the calendar", () => {
+  const media = {
+    ...assignment,
+    id: "published-course-media_requirement-media-1",
+    sourceWorkId: "media-1",
+    workType: "media_requirement",
+    title: "Evaluate an algorithm explainer",
+    route: {
+      view: "lesson",
+      lessonId: "lesson-1",
+      resourceId: "media-1",
+      workId: "media-1",
+    },
+  };
+  const notifications = buildStudentNotificationFeed({
+    items: [media],
+    reminders: DEFAULT_CALENDAR_REMINDERS,
+    now: new Date("2026-08-04T04:59:00.000Z"),
+  });
+
+  assert.equal(notifications[0].label, "Required media reminder");
+  assert.deepEqual(notifications[0].route, media.route);
+});
+
 test("opening a notification persists read state and removes it from the badge feed", () => {
   const values = new Map();
   const storage = {

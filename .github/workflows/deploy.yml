@@ -20,10 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22
           cache: npm
@@ -58,6 +58,9 @@ jobs:
       - name: Test fail-closed Digital Literacy research governance
         run: npm run test:research-gate
 
+      - name: Test full-course Digital Literacy pilot readiness
+        run: npm run test:digital-literacy-pilot
+
       - name: Test Digital Literacy student learning workspace
         run: npm run test:student-learning
 
@@ -66,6 +69,21 @@ jobs:
 
       - name: Test professor-student course communication sync
         run: npm run test:course-communication
+
+      - name: Test governed commercial publishing experience
+        run: npm run test:commercial-publishing
+
+      - name: Test governed EduBook publishing experience
+        run: npm run test:edubook-publishing
+
+      - name: Test governed in-platform media and resources
+        run: npm run test:media-resources
+
+      - name: Test media accessibility, versioning, and evidence
+        run: npm run test:media-accessibility
+
+      - name: Test governed media-to-learning integration
+        run: npm run test:media-learning
 
       - name: Test production and staging browser storage isolation
         run: npm run test:environment-storage
@@ -87,10 +105,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
           cache: pip
@@ -109,7 +127,7 @@ jobs:
         run: pytest -q services/document-security-worker/tests
 
       - name: Set up Deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
         with:
           deno-version: v2.x
 
@@ -122,16 +140,19 @@ jobs:
       - name: Test deletion failure handling
         run: deno test --config supabase/functions/deno.json supabase/functions/_shared/deletion.test.ts
 
+      - name: Test staging lifecycle evidence guardrails
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/staging-lifecycle-evidence.test.ts
+
   database-safety:
     name: Rehearse student-data database gates
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v2
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2
         with:
           version: 2.84.2
 
@@ -147,6 +168,33 @@ jobs:
           --echo-errors
           --file=supabase/tests/institution_student_data_safety.sql
 
+      - name: Run privacy/records and 61-domain lifecycle decision gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/privacy_records_lifecycle_decisions.sql
+
+      - name: Run Beta and Pilot governance-lane carry-over gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/student_data_environment_lanes.sql
+
+      - name: Run final production-promotion decision gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/student_data_production_promotion_decision.sql
+
       - name: Run fail-closed Digital Literacy research gates
         env:
           PGCONNECT_TIMEOUT: "10"
@@ -155,6 +203,90 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/digital_literacy_research_gate.sql
+
+      - name: Run full-course Digital Literacy assignment and research-readiness gate
+        run: supabase test db supabase/tests/digital_literacy_pilot_readiness.sql --local
+
+      - name: Run Campus Social first-profile return gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/campus_social_returning_gate.sql
+
+      - name: Run governed course enrollment access gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/course_enrollment_access_gate.sql
+
+      - name: Run Alex B. Morrison Library publishing gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/alex_morrison_library_gate.sql
+
+      - name: Run governed commercial publishing gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/commercial_publishing_gate.sql
+
+      - name: Run governed EduBook learning gate
+        env:
+          PGCONNECTTIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/edubook_learning_gate.sql
+
+      - name: Run governed in-platform media and resources gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/in_platform_media_resources_gate.sql
+
+      - name: Run media accessibility, versioning, and evidence gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/media_accessibility_evidence_gate.sql
+
+      - name: Run governed media-to-learning workflow gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/media_learning_workflow_gate.sql
+
+      - name: Run staging security-advisor database contract
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/security_advisor_contract.sql
 
       - name: Stop the disposable local database
         if: always()

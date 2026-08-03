@@ -5,7 +5,7 @@ export async function listPublishedCourses(educationDivision = "university") {
 
   const { data, error } = await supabase
     .from("published_course_directory")
-    .select("course_id,institution_id,institution_name,professor_id,professor_display_name,course_code,title,subject,term,schedule,summary,enrollment_open,education_division,educator_verification_status")
+    .select("course_id,institution_id,institution_name,professor_id,professor_display_name,course_code,title,subject,term,schedule,summary,enrollment_open,enrollment_policy,universal_assignment,education_division,educator_verification_status")
     .eq("is_listed", true)
     .eq("education_division", educationDivision)
     .order("institution_name")
@@ -19,27 +19,25 @@ export async function listPublishedCourses(educationDivision = "university") {
   return { data: data || [], source: data?.length ? "live" : "demo" };
 }
 
-export async function requestClassLink({ courseId, rosterEntryId = null, studentId }) {
+export async function listAlexMorrisonCatalog(query = "") {
+  if (!isSupabaseConfigured) return { data: [], source: "demo" };
+  const { data, error } = await supabase.rpc("list_alex_morrison_catalog", {
+    p_query: query.trim(),
+  });
+  return {
+    data: data || [],
+    error,
+    source: error ? "demo" : "cloud",
+  };
+}
+
+export async function requestClassLink({ courseId, studentId }) {
   if (!isSupabaseConfigured || !courseId || !studentId) {
     return { data: null, error: new Error("A signed-in student and published class are required.") };
   }
-  const created = await supabase
-    .from("student_enrollment_requests")
-    .insert({
-      course_id: courseId,
-      roster_entry_id: rosterEntryId,
-      student_id: studentId,
-      status: "pending",
-    })
-    .select("id,course_id,student_id,status,requested_at")
-    .single();
-  if (created.error?.code !== "23505") return created;
   return supabase
-    .from("student_enrollment_requests")
-    .select("id,course_id,student_id,status,requested_at")
-    .eq("course_id", courseId)
-    .eq("student_id", studentId)
-    .maybeSingle();
+    .rpc("request_or_join_published_course", { p_course_id: courseId })
+    .single();
 }
 
 export async function approveClassLink(requestId) {
@@ -130,6 +128,21 @@ export async function listCurrentStudentCourses() {
   };
 }
 
+export async function listAssignedCourseBooks(courseIds = []) {
+  const ids = [...new Set(courseIds.filter(Boolean))];
+  if (!isSupabaseConfigured || !ids.length) {
+    return { data: [], source: "device" };
+  }
+  const { data, error } = await supabase
+    .from("publications")
+    .select("id,course_id,title,author_name,description,reading_mode,access_model,status")
+    .in("course_id", ids)
+    .eq("access_model", "assigned")
+    .eq("status", "published")
+    .order("title");
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
 export async function listCurrentStudentEnrollmentRequests(studentId) {
   if (!isSupabaseConfigured || !studentId) return { data: [], source: "device" };
   const { data, error } = await supabase
@@ -151,6 +164,34 @@ export async function listCurrentStudentEnrollmentRequests(studentId) {
   };
 }
 
+export async function listStudentAccountNotifications(studentId) {
+  if (!isSupabaseConfigured || !studentId) return { data: [], source: "device" };
+  const { data, error } = await supabase
+    .from("student_account_notifications")
+    .select("id,course_id,notification_type,title,body,route,dedupe_key,read_at,created_at")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
+export async function markStudentAccountNotificationRead(notificationId) {
+  if (!notificationId) return { error: new Error("Choose a notification to open.") };
+  return supabase.rpc("mark_student_account_notification_read", {
+    p_notification_id: notificationId,
+  });
+}
+
+export async function listStudentCourseBadges(studentId) {
+  if (!isSupabaseConfigured || !studentId) return { data: [], source: "device" };
+  const { data, error } = await supabase
+    .from("course_completion_badges")
+    .select("id,course_id,publication_id,badge_name,badge_description,earned_at")
+    .eq("student_id", studentId)
+    .order("earned_at", { ascending: false });
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
 export async function listProfessorCourseLibrary() {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
   const coursesResult = await supabase
@@ -164,7 +205,7 @@ export async function listProfessorCourseLibrary() {
   const [directoryResult, membershipResult, requestResult] = await Promise.all([
     supabase
       .from("published_course_directory")
-      .select("course_id,is_listed,enrollment_open,published_at,educator_verification_status,institution_name")
+      .select("course_id,is_listed,enrollment_open,enrollment_policy,universal_assignment,completion_badge_name,completion_badge_description,published_at,educator_verification_status,institution_name,library_access_model,library_listing_status,library_price_cents,library_rental_days,library_published_at")
       .in("course_id", ids),
     supabase
       .from("course_memberships")
@@ -190,11 +231,50 @@ export async function listProfessorCourseLibrary() {
         pendingRequests: (requestResult.data || []).filter((item) => item.course_id === course.id && item.status === "pending").length,
         verificationStatus: listing?.educator_verification_status || "unverified",
         institutionName: listing?.institution_name || "Independent course",
+        enrollmentPolicy: listing?.enrollment_policy || "approval_required",
+        universalAssignment: Boolean(listing?.universal_assignment),
+        completionBadgeName: listing?.completion_badge_name || `Completed · ${course.title}`,
+        completionBadgeDescription: listing?.completion_badge_description || `Recognizes completion of ${course.title} in EdNotebook.`,
+        libraryAccessModel: listing?.library_access_model || "not_listed",
+        libraryListingStatus: listing?.library_listing_status || "not_listed",
+        libraryPriceCents: listing?.library_price_cents ?? null,
+        libraryRentalDays: listing?.library_rental_days ?? null,
+        libraryPublishedAt: listing?.library_published_at || null,
       };
     }),
     error: coursesResult.error || directoryResult.error || membershipResult.error || requestResult.error,
     source: "cloud",
   };
+}
+
+export async function updatePublishedCourseEnrollment({
+  courseId,
+  enrollmentPolicy,
+  universalAssignment,
+  badgeName,
+  badgeDescription,
+}) {
+  return supabase.rpc("set_published_course_enrollment", {
+    p_course_id: courseId,
+    p_enrollment_policy: enrollmentPolicy,
+    p_universal_assignment: Boolean(universalAssignment),
+    p_badge_name: badgeName || null,
+    p_badge_description: badgeDescription || null,
+  });
+}
+
+export async function updateCourseLibraryListing({
+  courseId,
+  accessModel,
+  priceCents,
+  rentalDays,
+}) {
+  return supabase.rpc("set_course_library_listing", {
+    p_course_id: courseId,
+    p_access_model: accessModel,
+    p_price_cents: priceCents ?? null,
+    p_rental_days: rentalDays ?? null,
+  });
 }
 
 export async function listProfessorEnrollmentRequests() {

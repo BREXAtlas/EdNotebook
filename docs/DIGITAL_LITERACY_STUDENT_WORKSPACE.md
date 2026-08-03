@@ -84,7 +84,7 @@ The focused gate checks:
 - device mode performing no private-cloud load or merge;
 - unique-ID course selection, including duplicate display codes and synthetic-to-live reconciliation;
 - actual signed-in student dashboard integration;
-- own-student RLS, absence of authenticated update/delete access, and inclusion in the version 2.3 / 47-domain student-data inventory.
+- own-student RLS, absence of authenticated update/delete access, and inclusion in the version 2.5 / 50-domain linked-record student-data inventory and 61-domain lifecycle registry.
 
 Before enabling cloud sync in staging, apply the migration to the existing staging project only and test with two synthetic student accounts:
 

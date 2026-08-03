@@ -56,7 +56,7 @@ These triggers do not weaken authentication, role checks, private storage, malwa
 
 ## Digital Literacy pilot implementation
 
-The Digital Literacy pilot planning surface is visible in the institution control center, but its synthetic fixture is **NOT ACTIVATED** and never writes responses. The authoritative research gate is course-scoped and remains separate from the ordinary feedback paths above.
+The Digital Literacy pilot planning surface is visible in the institution control center, but its synthetic fixture is **NOT ACTIVATED** and never writes responses. The real learning source is the complete `BREXAtlas/Digital-Literacy-Course` repository (20 Foundations episodes plus 20 AI quests), not that fixture. EdNotebook stores a versioned catalog reference, professor assignment scope, and shared student/professor completion evidence; it does not copy or regenerate the course.
 
 - `product_feedback` and `course_feedback` continue without a research protocol field.
 - Pre/post assessments, qualitative interviews, open-ended research surveys, learning-effectiveness analysis, and research exports use `purpose = research`.
@@ -64,5 +64,6 @@ The Digital Literacy pilot planning surface is visible in the institution contro
 - The database rejects response collection unless the exact institution/course version has a current written determination, current dates, approved instrument, explicit activation, enabled course feature, current learner membership, and an explicit participant choice.
 - Enrollment, product use, course work, and account terms never create a research participation record.
 - Withdrawal plus export/deletion request state remains visible to the participant and institution reviewers through audited records.
+- Research export is pseudonymized/direct-identifier-free, not guaranteed anonymous. It is cohort-limited, and qualitative text remains excluded unless an approved manual-redaction mode is recorded.
 
-See [`DIGITAL_LITERACY_RESEARCH_GOVERNANCE.md`](DIGITAL_LITERACY_RESEARCH_GOVERNANCE.md) for the deployment boundary and ASU sources.
+See [`DIGITAL_LITERACY_RESEARCH_GOVERNANCE.md`](DIGITAL_LITERACY_RESEARCH_GOVERNANCE.md) for the base gate and [`DIGITAL_LITERACY_PILOT_READINESS.md`](DIGITAL_LITERACY_PILOT_READINESS.md) for the full-course assignment, evidence, instrument-timing, and export contract.

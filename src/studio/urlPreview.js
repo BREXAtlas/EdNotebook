@@ -1,3 +1,5 @@
+import { normalizeHttpsUrl, youtubePrivacyEmbedUrl, youtubeVideoId } from "../media/courseMediaModel.js";
+
 const PROVIDERS = [
   { test: /(^|\.)youtube\.com$|(^|\.)youtu\.be$/, name: "YouTube", icon: "▶", tone: "video" },
   { test: /(^|\.)canva\.com$/, name: "Canva", icon: "C", tone: "design" },
@@ -10,13 +12,7 @@ const PROVIDERS = [
 ];
 
 export function normalizeUrl(value) {
-  const input = String(value || "").trim();
-  if (!input) return null;
-  try {
-    return new URL(/^https?:\/\//i.test(input) ? input : `https://${input}`);
-  } catch {
-    return null;
-  }
+  return normalizeHttpsUrl(value);
 }
 
 export function extractFirstUrl(value) {
@@ -25,15 +21,7 @@ export function extractFirstUrl(value) {
 }
 
 export function youtubeId(value) {
-  const url = value instanceof URL ? value : normalizeUrl(value);
-  if (!url) return null;
-  const host = url.hostname.replace(/^www\./, "");
-  if (host === "youtu.be") return url.pathname.split("/").filter(Boolean)[0] || null;
-  if (!/(^|\.)youtube\.com$/.test(host)) return null;
-  if (url.pathname === "/watch") return url.searchParams.get("v");
-  const parts = url.pathname.split("/").filter(Boolean);
-  if (["embed", "shorts", "live"].includes(parts[0])) return parts[1] || null;
-  return null;
+  return youtubeVideoId(value);
 }
 
 export function linkPreview(value, suppliedTitle = "") {
@@ -66,7 +54,7 @@ export function linkPreview(value, suppliedTitle = "") {
       : `External learning resource from ${provider.name}. Add a description so learners know why it matters.`,
     isYouTube: Boolean(videoId),
     youtubeId: videoId,
-    embedUrl: videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : null,
+    embedUrl: youtubePrivacyEmbedUrl(videoId),
     thumbnailUrl: videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null,
   };
 }

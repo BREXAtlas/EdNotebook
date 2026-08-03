@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import AssignmentTemplateWorkspace from "../portal/AssignmentTemplateWorkspace.jsx";
 import { COURSE_PRESETS, flattenLessons } from "./courseManifest.js";
 import CourseNotificationCenter from "./CourseNotificationCenter.jsx";
@@ -16,8 +16,12 @@ import {
   listCourseDueWork,
   loadLearnerProgress,
   loadPublishedCourse,
+  loadPublishedCourseResources,
+  recordCourseMediaProgress,
 } from "./courseService.js";
 import StudentLessonPlayer from "./StudentLessonPlayer.jsx";
+import CourseResourcesPanel from "./CourseResourcesPanel.jsx";
+import EdNotebookMediaReader from "../media/EdNotebookMediaReader.jsx";
 import {
   nextDueWork,
   publishedCourseCalendarItems,
@@ -28,6 +32,8 @@ import {
 import "./course-runtime.css";
 import "./course-notifications.css";
 import "./student-experience.css";
+import "./course-media.css";
+import "./assignment-media.css";
 
 const OwnYourSemester = lazy(() => import("../ai/OwnYourSemester.jsx"));
 const StudentLearningWorkspace = lazy(
@@ -54,7 +60,7 @@ function ToolLoading({ name }) {
   );
 }
 
-function PublishedWorkDetail({ item, onClose, onOpenCalendar }) {
+function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [], onMediaEvidence, onOpenLearningActivity }) {
   if (!item) return null;
   const workType = item.workType === "grade_item"
     ? "Grade item"
@@ -96,6 +102,12 @@ function PublishedWorkDetail({ item, onClose, onOpenCalendar }) {
           )
           : null}
       </dl>
+      {resources.length > 0 && (
+        <section className="course-assignment-resources" aria-label="Assignment media and resources">
+          <h4>Media &amp; resources</h4>
+          {resources.map((resource) => <EdNotebookMediaReader key={resource.id} resource={resource} compact onEvidence={onMediaEvidence} onOpenLearningActivity={onOpenLearningActivity} />)}
+        </section>
+      )}
       <footer>
         <button type="button" onClick={onOpenCalendar}>
           See on calendar
@@ -121,6 +133,7 @@ export default function CourseRuntimePage({
     manifest: null,
     progress: null,
     dueWork: null,
+    resources: [],
   });
   const [view, setView] = useState("home");
   const [active, setActive] = useState(null);
@@ -128,6 +141,20 @@ export default function CourseRuntimePage({
   const [requestedTemplateId, setRequestedTemplateId] = useState(null);
   const [notificationNow, setNotificationNow] = useState(() => new Date());
   const [assignmentEvents, setAssignmentEvents] = useState([]);
+  const handleMediaEvidence = useCallback(async (resource, event) => {
+    const result = await recordCourseMediaProgress(resource.id, event);
+    if (result.error) throw result.error;
+    const progress = result.data?.progress || null;
+    if (progress) {
+      setState((current) => ({
+        ...current,
+        resources: current.resources.map((item) =>
+          item.id === resource.id ? { ...item, viewing_progress: progress } : item
+        ),
+      }));
+    }
+    return progress;
+  }, []);
   const [readNotificationIds, setReadNotificationIds] = useState([]);
   const studentCalendarScope =
     `ednotebook-own-semester-${session?.user?.id || "student"}-${track}-calendar`;
@@ -165,7 +192,7 @@ export default function CourseRuntimePage({
         }));
         return;
       }
-      const { publication, version, manifest } = courseResult.data;
+      const { publication, version, manifest, resources } = courseResult.data;
       let packageIdentity;
       try {
         packageIdentity = publishedPackageIdentity({
@@ -194,7 +221,8 @@ export default function CourseRuntimePage({
         packageIdentity,
         manifest,
         progress: progressResult.data,
-        dueWork: dueResult.data,
+        dueWork: { ...dueResult.data, mediaRequirements: resources },
+        resources,
       });
     })();
     return () => {
@@ -301,7 +329,7 @@ export default function CourseRuntimePage({
     [publishedWork, selectedWorkId],
   );
 
-  function openLesson(lesson) {
+  function openLesson(lesson, options = {}) {
     const saved = (state.progress?.lessons || []).find(
       (item) => item.lesson_id === lesson.id && item.path_id === lesson.pathId,
     );
@@ -309,6 +337,8 @@ export default function CourseRuntimePage({
       lesson,
       path: state.manifest.paths.find((item) => item.id === lesson.pathId),
       saved,
+      initialStage: options.initialStage,
+      focusResourceId: options.focusResourceId || null,
     });
     setView("lesson");
   }
@@ -334,6 +364,30 @@ export default function CourseRuntimePage({
     window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   }
 
+  function openMediaLearningActivity(resource) {
+    if (resource?.target_kind === "lesson") {
+      const lesson = lessons.find((item) => String(item.id) === String(resource.target_key));
+      if (lesson) {
+        openLesson(lesson, { initialStage: 1, focusResourceId: resource.id });
+        return;
+      }
+    }
+    if (resource?.target_kind === "assignment" && resource?.target_key) {
+      openPublishedWorkDetail(resource.target_key);
+      return;
+    }
+    openTool("resources");
+  }
+
+  function openDueWorkItem(workId) {
+    const item = publishedWork.find((candidate) => String(candidate.id) === String(workId));
+    if (item?.workType === "media_requirement" && item.resource) {
+      openMediaLearningActivity(item.resource);
+      return;
+    }
+    openPublishedWorkDetail(workId);
+  }
+
   function openNotification(notification) {
     setReadNotificationIds(
       markStudentNotificationRead(notificationScope, notification.id),
@@ -346,15 +400,36 @@ export default function CourseRuntimePage({
       window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
       return;
     }
-    openPublishedWorkDetail(notification.route.workId);
+    if (notification.route?.lessonId) {
+      const lesson = lessons.find((item) => String(item.id) === String(notification.route.lessonId));
+      if (lesson) {
+        openLesson(lesson, { initialStage: 1, focusResourceId: notification.route.resourceId });
+        return;
+      }
+    }
+    if (notification.route?.workId) {
+      openDueWorkItem(notification.route.workId);
+      return;
+    }
+    openTool(notification.route?.view || "resources");
   }
 
   async function refreshProgress() {
-    const result = await loadLearnerProgress(
-      state.publication.id,
-      session?.user?.id,
-    );
-    setState((current) => ({ ...current, progress: result.data }));
+    const [progressResult, resourceResult] = await Promise.all([
+      loadLearnerProgress(state.publication.id, session?.user?.id),
+      loadPublishedCourseResources(state.publication.id),
+    ]);
+    setState((current) => ({
+      ...current,
+      progress: progressResult.error ? current.progress : progressResult.data,
+      resources: resourceResult.error ? current.resources : resourceResult.data.resources || [],
+      dueWork: {
+        ...current.dueWork,
+        mediaRequirements: resourceResult.error
+          ? current.resources
+          : resourceResult.data.resources || [],
+      },
+    }));
   }
 
   if (state.loading) {
@@ -420,6 +495,9 @@ export default function CourseRuntimePage({
           <button type="button" onClick={() => openTool("calendar")}>
             Calendar
           </button>
+          <button type="button" onClick={() => openTool("resources")}>
+            Resources
+          </button>
           <button type="button" onClick={() => openTool("notes")}>
             Notes
           </button>
@@ -471,6 +549,13 @@ export default function CourseRuntimePage({
               onClick={() => openTool("calendar")}
             >
               Calendar &amp; syllabus
+            </button>
+            <button
+              className={view === "resources" ? "is-active" : ""}
+              type="button"
+              onClick={() => openTool("resources")}
+            >
+              Media &amp; resources
             </button>
             <button
               className={view === "notes" ? "is-active" : ""}
@@ -551,9 +636,9 @@ export default function CourseRuntimePage({
                   </div>
                   <button
                     type="button"
-                    onClick={() => openPublishedWorkDetail(dueNext.id)}
+                    onClick={() => openDueWorkItem(dueNext.id)}
                   >
-                    View assignment
+                    {dueNext.workType === "media_requirement" ? "Open required media" : "View assignment"}
                   </button>
                 </section>
               )}
@@ -577,7 +662,7 @@ export default function CourseRuntimePage({
                   <h2>Course work and dates</h2>
                 </div>
                 {publishedWork
-                  .filter((item) => item.due_at)
+                  .filter((item) => item.due_at && item.status !== "complete")
                   .slice(0, 4)
                   .map((item) => (
                     <article key={item.id}>
@@ -589,7 +674,7 @@ export default function CourseRuntimePage({
                           view === "assignments" &&
                           String(selectedWorkId) === String(item.id)
                         }
-                        onClick={() => openPublishedWorkDetail(item.id)}
+                        onClick={() => openDueWorkItem(item.id)}
                       >
                         <strong>{item.title}</strong>
                         <span>{formatDate(item.due_at)}</span>
@@ -653,7 +738,14 @@ export default function CourseRuntimePage({
               manifest={state.manifest}
               path={active.path}
               lesson={active.lesson}
+              resources={state.resources.filter(
+                (resource) =>
+                  resource.target_kind === "lesson" &&
+                  String(resource.target_key) === String(active.lesson.id),
+              )}
               saved={active.saved}
+              initialStage={active.initialStage}
+              focusResourceId={active.focusResourceId}
               userId={session?.user?.id}
               onOpenTool={openTool}
               onExit={() => {
@@ -661,12 +753,14 @@ export default function CourseRuntimePage({
                 setView("map");
                 refreshProgress();
               }}
-              onProgress={(progress) =>
+              onProgress={(progress) => {
                 setState((current) => ({
                   ...current,
                   progress: { ...current.progress, summary: progress },
-                }))
-              }
+                }));
+              }}
+              onLearningProgress={refreshProgress}
+              onMediaEvidence={handleMediaEvidence}
             />
           )}
           {view === "assignments" && (
@@ -688,7 +782,7 @@ export default function CourseRuntimePage({
                       type="button"
                       aria-controls={`course-work-detail-${item.id}`}
                       aria-expanded={String(selectedWorkId) === String(item.id)}
-                      onClick={() => setSelectedWorkId(item.id)}
+                      onClick={() => openDueWorkItem(item.id)}
                     >
                       <strong>{item.title}</strong>
                       <span>{formatDate(item.due_at)}</span>
@@ -700,8 +794,15 @@ export default function CourseRuntimePage({
                 )}
                 <PublishedWorkDetail
                   item={selectedWork}
+                  resources={state.resources.filter(
+                    (resource) =>
+                      resource.target_kind === "assignment" &&
+                      String(resource.target_key) === String(selectedWork?.id),
+                  )}
                   onClose={() => setSelectedWorkId(null)}
                   onOpenCalendar={() => openTool("calendar")}
+                  onMediaEvidence={handleMediaEvidence}
+                  onOpenLearningActivity={openMediaLearningActivity}
                 />
               </section>
               <AssignmentTemplateWorkspace
@@ -723,7 +824,7 @@ export default function CourseRuntimePage({
                 officialAssignments={publishedCalendarItems}
                 officialCalendarScope={course.id}
                 calendarScope={studentCalendarScope}
-                onOpenAssignment={openPublishedWorkDetail}
+                onOpenAssignment={openDueWorkItem}
                 initialSyllabusText={publishedSyllabusText}
                 syllabusSourceName={`${course.course_code || "COURSE"} professor-published dates`}
               />
@@ -738,6 +839,13 @@ export default function CourseRuntimePage({
                 storageScope={`student-${session?.user?.id || `guest-${track}`}`}
               />
             </Suspense>
+          )}
+          {view === "resources" && (
+            <CourseResourcesPanel
+              courseId={course.id}
+              resources={state.resources}
+              onMediaEvidence={handleMediaEvidence}
+            />
           )}
           {view === "messages" && (
             <Suspense fallback={<ToolLoading name="course messages" />}>

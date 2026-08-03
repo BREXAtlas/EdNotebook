@@ -46,6 +46,30 @@ insert into auth.users (
     '{"full_name":"Other Institution Student","requested_role":"learner","affiliation_choice":"independent"}',
     now(),
     now()
+  ),
+  (
+    '91000000-0000-4000-8000-000000000013',
+    'authenticated',
+    'authenticated',
+    'research-student-two@synthetic.invalid',
+    'not-a-login',
+    now(),
+    '{}',
+    '{"full_name":"Synthetic Research Student Two","requested_role":"learner","affiliation_choice":"independent"}',
+    now(),
+    now()
+  ),
+  (
+    '91000000-0000-4000-8000-000000000014',
+    'authenticated',
+    'authenticated',
+    'research-student-three@synthetic.invalid',
+    'not-a-login',
+    now(),
+    '{}',
+    '{"full_name":"Synthetic Research Student Three","requested_role":"learner","affiliation_choice":"independent"}',
+    now(),
+    now()
   );
 
 update public.profiles
@@ -74,7 +98,9 @@ delete from public.institution_affiliations
 where user_id in (
   '91000000-0000-4000-8000-000000000001',
   '91000000-0000-4000-8000-000000000011',
-  '91000000-0000-4000-8000-000000000012'
+  '91000000-0000-4000-8000-000000000012',
+  '91000000-0000-4000-8000-000000000013',
+  '91000000-0000-4000-8000-000000000014'
 );
 
 insert into public.institution_affiliations (
@@ -104,6 +130,30 @@ insert into public.institution_affiliations (
     'synthetic-test-fixture',
     true,
     now()
+  ),
+  (
+    '93000000-0000-4000-8000-000000000013',
+    '91000000-0000-4000-8000-000000000013',
+    'student',
+    '92000000-0000-4000-8000-000000000001',
+    'student',
+    'active',
+    'platform_owner',
+    'synthetic-test-fixture',
+    true,
+    now()
+  ),
+  (
+    '93000000-0000-4000-8000-000000000014',
+    '91000000-0000-4000-8000-000000000014',
+    'student',
+    '92000000-0000-4000-8000-000000000001',
+    'student',
+    'active',
+    'platform_owner',
+    'synthetic-test-fixture',
+    true,
+    now()
   );
 
 insert into public.institution_memberships (
@@ -120,6 +170,22 @@ insert into public.institution_memberships (
   (
     '92000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000011',
+    'learner',
+    'active',
+    '{}',
+    now()
+  ),
+  (
+    '92000000-0000-4000-8000-000000000001',
+    '91000000-0000-4000-8000-000000000013',
+    'learner',
+    'active',
+    '{}',
+    now()
+  ),
+  (
+    '92000000-0000-4000-8000-000000000001',
+    '91000000-0000-4000-8000-000000000014',
     'learner',
     'active',
     '{}',
@@ -141,11 +207,10 @@ insert into public.courses (
 );
 
 insert into public.course_memberships (course_id, user_id, role)
-values (
-  '94000000-0000-4000-8000-000000000001',
-  '91000000-0000-4000-8000-000000000011',
-  'learner'
-);
+values
+  ('94000000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000011','learner'),
+  ('94000000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000013','learner'),
+  ('94000000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000014','learner');
 
 do $privileges$
 begin
@@ -184,7 +249,11 @@ select public.create_research_pilot_version(
     'consent_config', jsonb_build_object('mode', 'required'),
     'minimization_rules', jsonb_build_object('collection_limit', 'Approved response fields only'),
     'retention_days', 30,
-    'export_rules', jsonb_build_object('mode', 'disabled'),
+    'export_rules', jsonb_build_object(
+      'mode', 'approved_scoped',
+      'minimum_cohort_size', 3,
+      'qualitative_mode', 'pseudonymized_with_manual_redaction'
+    ),
     'deletion_rules', jsonb_build_object('request_process', 'Audited participant request'),
     'instruments', jsonb_build_array(
       jsonb_build_object(
@@ -483,6 +552,100 @@ select public.submit_research_response(
   '{"score":7}'::jsonb
 );
 
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '91000000-0000-4000-8000-000000000013', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select public.record_research_participation_choice(
+  current_setting('research_fixture.version_id')::uuid,
+  'consented',
+  'synthetic-notice-v1',
+  repeat('b', 64)
+);
+select public.submit_research_response(
+  current_setting('research_fixture.pre_instrument_id')::uuid,
+  '{"score":5}'::jsonb
+);
+
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '91000000-0000-4000-8000-000000000014', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select public.record_research_participation_choice(
+  current_setting('research_fixture.version_id')::uuid,
+  'consented',
+  'synthetic-notice-v1',
+  repeat('c', 64)
+);
+select public.submit_research_response(
+  current_setting('research_fixture.pre_instrument_id')::uuid,
+  '{"score":8}'::jsonb
+);
+
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '91000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config(
+  'research_fixture.export',
+  public.export_digital_literacy_research_dataset(
+    current_setting('research_fixture.version_id')::uuid
+  )::text,
+  true
+);
+
+do $governed_export$
+declare
+  v_export jsonb := current_setting('research_fixture.export')::jsonb;
+begin
+  if (v_export->>'participant_count')::integer <> 3 then
+    raise exception 'Synthetic governed export must enforce the three-person cohort';
+  end if;
+  if jsonb_array_length(v_export->'rows') <> 3 then
+    raise exception 'Synthetic governed export must contain one minimized response per participant';
+  end if;
+  if (v_export->>'identity_key_included')::boolean then
+    raise exception 'Governed export must never include the participant linkage key';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(v_export->'rows') row
+    where coalesce(row->>'participant_code', '') !~ '^[a-f0-9]{64}$'
+  ) then
+    raise exception 'Every exported participant must use a version-specific keyed code';
+  end if;
+  if v_export::text like '%91000000-0000-4000-8000-0000000000%'
+    or v_export::text like '%@synthetic.invalid%' then
+    raise exception 'Governed export leaked a direct participant identifier';
+  end if;
+  if not exists (
+    select 1 from public.audit_events
+    where event_type = 'research.pseudonymized_export_generated'
+      and not (details ? 'response')
+      and not (details ? 'response_payload')
+  ) then
+    raise exception 'Governed export must create a content-free audit receipt';
+  end if;
+  raise notice 'PASS cohort-limited export is pseudonymized, direct-identifier-free, and audited';
+end;
+$governed_export$;
+
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '91000000-0000-4000-8000-000000000011', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
 do $minimization$
 declare
   v_instrument_id uuid;
@@ -571,9 +734,10 @@ begin
   if exists (
     select 1
     from public.research_response_records
-    where response_payload is not null
+    where participant_id = '91000000-0000-4000-8000-000000000011'
+      and response_payload is not null
   ) then
-    raise exception 'Completed deletion must remove the research response payload';
+    raise exception 'Completed deletion must remove that participant''s research response payload';
   end if;
   if not exists (
     select 1

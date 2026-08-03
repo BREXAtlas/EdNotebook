@@ -120,6 +120,9 @@ Verification does not automatically publish grades or private class records. Stu
 - [`docs/integrations/LTI_1_3_TEST_PLAN.md`](docs/integrations/LTI_1_3_TEST_PLAN.md) — automated, negative, launch, Deep Linking, NRPS, AGS, and activation acceptance tests
 - [`docs/integrations/LTI_1_3_TROUBLESHOOTING.md`](docs/integrations/LTI_1_3_TROUBLESHOOTING.md) — safe operator diagnosis and rollback without collecting tokens or records
 - [`docs/TOS_STAGE_10_INTEGRATION.md`](docs/TOS_STAGE_10_INTEGRATION.md) — synthetic TOS control-plane handoff, Supabase coexistence, data boundary, tests, and rollback
+- [`docs/STRIPE_CONNECT_STAGING_EVIDENCE.md`](docs/STRIPE_CONNECT_STAGING_EVIDENCE.md) — governed sandbox checkout, entitlement, refund, dispute, tax, and connected-seller payout evidence
+- [`docs/EDUBOOK_PUBLISHING_ACCEPTANCE.md`](docs/EDUBOOK_PUBLISHING_ACCEPTANCE.md) — versioned professor teaching layers, private answer keys, persistent reader progress, and the book-specific staging gate
+- [`docs/COMMERCIAL_EDUBOOK_ACCEPTANCE.md`](docs/COMMERCIAL_EDUBOOK_ACCEPTANCE.md) — optional book purchase/rental listings, Stripe-hosted professor payout setup, entitlement, refund, and staging evidence
 
 ## Local development
 

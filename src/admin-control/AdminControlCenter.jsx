@@ -8,6 +8,30 @@ import {
   serializeReportToCsv,
 } from "./controlModel.js";
 import ResearchPilotGatePanel from "../research/ResearchPilotGatePanel.jsx";
+import {
+  SECURITY_APPROVAL_CANDIDATE,
+  validateSecurityApprovalDecision,
+} from "./securityApprovalDecision.js";
+import {
+  ACCESSIBILITY_APPROVAL_CANDIDATE,
+  validateAccessibilityApprovalDecision,
+} from "./accessibilityApprovalDecision.js";
+import {
+  PRIVACY_RECORDS_APPROVAL_CANDIDATE,
+  validateLifecycleDecisionBatch,
+  validatePrivacyRecordsApprovalDecision,
+} from "./privacyRecordsApprovalDecision.js";
+import { validateStudentDataPromotionPreflight } from "./studentDataPromotionPreflight.js";
+import { validateStudentDataProductionPromotionDecision } from "./studentDataProductionPromotionDecision.js";
+import { validateStudentDataEnvironmentLane } from "./studentDataEnvironmentLane.js";
+import { validateLiveServiceOperatingLane } from "./liveServiceOperatingLane.js";
+import {
+  formatMarketplaceDate,
+  formatMarketplaceMoney,
+  marketplaceReceiptLabel,
+  marketplaceStatusLabel,
+  marketplaceStatusTone,
+} from "../marketplace/marketplacePresentation.js";
 import "./admin-control-center.css";
 
 const TABS = Object.freeze([
@@ -17,6 +41,8 @@ const TABS = Object.freeze([
   ["publisher", "Publisher"],
   ["connections", "Connections"],
   ["research-pilot", "Research pilot"],
+  ["student-data-readiness", "Student data readiness"],
+  ["marketplace", "Commercial publishing"],
   ["accounts", "Accounts & courses"],
   ["institutions", "Institutions"],
   ["platform-access", "Platform access"],
@@ -98,6 +124,89 @@ const DEFAULT_CONTROL = Object.freeze({
   timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago",
 });
 
+const DEFAULT_SECURITY_DECISION = Object.freeze({
+  decision: "hold",
+  reviewerName: "",
+  reviewerAuthority: "",
+  evidenceReference: "",
+  summary: "",
+  expiresOn: SECURITY_APPROVAL_CANDIDATE.expirationLatestDate,
+  authorityAttestation: false,
+  independentReviewCompleted: false,
+  residualRisksAccepted: false,
+  incidentBoundaryAccepted: false,
+});
+
+const DEFAULT_ACCESSIBILITY_DECISION = Object.freeze({
+  decision: "hold",
+  reviewerName: "",
+  reviewerAuthority: "",
+  evidenceReference: "",
+  summary: "",
+  expiresOn: ACCESSIBILITY_APPROVAL_CANDIDATE.expirationLatestDate,
+  authorityAttestation: false,
+  completeProcessReviewCompleted: false,
+  keyboardAndAssistiveTechnologyReviewed: false,
+  visualAndResponsiveReviewed: false,
+  mediaAndContentReviewed: false,
+  remediationOwnershipAccepted: false,
+  thirdPartyBoundaryAccepted: false,
+});
+
+const DEFAULT_LIFECYCLE_DECISION_BATCH = Object.freeze({
+  reviewerName: "",
+  reviewerAuthority: "",
+  evidenceReference: "",
+  summary: "",
+  authorityAttestation: false,
+  lifecycleReconciliationCompleted: false,
+  calendarGuardrailsAccepted: false,
+  ferpaOverridesAccepted: false,
+  providerResidualsReviewed: false,
+  researchBoundaryAccepted: false,
+  asuAdoptionParked: false,
+});
+
+const DEFAULT_PRIVACY_RECORDS_DECISION = Object.freeze({
+  ...DEFAULT_LIFECYCLE_DECISION_BATCH,
+  decision: "hold",
+  expiresOn: PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationLatestDate,
+});
+
+const DEFAULT_PROMOTION_PREFLIGHT = Object.freeze({
+  sourceCommit: "",
+  evidenceReference: "",
+  summary: "",
+  authorityAttestation: false,
+});
+
+const DEFAULT_PRODUCTION_PROMOTION_DECISION = Object.freeze({
+  decision: "hold",
+  sourceCommit: "",
+  evidenceReference: "",
+  rollbackReference: "",
+  summary: "",
+  authorityAttestation: false,
+});
+
+const DEFAULT_DATA_LANE = Object.freeze({
+  scopeType: "institution",
+  scopeId: "",
+  dataLane: "beta",
+  status: "active",
+  purpose: "",
+  evidenceReference: "",
+  authorityAttestation: false,
+});
+
+const DEFAULT_LIVE_OPERATING_LANE = Object.freeze({
+  operatingLane: "beta",
+  sourceCommit: "",
+  purpose: "",
+  evidenceReference: "",
+  authorityAttestation: false,
+});
+
 function formatDate(value, includeTime = true) {
   if (!value) return "Not recorded";
   const date = new Date(value);
@@ -171,6 +280,16 @@ function StatCard({ label, value, note }) {
     <article className="ac-stat-card">
       <span>{label}</span>
       <strong>{safeNumber(value).toLocaleString("en-US")}</strong>
+      {note ? <small>{note}</small> : null}
+    </article>
+  );
+}
+
+function MoneyStatCard({ label, cents, note }) {
+  return (
+    <article className="ac-stat-card">
+      <span>{label}</span>
+      <strong>{formatMarketplaceMoney(cents)}</strong>
       {note ? <small>{note}</small> : null}
     </article>
   );
@@ -1065,6 +1184,10 @@ export default function AdminControlCenter({ onExit }) {
     if (id === "research-pilot") {
       return Boolean(access.platform_owner || access.can_view_audit || access.can_view_feature_controls || access.can_control_features);
     }
+    if (id === "student-data-readiness") {
+      return Boolean(institutionId && (access.platform_owner || access.can_view_audit || access.can_manage_retention));
+    }
+    if (id === "marketplace") return Boolean(access.platform_owner);
     if (id === "accounts") return Boolean(access.platform_owner || access.can_view_accounts);
     if (id === "institutions") return Boolean(access.platform_owner || (institutionId && access.can_manage_affiliations));
     if (id === "platform-access") return Boolean(access.platform_owner);
@@ -1087,6 +1210,7 @@ export default function AdminControlCenter({ onExit }) {
     access.can_export_reports,
     access.can_manage_affiliations,
     access.can_manage_team,
+    access.can_manage_retention,
   ]);
 
   useEffect(() => {
@@ -1263,6 +1387,12 @@ export default function AdminControlCenter({ onExit }) {
           />
         ) : null}
 
+        {activeTab === "student-data-readiness" ? (
+          <StudentDataReadinessPanel institutionId={institutionId} />
+        ) : null}
+
+        {activeTab === "marketplace" ? <MarketplacePanel /> : null}
+
         {activeTab === "accounts" ? (
           <AccountsPanel
             query={searchQuery} setQuery={setSearchQuery}
@@ -1357,6 +1487,994 @@ export default function AdminControlCenter({ onExit }) {
       ) : null}
     </main>
   );
+}
+
+function StudentDataReadinessPanel({ institutionId }) {
+  const [readiness, setReadiness] = useState(null);
+  const [promotionPreflight, setPromotionPreflight] = useState(null);
+  const [productionPromotionReview, setProductionPromotionReview] = useState(null);
+  const [dataLanes, setDataLanes] = useState(null);
+  const [liveOperatingLane, setLiveOperatingLane] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [securityDraft, setSecurityDraft] = useState(() => ({ ...DEFAULT_SECURITY_DECISION }));
+  const [accessibilityDraft, setAccessibilityDraft] = useState(() => ({ ...DEFAULT_ACCESSIBILITY_DECISION }));
+  const [lifecycleDraft, setLifecycleDraft] = useState(() => ({ ...DEFAULT_LIFECYCLE_DECISION_BATCH }));
+  const [privacyRecordsDraft, setPrivacyRecordsDraft] = useState(() => ({ ...DEFAULT_PRIVACY_RECORDS_DECISION }));
+  const [promotionPreflightDraft, setPromotionPreflightDraft] = useState(() => ({ ...DEFAULT_PROMOTION_PREFLIGHT }));
+  const [productionPromotionDraft, setProductionPromotionDraft] = useState(() => ({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION }));
+  const [dataLaneDraft, setDataLaneDraft] = useState(() => ({ ...DEFAULT_DATA_LANE }));
+  const [liveOperatingLaneDraft, setLiveOperatingLaneDraft] = useState(() => ({ ...DEFAULT_LIVE_OPERATING_LANE }));
+
+  const loadReadiness = useCallback(async () => {
+    if (!institutionId) return;
+    setLoading(true);
+    setError("");
+    try {
+      setReadiness(await adminService.getStudentDataIntakeReadiness(institutionId));
+      try {
+        setPromotionPreflight(await adminService.getStudentDataPromotionPreflight(institutionId));
+      } catch {
+        setPromotionPreflight(null);
+      }
+      try {
+        setProductionPromotionReview(await adminService.getStudentDataProductionPromotionReview(institutionId));
+      } catch {
+        setProductionPromotionReview(null);
+      }
+      try {
+        setDataLanes(await adminService.getStudentDataEnvironmentLanes(institutionId));
+      } catch {
+        setDataLanes(null);
+      }
+      try {
+        setLiveOperatingLane(await adminService.getLiveServiceOperatingLane());
+      } catch {
+        setLiveOperatingLane(null);
+      }
+    } catch (nextError) {
+      setReadiness(null);
+      setPromotionPreflight(null);
+      setProductionPromotionReview(null);
+      setDataLanes(null);
+      setLiveOperatingLane(null);
+      setError(friendlyError(nextError, "Student-data intake readiness could not be loaded."));
+    } finally {
+      setLoading(false);
+    }
+  }, [institutionId]);
+
+  useEffect(() => { loadReadiness(); }, [loadReadiness]);
+  useEffect(() => {
+    setSecurityDraft({ ...DEFAULT_SECURITY_DECISION });
+    setAccessibilityDraft({ ...DEFAULT_ACCESSIBILITY_DECISION });
+    setLifecycleDraft({ ...DEFAULT_LIFECYCLE_DECISION_BATCH });
+    setPrivacyRecordsDraft({ ...DEFAULT_PRIVACY_RECORDS_DECISION });
+    setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
+    setProductionPromotionDraft({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION });
+    setDataLaneDraft({ ...DEFAULT_DATA_LANE });
+    setLiveOperatingLaneDraft({ ...DEFAULT_LIVE_OPERATING_LANE });
+    setNotice("");
+  }, [institutionId]);
+
+  const missingDomains = Array.isArray(readiness?.missing_lifecycle_domains)
+    ? readiness.missing_lifecycle_domains
+    : [];
+  const missingGates = Array.isArray(readiness?.missing_evidence_gates)
+    ? readiness.missing_evidence_gates
+    : [];
+  const requests = Array.isArray(readiness?.subject_requests) ? readiness.subject_requests : [];
+  const evidence = Array.isArray(readiness?.evidence) ? readiness.evidence : [];
+  const securityEvidence = evidence.find((item) => item.gate_key === "securityApproval") || null;
+  const accessibilityEvidence = evidence.find((item) => item.gate_key === "accessibilityApproval") || null;
+  const privacyRecordsEvidence = evidence.find((item) => item.gate_key === "privacyRecordsApproval") || null;
+  const currentPromotionPreflight = promotionPreflight?.current || null;
+  const promotionSnapshot = currentPromotionPreflight?.snapshot || null;
+  const latestPromotionPreflight = promotionPreflight?.latest_record || null;
+  const currentProductionPromotion = productionPromotionReview?.current || null;
+  const productionPromotionSnapshot = currentProductionPromotion?.snapshot || null;
+  const latestProductionPromotion = productionPromotionReview?.latest_record || null;
+  const laneAssignments = Array.isArray(dataLanes?.assignments) ? dataLanes.assignments : [];
+  const laneAuditCounts = dataLanes?.audit_counts || {};
+  const promotionLiveBetaAllowed = promotionSnapshot?.live_beta_testing_allowed
+    ?? promotionSnapshot?.staging_beta_testing_allowed;
+  const promotionLivePilotAllowed = promotionSnapshot?.live_pilot_testing_allowed
+    ?? promotionSnapshot?.staging_pilot_testing_allowed;
+  const decisionLiveBetaAllowed = productionPromotionSnapshot?.live_beta_testing_allowed
+    ?? productionPromotionSnapshot?.staging_beta_testing_allowed;
+  const decisionLivePilotAllowed = productionPromotionSnapshot?.live_pilot_testing_allowed
+    ?? productionPromotionSnapshot?.staging_pilot_testing_allowed;
+  const productionEnabled = readiness?.production_student_intake_enabled === true;
+  const securityValidation = validateSecurityApprovalDecision(securityDraft);
+  const accessibilityValidation = validateAccessibilityApprovalDecision(accessibilityDraft);
+  const lifecycleValidation = validateLifecycleDecisionBatch(lifecycleDraft);
+  const privacyRecordsValidation = validatePrivacyRecordsApprovalDecision(privacyRecordsDraft);
+  const promotionPreflightValidation = validateStudentDataPromotionPreflight(
+    promotionPreflight,
+    promotionPreflightDraft,
+  );
+  const productionPromotionValidation = validateStudentDataProductionPromotionDecision(
+    productionPromotionReview,
+    productionPromotionDraft,
+  );
+  const dataLaneValidation = validateStudentDataEnvironmentLane(institutionId, dataLaneDraft);
+  const liveOperatingLaneValidation = validateLiveServiceOperatingLane(liveOperatingLaneDraft);
+  const isPassDecision = securityDraft.decision === "passed";
+  const isAccessibilityPassDecision = accessibilityDraft.decision === "passed";
+
+  function updateSecurityDraft(field, value) {
+    setSecurityDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateAccessibilityDraft(field, value) {
+    setAccessibilityDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateLifecycleDraft(field, value) {
+    setLifecycleDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updatePrivacyRecordsDraft(field, value) {
+    setPrivacyRecordsDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updatePromotionPreflightDraft(field, value) {
+    setPromotionPreflightDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateProductionPromotionDraft(field, value) {
+    setProductionPromotionDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateDataLaneDraft(field, value) {
+    setDataLaneDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateLiveOperatingLaneDraft(field, value) {
+    setLiveOperatingLaneDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function recordLiveOperatingLane(event) {
+    event.preventDefault();
+    if (!liveOperatingLaneValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await adminService.recordLiveServiceOperatingLane(liveOperatingLaneDraft);
+      const record = result?.record || null;
+      setNotice(`${titleCase(record?.operating_lane || liveOperatingLaneDraft.operatingLane)} is now the recorded lane for the same live EdNotebook service. No site, URL, database, account, course, or work was copied.`);
+      setLiveOperatingLaneDraft({ ...DEFAULT_LIVE_OPERATING_LANE });
+      window.dispatchEvent(new Event("ednotebook:live-lane-changed"));
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The live EdNotebook operating lane could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordDataLane(event) {
+    event.preventDefault();
+    if (!dataLaneValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const record = await adminService.recordStudentDataEnvironmentLane(institutionId, dataLaneDraft);
+      setNotice(`${titleCase(record?.data_lane || dataLaneDraft.dataLane)} ${titleCase(record?.scope_type || dataLaneDraft.scopeType)} lane recorded. New audit events will remain separated by lane.`);
+      setDataLaneDraft({ ...DEFAULT_DATA_LANE });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The Beta or Pilot data lane could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordPromotionPreflight(event) {
+    event.preventDefault();
+    if (!promotionPreflightValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await adminService.recordStudentDataPromotionPreflight(
+        institutionId,
+        promotionPreflight,
+        promotionPreflightDraft,
+      );
+      const record = result?.record || null;
+      setNotice(`Promotion preflight version ${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. Live Beta and Pilot testing remain allowed; production remains disabled.`);
+      setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The governed promotion-preflight snapshot could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordProductionPromotionDecision(event) {
+    event.preventDefault();
+    if (!productionPromotionValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await adminService.recordStudentDataProductionPromotionDecision(
+        institutionId,
+        productionPromotionReview,
+        productionPromotionDraft,
+      );
+      const record = result?.record || null;
+      setNotice(`Production-promotion decision v${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. No deployment or production intake occurred; live Beta and Pilot remain available.`);
+      setProductionPromotionDraft({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The final production-promotion decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordLifecycleDecisionBatch(event) {
+    event.preventDefault();
+    if (!lifecycleValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordTosStagingLifecycleDecisionBatch(institutionId, lifecycleDraft);
+      setNotice(`${recorded?.recorded_domain_count || 61} lifecycle decisions are recorded: ${recorded?.approved_domain_count || 33} approved and ${recorded?.blocked_domain_count || 28} blocked. Production intake remains disabled.`);
+      setLifecycleDraft({ ...DEFAULT_LIFECYCLE_DECISION_BATCH });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The signed lifecycle decision batch could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordPrivacyRecordsDecision(event) {
+    event.preventDefault();
+    if (!privacyRecordsValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordPrivacyRecordsApprovalDecision(institutionId, privacyRecordsDraft);
+      setNotice(`${titleCase(recorded?.status || privacyRecordsDraft.decision)} privacy and records decision recorded as append-only evidence. Production intake remains disabled.`);
+      setPrivacyRecordsDraft({ ...DEFAULT_PRIVACY_RECORDS_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The accountable privacy and records decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordSecurityDecision(event) {
+    event.preventDefault();
+    if (!securityValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordSecurityApprovalDecision(institutionId, securityDraft);
+      setNotice(`${titleCase(recorded?.status || securityDraft.decision)} security decision recorded as append-only evidence. Production intake remains disabled.`);
+      setSecurityDraft({ ...DEFAULT_SECURITY_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The accountable security decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordAccessibilityDecision(event) {
+    event.preventDefault();
+    if (!accessibilityValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const recorded = await adminService.recordAccessibilityApprovalDecision(institutionId, accessibilityDraft);
+      setNotice(`${titleCase(recorded?.status || accessibilityDraft.decision)} accessibility decision recorded as append-only evidence. Production intake remains disabled.`);
+      setAccessibilityDraft({ ...DEFAULT_ACCESSIBILITY_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The accountable accessibility decision could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  return (
+    <section className="ac-panel" aria-busy={loading}>
+      <div className="ac-section-heading">
+        <div>
+          <p className="ac-eyebrow">Final Phase 2 of 5</p>
+          <h2>Student-data intake readiness</h2>
+          <p>Review lifecycle coverage and evidence for this institution. This view cannot activate production intake or execute a data-subject request.</p>
+        </div>
+        <button type="button" className="ac-button ac-button--quiet" onClick={loadReadiness} disabled={loading}>
+          {loading ? "Checking…" : "Refresh evidence"}
+        </button>
+      </div>
+
+      {error ? <div className="ac-alert ac-alert--error" role="alert">{error}</div> : null}
+      {notice ? <div className="ac-alert ac-alert--success" role="status">{notice}</div> : null}
+      <div className={`ac-callout ${readiness?.ready_for_promotion_review ? "ac-callout--neutral" : "ac-callout--warning"}`}>
+        <strong>{readiness?.decision === "ready_for_human_promotion_review" ? "Ready for a separate human promotion review" : "HOLD — intake is not ready"}</strong>
+        <p>Production student intake is <strong>{productionEnabled ? "enabled" : "disabled"}</strong>. Even complete evidence does not switch it on.</p>
+      </div>
+
+      <div className="ac-stats">
+        <div className="ac-stat-card"><span>Lifecycle decisions recorded</span><strong>{readiness?.recorded_lifecycle_domain_count ?? 0} / {readiness?.lifecycle_domain_count ?? 61}</strong><small>Every domain must have an explicit decision</small></div>
+        <div className="ac-stat-card"><span>Approved / blocked</span><strong>{readiness?.approved_lifecycle_domain_count ?? 0} / {readiness?.blocked_lifecycle_domain_count ?? 0}</strong><small>Blocked domains keep promotion on HOLD</small></div>
+        <div className="ac-stat-card"><span>Evidence gates</span><strong>{readiness?.passed_evidence_gate_count ?? 0} / {readiness?.required_evidence_gate_count ?? 13}</strong><small>Current human-reviewed evidence</small></div>
+        <div className="ac-stat-card"><span>Subject requests</span><strong>{requests.length}</strong><small>Plans only; no lifecycle worker</small></div>
+      </div>
+
+      <dl className="ac-detail-grid">
+        <div>
+          <dt>Lifecycle decisions still required</dt>
+          <dd>{missingDomains.length ? missingDomains.join(", ") : "None recorded as missing"}</dd>
+        </div>
+        <div>
+          <dt>Evidence gates still required</dt>
+          <dd>{missingGates.length ? missingGates.join(", ") : "None recorded as missing"}</dd>
+        </div>
+      </dl>
+
+      <section className="ac-subsection" aria-labelledby="promotion-preflight-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Final Phase 4 of 5</span>
+            <h3 id="promotion-preflight-title">Student-data promotion preflight</h3>
+          </div>
+          <StatusPill
+            status={promotionSnapshot?.decision === "ready_for_human_promotion_review" ? "ready" : "hold"}
+            label={promotionSnapshot?.decision === "ready_for_human_promotion_review" ? "Ready for human production review" : "Production HOLD"}
+          />
+        </div>
+        <p className="ac-section-copy">This checksum-bound snapshot controls production promotion only. A HOLD does not disable bounded Beta or Pilot testing on the normal live site. The separate <code>/staging</code> site remains the upgrade sandbox.</p>
+        <div className="ac-callout ac-callout--neutral">
+          <strong>One live site, one permanent staging sandbox</strong>
+          <p>The live service is currently <strong>{titleCase(liveOperatingLane?.operating_lane || "beta")}</strong>{liveOperatingLane?.version ? ` (recorded version ${liveOperatingLane.version})` : " (default until its first governed record)"}. Beta to Pilot keeps the same URL, database, accounts, courses, and work. Production has no page label and still requires the protected promotion workflow.</p>
+        </div>
+        <details className="ac-disclosure">
+          <summary>Record the live Beta or Pilot operating lane</summary>
+          <p className="ac-section-copy">This is a platform-wide governance transition on the existing live site. It does not deploy a duplicate site or move data out of the live database.</p>
+          <form onSubmit={recordLiveOperatingLane}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Live operating lane
+                <select value={liveOperatingLaneDraft.operatingLane} onChange={(event) => updateLiveOperatingLaneDraft("operatingLane", event.target.value)}>
+                  <option value="beta">Beta</option>
+                  <option value="pilot">Pilot</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Exact merged live release commit
+                <input required value={liveOperatingLaneDraft.sourceCommit} onChange={(event) => updateLiveOperatingLaneDraft("sourceCommit", event.target.value)} placeholder="7- to 64-character commit" />
+              </label>
+              <label className="ac-compact-field">Durable transition evidence
+                <input required value={liveOperatingLaneDraft.evidenceReference} onChange={(event) => updateLiveOperatingLaneDraft("evidenceReference", event.target.value)} placeholder="Approved release or acceptance record" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Authorized testing group and purpose
+              <textarea required rows="3" value={liveOperatingLaneDraft.purpose} onChange={(event) => updateLiveOperatingLaneDraft("purpose", event.target.value)} placeholder="State who is authorized, what is being tested, and the acceptance boundary." />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={liveOperatingLaneDraft.authorityAttestation} onChange={(event) => updateLiveOperatingLaneDraft("authorityAttestation", event.target.checked)} /><span>I authorize this lane on the same live EdNotebook service and understand that all existing accounts, courses, and work carry forward and are recorded in the transition evidence.</span></label>
+            {!liveOperatingLaneValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Live-lane transition is not ready.</strong><p>{liveOperatingLaneValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!liveOperatingLaneValidation.valid || recording}>{recording ? "Recording…" : "Record live operating lane"}</button></div>
+          </form>
+        </details>
+        <div className="ac-stats">
+          <div className="ac-stat-card"><span>Live Beta testing</span><strong>{promotionLiveBetaAllowed === true ? "Allowed" : "Unavailable"}</strong><small>Authorized staff, investor, and demonstration accounts</small></div>
+          <div className="ac-stat-card"><span>Live Pilot testing</span><strong>{promotionLivePilotAllowed === true ? "Allowed" : "Unavailable"}</strong><small>Explicitly authorized pilot participants</small></div>
+          <div className="ac-stat-card"><span>Production intake</span><strong>{promotionSnapshot?.production_student_intake_enabled === true ? "Enabled" : "Disabled"}</strong><small>Requires a separate production promotion</small></div>
+          <div className="ac-stat-card"><span>Latest snapshot</span><strong>{latestPromotionPreflight ? `v${latestPromotionPreflight.version}` : "Not recorded"}</strong><small>{latestPromotionPreflight ? formatDate(latestPromotionPreflight.recorded_at) : "Record after exact-merge verification"}</small></div>
+        </div>
+        {currentPromotionPreflight ? (
+          <dl className="ac-detail-grid">
+            <div><dt>Current checksum</dt><dd><code>{String(currentPromotionPreflight.snapshot_sha256 || "").slice(0, 16)}…</code></dd></div>
+            <div><dt>Evidence ceiling</dt><dd>{formatDate(currentPromotionPreflight.valid_until)}</dd></div>
+          </dl>
+        ) : (
+          <div className="ac-callout ac-callout--neutral"><strong>Preflight recorder not deployed yet.</strong><p>The live readiness view remains authoritative until this migration is applied to staging.</p></div>
+        )}
+        <details className="ac-disclosure">
+          <summary>Record the exact merged staging preflight</summary>
+          <form onSubmit={recordPromotionPreflight}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Exact merged staging commit
+                <input required value={promotionPreflightDraft.sourceCommit} onChange={(event) => updatePromotionPreflightDraft("sourceCommit", event.target.value)} placeholder="40-character merge commit" />
+              </label>
+              <label className="ac-compact-field">Durable evidence reference
+                <input required value={promotionPreflightDraft.evidenceReference} onChange={(event) => updatePromotionPreflightDraft("evidenceReference", event.target.value)} placeholder="Pull request, run, or signed review record" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Preflight outcome and production blockers
+              <textarea required rows="4" value={promotionPreflightDraft.summary} onChange={(event) => updatePromotionPreflightDraft("summary", event.target.value)} placeholder="State the current HOLD or ready-for-review outcome, remaining production blockers, and live Beta/Pilot boundary." />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={promotionPreflightDraft.authorityAttestation} onChange={(event) => updatePromotionPreflightDraft("authorityAttestation", event.target.checked)} /><span>I reviewed this exact checksum-bound snapshot and understand that it permits bounded live Beta and Pilot testing but does not activate Production.</span></label>
+            {!promotionPreflightValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Preflight is not ready to record.</strong><p>{promotionPreflightValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!promotionPreflightValidation.valid || recording}>{recording ? "Recording…" : "Record promotion preflight"}</button></div>
+          </form>
+        </details>
+        <details className="ac-disclosure">
+          <summary>Manage Beta and Pilot data labels</summary>
+          <p className="ac-section-copy">This appends governance metadata only. Accounts, courses, work, and URLs stay in place; the global page banner and new audit events use the resolved lane.</p>
+          <div className="ac-stats">
+            <div className="ac-stat-card"><span>Current assignments</span><strong>{laneAssignments.length}</strong><small>Institution, course, or account overrides</small></div>
+            <div className="ac-stat-card"><span>Beta audit events</span><strong>{laneAuditCounts.beta ?? 0}</strong><small>New events stamped Beta</small></div>
+            <div className="ac-stat-card"><span>Pilot audit events</span><strong>{laneAuditCounts.pilot ?? 0}</strong><small>New events stamped Pilot</small></div>
+            <div className="ac-stat-card"><span>Legacy events</span><strong>{dataLanes?.legacy_unclassified_audit_count ?? 0}</strong><small>Preserved without false relabeling</small></div>
+          </div>
+          <form onSubmit={recordDataLane}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Apply label to
+                <select value={dataLaneDraft.scopeType} onChange={(event) => updateDataLaneDraft("scopeType", event.target.value)}>
+                  <option value="institution">This institution</option>
+                  <option value="course">One course</option>
+                  <option value="account">One account</option>
+                </select>
+              </label>
+              {dataLaneDraft.scopeType !== "institution" ? <label className="ac-compact-field">Exact {dataLaneDraft.scopeType} ID
+                <input required value={dataLaneDraft.scopeId} onChange={(event) => updateDataLaneDraft("scopeId", event.target.value)} />
+              </label> : null}
+              <label className="ac-compact-field">Data label
+                <select value={dataLaneDraft.dataLane} onChange={(event) => updateDataLaneDraft("dataLane", event.target.value)}>
+                  <option value="beta">Beta</option>
+                  <option value="pilot">Pilot</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Assignment status
+                <select value={dataLaneDraft.status} onChange={(event) => updateDataLaneDraft("status", event.target.value)}>
+                  <option value="active">Active</option>
+                  <option value="retired">Retired</option>
+                </select>
+              </label>
+            </div>
+            <label className="ac-compact-field">Testing group and purpose
+              <textarea required rows="3" value={dataLaneDraft.purpose} onChange={(event) => updateDataLaneDraft("purpose", event.target.value)} placeholder="For example: administrative staff and investor walkthroughs, or the authorized Digital Literacy pilot cohort." />
+            </label>
+            <label className="ac-compact-field">Durable evidence reference
+              <input required value={dataLaneDraft.evidenceReference} onChange={(event) => updateDataLaneDraft("evidenceReference", event.target.value)} />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={dataLaneDraft.authorityAttestation} onChange={(event) => updateDataLaneDraft("authorityAttestation", event.target.checked)} /><span>I understand this changes only the governed data label. Existing accounts, courses, and work carry forward unchanged, and the transition is audited.</span></label>
+            {!dataLaneValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Lane change is not ready.</strong><p>{dataLaneValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!dataLaneValidation.valid || recording}>{recording ? "Recording…" : "Record lane label"}</button></div>
+          </form>
+        </details>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="production-promotion-decision-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Final Phase 5 of 5</span>
+            <h3 id="production-promotion-decision-title">Production-promotion owner decision</h3>
+          </div>
+          <StatusPill
+            status={latestProductionPromotion?.decision === "approved_for_manual_promotion" ? "ready" : "hold"}
+            label={latestProductionPromotion?.decision === "approved_for_manual_promotion" ? "Manual promotion approved" : "Production HOLD"}
+          />
+        </div>
+        <p className="ac-section-copy">This immutable owner record closes the five-phase review. It cannot deploy code, connect to production, enable student-data intake, or execute a lifecycle action. Beta and Pilot stay available on the same live site; <code>/staging</code> remains the separate upgrade sandbox.</p>
+        <div className="ac-stats">
+          <div className="ac-stat-card"><span>Current candidate</span><strong>{productionPromotionSnapshot?.eligible_for_manual_promotion === true ? "Eligible for human decision" : "HOLD"}</strong><small>Derived from the exact recorded Phase 4 preflight</small></div>
+          <div className="ac-stat-card"><span>Live Beta / Pilot</span><strong>{decisionLiveBetaAllowed === true && decisionLivePilotAllowed === true ? "Available" : "Unavailable"}</strong><small>Existing live accounts, courses, and work remain in place</small></div>
+          <div className="ac-stat-card"><span>Production intake</span><strong>{productionPromotionSnapshot?.production_student_intake_enabled === true ? "Enabled" : "Disabled"}</strong><small>No decision record can change this value</small></div>
+          <div className="ac-stat-card"><span>Latest owner decision</span><strong>{latestProductionPromotion ? `v${latestProductionPromotion.version}` : "Not recorded"}</strong><small>{latestProductionPromotion ? formatDate(latestProductionPromotion.recorded_at) : "Record only after exact-merge staging evidence"}</small></div>
+        </div>
+        {currentProductionPromotion ? (
+          <dl className="ac-detail-grid">
+            <div><dt>Decision checksum</dt><dd><code>{String(currentProductionPromotion.snapshot_sha256 || "").slice(0, 16)}…</code></dd></div>
+            <div><dt>Phase 4 preflight</dt><dd><code>{String(productionPromotionSnapshot?.preflight_snapshot_sha256 || "").slice(0, 16)}…</code></dd></div>
+            <div><dt>Evidence ceiling</dt><dd>{formatDate(currentProductionPromotion.valid_until)}</dd></div>
+            <div><dt>Promotion action</dt><dd>Separate manual action required</dd></div>
+          </dl>
+        ) : (
+          <div className="ac-callout ac-callout--neutral"><strong>Phase 5 recorder not deployed yet.</strong><p>The production HOLD remains authoritative. Beta and Pilot testing are unaffected.</p></div>
+        )}
+        <details className="ac-disclosure">
+          <summary>Record the accountable owner decision</summary>
+          <form onSubmit={recordProductionPromotionDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={productionPromotionDraft.decision} onChange={(event) => updateProductionPromotionDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD production</option>
+                  <option value="approved_for_manual_promotion" disabled={productionPromotionSnapshot?.eligible_for_manual_promotion !== true}>Approve a separate manual promotion</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Exact merged staging release commit
+                <input required value={productionPromotionDraft.sourceCommit} onChange={(event) => updateProductionPromotionDraft("sourceCommit", event.target.value)} placeholder="40-character merge commit" />
+              </label>
+              <label className="ac-compact-field">Durable owner-decision evidence
+                <input required value={productionPromotionDraft.evidenceReference} onChange={(event) => updateProductionPromotionDraft("evidenceReference", event.target.value)} placeholder="Signed decision, ticket, or approved review record" />
+              </label>
+              <label className="ac-compact-field">Rollback-plan reference
+                <input required value={productionPromotionDraft.rollbackReference} onChange={(event) => updateProductionPromotionDraft("rollbackReference", event.target.value)} placeholder="Reviewed rollback runbook or release record" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Decision summary, blockers, and boundaries
+              <textarea required rows="4" value={productionPromotionDraft.summary} onChange={(event) => updateProductionPromotionDraft("summary", event.target.value)} placeholder="Record why production remains on HOLD or why a separate manual promotion is authorized. Include remaining blockers and rollback ownership." />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={productionPromotionDraft.authorityAttestation} onChange={(event) => updateProductionPromotionDraft("authorityAttestation", event.target.checked)} /><span>I am the accountable human owner for this decision. I reviewed the exact checksum-bound evidence and understand that recording it performs no deployment, enables no production intake, and leaves staging Beta and Pilot available.</span></label>
+            {!productionPromotionValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Owner decision is not ready to record.</strong><p>{productionPromotionValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!productionPromotionValidation.valid || recording}>{recording ? "Recording…" : "Record owner decision"}</button></div>
+          </form>
+        </details>
+      </section>
+
+      <div className="ac-callout ac-callout--privacy">
+        <strong>Metadata only.</strong> Evidence references and summaries must never contain student work, grades, messages, credentials, provider payloads, or confidential institutional records.
+      </div>
+
+      <section className="ac-subsection" aria-labelledby="lifecycle-decisions-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Signed TOS synthetic-staging baseline</span>
+            <h3 id="lifecycle-decisions-title">Record all 61 lifecycle decisions</h3>
+          </div>
+          <StatusPill status={(readiness?.recorded_lifecycle_domain_count ?? 0) === 61 ? "ready" : "pending"} label={`${readiness?.recorded_lifecycle_domain_count ?? 0} / 61 recorded`} />
+        </div>
+        <p className="ac-section-copy">This checksum-bound batch records 33 approved and 28 blocked decisions atomically. A blocked decision has no retention clock and cannot delete or anonymize data. This action does not adopt an Angelo State records schedule or enable a lifecycle worker.</p>
+        <article className="ac-security-decision-card">
+          <dl className="ac-detail-grid">
+            <div><dt>Manifest checksum</dt><dd><code>{PRIVACY_RECORDS_APPROVAL_CANDIDATE.manifestSha256.slice(0, 16)}…</code></dd></div>
+            <div><dt>Decision outcome</dt><dd>33 approved · 28 blocked</dd></div>
+            <div><dt>Review due</dt><dd>{formatDate(PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationCeiling, false)}</dd></div>
+            <div><dt>Automatic execution</dt><dd>Disabled</dd></div>
+          </dl>
+          <form onSubmit={recordLifecycleDecisionBatch}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={lifecycleDraft.reviewerName} onChange={(event) => updateLifecycleDraft("reviewerName", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Title, unit, and privacy/records authority
+                <input required value={lifecycleDraft.reviewerAuthority} onChange={(event) => updateLifecycleDraft("reviewerAuthority", event.target.value)} />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable evidence reference
+              <input required value={lifecycleDraft.evidenceReference} onChange={(event) => updateLifecycleDraft("evidenceReference", event.target.value)} placeholder="Approved ticket, signed review, or governance record" />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={lifecycleDraft.summary} onChange={(event) => updateLifecycleDraft("summary", event.target.value)} placeholder="State the TOS staging decision, blocked domains, remaining institutional adoption, and limitations." />
+            </label>
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.authorityAttestation} onChange={(event) => updateLifecycleDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am authorized to record this TOS synthetic-staging governance baseline.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.lifecycleReconciliationCompleted} onChange={(event) => updateLifecycleDraft("lifecycleReconciliationCompleted", event.target.checked)} /><span>I reconciled all 61 unique active domains: 33 approved and 28 blocked.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.calendarGuardrailsAccepted} onChange={(event) => updateLifecycleDraft("calendarGuardrailsAccepted", event.target.checked)} /><span>I accept the conservative 366, 731, 1096, 1461, 1827, and 3653-day calendar guardrails.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.ferpaOverridesAccepted} onChange={(event) => updateLifecycleDraft("ferpaOverridesAccepted", event.target.checked)} /><span>I accept that access requests, disputes, audits, legal holds, and longer record series override every clock.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.providerResidualsReviewed} onChange={(event) => updateLifecycleDraft("providerResidualsReviewed", event.target.checked)} /><span>I reviewed provider-controlled residual-copy, export, deletion, and verification boundaries.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.researchBoundaryAccepted} onChange={(event) => updateLifecycleDraft("researchBoundaryAccepted", event.target.checked)} /><span>I accept the separate consent, IRB, identifiable-data, de-identification, and research-retention boundary.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={lifecycleDraft.asuAdoptionParked} onChange={(event) => updateLifecycleDraft("asuAdoptionParked", event.target.checked)} /><span>I confirm that Angelo State official-copy designations and schedule adoption remain parked for authorized institutional review.</span></label>
+            </div>
+            {!lifecycleValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Batch is not ready to record.</strong><p>{lifecycleValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!lifecycleValidation.valid || recording}>{recording ? "Recording…" : "Record signed 61-domain batch"}</button></div>
+          </form>
+        </article>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="privacy-records-decision-title">
+        <div className="ac-review-heading">
+          <div><span>Independent human gate</span><h3 id="privacy-records-decision-title">Accountable privacy and records decision</h3></div>
+          <StatusPill status={privacyRecordsEvidence?.status || "pending"} label={privacyRecordsEvidence ? titleCase(privacyRecordsEvidence.status) : "Awaiting review"} />
+        </div>
+        <p className="ac-section-copy">The completed 61-domain matrix supports a governed HOLD. PASS remains unavailable while 28 domains are blocked and until an authorized institutional review adopts the remaining decisions. This record never enables production student intake.</p>
+        <article className="ac-security-decision-card">
+          {privacyRecordsEvidence ? <div className="ac-callout ac-callout--neutral"><strong>Current recorded decision: {titleCase(privacyRecordsEvidence.status)}</strong><p>Version {privacyRecordsEvidence.version} · reviewed {formatDate(privacyRecordsEvidence.reviewed_at)} · expires {formatDate(privacyRecordsEvidence.expires_at)}.</p></div> : null}
+          <form onSubmit={recordPrivacyRecordsDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={privacyRecordsDraft.decision} onChange={(event) => updatePrivacyRecordsDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD — 28 domains remain blocked</option>
+                  <option value="failed">FAIL — reject this baseline</option>
+                  <option value="passed" disabled>PASS — unavailable while domains are blocked</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Evidence current through
+                <input type="date" required max={PRIVACY_RECORDS_APPROVAL_CANDIDATE.expirationLatestDate} value={privacyRecordsDraft.expiresOn} onChange={(event) => updatePrivacyRecordsDraft("expiresOn", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={privacyRecordsDraft.reviewerName} onChange={(event) => updatePrivacyRecordsDraft("reviewerName", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Title, unit, and privacy/records authority
+                <input required value={privacyRecordsDraft.reviewerAuthority} onChange={(event) => updatePrivacyRecordsDraft("reviewerAuthority", event.target.value)} />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable evidence reference
+              <input required value={privacyRecordsDraft.evidenceReference} onChange={(event) => updatePrivacyRecordsDraft("evidenceReference", event.target.value)} />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={privacyRecordsDraft.summary} onChange={(event) => updatePrivacyRecordsDraft("summary", event.target.value)} />
+            </label>
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.authorityAttestation} onChange={(event) => updatePrivacyRecordsDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am authorized to record this time-bounded TOS staging privacy/records decision.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.lifecycleReconciliationCompleted} onChange={(event) => updatePrivacyRecordsDraft("lifecycleReconciliationCompleted", event.target.checked)} /><span>I reconciled all 61 current lifecycle decisions.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.calendarGuardrailsAccepted} onChange={(event) => updatePrivacyRecordsDraft("calendarGuardrailsAccepted", event.target.checked)} /><span>I accept the conservative calendar guardrails.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.ferpaOverridesAccepted} onChange={(event) => updatePrivacyRecordsDraft("ferpaOverridesAccepted", event.target.checked)} /><span>I accept the FERPA access, correction, disclosure, dispute, audit, and legal-hold overrides.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.providerResidualsReviewed} onChange={(event) => updatePrivacyRecordsDraft("providerResidualsReviewed", event.target.checked)} /><span>I reviewed provider residual-copy boundaries.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.researchBoundaryAccepted} onChange={(event) => updatePrivacyRecordsDraft("researchBoundaryAccepted", event.target.checked)} /><span>I accept the separate research and IRB boundary.</span></label>
+              <label className="ac-check-row"><input type="checkbox" checked={privacyRecordsDraft.asuAdoptionParked} onChange={(event) => updatePrivacyRecordsDraft("asuAdoptionParked", event.target.checked)} /><span>I confirm Angelo State adoption remains parked.</span></label>
+            </div>
+            {!privacyRecordsValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Decision is not ready to record.</strong><p>{privacyRecordsValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--quiet" disabled={!privacyRecordsValidation.valid || recording}>{recording ? "Recording…" : `Record ${privacyRecordsDraft.decision.toUpperCase()} decision`}</button></div>
+          </form>
+        </article>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="security-decision-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Independent human gate</span>
+            <h3 id="security-decision-title">Accountable security decision</h3>
+          </div>
+          <StatusPill
+            status={securityEvidence?.status || "pending"}
+            label={securityEvidence ? titleCase(securityEvidence.status) : "Awaiting review"}
+          />
+        </div>
+        <p className="ac-section-copy">Only a signed-in team member with an active <strong>Security</strong> institution role may record this decision. Platform ownership alone is not sufficient. PASS, HOLD, and FAIL create new append-only versions and never activate production student intake.</p>
+
+        <article className="ac-security-decision-card">
+          <dl className="ac-detail-grid">
+            <div><dt>Protected candidate</dt><dd><code>{SECURITY_APPROVAL_CANDIDATE.testedCommit.slice(0, 12)}</code></dd></div>
+            <div><dt>Hosted migration</dt><dd><code>{SECURITY_APPROVAL_CANDIDATE.migrationVersion}</code></dd></div>
+            <div><dt>Technical packet</dt><dd>EdNotebook PR #108</dd></div>
+            <div><dt>Latest permitted expiration</dt><dd>{formatDate(SECURITY_APPROVAL_CANDIDATE.expirationCeiling, false)}</dd></div>
+          </dl>
+
+          {securityEvidence ? <div className="ac-callout ac-callout--neutral"><strong>Current recorded decision: {titleCase(securityEvidence.status)}</strong><p>Version {securityEvidence.version} · reviewed {formatDate(securityEvidence.reviewed_at)} · expires {formatDate(securityEvidence.expires_at)}. A later decision supersedes it without deleting history.</p></div> : null}
+
+          <form onSubmit={recordSecurityDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={securityDraft.decision} onChange={(event) => updateSecurityDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD — more review is required</option>
+                  <option value="passed">PASS — accept the documented boundary</option>
+                  <option value="failed">FAIL — reject this candidate</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Evidence current through
+                <input type="date" required max={SECURITY_APPROVAL_CANDIDATE.expirationLatestDate} value={securityDraft.expiresOn} onChange={(event) => updateSecurityDraft("expiresOn", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={securityDraft.reviewerName} onChange={(event) => updateSecurityDraft("reviewerName", event.target.value)} placeholder="Human reviewer name" />
+              </label>
+              <label className="ac-compact-field">Title, unit, and security authority
+                <input required value={securityDraft.reviewerAuthority} onChange={(event) => updateSecurityDraft("reviewerAuthority", event.target.value)} placeholder="Example: Information Security Officer, Security Office" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable institution-controlled evidence reference
+              <input required value={securityDraft.evidenceReference} onChange={(event) => updateSecurityDraft("evidenceReference", event.target.value)} placeholder="Approved ticket, signed review, meeting record, or policy decision" />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={securityDraft.summary} onChange={(event) => updateSecurityDraft("summary", event.target.value)} placeholder="State what was reviewed, the decision, remaining limitations, and the accepted incident boundary. Do not include confidential findings." />
+            </label>
+
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={securityDraft.authorityAttestation} onChange={(event) => updateSecurityDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am the accountable security reviewer for this institution and am authorized to record this decision.</span></label>
+              {isPassDecision ? <>
+                <label className="ac-check-row"><input type="checkbox" checked={securityDraft.independentReviewCompleted} onChange={(event) => updateSecurityDraft("independentReviewCompleted", event.target.checked)} /><span>I independently reviewed the exact candidate, hosted migration, technical evidence packet, and staging boundary.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={securityDraft.residualRisksAccepted} onChange={(event) => updateSecurityDraft("residualRisksAccepted", event.target.checked)} /><span>I accept the documented residual risks for this time-bounded staging decision.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={securityDraft.incidentBoundaryAccepted} onChange={(event) => updateSecurityDraft("incidentBoundaryAccepted", event.target.checked)} /><span>I accept the rollback, revocation, and incident-response boundary documented in the packet.</span></label>
+              </> : null}
+            </div>
+
+            {!securityValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Decision is not ready to record.</strong><p>{securityValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions">
+              <button type="submit" className={isPassDecision ? "ac-button ac-button--primary" : "ac-button ac-button--quiet"} disabled={!securityValidation.valid || recording}>
+                {recording ? "Recording…" : `Record ${securityDraft.decision.toUpperCase()} decision`}
+              </button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="accessibility-decision-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Independent human gate</span>
+            <h3 id="accessibility-decision-title">Accountable accessibility decision</h3>
+          </div>
+          <StatusPill
+            status={accessibilityEvidence?.status || "pending"}
+            label={accessibilityEvidence ? titleCase(accessibilityEvidence.status) : "Awaiting review"}
+          />
+        </div>
+        <p className="ac-section-copy">A signed-in team member with active institutional oversight membership and documented accessibility authority may record this decision. Platform ownership alone is not sufficient. Automated checks alone are insufficient. PASS, HOLD, and FAIL create append-only versions and never activate production student intake.</p>
+
+        <article className="ac-security-decision-card">
+          <dl className="ac-detail-grid">
+            <div><dt>Protected candidate</dt><dd><code>{ACCESSIBILITY_APPROVAL_CANDIDATE.testedCommit.slice(0, 12)}</code></dd></div>
+            <div><dt>Hosted migration</dt><dd><code>{ACCESSIBILITY_APPROVAL_CANDIDATE.migrationVersion}</code></dd></div>
+            <div><dt>Evidence packet</dt><dd><code>{ACCESSIBILITY_APPROVAL_CANDIDATE.evidencePacketCommit.slice(0, 12)}</code></dd></div>
+            <div><dt>Latest permitted expiration</dt><dd>{formatDate(ACCESSIBILITY_APPROVAL_CANDIDATE.expirationCeiling, false)}</dd></div>
+          </dl>
+
+          {accessibilityEvidence ? <div className="ac-callout ac-callout--neutral"><strong>Current recorded decision: {titleCase(accessibilityEvidence.status)}</strong><p>Version {accessibilityEvidence.version} · reviewed {formatDate(accessibilityEvidence.reviewed_at)} · expires {formatDate(accessibilityEvidence.expires_at)}. A later decision supersedes it without deleting history.</p></div> : null}
+
+          <form onSubmit={recordAccessibilityDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={accessibilityDraft.decision} onChange={(event) => updateAccessibilityDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD — more review or remediation is required</option>
+                  <option value="passed">PASS — accept the complete-process evidence</option>
+                  <option value="failed">FAIL — reject this candidate</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Evidence current through
+                <input type="date" required max={ACCESSIBILITY_APPROVAL_CANDIDATE.expirationLatestDate} value={accessibilityDraft.expiresOn} onChange={(event) => updateAccessibilityDraft("expiresOn", event.target.value)} />
+              </label>
+              <label className="ac-compact-field">Accountable reviewer name
+                <input required autoComplete="name" value={accessibilityDraft.reviewerName} onChange={(event) => updateAccessibilityDraft("reviewerName", event.target.value)} placeholder="Human reviewer name" />
+              </label>
+              <label className="ac-compact-field">Title, unit, and accessibility authority
+                <input required value={accessibilityDraft.reviewerAuthority} onChange={(event) => updateAccessibilityDraft("reviewerAuthority", event.target.value)} placeholder="Example: Accessibility Coordinator, Academic Affairs" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Durable institution-controlled evidence reference
+              <input required value={accessibilityDraft.evidenceReference} onChange={(event) => updateAccessibilityDraft("evidenceReference", event.target.value)} placeholder="Approved ticket, signed review, test report, or remediation record" />
+            </label>
+            <label className="ac-compact-field">Decision summary and limitations
+              <textarea required rows="4" value={accessibilityDraft.summary} onChange={(event) => updateAccessibilityDraft("summary", event.target.value)} placeholder="State the complete processes and assistive technologies reviewed, the decision, open findings, owners, and limitations. Do not include student or disability information." />
+            </label>
+
+            <div className="ac-security-decision-checks">
+              <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.authorityAttestation} onChange={(event) => updateAccessibilityDraft("authorityAttestation", event.target.checked)} /><span>I attest that I am authorized to record this institution's accessibility decision and understand that it is not a blanket legal certification.</span></label>
+              {isAccessibilityPassDecision ? <>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.completeProcessReviewCompleted} onChange={(event) => updateAccessibilityDraft("completeProcessReviewCompleted", event.target.checked)} /><span>I manually reviewed the complete authentication, student, professor, publisher/library, writing, commerce test-mode, and administration processes.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.keyboardAndAssistiveTechnologyReviewed} onChange={(event) => updateAccessibilityDraft("keyboardAndAssistiveTechnologyReviewed", event.target.checked)} /><span>I reviewed keyboard operation, focus, semantics, status messages, and the documented screen-reader matrix.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.visualAndResponsiveReviewed} onChange={(event) => updateAccessibilityDraft("visualAndResponsiveReviewed", event.target.checked)} /><span>I reviewed contrast, non-color cues, zoom, reflow, target size, responsive layouts, and reduced motion.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.mediaAndContentReviewed} onChange={(event) => updateAccessibilityDraft("mediaAndContentReviewed", event.target.checked)} /><span>I reviewed captions, transcripts, audio and image alternatives, generated/imported content, and embedded-media boundaries.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.remediationOwnershipAccepted} onChange={(event) => updateAccessibilityDraft("remediationOwnershipAccepted", event.target.checked)} /><span>I verified that unresolved findings have severity, owner, remediation or accepted condition, and a retest date.</span></label>
+                <label className="ac-check-row"><input type="checkbox" checked={accessibilityDraft.thirdPartyBoundaryAccepted} onChange={(event) => updateAccessibilityDraft("thirdPartyBoundaryAccepted", event.target.checked)} /><span>I accept the documented course-authoring and third-party boundary without treating it as a waiver of EdNotebook platform defects.</span></label>
+              </> : null}
+            </div>
+
+            {!accessibilityValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Decision is not ready to record.</strong><p>{accessibilityValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions">
+              <button type="submit" className={isAccessibilityPassDecision ? "ac-button ac-button--primary" : "ac-button ac-button--quiet"} disabled={!accessibilityValidation.valid || recording}>
+                {recording ? "Recording…" : `Record ${accessibilityDraft.decision.toUpperCase()} decision`}
+              </button>
+            </div>
+          </form>
+        </article>
+      </section>
+    </section>
+  );
+}
+
+function MarketplaceReviewNotes({ type, id, notes, setNotes }) {
+  const key = `${type}:${id}`;
+  return (
+    <label>
+      Review notes
+      <textarea
+        rows="2"
+        value={notes[key] || ""}
+        onChange={(event) => setNotes((previous) => ({ ...previous, [key]: event.target.value }))}
+        placeholder="Record verified evidence, limitations, and the reason for this decision."
+      />
+    </label>
+  );
+}
+
+function MarketplacePanel() {
+  const [marketplace, setMarketplace] = useState(null);
+  const [notes, setNotes] = useState({});
+  const [taxDrafts, setTaxDrafts] = useState({});
+  const [launchDrafts, setLaunchDrafts] = useState({});
+  const [launchReason, setLaunchReason] = useState("");
+  const [launchAttestation, setLaunchAttestation] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function loadMarketplace() {
+    setLoading(true);
+    setError("");
+    try {
+      setMarketplace(await adminService.getMarketplaceControlCenter());
+    } catch (nextError) {
+      setError(friendlyError(nextError, "Commercial publishing controls could not be loaded."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadMarketplace();
+  }, []);
+
+  async function decide(type, id, decision) {
+    const key = `${type}:${id}`;
+    const reviewNotes = String(notes[key] || "").trim();
+    if (reviewNotes.length < 8) {
+      setError("Add review notes with at least eight characters before deciding this case.");
+      return;
+    }
+    setBusy(`${key}:${decision}`);
+    setError("");
+    setNotice("");
+    try {
+      await adminService.reviewMarketplaceCase(type, id, decision, reviewNotes);
+      setNotice(`${titleCase(type)} review saved as ${titleCase(decision)}. Every downstream checkout gate will recalculate from this decision.`);
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The marketplace decision could not be saved."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function processRefund(id) {
+    setBusy(`refund:${id}:process`);
+    setError("");
+    setNotice("");
+    try {
+      await adminService.processMarketplaceRefund(id);
+      setNotice("The approved refund was submitted to Stripe. The verified webhook will finalize the ledger and revoke access after a full refund.");
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The approved refund could not be sent to Stripe."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function configureTax(tax) {
+    const draft = taxDrafts[tax.id] || {};
+    const reference = String(draft.reference ?? tax.registration_reference ?? "").trim();
+    const reviewNotes = String(notes[`tax:${tax.id}`] || "").trim();
+    if (reference.length < 6 || reviewNotes.length < 8) {
+      setError("Add the Stripe Tax registration/evidence reference and review notes before saving tax responsibility.");
+      return;
+    }
+    setBusy(`tax:${tax.id}:configure`);
+    setError("");
+    try {
+      await adminService.configureMarketplaceTaxControl(
+        tax.id,
+        reference,
+        draft.liability || tax.liability,
+        reviewNotes,
+      );
+      setNotice("Stripe Tax registration and liability evidence saved for separate approval.");
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "Tax responsibility could not be configured."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function reviewLaunchControl(control, decision) {
+    const draft = launchDrafts[control.control_key] || {};
+    const evidenceReference = String(draft.evidenceReference ?? control.evidence_reference ?? "").trim();
+    const reviewNotes = String(draft.reviewNotes ?? control.review_notes ?? "").trim();
+    if (reviewNotes.length < 20 || (decision === "approved" && evidenceReference.length < 8)) {
+      setError("Add an evidence reference and review notes of at least twenty characters before approving this launch control.");
+      return;
+    }
+    setBusy(`launch:${control.control_key}:${decision}`);
+    setError("");
+    setNotice("");
+    try {
+      await adminService.reviewMarketplaceLaunchControl({
+        controlKey: control.control_key,
+        decision,
+        evidenceReference,
+        reviewNotes,
+        expiresAt: draft.expiresOn ? `${draft.expiresOn}T23:59:59.000Z` : null,
+        attestation: decision === "approved" && Boolean(draft.attestation),
+      });
+      setNotice(`${control.title} is now ${titleCase(decision)}. Live checkout readiness was recalculated and fails closed.`);
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The launch-control review could not be saved."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function changeLiveCharging(enable) {
+    if (launchReason.trim().length < 20 || (enable && !launchAttestation)) {
+      setError("Add a decision reason of at least twenty characters and confirm the final live-charging attestation.");
+      return;
+    }
+    setBusy(enable ? "launch:enable" : "launch:disable");
+    setError("");
+    setNotice("");
+    try {
+      await adminService.setMarketplaceLiveCharging({
+        enable,
+        expectedUpdatedAt: marketplace.launch_state.updated_at,
+        reason: launchReason.trim(),
+        attestation: enable && launchAttestation,
+      });
+      setNotice(enable ? "Production live charging was activated after every required control passed." : "Production live charging is disabled. Test-mode evidence remains separate.");
+      setLaunchReason("");
+      setLaunchAttestation(false);
+      await loadMarketplace();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The live-charging decision could not be saved."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  if (loading && !marketplace) return <section className="ac-panel"><div className="ac-empty">Loading commercial publishing evidence…</div></section>;
+  const applications = marketplace?.applications || [];
+  const rights = marketplace?.rights_reviews || [];
+  const listings = marketplace?.listings || [];
+  const orders = marketplace?.orders || [];
+  const refunds = marketplace?.refunds || [];
+  const disputes = marketplace?.disputes || [];
+  const taxControls = marketplace?.tax_controls || [];
+  const payouts = marketplace?.payouts || [];
+  const stats = marketplace?.statistics || {};
+  const launchControls = marketplace?.launch_controls || [];
+  const launchState = marketplace?.launch_state || {};
+  const launchReadiness = marketplace?.launch_readiness || {};
+
+  return <section className="ac-panel marketplace-control-panel">
+    <div className="ac-section-heading"><div><p className="ac-eyebrow">Platform-owner evidence gate</p><h2>Commercial publishing</h2><p>Stripe Connect processes marketplace money. EdNotebook controls who may sell, which rights are valid, when checkout appears, which order grants access, and how refunds, disputes, tax responsibility, and payouts are reconciled.</p></div><HelpTip title="Fail-closed commerce">A seller’s Stripe approval does not approve EdNotebook publication rights. A rights approval does not activate checkout. Seller, rights, tax, and listing records must all be approved, while Stripe charging and payouts remain enabled.</HelpTip></div>
+    {error ? <div className="ac-alert ac-alert--error">{String(error.message || error)}</div> : null}
+    {notice ? <div className="ac-alert ac-alert--success">{notice}</div> : null}
+    <div className="ac-stat-grid">
+      <StatCard label="Seller reviews" value={stats.pending_sellers || 0} note="Identity and payout readiness" />
+      <StatCard label="Rights reviews" value={stats.pending_rights || 0} note="Course and book scope" />
+      <StatCard label="Listing reviews" value={stats.pending_listings || 0} note="Price and release" />
+      <StatCard label="Refunds / disputes" value={(stats.open_refunds || 0) + (stats.open_disputes || 0)} note="Money and access reconciliation" />
+      <MoneyStatCard label="Processed" cents={stats.gross_processed_cents || 0} note={`${stats.orders || 0} governed orders`} />
+      <MoneyStatCard label="Paid payouts" cents={stats.paid_payout_cents || 0} note="Connected-account evidence" />
+    </div>
+
+    <section className="ac-subsection marketplace-launch-gate">
+      <div className="marketplace-launch-heading"><div><p className="ac-eyebrow">Production launch gate</p><h3>Legal, tax, finance, security, and support readiness</h3><p>Staging test-mode transactions may continue. A live Stripe key is rejected by the checkout service until every required control below is approved, current, and separately activated.</p></div><div className={launchState.effective_live_charging_enabled ? "is-live" : "is-blocked"}><strong>{launchState.effective_live_charging_enabled ? "LIVE CHARGING ENABLED" : "LIVE CHARGING BLOCKED"}</strong><span>{launchReadiness.approved_current_controls || 0} of {launchReadiness.required_controls || 0} required controls current</span></div></div>
+      <div className="marketplace-launch-progress" aria-label="Marketplace launch readiness"><span style={{ width: `${launchReadiness.required_controls ? Math.round((launchReadiness.approved_current_controls || 0) / launchReadiness.required_controls * 100) : 0}%` }} /></div>
+      <div className="marketplace-launch-controls">{launchControls.map((control) => {
+        const draft = launchDrafts[control.control_key] || {};
+        const evidenceReference = draft.evidenceReference ?? control.evidence_reference ?? "";
+        const reviewNotes = draft.reviewNotes ?? control.review_notes ?? "";
+        const expiresOn = draft.expiresOn ?? (control.expires_at ? control.expires_at.slice(0,10) : "");
+        const attested = Boolean(draft.attestation);
+        return <article key={control.control_key}><header><div><span>{titleCase(control.category)}</span><strong>{control.title}</strong></div><StatusPill status={control.effective_status || control.status} /></header><p>{control.description}</p><div className="ac-form-grid"><label>Evidence reference<input value={evidenceReference} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], evidenceReference:event.target.value } }))} placeholder="Approved policy, ticket, review, or signed record" /></label><label>Evidence current through (optional)<input type="date" value={expiresOn} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], expiresOn:event.target.value } }))} /></label></div><label>Review notes<textarea rows="2" value={reviewNotes} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], reviewNotes:event.target.value } }))} placeholder="Record who reviewed what, the decision, and any limitations." /></label><label className="ac-check-row"><input type="checkbox" checked={attested} onChange={(event) => setLaunchDrafts((previous) => ({ ...previous, [control.control_key]: { ...previous[control.control_key], attestation:event.target.checked } }))} /><span>I attest that this evidence was independently reviewed and is ready for production reliance.</span></label><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !attested || String(evidenceReference).trim().length < 8 || String(reviewNotes).trim().length < 20} onClick={() => reviewLaunchControl(control,"approved")}>Approve control</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy) || String(reviewNotes).trim().length < 20} onClick={() => reviewLaunchControl(control,"blocked")}>Mark blocked</button>{control.status !== "pending" ? <button className="ac-button ac-button--quiet" type="button" disabled={Boolean(busy) || String(reviewNotes).trim().length < 20} onClick={() => reviewLaunchControl(control,"pending")}>Reopen review</button> : null}</div></article>;
+      })}</div>
+      <div className="marketplace-live-decision"><div><strong>Separate live-charging decision</strong><p>Approval of all checklist items does not switch charging on. The final decision uses optimistic locking, requires a reason and attestation, and is recorded in the audit ledger.</p></div><label>Decision reason<textarea rows="2" value={launchReason} onChange={(event) => setLaunchReason(event.target.value)} placeholder="Identify the approving meeting, scope, date, and accountable owner." /></label><label className="ac-check-row"><input type="checkbox" checked={launchAttestation} onChange={(event) => setLaunchAttestation(event.target.checked)} /><span>I confirm that production legal, tax, finance, security, support, and operations owners approved this activation.</span></label><div className="ac-form-actions">{launchState.live_charging_enabled ? <button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy) || launchReason.trim().length < 20} onClick={() => changeLiveCharging(false)}>Disable live charging</button> : <button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !launchReadiness.ready || !launchAttestation || launchReason.trim().length < 20} onClick={() => changeLiveCharging(true)}>Activate live charging</button>}</div></div>
+    </section>
+
+    <section className="ac-subsection"><h3>Seller verification <span className="ac-count-badge">{applications.length}</span></h3><p>Stripe-hosted onboarding verifies identity and payout details. Approve EdNotebook seller status only when details, charges, payouts, rights attestation, and catalog responsibility are all ready.</p><div className="ac-review-list">
+      {applications.map((application) => <article key={application.id}><div className="ac-review-heading"><div><strong>{application.organization_name}</strong><span>{application.applicant_name || application.applicant_email} · {titleCase(application.applicant_type)}</span></div><StatusPill status={application.status} /></div><dl className="ac-detail-grid"><div><dt>Stripe verification</dt><dd>{titleCase(application.verification_status)}</dd></div><div><dt>Identity details</dt><dd>{application.details_submitted ? "Submitted" : "Incomplete"}</dd></div><div><dt>Charges</dt><dd>{application.charges_enabled ? "Enabled" : "Blocked"}</dd></div><div><dt>Payouts</dt><dd>{application.payouts_enabled ? "Enabled" : "Blocked"}</dd></div></dl>{application.requirements_due?.length ? <div className="ac-callout ac-callout--warning">Stripe still requires: {application.requirements_due.join(", ")}</div> : null}{["submitted","reviewing","suspended"].includes(application.status) ? <><MarketplaceReviewNotes type="seller" id={application.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || application.verification_status !== "verified" || !application.charges_enabled || !application.payouts_enabled} onClick={() => decide("seller",application.id,"approved")}>Approve seller</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("seller",application.id,"declined")}>Decline</button></div></> : null}</article>)}
+      {!applications.length ? <div className="ac-empty">No seller applications have been submitted.</div> : null}
+    </div></section>
+
+    <section className="ac-subsection"><h3>Rights approval <span className="ac-count-badge">{rights.length}</span></h3><p>Review ownership or license evidence, permitted access models, territories, and expiration independently from seller identity.</p><div className="ac-review-list">
+      {rights.map((review) => <article key={review.id}><div className="ac-review-heading"><div><strong>{review.course_id ? "Commercial course rights" : "Commercial book rights"}</strong><span>{review.rights_owner_name} · {titleCase(review.rights_basis)}</span></div><StatusPill status={review.status} /></div><p>{review.rights_statement}</p><dl className="ac-detail-grid"><div><dt>Purchase</dt><dd>{review.purchase_allowed ? "Allowed" : "Not allowed"}</dd></div><div><dt>Rental</dt><dd>{review.rental_allowed ? "Allowed" : "Not allowed"}</dd></div><div><dt>Territories</dt><dd>{review.territories?.join(", ") || "Not recorded"}</dd></div><div><dt>Expires</dt><dd>{review.expires_at ? formatDate(review.expires_at) : "No expiration recorded"}</dd></div></dl>{["submitted","reviewing"].includes(review.status) ? <><MarketplaceReviewNotes type="rights" id={review.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("rights",review.id,"approved")}>Approve rights</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("rights",review.id,"declined")}>Decline</button></div></> : null}</article>)}
+      {!rights.length ? <div className="ac-empty">No rights packages are waiting.</div> : null}
+    </div></section>
+
+    <section className="ac-subsection"><h3>Tax responsibility <span className="ac-count-badge">{taxControls.length}</span></h3><p>The approved record must match actual Stripe Tax registration and marketplace liability. Evidence is saved first, then approved as a separate decision. No approval means no checkout.</p><div className="ac-review-list">{taxControls.map((tax) => <article key={tax.id}><div className="ac-review-heading"><div><strong>{tax.jurisdiction_label}</strong><span>{tax.provider} · liability: {tax.liability}</span></div><StatusPill status={tax.status} /></div>{tax.status !== "retired" ? <><div className="ac-form-grid"><label>Stripe Tax registration / evidence reference<input value={taxDrafts[tax.id]?.reference ?? tax.registration_reference ?? ""} onChange={(event) => setTaxDrafts((previous) => ({ ...previous, [tax.id]: { ...previous[tax.id], reference:event.target.value } }))} /></label><label>Tax liability<select value={taxDrafts[tax.id]?.liability || tax.liability} onChange={(event) => setTaxDrafts((previous) => ({ ...previous, [tax.id]: { ...previous[tax.id], liability:event.target.value } }))}><option value="platform">EdNotebook platform</option><option value="seller">Connected seller</option></select></label></div><MarketplaceReviewNotes type="tax" id={tax.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--quiet" type="button" disabled={Boolean(busy)} onClick={() => configureTax(tax)}>Save tax evidence</button><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy) || !tax.registration_reference} onClick={() => decide("tax",tax.id,"approved")}>Approve tax control</button>{tax.status === "approved" ? <button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("tax",tax.id,"suspended")}>Suspend</button> : null}</div></> : null}</article>)}</div></section>
+
+    <section className="ac-subsection"><h3>Listing release <span className="ac-count-badge">{listings.length}</span></h3><p>The release action rechecks seller, Stripe, rights, tax, price, rental period, and source publication state in the database transaction.</p><div className="ac-review-list">{listings.map((listing) => <article key={listing.id}><div className="ac-review-heading"><div><strong>{listing.title_snapshot}</strong><span>{titleCase(listing.item_kind)} · {titleCase(listing.access_model)} · ${(listing.price_cents/100).toFixed(2)} {listing.currency.toUpperCase()}</span></div><StatusPill status={listing.status} /></div>{["submitted","reviewing"].includes(listing.status) ? <><MarketplaceReviewNotes type="listing" id={listing.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"approved")}>Approve and publish</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"retired")}>Retire listing</button></div></> : listing.status === "published" ? <><MarketplaceReviewNotes type="listing" id={listing.id} notes={notes} setNotes={setNotes} /><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("listing",listing.id,"suspended")}>Suspend checkout</button></> : null}</article>)}{!listings.length ? <div className="ac-empty">No commercial listings have been submitted.</div> : null}</div></section>
+
+    <section className="ac-subsection"><h3>Transaction trace <span className="ac-count-badge">{orders.length}</span></h3><p>One sanitized order record connects the catalog item, processor state, learning entitlement, refund, and dispute outcome. Payment credentials and buyer identity are not shown here.</p>{orders.length ? <div className="ac-marketplace-transactions">{orders.map((order) => <article key={order.id}>
+      <header><div><strong>{order.title_snapshot}</strong><span>{order.organization_name} · {marketplaceReceiptLabel(order.id)} · {formatMarketplaceDate(order.created_at)}</span></div><i className={marketplaceStatusTone(order.status)}>{marketplaceStatusLabel(order.status)}</i></header>
+      <dl><div><dt>Subtotal</dt><dd>{formatMarketplaceMoney(order.subtotal_cents, order.currency)}</dd></div><div><dt>Tax</dt><dd>{formatMarketplaceMoney(order.tax_cents, order.currency)}</dd></div><div><dt>Total</dt><dd>{formatMarketplaceMoney(order.total_cents, order.currency)}</dd></div><div><dt>Seller allocation</dt><dd>{formatMarketplaceMoney(order.seller_net_cents, order.currency)}</dd></div></dl>
+      <footer><span>Order · {marketplaceStatusLabel(order.status)}</span><span>Access · {marketplaceStatusLabel(order.entitlement_status || "pending")}</span>{order.refund_status ? <span>Refund · {marketplaceStatusLabel(order.refund_status)}</span> : null}{order.dispute_status ? <span>Dispute · {marketplaceStatusLabel(order.dispute_status)}</span> : null}</footer>
+    </article>)}</div> : <div className="ac-empty">No marketplace orders have been created.</div>}</section>
+
+    <section className="ac-subsection"><h3>Refund operations <span className="ac-count-badge">{refunds.length}</span></h3><p>Approval records the platform decision. Processor submission is separate and reverses the connected transfer and application fee. Only Stripe webhook confirmation finalizes the ledger and full-refund access revocation.</p><div className="ac-review-list">{refunds.map((refund) => <article key={refund.id}><div className="ac-review-heading"><div><strong>${(refund.amount_cents/100).toFixed(2)} refund</strong><span>Order {refund.order_id} · paid ${(refund.order_total_cents/100).toFixed(2)}</span></div><StatusPill status={refund.status} /></div><p>{refund.reason}</p>{["requested","reviewing"].includes(refund.status) ? <><MarketplaceReviewNotes type="refund" id={refund.id} notes={notes} setNotes={setNotes} /><div className="ac-form-actions"><button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => decide("refund",refund.id,"approved")}>Approve refund</button><button className="ac-button ac-button--danger" type="button" disabled={Boolean(busy)} onClick={() => decide("refund",refund.id,"declined")}>Decline</button></div></> : refund.status === "approved" ? <button className="ac-button ac-button--primary" type="button" disabled={Boolean(busy)} onClick={() => processRefund(refund.id)}>Send approved refund to Stripe</button> : null}</article>)}{!refunds.length ? <div className="ac-empty">No refund requests.</div> : null}</div></section>
+
+    <section className="ac-subsection"><h3>Disputes and payouts</h3><div className="ac-control-grid"><article className="ac-callout ac-callout--neutral"><strong>{disputes.length} dispute record{disputes.length===1?"":"s"}</strong><p>{disputes.length ? disputes.map((item) => `${item.status} · $${(item.amount_cents/100).toFixed(2)}`).join(" | ") : "Stripe charge disputes will appear here with evidence deadlines and outcomes."}</p></article><article className="ac-callout ac-callout--neutral"><strong>{payouts.length} payout event{payouts.length===1?"":"s"}</strong><p>{payouts.length ? payouts.slice(0,5).map((item) => `${item.status} · $${(item.amount_cents/100).toFixed(2)}`).join(" | ") : "Connected-account payout status will appear here without exposing bank details."}</p></article></div></section>
+  </section>;
 }
 
 function OverviewPanel({ center, access, isPlatformWorkspace, setActiveTab }) {

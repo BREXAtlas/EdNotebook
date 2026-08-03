@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveLessonProgress } from "./courseService.js";
+import EdNotebookMediaReader from "../media/EdNotebookMediaReader.jsx";
 import {
   STUDENT_EXPERIENCE_CONTRACT_VERSION,
   STUDENT_LESSON_STAGES,
@@ -167,6 +168,11 @@ export default function StudentLessonPlayer({
   onExit,
   onOpenTool,
   onProgress,
+  onMediaEvidence,
+  onLearningProgress,
+  initialStage,
+  focusResourceId,
+  resources = [],
 }) {
   const recoveryKey = useMemo(
     () =>
@@ -188,7 +194,9 @@ export default function StudentLessonPlayer({
       }),
     [lesson.id, publicationVersion, recoveryKey, saved],
   );
-  const [stage, setStage] = useState(restored.stage);
+  const [stage, setStage] = useState(
+    Number.isInteger(initialStage) ? Math.max(0, Math.min(5, initialStage)) : restored.stage,
+  );
   const [interaction, setInteraction] = useState(restored.interactionState);
   const interactionRef = useRef(restored.interactionState);
   const [saveState, setSaveState] = useState(
@@ -224,6 +232,13 @@ export default function StudentLessonPlayer({
   useEffect(() => {
     stageHeadingRef.current?.focus();
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== 1 || !focusResourceId) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(`course-media-${focusResourceId}`)?.focus();
+    });
+  }, [focusResourceId, stage]);
 
   async function persist(
     nextStage = stage,
@@ -276,7 +291,7 @@ export default function StudentLessonPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function updateInteraction(patch) {
+  function updateInteraction(patch, refreshLearning = false) {
     const current = interactionRef.current;
     const next = {
       ...current,
@@ -284,7 +299,9 @@ export default function StudentLessonPlayer({
     };
     interactionRef.current = next;
     setInteraction(next);
-    persist(stage, false, next);
+    persist(stage, false, next).then((result) => {
+      if (refreshLearning && !result?.error) onLearningProgress?.();
+    });
   }
 
   function answerKnowledge(check, answer) {
@@ -310,7 +327,7 @@ export default function StudentLessonPlayer({
         ...current.knowledgeAttempts,
         [check.id]: Number(current.knowledgeAttempts[check.id] || 0) + 1,
       },
-    }));
+    }), true);
   }
 
   function retryKnowledge(check) {
@@ -337,7 +354,9 @@ export default function StudentLessonPlayer({
 
   function moveTo(nextStage, complete = false) {
     setStage(nextStage);
-    persist(nextStage, complete, interactionRef.current);
+    persist(nextStage, complete, interactionRef.current).then((result) => {
+      if (complete && !result?.error) onLearningProgress?.();
+    });
   }
 
   const stageLabel = STUDENT_LESSON_STAGES[stage];
@@ -444,6 +463,25 @@ export default function StudentLessonPlayer({
             manifest={manifest}
             onOpenTool={onOpenTool}
           />
+          {resources.length > 0 && (
+            <section className="course-lesson-media" aria-labelledby={`lesson-media-${lesson.id}`}>
+              <div>
+                <span className="course-kicker">PROFESSOR-PUBLISHED MEDIA</span>
+                <h2 id={`lesson-media-${lesson.id}`}>Watch and explore without leaving the lesson.</h2>
+              </div>
+              {resources.map((resource) => (
+                <EdNotebookMediaReader
+                  key={resource.id}
+                  resource={resource}
+                  onEvidence={onMediaEvidence}
+                  onOpenLearningActivity={(item) => {
+                    if (item.completion_rule === "knowledge_check") moveTo(3);
+                    else if (item.completion_rule === "lesson") moveTo(2);
+                  }}
+                />
+              ))}
+            </section>
+          )}
         </section>
       )}
 

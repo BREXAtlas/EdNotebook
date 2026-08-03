@@ -98,7 +98,11 @@ export async function loadPublishedCourse(publicationId) {
         new Error("This course is not published or you do not have access."),
       source: "cloud",
     };
-  const [{ data: version, error: versionError }, { data: directory }] =
+  const [
+    { data: version, error: versionError },
+    { data: directory },
+    { data: resourceEnvelope, error: resourceError },
+  ] =
     await Promise.all([
       supabase
         .from("course_publication_versions")
@@ -113,12 +117,79 @@ export async function loadPublishedCourse(publicationId) {
         )
         .eq("course_id", publication.course_id)
         .maybeSingle(),
+      supabase.rpc("get_published_course_resources", {
+        p_publication_id: publicationId,
+      }),
     ]);
-  if (versionError) return { data: null, error: versionError, source: "cloud" };
+  if (versionError || resourceError)
+    return {
+      data: null,
+      error: versionError || resourceError,
+      source: "cloud",
+    };
   return {
-    data: { publication, version, manifest: version.manifest, directory },
+    data: {
+      publication,
+      version,
+      manifest: version.manifest,
+      directory,
+      resources: resourceEnvelope?.resources || [],
+      resourcePolicy: resourceEnvelope?.reader_policy || null,
+    },
     source: "cloud",
   };
+}
+
+export async function listMyCourseResources(courseId) {
+  if (!isSupabaseConfigured || !isUuid(courseId))
+    return { data: [], source: "device" };
+  const { data, error } = await supabase.rpc("get_my_course_resources", {
+    p_course_id: courseId,
+  });
+  return { data: data || [], error, source: error ? "device" : "cloud" };
+}
+
+export async function saveMyCourseLink(courseId, values) {
+  const { data, error } = await supabase.rpc("save_my_course_link", {
+    p_course_id: courseId,
+    p_url: values.url,
+    p_title: values.title,
+    p_description: values.description || "",
+  });
+  return { data, error };
+}
+
+export async function deleteMyCourseLink(resourceId) {
+  const { data, error } = await supabase.rpc("delete_my_course_link", {
+    p_resource_id: resourceId,
+  });
+  return { data, error };
+}
+
+export async function recordCourseMediaProgress(resourceId, event) {
+  if (!isSupabaseConfigured || !isUuid(resourceId))
+    return {
+      data: null,
+      error: new Error("Media progress sync is unavailable."),
+      source: "device",
+    };
+  const { data, error } = await supabase.rpc("record_course_media_progress", {
+    p_publication_resource_id: resourceId,
+    p_event_type: event.type,
+    p_position_seconds: Number.isFinite(event.positionSeconds) ? event.positionSeconds : null,
+    p_duration_seconds: Number.isFinite(event.durationSeconds) ? event.durationSeconds : null,
+  });
+  return { data, error, source: error ? "device" : "cloud" };
+}
+
+export async function loadPublishedCourseResources(publicationId) {
+  if (!isSupabaseConfigured || !isUuid(publicationId)) {
+    return { data: { resources: [] }, error: new Error("Course media sync is unavailable."), source: "device" };
+  }
+  const { data, error } = await supabase.rpc("get_published_course_resources", {
+    p_publication_id: publicationId,
+  });
+  return { data: data || { resources: [] }, error, source: error ? "device" : "cloud" };
 }
 
 export async function loadStudentCourseLinks(courseIds = []) {

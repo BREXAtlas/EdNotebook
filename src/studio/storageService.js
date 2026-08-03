@@ -8,6 +8,7 @@ import {
   uploadToSecureQuarantine,
 } from "./resumableUpload.js";
 import { buildDigitalLiteracyName, slugify } from "./fileNaming.js";
+import { lessonTargetsFromManifest } from "./courseResourceTargets.js";
 
 export { buildDigitalLiteracyName, slugify } from "./fileNaming.js";
 
@@ -153,6 +154,21 @@ export async function saveResourceRecord(record) {
     license_label: record.license_label || null,
     security_status: record.secure_file_id ? (record.security_status || "quarantined") : "not_applicable",
     visibility: record.visibility || (record.course_id ? "course" : "private"),
+    target_kind: record.target_kind || "course",
+    target_key: record.target_key || null,
+    supersedes_resource_id: record.supersedes_resource_id || null,
+    replacement_note: record.replacement_note || "",
+    caption_mode: record.caption_mode || "not_reviewed",
+    caption_language: record.caption_language || "en",
+    caption_url: record.caption_url || null,
+    transcript_text: record.transcript_text || "",
+    accessibility_notes: record.accessibility_notes || "",
+    is_decorative: Boolean(record.is_decorative),
+    learning_requirement: record.learning_requirement || "optional",
+    completion_rule: record.completion_rule || "none",
+    completion_target_key: record.completion_target_key || null,
+    learning_due_at: record.learning_due_at || null,
+    estimated_minutes: Math.max(1, Number(record.estimated_minutes) || 15),
     metadata: record.metadata || {},
   };
 
@@ -163,6 +179,39 @@ export async function saveResourceRecord(record) {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function listCourseResourceTargets(courseId) {
+  if (!courseId) return { assignments: [], lessons: [] };
+  const [assignmentsResult, publicationResult] = await Promise.all([
+    supabase
+      .from("assignments")
+      .select("id,title,status,due_at")
+      .eq("course_id", courseId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("course_publications")
+      .select("id,current_version")
+      .eq("course_id", courseId)
+      .eq("status", "published")
+      .maybeSingle(),
+  ]);
+  if (assignmentsResult.error) throw assignmentsResult.error;
+  if (publicationResult.error) throw publicationResult.error;
+
+  let lessons = [];
+  if (publicationResult.data?.id && publicationResult.data.current_version) {
+    const { data: version, error: versionError } = await supabase
+      .from("course_publication_versions")
+      .select("manifest")
+      .eq("publication_id", publicationResult.data.id)
+      .eq("version_number", publicationResult.data.current_version)
+      .maybeSingle();
+    if (versionError) throw versionError;
+    lessons = lessonTargetsFromManifest(version?.manifest);
+  }
+
+  return { assignments: assignmentsResult.data || [], lessons };
 }
 
 export async function listCloudResources(courseId) {
@@ -195,9 +244,21 @@ export async function deleteResourceRecord(resource, reason = "Removed from the 
   if (resource.secure_file_id) {
     return requestSecureDeletion(resource.secure_file_id, reason);
   }
-  const { error } = await supabase.from("learning_resources").delete().eq("id", resource.id);
+  const { data, error } = await supabase.rpc("retire_learning_resource", {
+    p_resource_id: resource.id,
+    p_reason: reason,
+  });
   if (error) throw error;
-  return { deleted: true, status: "metadata_removed" };
+  return { deleted: true, status: data?.status || "retired" };
+}
+
+export async function listCourseMediaEvidence(courseId) {
+  if (!courseId) return { resources: [], eligible_learners: 0 };
+  const { data, error } = await supabase.rpc("get_course_media_evidence", {
+    p_course_id: courseId,
+  });
+  if (error) throw error;
+  return data || { resources: [], eligible_learners: 0 };
 }
 
 export async function getCurrentStorageUsage() {

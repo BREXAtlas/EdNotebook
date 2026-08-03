@@ -22,6 +22,9 @@ test("front end includes celebration, trophy shelf, visuals, and a transparent l
   assert.match(panels, /Recognition, not a grade/u);
   assert.match(panels, /Try this/u);
   assert.match(panels, /SOURCE ORGANIZER LAYOUT · ON/u);
+  assert.match(panels, /Completed course badges/u);
+  assert.match(panels, /separate from learning points and never change a grade/u);
+  assert.match(student, /courseBadges=\{demoMode \? \[\] : courseBadges\}/u);
 });
 
 test("experience has no autoplay, audio, public leaderboard, or purchase path", () => {

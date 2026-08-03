@@ -2,6 +2,7 @@ import {
   SYLLABUS_CALENDAR_CONTRACT_VERSION,
   synchronizeCalendarSourceItem,
 } from "../ai/syllabusCalendarContract.js";
+import { requiredMediaWorkRows } from "../media/mediaLearningModel.js";
 
 export const STUDENT_EXPERIENCE_CONTRACT_VERSION = 1;
 export const PUBLISHED_COURSE_CALENDAR_SOURCE = "professor-published-course";
@@ -226,7 +227,7 @@ export function publishedDueWorkRows(dueWork) {
     if (!duplicate) rows.push({ ...gradeItem, workType: "grade_item" });
   }
 
-  return rows;
+  return [...rows, ...requiredMediaWorkRows(dueWork?.mediaRequirements)];
 }
 
 export function publishedCourseCalendarItems(
@@ -251,9 +252,13 @@ export function publishedCourseCalendarItems(
       due: item.due_at,
       sourceDue: item.due_at,
       hours: Math.max(0.5, Number(item?.settings?.estimated_hours) || 1),
-      status: "not-started",
+      status: item.status || "not-started",
       description:
         clean(item.instructions) || "Professor-published course deadline.",
+      route: item.route || {
+        view: "assignments",
+        workId: item.id,
+      },
       dateConfirmed: true,
       calendarContractVersion: SYLLABUS_CALENDAR_CONTRACT_VERSION,
     }));
@@ -326,11 +331,11 @@ export function publishedCourseSyllabusText(
     clean(courseCode) || "COURSE"
   }`;
   if (!datedWork.length) {
-    return `${heading}\nAssignments:\nNo professor-published dates are available yet.`;
+    return `${heading}\nAssignments and required media:\nNo professor-published dates are available yet.`;
   }
   return [
     heading,
-    "Assignments:",
+    "Assignments and required media:",
     ...datedWork.map(
       (item) =>
         `${clean(item.title) || "Course work"} due ${syllabusDate(
@@ -343,7 +348,7 @@ export function publishedCourseSyllabusText(
 
 export function nextDueWork(dueWork, now = new Date()) {
   const rows = publishedDueWorkRows(dueWork)
-    .filter((item) => item?.due_at)
+    .filter((item) => item?.due_at && item?.status !== "complete")
     .map((item) => ({ ...item, dueTime: Date.parse(item.due_at) }))
     .filter(
       (item) => Number.isFinite(item.dueTime) && item.dueTime >= now.getTime(),

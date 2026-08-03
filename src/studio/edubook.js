@@ -1,10 +1,12 @@
+import { emptyEduBookLearningLayer } from "./edubookLearningModel.js";
+
 export const EDUBOOK_VERSION = "EduBook/1.0";
 
 function cleanTitle(value, fallback) {
   return String(value || "").trim() || fallback;
 }
 
-export function textToEduBook({ title, author, sourceText, description = "" }) {
+export function textToEduBook({ title, author, sourceText, description = "", readingMode = "interactive" }) {
   const normalized = String(sourceText || "").replace(/\r\n/g, "\n").trim();
   const lines = normalized.split("\n");
   const chapters = [];
@@ -58,13 +60,15 @@ export function textToEduBook({ title, author, sourceText, description = "" }) {
     source: { type: "text", importedAt: new Date().toISOString(), words },
     rights: { confirmed: false, statement: "" },
     learningDesign: {
-      mode: "interactive-reading",
+      mode: readingMode === "read_only" ? "read-only" : "interactive-reading",
       annotations: true,
       bookmarks: true,
       progress: true,
-      checks: true,
-      discussion: true,
+      checks: readingMode !== "read_only",
+      quizzes: readingMode !== "read_only",
+      discussion: readingMode !== "read_only",
     },
+    learningLayer: emptyEduBookLearningLayer(),
     chapters,
   };
 }

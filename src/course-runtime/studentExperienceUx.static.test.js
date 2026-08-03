@@ -90,8 +90,11 @@ test("accepted quiz reaches the student scoring contract without leaking profess
   assert.doesNotMatch(player, /rubricDrafts/u);
 });
 
-test("staging and account controls cannot cover student lesson actions", () => {
-  assert.match(environmentBanner, /className="environment-banner"/u);
+test("deployment and account controls cannot cover student lesson actions", () => {
+  assert.match(environmentBanner, /environment-banner environment-banner--\$\{liveLane\}/u);
+  assert.match(environmentBanner, /EDNOTEBOOK STAGING SANDBOX/u);
+  assert.match(environmentBanner, /EDNOTEBOOK BETA · LIVE SERVICE/u);
+  assert.match(environmentBanner, /EDNOTEBOOK PILOT · LIVE SERVICE/u);
   assert.match(
     environmentBannerCss,
     /\.environment-banner[\s\S]*position:\s*relative[\s\S]*pointer-events:\s*none/u,
@@ -144,7 +147,7 @@ test("student reminders, assignment details, and calendar use one route", () => 
   assert.match(runtime, /notification\.route\.workId/u);
   assert.match(runtime, /openPublishedWorkDetail/u);
   assert.match(runtime, /<PublishedWorkDetail/u);
-  assert.match(runtime, /onOpenAssignment=\{openPublishedWorkDetail\}/u);
+  assert.match(runtime, /onOpenAssignment=\{openDueWorkItem\}/u);
   assert.match(notificationCenter, /course-notification-badge/u);
   assert.match(notificationCenter, /Recent course notifications/u);
   assert.match(notificationCenter, /Open calendar and reminder settings/u);

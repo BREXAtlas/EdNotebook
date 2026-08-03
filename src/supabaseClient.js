@@ -7,6 +7,14 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || defaultSupabaseUrl;
 const supabasePublishableKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || defaultSupabasePublishableKey;
 
+export const supabaseProjectRef = (() => {
+  try {
+    return new URL(supabaseUrl).hostname.split(".")[0] || "";
+  } catch {
+    return "";
+  }
+})();
+
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && supabasePublishableKey
 );

@@ -4,16 +4,20 @@
 
 **HOLD - do not enter production student data.**
 
-Repository-level unit, static, type, parse, build, and bundle checks passed on July 21, 2026. That result is not a production approval. The transaction-safe database harness has not yet executed in a fresh Supabase database, and no provider database restore, separate Storage-object restore, real private-object deletion, or Blackboard sandbox round trip has been completed for this candidate.
+The Phase 2 focused tests, migration application, and transaction-safe PostgreSQL rehearsal passed locally and on the existing staging database on August 1, 2026 Central time. That result is not a production approval. No provider database restore, separate Storage-object restore, real private-object deletion, or Blackboard sandbox round trip has been completed for this candidate.
 
 No blank, inferred, parsed-only, or untested evidence field is treated as a pass.
 
 ## Candidate tested
 
-- Branch: `agent/institution-admin-control-center`
-- Base commit: `cbaea6c2df0502cf440a512618d686e1c7d8afdf`
-- Local verification time: July 21, 2026, 4:40 p.m. Central
-- Final candidate commit: pending commit and pull-request CI
+- Merged branch: `codex/final-phase2-student-data-readiness`
+- Base staging commit: `86f1257cddf8a61c0d6a77929405436b87817748`
+- Migration: `20260802023831_govern_student_data_intake_readiness.sql`
+- Local verification time: August 1, 2026, 10:09 p.m. Central
+- Final candidate commit: `2738b05`; PR #96 merge commit: `f268d374de857057d41d6d6a216e8a0b2f777898`
+- Pull-request checks: PASS - Validate current change, Test security services, and Rehearse student-data database gates
+- Existing staging migration applied: yes - hosted version `20260802033014_govern_student_data_intake_readiness`
+- Staging advisor follow-up: `20260802033711_index_student_data_governance_foreign_keys.sql` pending reviewed merge and staging application
 - Production database migrations applied: none
 - Production student records created for this work: none
 - Hosted PostgreSQL version observed read-only: 17.6
@@ -23,16 +27,16 @@ No blank, inferred, parsed-only, or untested evidence field is treated as a pass
 
 | Gate | Repository evidence | Database/external evidence | Decision |
 | --- | --- | --- | --- |
-| Restore and reconciliation | PASS - version 2.3 fail-closed snapshot model covers the current 47-domain linked-record contract, including student learning records and student-owned course-communication read/preference state; SQL retains exact canonical JSON, row counts, and SHA-256 digests and rehearses a non-cascading representative row restore | NOT RUN - fresh-database SQL execution, provider database/PITR restore, and a separate versioned Storage-object restore and reconciliation are required | HOLD |
-| Access control | PASS - local policy tests deny cross-institution and former-institution access; browser grade writes are revoked; messages, files, profiles, groups, grades, and admin capabilities are resource- and tenant-bound in the candidate migration | NOT RUN - authenticated SQL harness execution and hosted disposable-environment RLS rehearsal are required | HOLD |
-| Export and reconciliation | PASS - 32 Blackboard tests pass; the real confirmation RPC is exercised in SQL with wrong-row, wrong-column, stale-source, score, duplicate, scaling, and output-hash negatives | NOT RUN - the SQL harness and an institution-controlled Blackboard import, REST, or LTI AGS reconciliation round trip are required | HOLD |
-| File deletion, retention, and legal hold | PASS - Node/static checks, seven Deno tests, Edge Function type checks, and SQL worker lifecycle assertions cover claims, token/worker fencing, retries, normal and partial completion, late holds/retention, quota release, and atomic audit records | NOT RUN - the SQL harness and real disposable Storage-object removal/preservation tests are required; full account/data-subject deletion and retention is not implemented | HOLD |
+| Restore and reconciliation | PASS - version 2.5 fail-closed snapshot model and rollback-safe SQL cover the current 50-domain linked-record contract; the separate 61-domain lifecycle registry names linked and external system copies, and the local SQL rehearsal reconciled exact JSON, row counts, and SHA-256 digests | NOT RUN - provider database/PITR restore and a separate versioned Storage-object restore and reconciliation are required | HOLD |
+| Access control | PASS - policy tests and executable SQL deny cross-institution and former-institution access; eight unintended anonymous privileged RPC grants are revoked; the one anonymous Morrison catalog exception excludes review rows at runtime while preserving the signed-in safe preview with no checkout or entitlement | PASS on existing staging - 61 domains, 13 gates, six RLS tables, zero browser table grants, full rollback harness, anonymous RPC inventory, and advisor rerun verified | HOLD pending operational and human evidence |
+| Export and reconciliation | PASS - 32 Blackboard tests pass; the real confirmation RPC executed in SQL with wrong-row, wrong-column, stale-source, score, duplicate, scaling, and output-hash negatives | NOT RUN - an institution-controlled Blackboard import, REST, or LTI AGS reconciliation round trip is required | HOLD |
+| File deletion, retention, and legal hold | PASS - Node/static checks and executable SQL cover claims, token/worker fencing, retries, normal and partial completion, late holds/retention, quota release, atomic audit records, and a 61-item account-closure plan that remains blocked and executes no production action | NOT RUN - real synthetic Storage-object removal/preservation tests are required; a full account/data-subject lifecycle worker remains intentionally absent | HOLD |
 
 ## Commands and observed results
 
 ```text
 npm.cmd run test:student-data-safety
-32 passed, 0 failed
+39 passed, 0 failed
 
 npm.cmd run test:blackboard
 32 passed, 0 failed
@@ -40,17 +44,7 @@ npm.cmd run test:blackboard
 npm.cmd run test:lti
 11 passed, 0 failed
 
-deno test --node-modules-dir=none --no-lock --cached-only \
-  supabase/functions/_shared/deletion.test.ts
-7 passed, 0 failed
-
-deno check --node-modules-dir=none --no-lock \
-  supabase/functions/secure-file-delete/index.ts \
-  supabase/functions/retention-worker/index.ts \
-  supabase/functions/secure-file-download/index.ts
-passed
-
-deno fmt --no-config --check <five changed deletion/download files>
+npm.cmd run <all 19 Node contract scripts from deploy.yml>
 passed
 
 npm.cmd run build
@@ -59,30 +53,50 @@ passed
 npm.cmd run audit:bundle
 passed
 
-pglast parse: every migration plus the SQL safety harness
+npm.cmd run build:staging && npm.cmd run audit:bundle
 passed
+
+npx supabase db reset --local
+all migrations, including Phase 2, applied successfully from a clean database
+
+psql --set=ON_ERROR_STOP=1 --file=supabase/tests/institution_student_data_safety.sql
+PASS repository rehearsal; operational student-data gates remain HOLD
+
+all remaining PostgreSQL gates from deploy.yml
+passed, including 42 Digital Literacy pilot-readiness assertions
+
+GitHub PR #96
+all three required checks passed; merged as f268d374
+
+existing staging project gfalgonektwdylsxsgzc
+hosted migration 20260802033014 applied
+complete rollback-safe harness passed; zero synthetic fixtures remained
+anonymous privileged RPCs: 0 of 8 executable
+anonymous SECURITY DEFINER functions: list_alex_morrison_catalog(text) only
+security advisors: 14 INFO, 104 WARN
+performance advisors: 220 INFO, 13 WARN
+staging and main branch protection: PR required, strict three-check gate, admin enforcement, no force push or deletion
 ```
 
-The focused Deno checks used cached Deno 2.2.7 with `--no-lock` because that runtime cannot read the repository's newer lockfile format. Pull-request CI must repeat these checks with its configured current Deno release.
+The local machine did not have the CI Python 3.12/pytest or Deno runtimes. The document-security worker pytest job and Deno type/claim/deletion jobs are therefore **NOT RUN locally** for this candidate and remain mandatory pull-request checks. No local dependency substitution is counted as evidence.
 
-SQL parsing proves syntax only. It does not prove migrations apply cleanly, policies behave correctly, or the assertions pass against PostgreSQL. The workflow now creates a PostgreSQL 17 local Supabase database and runs `supabase/tests/institution_student_data_safety.sql` with `ON_ERROR_STOP=1`; its first successful pull-request run remains required evidence.
+The local and existing-staging results prove the migration and rollback-safe assertions execute against PostgreSQL. They do not prove provider backup recovery, private object recovery, or institution-controlled Blackboard reconciliation.
 
 ## Scope limits that block intake
 
-The 47-domain contract is the current student/learner linked-record contract, not a complete account or data-subject inventory. It does not yet classify every person-associated record, including Auth identities/sessions/logs, learner-created professor or publisher content, Stripe webhook payloads, and unlinked portal-interest forms. Those records must be excluded from student intake or added to an institution-approved delete/anonymize/retain/block matrix.
+The 50-domain contract covers EdNotebook-linked records. The new 61-domain registry adds Auth identities/sessions/logs, Storage versions/caches, provider backups, learner-created professor or publisher content, Stripe webhook payloads, Blackboard/LTI provider copies, and unlinked portal-interest forms. The registry is complete as an inventory, but no institution-specific disposition is inferred: every domain remains missing until a human reviewer records an approved delete/anonymize/retain/block policy.
 
 Supabase database backups restore database records and Storage metadata; they do not by themselves prove restoration of the underlying Storage objects. Database/PITR recovery and versioned or off-site object recovery therefore require separate rehearsals.
 
-The hosted security review also found outstanding deployment controls: direct execution privileges on several security-definer course functions require review, leaked-password protection is disabled, and the GitHub `main` branch currently has no required-check protection. These findings must be resolved or formally accepted before intake.
+The pre-migration staging security review found eight privileged LTI/social SECURITY DEFINER RPCs executable by `anon`, one deliberately public catalog SECURITY DEFINER RPC, and leaked-password protection disabled. Existing-staging acceptance proves Phase 2 revoked the eight unintended grants and constrained the public catalog projection. The remaining public catalog warning is intentional and runtime-tested. Both `staging` and `main` now enforce the three required checks through branch protection; leaked-password protection remains a human-owned HOLD item.
 
 ## Required evidence before the HOLD can be removed
 
-- Commit the exact candidate, run all three pull-request jobs, and preserve the successful database-safety log.
-- Apply all migrations to an approved disposable Supabase environment and run the rollback-safe SQL harness with `ON_ERROR_STOP=1`.
+- Merge and apply the three-index advisor follow-up only to existing staging, then confirm those three performance findings are absent.
 - Restore a provider database backup or PITR copy; record recovery point/time, exact row counts, SHA-256 manifests, and differences.
 - Restore separately backed-up private Storage objects; reconcile bucket/path, object count, byte length, and SHA-256 without exposing student content.
 - Delete synthetic private objects through the real worker and prove eligible objects are absent while retained and legally held objects remain present and access-controlled.
-- Complete the institution-approved full account/data-subject lifecycle for Auth, records, LMS identifiers, billing/webhooks, audits, unlinked forms, and user-authored content.
+- Record a current human-approved disposition for all 61 lifecycle domains, then separately design, review, and test the worker that performs those dispositions. The Phase 2 request planner cannot execute them.
 - Reconcile a synthetic Blackboard export through a non-production course using CSV import, REST, or LTI AGS as approved by the institution.
 - Run Supabase security/performance advisors and resolve or formally accept every finding.
 - Require the release checks on the protected deployment branch.

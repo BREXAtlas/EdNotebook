@@ -3,9 +3,13 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 
 import {
+  EXTERNAL_STUDENT_DATA_LIFECYCLE_DOMAINS,
+  STUDENT_DATA_INTAKE_GATES,
+  STUDENT_DATA_LIFECYCLE_DOMAINS,
   STUDENT_DATA_DOMAINS,
   createStudentDataSnapshot,
   evaluateDeletionRequest,
+  evaluateStudentDataIntakeReadiness,
   evaluateStudentDataAccess,
   reconcileBlackboardGradeRecord,
   reconcileStudentDataSnapshots,
@@ -391,9 +395,108 @@ test("deletion evaluation is deterministic for completed files and invalid dates
   );
 });
 
+test("intake readiness requires every linked and external lifecycle decision plus every evidence gate", () => {
+  const now = new Date("2026-08-02T03:00:00.000Z");
+  const policies = STUDENT_DATA_LIFECYCLE_DOMAINS.map((domainKey) => ({
+    domainKey,
+    version: 1,
+    disposition: "delete",
+    retentionDays: 30,
+    purpose: "Institution-approved synthetic lifecycle readiness test.",
+    evidenceReference: `policy:${domainKey}`,
+    status: "approved",
+    reviewerType: "human",
+    approvedAt: "2026-08-01T03:00:00.000Z",
+    reviewDueAt: "2027-08-01T03:00:00.000Z",
+  }));
+  const evidence = STUDENT_DATA_INTAKE_GATES.map((gateKey) => ({
+    gateKey,
+    version: 1,
+    status: "passed",
+    evidenceReference: `evidence:${gateKey}`,
+    reviewerType: "human",
+    reviewedAt: "2026-08-01T03:00:00.000Z",
+    expiresAt: "2027-08-01T03:00:00.000Z",
+  }));
+
+  const result = evaluateStudentDataIntakeReadiness({ policies, evidence, now });
+  assert.equal(STUDENT_DATA_DOMAINS.length, 50);
+  assert.equal(EXTERNAL_STUDENT_DATA_LIFECYCLE_DOMAINS.length, 11);
+  assert.equal(result.lifecycleDomainCount, 61);
+  assert.equal(result.requiredEvidenceGateCount, 13);
+  assert.equal(result.readyForPromotionReview, true);
+  assert.equal(result.decision, "ready_for_human_promotion_review");
+  assert.equal(result.productionStudentIntakeEnabled, false);
+  assert.deepEqual(result.missingLifecycleDomains, []);
+  assert.deepEqual(result.missingEvidenceGates, []);
+});
+
+test("intake readiness fails closed for missing, expired, non-human, or malformed governance evidence", () => {
+  const result = evaluateStudentDataIntakeReadiness({
+    now: "2026-08-02T03:00:00.000Z",
+    policies: [{
+      domain_key: "profile",
+      version: 1,
+      disposition: "retain",
+      retention_days: 0,
+      purpose: "Too short",
+      evidence_reference: "short",
+      status: "approved",
+      reviewer_type: "agent",
+      approved_at: "2026-08-01T03:00:00.000Z",
+      review_due_at: "2026-08-01T04:00:00.000Z",
+    }],
+    evidence: [{
+      gate_key: "repositoryValidation",
+      version: 1,
+      status: "passed",
+      evidence_reference: "evidence:repository",
+      reviewer_type: "agent",
+      reviewed_at: "2026-08-01T03:00:00.000Z",
+    }],
+  });
+
+  assert.equal(result.decision, "hold");
+  assert.equal(result.readyForPromotionReview, false);
+  assert.equal(result.productionStudentIntakeEnabled, false);
+  assert.ok(result.missingLifecycleDomains.includes("profile"));
+  assert.ok(result.missingEvidenceGates.includes("repositoryValidation"));
+  assert.throws(
+    () => evaluateStudentDataIntakeReadiness({ policies: {}, evidence: [] }),
+    /must be arrays/u,
+  );
+
+  const futureDated = evaluateStudentDataIntakeReadiness({
+    now: "2026-08-02T03:00:00.000Z",
+    policies: [{
+      domainKey: "profile",
+      version: 2,
+      disposition: "delete",
+      retentionDays: 30,
+      purpose: "Institution-approved synthetic lifecycle readiness test.",
+      evidenceReference: "policy:profile:future",
+      status: "approved",
+      reviewerType: "human",
+      approvedAt: "2026-08-03T03:00:00.000Z",
+      reviewDueAt: "2027-08-03T03:00:00.000Z",
+    }],
+    evidence: [{
+      gateKey: "repositoryValidation",
+      version: 2,
+      status: "passed",
+      evidenceReference: "evidence:repository:future",
+      reviewerType: "human",
+      reviewedAt: "2026-08-03T03:00:00.000Z",
+      expiresAt: "2027-08-03T03:00:00.000Z",
+    }],
+  });
+  assert.ok(futureDated.missingLifecycleDomains.includes("profile"));
+  assert.ok(futureDated.missingEvidenceGates.includes("repositoryValidation"));
+});
+
 test("the disposable SQL harness contains all four rollback-safe database gates", async () => {
   const sql = await readFile(new URL("../../supabase/tests/institution_student_data_safety.sql", import.meta.url), "utf8");
-  assert.equal(STUDENT_DATA_DOMAINS.length, 48);
+  assert.equal(STUDENT_DATA_DOMAINS.length, 50);
   const captureBody = sql.match(/as \$capture\$([\s\S]*?)\$capture\$;/u)?.[1];
   assert.ok(captureBody, "SQL restore capture function is missing");
   const capturedDomains = [...captureBody.matchAll(/select '([^']+)'/gu)].map((match) => match[1]);
@@ -403,6 +506,9 @@ test("the disposable SQL harness contains all four rollback-safe database gates"
   assert.match(sql, /PASS representative logical restore reconciles/u);
   assert.doesNotMatch(sql, /PASS all student-data safety gates/u);
   assert.match(sql, /PASS [^\n']*student cross-institution access-control test/u);
+  assert.match(sql, /PASS anonymous privileged-RPC revocation and public-catalog exception ACL test/u);
+  assert.match(sql, /PASS anonymous catalog excludes review-stage content/u);
+  assert.match(sql, /PASS signed-in course owner retains review-stage catalog access/u);
   assert.match(sql, /PASS professor\/admin [^\n']*cross-tenant invariant tests/u);
   assert.match(sql, /PASS legacy profile admin denial and institution-team anti-escalation tests/u);
   assert.match(sql, /PASS delegated operator capability and connection-scope tests/u);
@@ -415,6 +521,155 @@ test("the disposable SQL harness contains all four rollback-safe database gates"
   assert.match(sql, /reset role;\s*reset request\.jwt\.claim\.sub;\s*reset request\.jwt\.claim\.role;/u);
   assert.match(sql, /set_config\('request\.jwt\.claim\.sub','10000000-0000-4000-8000-000000000011',true\);\s*select set_config\('request\.jwt\.claim\.role','authenticated',true\);\s*insert into public\.learning_messages select \* from safety_backup_messages;\s*reset request\.jwt\.claim\.sub;\s*reset request\.jwt\.claim\.role;/u);
   assert.match(sql, /request_secure_file_deletion/u);
+  assert.match(sql, /PASS governed account and data-subject request remains fail closed/u);
+});
+
+test("the intake-readiness migration is append-only, tenant-bound, explicit-grant, and cannot activate production", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260802023831_govern_student_data_intake_readiness.sql", import.meta.url), "utf8");
+
+  for (const table of [
+    "student_data_lifecycle_domains",
+    "student_data_intake_gate_definitions",
+    "student_data_lifecycle_policy_versions",
+    "student_data_intake_evidence_versions",
+    "student_data_subject_requests",
+    "student_data_subject_request_items",
+  ]) {
+    assert.match(sql, new RegExp(`alter table public\\.${table} enable row level security;`, "u"));
+  }
+  assert.match(sql, /student_data_lifecycle_policy_versions_append_only/u);
+  assert.match(sql, /student_data_intake_evidence_versions_append_only/u);
+  assert.match(sql, /production_student_intake_enabled',false/u);
+  assert.match(sql, /intake_decision text not null default 'hold' check \(intake_decision='hold'\)/u);
+  assert.match(sql, /production_action_executed',false/u);
+  assert.match(sql, /alter default privileges for role postgres in schema public[\s\S]*?revoke select,insert,update,delete on tables from anon,authenticated/u);
+  assert.doesNotMatch(sql, /revoke select,insert,update,delete on tables from[^;]*service_role/u);
+  assert.match(sql, /revoke all on function public\.get_student_data_intake_readiness\(uuid\) from public,anon/u);
+  assert.match(sql, /revoke all on function public\.activate_tested_lti_deployment\(uuid\) from public,anon/u);
+  assert.match(sql, /revoke all on function public\.issue_social_learning_reward\(uuid,uuid,text,text,text,text,integer,text,uuid\) from public,anon/u);
+  assert.match(sql, /directory\.library_listing_status='published'/u);
+  assert.match(sql, /directory\.library_listing_status='review'\s+and \(select auth\.uid\(\)\) is not null/u);
+  assert.match(sql, /publication\.status='review'\s+and \(select auth\.uid\(\)\) is not null/u);
+  assert.match(sql, /review rows require a signed-in account/u);
+  assert.doesNotMatch(sql, /create or replace function public\.(?:enable|activate|promote)_student_data_intake/iu);
+  assert.doesNotMatch(sql, /update auth\.users|delete from auth\.users/iu);
+});
+
+test("the staging-acceptance follow-up covers student-data governance foreign keys", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260802033711_index_student_data_governance_foreign_keys.sql", import.meta.url), "utf8");
+
+  for (const [indexName, tableName, columnName] of [
+    ["student_data_intake_evidence_versions_gate_key_idx", "student_data_intake_evidence_versions", "gate_key"],
+    ["student_data_lifecycle_policy_versions_domain_key_idx", "student_data_lifecycle_policy_versions", "domain_key"],
+    ["student_data_subject_request_items_domain_key_idx", "student_data_subject_request_items", "domain_key"],
+  ]) {
+    assert.match(
+      sql,
+      new RegExp(`create index if not exists ${indexName}\\s+on public\\.${tableName}\\(${columnName}\\);`, "u"),
+    );
+  }
+});
+
+test("the performance-advisor follow-up preserves RLS semantics and initializes auth once", async () => {
+  const sql = await readFile(new URL("../../supabase/migrations/20260802070000_optimize_advisor_rls_policies.sql", import.meta.url), "utf8");
+  const policies = [
+    ["digital_literacy_profiles_owner_all", "digital_literacy_profiles"],
+    ["digital_literacy_progress_owner_all", "digital_literacy_progress"],
+    ["digital_literacy_story_choices_owner_all", "digital_literacy_story_choices"],
+    ["digital_literacy_achievements_owner_all", "digital_literacy_achievements"],
+    ["digital_literacy_completion_records_owner_all", "digital_literacy_completion_records"],
+    ["course_publications_insert", "course_publications"],
+    ["course_publication_versions_insert", "course_publication_versions"],
+    ["course_lesson_progress_select", "course_lesson_progress"],
+    ["course_lesson_progress_insert", "course_lesson_progress"],
+    ["course_lesson_progress_update", "course_lesson_progress"],
+    ["course_progress_select", "course_progress"],
+    ["course_progress_insert", "course_progress"],
+    ["course_progress_update", "course_progress"],
+  ];
+
+  assert.equal([...sql.matchAll(/alter policy /gu)].length, policies.length);
+  for (const [policyName, tableName] of policies) {
+    assert.match(
+      sql,
+      new RegExp(`alter policy ${policyName}\\s+on public\\.${tableName}\\s+to authenticated`, "u"),
+    );
+  }
+  assert.match(sql, /private\.can_manage_course\(course_id\)/u);
+  assert.match(sql, /private\.can_access_course\(course_id\)/u);
+  const executableSql = sql.replaceAll(/^--.*$/gmu, "");
+  assert.doesNotMatch(executableSql.replaceAll("(select auth.uid())", ""), /auth\.uid\(\)/u);
+});
+
+test("the security-advisor follow-up makes deny-only surfaces and RPC assumptions executable", async () => {
+  const [migration, gate, workflow] = await Promise.all([
+    readFile(new URL("../../supabase/migrations/20260802073000_make_rls_deny_surfaces_explicit.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../supabase/tests/security_advisor_contract.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8"),
+  ]);
+
+  for (const tableName of [
+    "digital_literacy_standard_enrollments",
+    "digital_literacy_standard_progress",
+    "research_export_secrets",
+    "lti_launch_sessions",
+    "lti_launch_states",
+    "lti_service_endpoints",
+    "marketplace_commerce_launch",
+    "marketplace_launch_controls",
+    "student_data_intake_evidence_versions",
+    "student_data_intake_gate_definitions",
+    "student_data_lifecycle_domains",
+    "student_data_lifecycle_policy_versions",
+    "student_data_subject_request_items",
+    "student_data_subject_requests",
+  ]) {
+    assert.match(migration, new RegExp(`${tableName}_api_deny_all`, "u"));
+  }
+
+  assert.equal([...migration.matchAll(/as restrictive for all to anon, authenticated/gu)].length, 14);
+  assert.match(migration, /revoke all on function public\.save_course_syllabus_draft\(uuid,jsonb,text,text,text,text\)\s+from anon;/u);
+  assert.match(migration, /revoke all on function public\.set_course_syllabus_state\(uuid,text\)\s+from anon;/u);
+  assert.match(gate, /privilege\.grantee=0/u);
+  assert.match(gate, /An application table does not have RLS enabled/u);
+  assert.match(gate, /private\.publication_learning_author_versions/u);
+  assert.equal([...gate.matchAll(/dependency\.refclassid='pg_extension'::regclass/gu)].length, 5);
+  assert.match(gate, /public\.list_alex_morrison_catalog\(text\)/u);
+  assert.match(gate, /does not bind to request identity/u);
+  assert.match(gate, /uses dynamic SQL and requires a dedicated review/u);
+  assert.match(workflow, /--file=supabase\/tests\/security_advisor_contract\.sql/u);
+});
+
+test("the public Library catalog limits review-stage metadata to its owner and platform review", async () => {
+  const [migration, hostedGate] = await Promise.all([
+    readFile(new URL("../../supabase/migrations/20260802190000_scope_catalog_review_previews.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../supabase/tests/institution_student_data_safety.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(migration, /security definer\s+set search_path=''/u);
+  assert.match(migration, /alter table private\.publication_learning_author_versions enable row level security/u);
+  assert.match(migration, /publication_learning_author_versions_api_deny_all/u);
+  assert.match(migration, /as restrictive\s+for all\s+to anon,authenticated\s+using \(false\)\s+with check \(false\)/u);
+  assert.match(migration, /directory\.professor_id=\(select auth\.uid\(\)\)/u);
+  assert.match(migration, /publication\.owner_id=\(select auth\.uid\(\)\)/u);
+  assert.equal([...migration.matchAll(/private\.is_platform_owner\(\(select auth\.uid\(\)\)\)/gu)].length, 2);
+  assert.match(migration, /revoke all on function public\.list_alex_morrison_catalog\(text\) from public,anon/u);
+  assert.match(migration, /grant execute on function public\.list_alex_morrison_catalog\(text\) to anon,authenticated/u);
+  assert.match(hostedGate, /another signed-in account could see a professor review-stage listing/u);
+});
+
+test("the existing Control Center exposes readiness as institution-scoped review only", async () => {
+  const [component, service] = await Promise.all([
+    readFile(new URL("./AdminControlCenter.jsx", import.meta.url), "utf8"),
+    readFile(new URL("./adminControlService.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(component, /\["student-data-readiness", "Student data readiness"\]/u);
+  assert.match(component, /institutionId && \(access\.platform_owner \|\| access\.can_view_audit \|\| access\.can_manage_retention\)/u);
+  assert.match(component, /This view cannot activate production intake or execute a data-subject request/u);
+  assert.match(component, /Even complete evidence does not switch it on/u);
+  assert.doesNotMatch(component, /recordStudentDataLifecyclePolicy|recordStudentDataIntakeEvidence/u);
+  assert.match(service, /"get_student_data_intake_readiness"/u);
 });
 
 test("the institution migration enforces tenant-aware course and affiliation policies", async () => {

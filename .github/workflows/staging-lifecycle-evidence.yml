@@ -88,7 +88,7 @@ jobs:
           print(json.dumps(result, indent=2, sort_keys=True))
 
       - name: Retain the safe evidence summary
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: phase3-staging-lifecycle-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/staging-lifecycle-evidence.json

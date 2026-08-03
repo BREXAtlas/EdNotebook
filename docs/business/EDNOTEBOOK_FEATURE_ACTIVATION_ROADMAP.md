@@ -214,9 +214,13 @@ The technical or internal term appears in parentheses after the user-facing expl
 ## Ready to demonstrate now
 
 - **Create an interactive book directly from text or Markdown** (EduBook/1.0)
+- **Choose a read-only book or interactive EduBook experience** (Publication Reading Mode)
 - **Upload a book source and create a publication record** (Publisher Studio)
 - **Choose private, assigned, open, purchase, or rental access options in the publication draft** (Publication Access Model)
 - **Read books with chapters, notes, highlights, bookmarks, and questions** (Interactive Reader)
+- **List an approved course as a free Alex B. Morrison Library course without duplicating its package** (Course Library Listing)
+- **Search and visit free course and book previews in one catalog** (Alex B. Morrison Catalog)
+- **Link the same book record to a professor-managed course and open it from the student class library** (Assigned Publication)
 - **Apply as a publisher, author, professor-author, institution, or supplier** (Publisher Application)
 - **Keep publication source files private** (Private Publication Storage)
 
@@ -226,8 +230,8 @@ The technical or internal term appears in parentheses after the user-facing expl
 - **Create covers and page previews on the server** (Document Preview Worker)
 - **Edit books in Markdown with versioned builds** (Markdown Publishing Compiler)
 - **Review rights, accessibility, editorial status, and revisions before publication** (Publishing Workflow)
-- **List books in the Alex B. Morrison Library and bookstore** (Library Catalog)
-- **Assign books or chapters to courses** (Course Publication Entitlements)
+- **Complete editorial, cover, accessibility, and collection-management tools for the Alex B. Morrison catalog** (Library Catalog)
+- **Assign individual chapters and edition-specific entitlements to courses** (Course Publication Entitlements)
 - **Offer chapter supplements, study guides, and discounted editions** (Publisher Course Distribution)
 - **Show publishers aggregate, privacy-protected course adoption and usage** (Publisher Intelligence)
 - **Track royalties and payout readiness** (Royalty Ledger)

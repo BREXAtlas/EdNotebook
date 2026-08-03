@@ -180,6 +180,21 @@ reset request.jwt.claim.sub;
 reset request.jwt.claim.role;
 
 do $$
+begin
+  if not exists (
+    select 1
+    from public.published_course_directory
+    where course_id='40000000-0000-4000-8000-000000000001'
+      and completion_badge_name='Completed · Safety Course A'
+      and completion_badge_description=
+        'Recognizes completion of Safety Course A in EdNotebook.'
+  ) then
+    raise exception 'PUBLISH TEST FAILED: legacy publisher did not receive completion badge defaults';
+  end if;
+  raise notice 'PASS legacy publisher completion badge defaults';
+end $$;
+
+do $$
 declare v_signature text;
 begin
   if has_table_privilege('authenticated','public.course_lesson_progress','INSERT,UPDATE,DELETE')
@@ -204,6 +219,306 @@ begin
   end loop;
   raise notice 'PASS progress-table and security-definer routine ACL test';
 end $$;
+
+do $$
+declare v_signature text;
+begin
+  foreach v_signature in array array[
+    'public.get_lti_owner_setup()',
+    'public.save_lti_platform_registration(uuid,jsonb)',
+    'public.save_lti_deployment(uuid,jsonb)',
+    'public.map_lti_context(uuid,uuid)',
+    'public.activate_tested_lti_deployment(uuid)',
+    'public.list_social_learning_managed_roster()',
+    'public.issue_social_learning_reward(uuid,uuid,text,text,text,text,integer,text,uuid)',
+    'public.correct_social_learning_reward(uuid,text,integer,text,uuid)'
+  ] loop
+    if has_function_privilege('anon',v_signature,'EXECUTE') then
+      raise exception 'ANON RPC TEST FAILED: anonymous execution remains on %',v_signature;
+    end if;
+    if not has_function_privilege('authenticated',v_signature,'EXECUTE') then
+      raise exception 'ANON RPC TEST FAILED: authenticated product execution was removed from %',v_signature;
+    end if;
+  end loop;
+  if not has_function_privilege('anon','public.list_alex_morrison_catalog(text)','EXECUTE') then
+    raise exception 'CATALOG TEST FAILED: the signed-out public catalog is unavailable';
+  end if;
+  raise notice 'PASS anonymous privileged-RPC revocation and public-catalog exception ACL test';
+end $$;
+
+update public.published_course_directory
+set is_listed=true,library_listing_status='review',library_access_model='purchase',
+    library_price_cents=500,library_rental_days=null
+where course_id='40000000-0000-4000-8000-000000000001';
+
+set local role anon;
+do $$ begin
+  if exists(
+    select 1 from public.list_alex_morrison_catalog('Safety Course A')
+    where course_id='40000000-0000-4000-8000-000000000001'
+  ) then
+    raise exception 'CATALOG TEST FAILED: anonymous catalog exposed a review-stage course';
+  end if;
+  raise notice 'PASS anonymous catalog excludes review-stage content';
+end $$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$ begin
+  if not exists(
+    select 1 from public.list_alex_morrison_catalog('Safety Course A')
+    where course_id='40000000-0000-4000-8000-000000000001' and listing_status='review'
+  ) then
+    raise exception 'CATALOG TEST FAILED: the course owner could not review their own listing';
+  end if;
+  raise notice 'PASS signed-in course owner retains review-stage catalog access';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$ begin
+  if exists(
+    select 1 from public.list_alex_morrison_catalog('Safety Course A')
+    where course_id='40000000-0000-4000-8000-000000000001'
+  ) then
+    raise exception 'CATALOG TEST FAILED: another signed-in account could see a professor review-stage listing';
+  end if;
+  raise notice 'PASS signed-in non-owner cannot see another professor review-stage listing';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+-- The accountable security decision is independent from platform ownership,
+-- candidate-bound, expiration-bounded, and still cannot activate production.
+insert into public.student_data_intake_evidence_versions(
+  institution_id,gate_key,version,status,evidence_reference,summary,tested_commit,
+  migration_version,environment_reference,region,evidence_summary,reviewed_by,expires_at
+) values (
+  '20000000-0000-4000-8000-000000000001','repositoryValidation',1,'passed',
+  'safety:repository-validation','Synthetic prerequisite evidence for the rollback-only security decision test.',
+  '1111111111111111111111111111111111111111','20260802204824',
+  'supabase:safety-preview-ref;staging','us-east-1','{}'::jsonb,
+  '10000000-0000-4000-8000-000000000091',now()+interval '30 days'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000091',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+      'safety:security-review','Synthetic security decision must reject platform ownership alone.',
+      '1111111111111111111111111111111111111111','20260802204824',
+      'supabase:safety-preview-ref;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Platform Owner","reviewer_title_and_security_authority":"Platform owner only","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '29 days',true
+    );
+    raise exception 'SECURITY APPROVAL TEST FAILED: platform ownership alone was accepted';
+  exception when others then
+    if sqlerrm like 'SECURITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%active institution security reviewer membership is required%' then raise; end if;
+  end;
+  raise notice 'PASS platform ownership alone cannot record securityApproval';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000095',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_record public.student_data_intake_evidence_versions;
+  v_readiness jsonb;
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+      'safety:security-review','Synthetic PASS must require explicit risk and incident acceptance.',
+      '1111111111111111111111111111111111111111','20260802204824',
+      'supabase:safety-preview-ref;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":false,"incident_boundary_accepted":false,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '29 days',true
+    );
+    raise exception 'SECURITY APPROVAL TEST FAILED: incomplete PASS acceptance was recorded';
+  exception when others then
+    if sqlerrm like 'SECURITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%PASS requires independent review%' then raise; end if;
+  end;
+
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+      'safety:security-review','Synthetic PASS must not outlive its underlying evidence.',
+      '1111111111111111111111111111111111111111','20260802204824',
+      'supabase:safety-preview-ref;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '31 days',true
+    );
+    raise exception 'SECURITY APPROVAL TEST FAILED: decision exceeded the evidence ceiling';
+  exception when others then
+    if sqlerrm like 'SECURITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%expiry exceeds the underlying evidence ceiling%' then raise; end if;
+  end;
+
+  v_record:=public.record_student_data_intake_evidence(
+    '20000000-0000-4000-8000-000000000001','securityApproval','passed',
+    'safety:security-review','Synthetic independent security reviewer accepts the bounded staging evidence.',
+    '1111111111111111111111111111111111111111','20260802204824',
+    'supabase:safety-preview-ref;staging','us-east-1',
+    '{"decision":"passed","reviewer_name":"Security Reviewer","reviewer_title_and_security_authority":"Institution Security Officer","reviewer_authority_attested":true,"independent_review_completed":true,"residual_risks_accepted":true,"incident_boundary_accepted":true,"candidate_merge_commit":"1111111111111111111111111111111111111111","hosted_migration":"20260802204824","environment_scope":"staging","staging_project_ref":"safety-preview-ref","technical_evidence_packet":"safety:packet","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+    now()+interval '29 days',true
+  );
+  v_readiness:=public.get_student_data_intake_readiness('20000000-0000-4000-8000-000000000001');
+
+  if v_record.institution_id<>'20000000-0000-4000-8000-000000000001'
+     or v_record.gate_key<>'securityApproval'
+     or v_record.version<>1
+     or v_record.status<>'passed'
+     or v_record.reviewed_by<>'10000000-0000-4000-8000-000000000095'
+     or v_record.evidence_summary->>'environment_scope'<>'staging'
+     or coalesce((v_readiness->>'production_student_intake_enabled')::boolean,true) then
+    raise exception 'SECURITY APPROVAL TEST FAILED: bounded decision or fail-closed intake state is incorrect';
+  end if;
+  raise notice 'PASS securityApproval requires independent authority, explicit acceptance, bounded expiry, and leaves production disabled';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+-- Accessibility approval requires institutional oversight and accountable
+-- accessibility authority. Automated-only PASS is rejected, evidence remains
+-- expiration-bounded, and even a valid decision cannot activate production.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000091',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','accessibilityApproval','hold',
+      'safety:accessibility-review','Synthetic accessibility HOLD must reject platform ownership alone.',
+      '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+      'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+      '{"decision":"hold","reviewer_name":"Platform Owner","reviewer_title_and_accessibility_authority":"Platform owner only","reviewer_authority_attested":true,"complete_process_review_completed":false,"keyboard_and_assistive_technology_reviewed":false,"visual_and_responsive_reviewed":false,"media_and_content_reviewed":false,"remediation_ownership_accepted":false,"third_party_boundary_accepted":false,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '28 days',true
+    );
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: platform ownership alone was accepted';
+  exception when others then
+    if sqlerrm like 'ACCESSIBILITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%Platform ownership alone is insufficient%' then raise; end if;
+  end;
+  raise notice 'PASS platform ownership alone cannot record accessibilityApproval';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000095',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_record public.student_data_intake_evidence_versions;
+  v_readiness jsonb;
+begin
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','accessibilityApproval','passed',
+      'safety:accessibility-review','Synthetic PASS must reject automated or incomplete accessibility evidence.',
+      '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+      'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Accessibility Reviewer","reviewer_title_and_accessibility_authority":"Institution Accessibility Coordinator","reviewer_authority_attested":true,"complete_process_review_completed":false,"keyboard_and_assistive_technology_reviewed":false,"visual_and_responsive_reviewed":false,"media_and_content_reviewed":false,"remediation_ownership_accepted":false,"third_party_boundary_accepted":false,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '28 days',true
+    );
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: incomplete PASS was recorded';
+  exception when others then
+    if sqlerrm like 'ACCESSIBILITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%PASS requires complete-process%' then raise; end if;
+  end;
+
+  begin
+    perform public.record_student_data_intake_evidence(
+      '20000000-0000-4000-8000-000000000001','accessibilityApproval','passed',
+      'safety:accessibility-review','Synthetic PASS must not outlive its underlying evidence.',
+      '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+      'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+      '{"decision":"passed","reviewer_name":"Accessibility Reviewer","reviewer_title_and_accessibility_authority":"Institution Accessibility Coordinator","reviewer_authority_attested":true,"complete_process_review_completed":true,"keyboard_and_assistive_technology_reviewed":true,"visual_and_responsive_reviewed":true,"media_and_content_reviewed":true,"remediation_ownership_accepted":true,"third_party_boundary_accepted":true,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+      now()+interval '31 days',true
+    );
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: decision exceeded the evidence ceiling';
+  exception when others then
+    if sqlerrm like 'ACCESSIBILITY APPROVAL TEST FAILED:%' then raise; end if;
+    if sqlerrm not like '%Accessibility decision expiry exceeds the underlying evidence ceiling%' then raise; end if;
+  end;
+
+  v_record:=public.record_student_data_intake_evidence(
+    '20000000-0000-4000-8000-000000000001','accessibilityApproval','hold',
+    'safety:accessibility-review','Synthetic authorized reviewer records HOLD pending manual accessibility evidence.',
+    '04927a1a6a286aeee0c0c6b273325521f1754727','20260802210945_govern_security_approval_decision',
+    'supabase:gfalgonektwdylsxsgzc;staging','us-east-1',
+    '{"decision":"hold","reviewer_name":"Accessibility Reviewer","reviewer_title_and_accessibility_authority":"Institution Accessibility Coordinator","reviewer_authority_attested":true,"complete_process_review_completed":false,"keyboard_and_assistive_technology_reviewed":false,"visual_and_responsive_reviewed":false,"media_and_content_reviewed":false,"remediation_ownership_accepted":false,"third_party_boundary_accepted":false,"automated_checks_only":false,"conformance_claim_made":false,"candidate_merge_commit":"04927a1a6a286aeee0c0c6b273325521f1754727","evidence_packet_commit":"e5ca08749a7621ce6cc59df0530d4ef7e13f5e53","hosted_migration":"20260802210945_govern_security_approval_decision","environment_scope":"staging","staging_project_ref":"gfalgonektwdylsxsgzc","technical_evidence_packet":"docs/ACCESSIBILITY_APPROVAL_EVIDENCE_PACKET.md","production_project_touched":false,"production_student_intake_enabled":false,"production_action_executed":false}'::jsonb,
+    now()+interval '28 days',true
+  );
+  v_readiness:=public.get_student_data_intake_readiness('20000000-0000-4000-8000-000000000001');
+
+  if v_record.institution_id<>'20000000-0000-4000-8000-000000000001'
+     or v_record.gate_key<>'accessibilityApproval'
+     or v_record.version<>1
+     or v_record.status<>'hold'
+     or v_record.reviewed_by<>'10000000-0000-4000-8000-000000000095'
+     or v_record.evidence_summary->>'environment_scope'<>'staging'
+     or coalesce((v_readiness->>'production_student_intake_enabled')::boolean,true) then
+    raise exception 'ACCESSIBILITY APPROVAL TEST FAILED: bounded decision or fail-closed intake state is incorrect';
+  end if;
+  raise notice 'PASS accessibilityApproval requires institutional authority, manual evidence for PASS, bounded expiry, and leaves production disabled';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
+
+-- A subject may create a governed request plan, but the Phase 2 contract must
+-- keep every production action blocked until all human-reviewed policies and
+-- operational evidence exist. This also gives the two new linked domains a
+-- representative row for the versioned restore inventory below.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare
+  v_result jsonb;
+  v_requests jsonb;
+begin
+  v_result:=public.request_my_student_data_action(
+    '20000000-0000-4000-8000-000000000001',
+    'account_closure',
+    'Synthetic rollback-only account closure readiness rehearsal.'
+  );
+  v_requests:=public.get_my_student_data_subject_requests();
+  if coalesce((v_result->>'created')::boolean,false) is not true
+     or coalesce((v_result->>'production_action_executed')::boolean,true) is not false
+     or v_result->'request'->>'status'<>'blocked'
+     or v_result->'request'->>'intake_decision'<>'hold'
+     or jsonb_array_length(v_requests)<>1
+     or jsonb_array_length(v_requests->0->'items')<>61
+     or (select count(*) from jsonb_array_elements(v_requests->0->'items') item where item->>'status'='blocked_missing_policy')<>61 then
+    raise exception 'SUBJECT REQUEST TEST FAILED: request planning did not remain fail closed';
+  end if;
+  raise notice 'PASS governed account and data-subject request remains fail closed';
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+reset request.jwt.claim.role;
 
 -- GATE 1: versioned student-data inventory, representative logical restore, and reconciliation.
 -- Parent file, resource, and group rows stay intact because a partial delete would
@@ -262,12 +577,14 @@ as $capture$
   union all select 'ltiLaunchSessions',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select s.* from public.lti_launch_sessions s where s.user_mapping_id in(select u.id from public.lti_user_mappings u where u.ednotebook_user_id=p_student)) t),'[]'::jsonb)
   union all select 'ltiGradeSyncEvents',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select e.* from public.lti_grade_sync_events e where e.user_mapping_id in(select u.id from public.lti_user_mappings u where u.ednotebook_user_id=p_student) or e.student_grade_id in(select g.id from public.student_grades g where g.student_id=p_student)) t),'[]'::jsonb)
   union all select 'userFeaturePolicies',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.feature_policies where user_id=p_student) t),'[]'::jsonb)
+  union all select 'studentDataSubjectRequests',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.student_data_subject_requests where subject_user_id=p_student or requested_by=p_student) t),'[]'::jsonb)
+  union all select 'studentDataSubjectRequestItems',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select item.* from public.student_data_subject_request_items item join public.student_data_subject_requests request on request.id=item.request_id where request.subject_user_id=p_student or request.requested_by=p_student) t),'[]'::jsonb)
   union all select 'auditEvents',coalesce((select jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text) from (select * from public.audit_events where actor_id=p_student or secure_file_id in(select f.id from public.secure_file_objects f where f.owner_id=p_student) or target_id=p_student::text or details::text like ('%'||p_student::text||'%')) t),'[]'::jsonb);
 $capture$;
 
 create temporary table safety_expected_restore_domains(domain text primary key);
 insert into safety_expected_restore_domains(domain) values
-  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('assignmentDocumentFeedback'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('courseCommunicationReads'),('courseCommunicationPreferences'),('learningResources'),('studentLearningRecords'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('auditEvents');
+  ('profile'),('identityOnboardingRequests'),('institutionAccessApplications'),('institutionAffiliations'),('institutionMemberships'),('institutionTransferRequests'),('courseMemberships'),('studentEnrollmentRequests'),('studentRosterEntries'),('assignmentDrafts'),('assignmentFormSubmissions'),('assignmentDocumentFeedback'),('courseLessonProgress'),('courseProgress'),('studentGrades'),('gradeShareLinks'),('learningMessages'),('courseCommunicationReads'),('courseCommunicationPreferences'),('learningResources'),('studentLearningRecords'),('studentPublicProfile'),('studentGroups'),('studentGroupMemberships'),('studentPosts'),('readingAnnotations'),('studentEducationPath'),('educatorVerificationRequests'),('secureFiles'),('filePreviews'),('processingJobs'),('linkPreviews'),('uploadQuotaReservations'),('fileDeletionRequests'),('legalHoldFiles'),('publicationEntitlements'),('billingCustomers'),('billingSubscriptions'),('userEntitlements'),('blackboardIdentityMappings'),('blackboardGradeExportSnapshots'),('learningSystemIdentifiers'),('ltiUserMappings'),('ltiContextMemberships'),('ltiLaunchSessions'),('ltiGradeSyncEvents'),('userFeaturePolicies'),('studentDataSubjectRequests'),('studentDataSubjectRequestItems'),('auditEvents');
 
 insert into public.student_learning_records(
   student_id,record_id,root_id,version,record_kind,course_code,course_title,
@@ -281,7 +598,7 @@ insert into public.student_learning_records(
 );
 
 create temporary table safety_restore_inventory_before as
-select '2.4'::text contract_version,domain,true captured,
+select '2.5'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -292,10 +609,10 @@ begin
     select 1 from safety_expected_restore_domains e
     full join safety_restore_inventory_before b using(domain)
     where e.domain is null or b.domain is null or not b.captured
-  ) or (select count(*) from safety_restore_inventory_before)<>48 then
+  ) or (select count(*) from safety_restore_inventory_before)<>50 then
     raise exception 'RESTORE TEST FAILED: canonical student-data inventory is incomplete';
   end if;
-  raise notice 'PASS canonical 48-domain capture inventory is complete';
+  raise notice 'PASS canonical 50-domain capture inventory is complete';
 end $$;
 
 create temporary table safety_incomplete_restore_inventory as
@@ -365,7 +682,7 @@ delete from public.course_memberships where user_id='10000000-0000-4000-8000-000
 delete from public.institution_memberships where user_id='10000000-0000-4000-8000-000000000011';
 
 create temporary table safety_restore_inventory_damaged as
-select '2.4'::text contract_version,domain,true captured,
+select '2.5'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -406,7 +723,7 @@ insert into public.course_lesson_progress select * from safety_backup_lesson_pro
 insert into public.course_progress select * from safety_backup_course_progress;
 
 create temporary table safety_restore_inventory_after as
-select '2.4'::text contract_version,domain,true captured,
+select '2.5'::text contract_version,domain,true captured,
        jsonb_array_length(rows)::bigint row_count,rows,
        encode(extensions.digest(rows::text,'sha256'),'hex') digest
 from pg_temp.capture_student_restore_rows('10000000-0000-4000-8000-000000000011');
@@ -423,7 +740,7 @@ begin
   ) then
     raise exception 'RESTORE TEST FAILED: restored student bundle did not reconcile';
   end if;
-  raise notice 'PASS representative logical restore reconciles within the canonical 48-domain inventory';
+  raise notice 'PASS representative logical restore reconciles within the canonical 50-domain inventory';
 end $$;
 
 -- GATE 2: cross-institution RLS denial for student, professor, and admin data.
@@ -431,7 +748,10 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 do $$
-declare v_direct_message_denied boolean:=false; v_cross_course_recipient_denied boolean:=false;
+declare
+  v_direct_message_denied boolean:=false;
+  v_cross_course_recipient_denied boolean:=false;
+  v_cross_institution_subject_request_denied boolean:=false;
 begin
   if (select auth.uid()) is distinct from '10000000-0000-4000-8000-000000000011'::uuid then raise exception 'AUTH TEST FAILED: auth.uid did not resolve the student JWT subject'; end if;
   if (select count(*) from public.student_grades where student_id='10000000-0000-4000-8000-000000000011') <> 1 then raise exception 'ACCESS TEST FAILED: student could not read their same-institution grade'; end if;
@@ -448,8 +768,17 @@ begin
     insert into public.learning_messages(course_id,sender_id,recipient_id,body)
     values('40000000-0000-4000-8000-000000000001',(select auth.uid()),'10000000-0000-4000-8000-000000000012','Cross-tenant course recipient must fail');
   exception when insufficient_privilege then v_cross_course_recipient_denied:=true; end;
-  if not (v_direct_message_denied and v_cross_course_recipient_denied) then
-    raise exception 'ACCESS TEST FAILED: student sent a course-less or course-scoped message across institutions';
+  begin
+    perform public.request_my_student_data_action(
+      '20000000-0000-4000-8000-000000000002',
+      'access_export',
+      'Synthetic cross-institution request must always be rejected.'
+    );
+  exception when raise_exception or insufficient_privilege then
+    v_cross_institution_subject_request_denied:=true;
+  end;
+  if not (v_direct_message_denied and v_cross_course_recipient_denied and v_cross_institution_subject_request_denied) then
+    raise exception 'ACCESS TEST FAILED: student crossed a message or subject-request institution boundary';
   end if;
   raise notice 'PASS auth.uid, same-tenant, and student cross-institution access-control test';
 end $$;

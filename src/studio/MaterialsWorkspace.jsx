@@ -7,6 +7,8 @@ import {
   downloadResource as downloadStoredResource,
   getCurrentStorageUsage,
   getLinkPreview,
+  listCourseMediaEvidence,
+  listCourseResourceTargets,
   listCloudResources,
   readCourseDraft,
   saveResourceRecord,
@@ -20,6 +22,10 @@ import {
   saveDeviceFile,
 } from "./localVault.js";
 import { detectResourceKind, linkPreview } from "./urlPreview.js";
+import { resourceTargetForPlacement } from "../media/courseMediaModel.js";
+import "../media/media-governance.css";
+import "../media/media-learning.css";
+import "./studio.css";
 
 const PLACEMENTS = [
   ["course-overview", "Course overview"],
@@ -34,6 +40,24 @@ const ACCEPT = [
   ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".epub", ".txt", ".md", ".csv",
   ".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp3", ".wav", ".m4a", ".mp4", ".zip",
 ].join(",");
+
+const EMPTY_ACCESSIBILITY = {
+  captionMode: "not_reviewed",
+  captionLanguage: "en",
+  captionUrl: "",
+  transcriptText: "",
+  accessibilityNotes: "",
+};
+
+const EMPTY_LEARNING_REQUIREMENT = {
+  mode: "optional",
+  rule: "none",
+  completionTargetKey: "",
+  dueAt: "",
+  estimatedMinutes: 15,
+};
+
+const MEDIA_TYPES = new Set(["youtube", "video", "audio", "image"]);
 
 function inferResourceType(file) {
   const type = file?.type || "";
@@ -67,6 +91,8 @@ function resourceStatus(resource) {
 }
 
 function learnerAvailable(resource) {
+  if (resource.lifecycle_state && resource.lifecycle_state !== "active") return false;
+  if (MEDIA_TYPES.has(resource.resource_type) && resource.accessibility_status !== "ready") return false;
   if (resource.storage_mode === "device") return false;
   if (resource.storage_mode === "cloud") return resource.security_status === "clean";
   return true;
@@ -170,13 +196,217 @@ function PlacementPreview({ resources, selectedPlacement }) {
   );
 }
 
-export default function MaterialsWorkspace() {
-  const course = useMemo(readCourseDraft, []);
-  const courseId = currentCourseId();
+function PlacementTarget({ placement, value, onChange, lessons, assignments }) {
+  if (placement === "lesson") {
+    return (
+      <label>Exact lesson<select value={value} onChange={(event) => onChange(event.target.value)} required>
+        <option value="">Choose the lesson</option>
+        {lessons.map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.pathLabel} · {lesson.title}</option>)}
+      </select></label>
+    );
+  }
+  if (placement === "assignment") {
+    return (
+      <label>Exact assignment<select value={value} onChange={(event) => onChange(event.target.value)} required>
+        <option value="">Choose the assignment</option>
+        {assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.title}</option>)}
+      </select></label>
+    );
+  }
+  return null;
+}
+
+function AccessibilityFields({ mediaType, value, onChange }) {
+  if (!["youtube", "video", "audio"].includes(mediaType)) return null;
+  const modes = [
+    ["not_reviewed", "Choose caption or transcript support"],
+    ...(mediaType === "youtube" ? [["provider_captions", "YouTube captions verified"]] : []),
+    ["transcript", "Reviewed EdNotebook transcript"],
+    ...(mediaType === "video" ? [["webvtt", "WebVTT caption file"]] : []),
+    ["not_required", "No spoken content"],
+  ];
+  const update = (key, next) => onChange({ ...value, [key]: next });
+  return (
+    <details className="studio-metadata-details studio-accessibility-details" open>
+      <summary>Accessibility, captions, and transcript</summary>
+      <div className="studio-field-grid">
+        <label>Support provided<select value={value.captionMode} onChange={(event) => update("captionMode", event.target.value)}>
+          {modes.map(([mode, label]) => <option key={mode} value={mode}>{label}</option>)}
+        </select></label>
+        <label>Language<input value={value.captionLanguage} onChange={(event) => update("captionLanguage", event.target.value)} placeholder="en or en-US" /></label>
+      </div>
+      {value.captionMode === "webvtt" && (
+        <label>WebVTT caption address<input value={value.captionUrl} onChange={(event) => update("captionUrl", event.target.value)} placeholder="https://…/captions.vtt" /></label>
+      )}
+      {value.captionMode === "transcript" && (
+        <label>Reviewed transcript<textarea value={value.transcriptText} onChange={(event) => update("transcriptText", event.target.value)} rows={8} placeholder="Paste the reviewed transcript students can search, copy, and read beside the media." /></label>
+      )}
+      <label>Accessibility note<textarea value={value.accessibilityNotes} onChange={(event) => update("accessibilityNotes", event.target.value)} rows={3} placeholder={value.captionMode === "not_required" ? "Explain why captions are not required, such as: Silent animation with equivalent text description." : "Optional context about caption or transcript review."} /></label>
+      <p className="studio-accessibility-note">Publication pauses until spoken media has verified captions, a reviewed transcript, a WebVTT track, or a documented no-speech exception.</p>
+    </details>
+  );
+}
+
+function datetimeLocalValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function requirementFromResource(resource) {
+  if (!resource || resource.learning_requirement !== "required") {
+    return { ...EMPTY_LEARNING_REQUIREMENT };
+  }
+  return {
+    mode: "required",
+    rule: resource.completion_rule || "none",
+    completionTargetKey: resource.completion_target_key || "",
+    dueAt: datetimeLocalValue(resource.learning_due_at),
+    estimatedMinutes: Number(resource.estimated_minutes) || 15,
+  };
+}
+
+function learningRequirementPayload(value, placement, targetKey, lessons, mediaType) {
+  if (value.mode !== "required") {
+    return {
+      learning_requirement: "optional",
+      completion_rule: "none",
+      completion_target_key: null,
+      learning_due_at: null,
+      estimated_minutes: Math.max(1, Number(value.estimatedMinutes) || 15),
+    };
+  }
+  if (!MEDIA_TYPES.has(mediaType)) {
+    throw new Error("Only video, audio, or image media can become a required learning step.");
+  }
+  if (!targetKey || !["lesson", "assignment"].includes(placement)) {
+    throw new Error("Required media must be placed in one exact lesson or assignment.");
+  }
+  let rule = value.rule;
+  let completionTargetKey = targetKey;
+  if (placement === "assignment") rule = "assignment";
+  if (placement === "lesson" && !["lesson", "knowledge_check"].includes(rule)) rule = "lesson";
+  if (rule === "knowledge_check") {
+    const lesson = lessons.find((item) => String(item.id) === String(targetKey));
+    const checkExists = (lesson?.knowledgeChecks || []).some(
+      (check) => String(check.id) === String(value.completionTargetKey),
+    );
+    if (!checkExists) throw new Error("Choose the exact published knowledge check that completes this media step.");
+    completionTargetKey = value.completionTargetKey;
+  }
+  const dueAt = value.dueAt ? new Date(value.dueAt) : null;
+  if (dueAt && Number.isNaN(dueAt.getTime())) throw new Error("Enter a valid media due date and time.");
+  return {
+    learning_requirement: "required",
+    completion_rule: rule,
+    completion_target_key: completionTargetKey,
+    learning_due_at: dueAt?.toISOString() || null,
+    estimated_minutes: Math.max(1, Math.min(10080, Number(value.estimatedMinutes) || 15)),
+  };
+}
+
+function LearningRequirementFields({ mediaType, placement, targetKey, lessons, value, onChange }) {
+  if (!MEDIA_TYPES.has(mediaType)) return null;
+  const canRequire = ["lesson", "assignment"].includes(placement) && Boolean(targetKey);
+  const lesson = lessons.find((item) => String(item.id) === String(targetKey));
+  const checks = lesson?.knowledgeChecks || [];
+  const update = (patch) => onChange((current) => ({ ...current, ...patch }));
+  return (
+    <details className="studio-learning-requirement" open>
+      <summary>Learning requirement, due date, and completion</summary>
+      <fieldset>
+        <label>Student expectation<select value={value.mode} onChange={(event) => {
+          const mode = event.target.value;
+          update(mode === "required"
+            ? {
+                mode,
+                rule: placement === "assignment" ? "assignment" : "lesson",
+                completionTargetKey: targetKey,
+              }
+            : { ...EMPTY_LEARNING_REQUIREMENT });
+        }}>
+          <option value="optional">Optional learning resource</option>
+          <option value="required" disabled={!canRequire}>Required learning step</option>
+        </select></label>
+        {!canRequire && <p className="studio-requirement-note">Choose one exact lesson or assignment before making media required.</p>}
+        {value.mode === "required" && placement === "lesson" && (
+          <>
+            <label>Completed when<select value={value.rule} onChange={(event) => {
+              const rule = event.target.value;
+              update({
+                rule,
+                completionTargetKey: rule === "knowledge_check" ? checks[0]?.id || "" : targetKey,
+              });
+            }}>
+              <option value="lesson">Student completes the lesson</option>
+              <option value="knowledge_check" disabled={!checks.length}>Student submits a knowledge check</option>
+            </select></label>
+            {value.rule === "knowledge_check" && (
+              <label>Exact knowledge check<select value={value.completionTargetKey} onChange={(event) => update({ completionTargetKey: event.target.value })} required>
+                <option value="">Choose the knowledge check</option>
+                {checks.map((check) => <option key={check.id} value={check.id}>{check.question}</option>)}
+              </select></label>
+            )}
+          </>
+        )}
+        {value.mode === "required" && placement === "assignment" && (
+          <p className="studio-requirement-note">Completion is recorded only after the linked assignment is submitted—not when playback ends.</p>
+        )}
+        {value.mode === "required" && (
+          <div className="studio-field-grid">
+            <label>Due date and time<input type="datetime-local" value={value.dueAt} onInput={(event) => update({ dueAt: event.currentTarget.value })} /></label>
+            <label>Estimated minutes<input type="number" min="1" max="10080" value={value.estimatedMinutes} onInput={(event) => update({ estimatedMinutes: event.currentTarget.value })} /></label>
+          </div>
+        )}
+      </fieldset>
+      <p className="studio-requirement-note">Viewing position supports resume and aggregate evidence. It never completes this learning step or determines a grade.</p>
+    </details>
+  );
+}
+
+function ReplacementFields({ resources, value, note, onSelect, onNote }) {
+  return (
+    <details className="studio-metadata-details">
+      <summary>Replace an earlier media version</summary>
+      <label>Earlier active media<select value={value} onChange={(event) => onSelect(event.target.value)}>
+        <option value="">This is new media</option>
+        {resources.map((resource) => (
+          <option key={resource.id} value={resource.id}>
+            {resource.title} · v{resource.resource_version || 1}
+          </option>
+        ))}
+      </select></label>
+      {value && <label>What changed?<textarea value={note} onChange={(event) => onNote(event.target.value)} rows={3} placeholder="Explain why this version replaces the earlier media." required /></label>}
+      {value && <p className="studio-accessibility-note">The existing published version stays intact until you publish the next course version.</p>}
+    </details>
+  );
+}
+
+function requireTarget(placement, targetKey) {
+  if (["lesson", "assignment"].includes(placement) && !targetKey) {
+    throw new Error(`Choose the exact ${placement} where this resource belongs.`);
+  }
+  return resourceTargetForPlacement(placement, targetKey);
+}
+
+export default function MaterialsWorkspace({ courseOverride = null, manifestOverride = null }) {
+  const localCourse = useMemo(readCourseDraft, []);
+  const course = courseOverride || localCourse;
+  const courseId = courseOverride?.id || currentCourseId();
+  const overrideLessonTargets = useMemo(
+    () => (manifestOverride?.paths || []).flatMap((path) =>
+      (path.nodes || []).map((lesson) => ({ ...lesson, pathLabel: path.label }))),
+    [manifestOverride],
+  );
   const [addMode, setAddMode] = useState("file");
   const [cloudResources, setCloudResources] = useState([]);
   const [deviceResources, setDeviceResources] = useState([]);
   const [storageUsage, setStorageUsage] = useState(null);
+  const [assignmentTargets, setAssignmentTargets] = useState([]);
+  const [publishedLessonTargets, setPublishedLessonTargets] = useState([]);
+  const [mediaEvidence, setMediaEvidence] = useState({ resources: [], eligible_learners: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -189,24 +419,37 @@ export default function MaterialsWorkspace() {
   const [fileTitle, setFileTitle] = useState("");
   const [fileDescription, setFileDescription] = useState("");
   const [filePlacement, setFilePlacement] = useState("course-library");
+  const [fileTargetKey, setFileTargetKey] = useState("");
   const [storageMode, setStorageMode] = useState("cloud");
   const [fileVersion, setFileVersion] = useState(1);
   const [altText, setAltText] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
   const [licenseLabel, setLicenseLabel] = useState("");
+  const [isDecorative, setIsDecorative] = useState(false);
+  const [fileAccessibility, setFileAccessibility] = useState(EMPTY_ACCESSIBILITY);
+  const [fileSupersedesId, setFileSupersedesId] = useState("");
+  const [fileReplacementNote, setFileReplacementNote] = useState("");
+  const [fileRequirement, setFileRequirement] = useState(EMPTY_LEARNING_REQUIREMENT);
 
   const [linkValue, setLinkValue] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
   const [linkPlacement, setLinkPlacement] = useState("lesson");
+  const [linkTargetKey, setLinkTargetKey] = useState("");
   const [serverPreview, setServerPreview] = useState(null);
   const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
   const [linkPreviewError, setLinkPreviewError] = useState("");
+  const [linkAccessibility, setLinkAccessibility] = useState(EMPTY_ACCESSIBILITY);
+  const [linkSupersedesId, setLinkSupersedesId] = useState("");
+  const [linkReplacementNote, setLinkReplacementNote] = useState("");
+  const [linkRequirement, setLinkRequirement] = useState(EMPTY_LEARNING_REQUIREMENT);
 
   const [quoteText, setQuoteText] = useState("");
   const [quoteAttribution, setQuoteAttribution] = useState("");
   const [quoteSource, setQuoteSource] = useState("");
   const [quotePlacement, setQuotePlacement] = useState("lesson");
+  const [quoteTargetKey, setQuoteTargetKey] = useState("");
+  const lessonTargets = manifestOverride ? overrideLessonTargets : publishedLessonTargets;
 
   const activePlacement = addMode === "file" ? filePlacement : addMode === "link" ? linkPlacement : quotePlacement;
   const localPreview = useMemo(() => linkPreview(linkValue, linkTitle), [linkValue, linkTitle]);
@@ -218,12 +461,12 @@ export default function MaterialsWorkspace() {
     if (!file) return "";
     return buildDigitalLiteracyName({
       file,
-      courseCode: course.code,
+      courseCode: course.course_code || course.code,
       category: inferResourceType(file),
       title: fileTitle || file.name,
       version: fileVersion,
     });
-  }, [file, fileTitle, fileVersion, course.code]);
+  }, [file, fileTitle, fileVersion, course.code, course.course_code]);
 
   const combinedResources = useMemo(
     () => [
@@ -238,19 +481,34 @@ export default function MaterialsWorkspace() {
     ],
     [cloudResources, deviceResources]
   );
+  const replaceableResources = useMemo(
+    () => cloudResources.filter((resource) =>
+      MEDIA_TYPES.has(resource.resource_type)
+      && (!resource.lifecycle_state || resource.lifecycle_state === "active")),
+    [cloudResources],
+  );
+  const evidenceByResource = useMemo(
+    () => new Map((mediaEvidence.resources || []).map((item) => [item.resource_id, item])),
+    [mediaEvidence.resources],
+  );
 
   async function refresh() {
     setLoading(true);
     setError("");
     try {
-      const [cloud, device, usage] = await Promise.all([
+      const [cloud, device, usage, targets, evidence] = await Promise.all([
         listCloudResources(courseId),
         listDeviceFiles(courseId),
         getCurrentStorageUsage().catch(() => null),
+        listCourseResourceTargets(courseId).catch(() => ({ assignments: [], lessons: [] })),
+        listCourseMediaEvidence(courseId).catch(() => ({ resources: [], eligible_learners: 0 })),
       ]);
       setCloudResources(cloud);
       setDeviceResources(device);
       setStorageUsage(usage);
+      setAssignmentTargets(targets.assignments || []);
+      setPublishedLessonTargets(targets.lessons || []);
+      setMediaEvidence(evidence);
     } catch (loadError) {
       setError(loadError.message || "Unable to load the resource library.");
     } finally {
@@ -285,6 +543,27 @@ export default function MaterialsWorkspace() {
     setError("");
   }
 
+  function selectReplacement(resourceId, kind) {
+    const resource = replaceableResources.find((item) => item.id === resourceId);
+    if (kind === "file") {
+      setFileSupersedesId(resourceId);
+      setFileReplacementNote("");
+      setFileRequirement(requirementFromResource(resource));
+      if (resource) {
+        setFilePlacement(resource.placement);
+        setFileTargetKey(resource.target_key || "");
+      }
+    } else {
+      setLinkSupersedesId(resourceId);
+      setLinkReplacementNote("");
+      setLinkRequirement(requirementFromResource(resource));
+      if (resource) {
+        setLinkPlacement(resource.placement);
+        setLinkTargetKey(resource.target_key || "");
+      }
+    }
+  }
+
   async function addFile(event) {
     event.preventDefault();
     clearMessages();
@@ -294,6 +573,10 @@ export default function MaterialsWorkspace() {
     try {
       validateFile(file);
       const checksumSha256 = await checksumFile(file);
+      const target = requireTarget(filePlacement, fileTargetKey);
+      const learningRequirement = learningRequirementPayload(
+        fileRequirement,filePlacement,fileTargetKey,lessonTargets,inferResourceType(file),
+      );
       const title = fileTitle.trim() || file.name;
       const description = fileDescription.trim();
       const metadata = {
@@ -303,22 +586,30 @@ export default function MaterialsWorkspace() {
         description,
         placement: filePlacement,
         courseId,
-        courseCode: course.code,
+        courseCode: course.course_code || course.code,
         category: inferResourceType(file),
         version: fileVersion,
         altText: altText.trim(),
         sourceLabel: sourceLabel.trim(),
         licenseLabel: licenseLabel.trim(),
+        targetKind: target.target_kind,
+        targetKey: target.target_key,
       };
 
       if (storageMode === "device") {
+        if (fileRequirement.mode === "required") {
+          throw new Error("Required media must use governed cloud storage so its course completion record can sync.");
+        }
+        if (fileSupersedesId) {
+          throw new Error("Versioned replacements must use secure cloud storage so publication history can be preserved.");
+        }
         await saveDeviceFile(file, metadata);
         setNotice("Saved to this device only. It will not appear on another browser or device.");
       } else {
         if (filePlacement !== "private-vault" && !courseId) {
           throw new Error("Save the course shell again before adding shared course materials.");
         }
-        const target = await uploadCloudFile(file, {
+        const uploadTarget = await uploadCloudFile(file, {
           ...metadata,
           scope: filePlacement === "private-vault" ? "private" : "course",
           onProgress: setUploadProgress,
@@ -327,7 +618,7 @@ export default function MaterialsWorkspace() {
         });
         await saveResourceRecord({
           course_id: filePlacement === "private-vault" ? null : courseId,
-          secure_file_id: target.secureFileId,
+          secure_file_id: uploadTarget.secureFileId,
           resource_type: inferResourceType(file),
           title,
           description,
@@ -336,13 +627,23 @@ export default function MaterialsWorkspace() {
           mime_type: file.type || "application/octet-stream",
           size_bytes: file.size,
           original_name: file.name,
-          safe_name: target.safeName,
-          checksum_sha256: target.checksumSha256,
+          safe_name: uploadTarget.safeName,
+          checksum_sha256: uploadTarget.checksumSha256,
           security_status: "quarantined",
           alt_text: altText.trim() || null,
           source_label: sourceLabel.trim() || null,
           license_label: licenseLabel.trim() || null,
+          is_decorative: isDecorative,
+          caption_mode: fileAccessibility.captionMode,
+          caption_language: fileAccessibility.captionLanguage.trim() || "en",
+          caption_url: fileAccessibility.captionUrl.trim() || null,
+          transcript_text: fileAccessibility.transcriptText.trim(),
+          accessibility_notes: fileAccessibility.accessibilityNotes.trim(),
+          supersedes_resource_id: fileSupersedesId || null,
+          replacement_note: fileReplacementNote.trim(),
+          ...learningRequirement,
           visibility: filePlacement === "private-vault" ? "private" : "course",
+          ...target,
           metadata: { version: fileVersion, namingConvention: "digital-literacy-v1" },
         });
         setNotice("Upload finished and entered quarantine. It will appear to learners only after malware and archive checks return clean.");
@@ -354,6 +655,11 @@ export default function MaterialsWorkspace() {
       setAltText("");
       setSourceLabel("");
       setLicenseLabel("");
+      setIsDecorative(false);
+      setFileAccessibility(EMPTY_ACCESSIBILITY);
+      setFileSupersedesId("");
+      setFileReplacementNote("");
+      setFileRequirement(EMPTY_LEARNING_REQUIREMENT);
       setUploadController(null);
       const input = document.getElementById("studio-file-input");
       if (input) input.value = "";
@@ -374,16 +680,30 @@ export default function MaterialsWorkspace() {
     }
     setBusy(true);
     try {
+      const target = requireTarget(linkPlacement, linkTargetKey);
+      const resourceType = detectResourceKind(preview.href);
+      const learningRequirement = learningRequirementPayload(
+        linkRequirement,linkPlacement,linkTargetKey,lessonTargets,resourceType,
+      );
       await saveResourceRecord({
         course_id: courseId,
         link_preview_id: serverPreview?.id || null,
-        resource_type: detectResourceKind(preview.href),
+        resource_type: resourceType,
         title: linkTitle.trim() || preview.title,
         description: linkDescription.trim() || preview.description,
         placement: linkPlacement,
         storage_mode: "external",
         external_url: preview.href,
         visibility: courseId ? "course" : "private",
+        ...target,
+        caption_mode: preview.isYouTube ? linkAccessibility.captionMode : "not_required",
+        caption_language: linkAccessibility.captionLanguage.trim() || "en",
+        caption_url: preview.isYouTube ? (linkAccessibility.captionUrl.trim() || null) : null,
+        transcript_text: preview.isYouTube ? linkAccessibility.transcriptText.trim() : "",
+        accessibility_notes: preview.isYouTube ? linkAccessibility.accessibilityNotes.trim() : "External web link; embedded media accessibility review is not applicable.",
+        supersedes_resource_id: linkSupersedesId || null,
+        replacement_note: linkReplacementNote.trim(),
+        ...learningRequirement,
         metadata: {
           provider: preview.provider,
           host: preview.host,
@@ -396,6 +716,10 @@ export default function MaterialsWorkspace() {
       setLinkValue("");
       setLinkTitle("");
       setLinkDescription("");
+      setLinkAccessibility(EMPTY_ACCESSIBILITY);
+      setLinkSupersedesId("");
+      setLinkReplacementNote("");
+      setLinkRequirement(EMPTY_LEARNING_REQUIREMENT);
       setServerPreview(null);
       setNotice(`${preview.provider} resource added to ${PLACEMENTS.find(([value]) => value === linkPlacement)?.[1]}.`);
       await refresh();
@@ -415,6 +739,7 @@ export default function MaterialsWorkspace() {
     }
     setBusy(true);
     try {
+      const target = requireTarget(quotePlacement, quoteTargetKey);
       await saveResourceRecord({
         course_id: courseId,
         resource_type: "quote",
@@ -425,6 +750,7 @@ export default function MaterialsWorkspace() {
         external_url: quoteSource.trim() || null,
         visibility: courseId ? "course" : "private",
         source_label: quoteAttribution.trim() || null,
+        ...target,
         metadata: { quote: quoteText.trim(), attribution: quoteAttribution.trim(), sourceUrl: quoteSource.trim() },
       });
       setQuoteText("");
@@ -519,14 +845,21 @@ export default function MaterialsWorkspace() {
                 <input id="studio-file-input" type="file" accept={ACCEPT} onChange={(event) => {
                   const next = event.target.files?.[0] || null;
                   setFile(next);
+                  setFileRequirement(EMPTY_LEARNING_REQUIREMENT);
                   if (next && !fileTitle) setFileTitle(next.name.replace(/\.[^.]+$/, ""));
                 }} />
               </label>
 
               <div className="studio-field-grid">
                 <label>Display title<input value={fileTitle} onChange={(event) => setFileTitle(event.target.value)} placeholder="What learners will see" /></label>
-                <label>Panel placement<select value={filePlacement} onChange={(event) => setFilePlacement(event.target.value)}>{PLACEMENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Panel placement<select value={filePlacement} onChange={(event) => { setFilePlacement(event.target.value); setFileTargetKey(""); setFileRequirement(EMPTY_LEARNING_REQUIREMENT); }}>{PLACEMENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
+              <PlacementTarget placement={filePlacement} value={fileTargetKey} onChange={(value) => {
+                setFileTargetKey(value);
+                setFileRequirement((current) => current.mode === "required"
+                  ? { ...current, rule: filePlacement === "assignment" ? "assignment" : current.rule, completionTargetKey: current.rule === "knowledge_check" ? "" : value }
+                  : current);
+              }} lessons={lessonTargets} assignments={assignmentTargets} />
               <label>Description<textarea value={fileDescription} onChange={(event) => setFileDescription(event.target.value)} placeholder="Why is this attached, and what should the learner do with it?" rows={3} /></label>
 
               <div className="studio-storage-choice" role="group" aria-label="File storage choice">
@@ -541,13 +874,19 @@ export default function MaterialsWorkspace() {
               <details className="studio-metadata-details">
                 <summary>Digital literacy metadata and naming</summary>
                 <div className="studio-field-grid">
-                  <label>Version<input type="number" min="1" max="99" value={fileVersion} onChange={(event) => setFileVersion(event.target.value)} /></label>
+                  <label>File-name version<input type="number" min="1" max="99" value={fileVersion} onChange={(event) => setFileVersion(event.target.value)} /></label>
                   <label>Image alt text<input value={altText} onChange={(event) => setAltText(event.target.value)} placeholder="Describe meaningful visual content" /></label>
                   <label>Source / creator<input value={sourceLabel} onChange={(event) => setSourceLabel(event.target.value)} placeholder="Author, organization, photographer" /></label>
                   <label>License / permission<input value={licenseLabel} onChange={(event) => setLicenseLabel(event.target.value)} placeholder="Owned, CC BY, public domain…" /></label>
                 </div>
+                {inferResourceType(file) === "image" && (
+                  <label className="studio-inline-check"><input type="checkbox" checked={isDecorative} onChange={(event) => setIsDecorative(event.target.checked)} /> This image is decorative and conveys no information.</label>
+                )}
                 <div className="studio-name-preview"><small>SAFE FILE NAME</small><code>{safeName || "Select a file to generate the name."}</code><p>Date · course code · material type · subject · version. A SHA-256 checksum is verified after upload.</p></div>
               </details>
+              <AccessibilityFields mediaType={inferResourceType(file)} value={fileAccessibility} onChange={setFileAccessibility} />
+              <LearningRequirementFields mediaType={inferResourceType(file)} placement={filePlacement} targetKey={fileTargetKey} lessons={lessonTargets} value={fileRequirement} onChange={setFileRequirement} />
+              <ReplacementFields resources={replaceableResources} value={fileSupersedesId} note={fileReplacementNote} onSelect={(value) => selectReplacement(value, "file")} onNote={setFileReplacementNote} />
 
               {uploadProgress && (
                 <div className="studio-upload-progress">
@@ -564,14 +903,23 @@ export default function MaterialsWorkspace() {
 
           {addMode === "link" && (
             <form className="studio-form" onSubmit={addLink}>
-              <label>URL<input value={linkValue} onChange={(event) => setLinkValue(event.target.value)} placeholder="Paste a YouTube, Canva, Word, Cengage, article, or other public link" /></label>
+              <label>URL<input value={linkValue} onChange={(event) => { setLinkValue(event.target.value); setLinkRequirement(EMPTY_LEARNING_REQUIREMENT); }} placeholder="Paste a YouTube, Canva, Word, Cengage, article, or other public link" /></label>
               <div className="studio-field-grid">
                 <label>Link title<input value={linkTitle} onChange={(event) => setLinkTitle(event.target.value)} placeholder="Learner-facing label" /></label>
-                <label>Panel placement<select value={linkPlacement} onChange={(event) => setLinkPlacement(event.target.value)}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Panel placement<select value={linkPlacement} onChange={(event) => { setLinkPlacement(event.target.value); setLinkTargetKey(""); setLinkRequirement(EMPTY_LEARNING_REQUIREMENT); }}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
+              <PlacementTarget placement={linkPlacement} value={linkTargetKey} onChange={(value) => {
+                setLinkTargetKey(value);
+                setLinkRequirement((current) => current.mode === "required"
+                  ? { ...current, rule: linkPlacement === "assignment" ? "assignment" : current.rule, completionTargetKey: current.rule === "knowledge_check" ? "" : value }
+                  : current);
+              }} lessons={lessonTargets} assignments={assignmentTargets} />
               <label>Description<textarea value={linkDescription} onChange={(event) => setLinkDescription(event.target.value)} placeholder="Explain why this link is here instead of making students guess." rows={3} /></label>
               {linkPreviewError && <div className="studio-alert is-error">{linkPreviewError}</div>}
               <ExternalPreview preview={preview} description={linkDescription} loading={linkPreviewLoading} />
+              {preview?.isYouTube && <AccessibilityFields mediaType="youtube" value={linkAccessibility} onChange={setLinkAccessibility} />}
+              {preview?.isYouTube && <LearningRequirementFields mediaType="youtube" placement={linkPlacement} targetKey={linkTargetKey} lessons={lessonTargets} value={linkRequirement} onChange={setLinkRequirement} />}
+              <ReplacementFields resources={replaceableResources} value={linkSupersedesId} note={linkReplacementNote} onSelect={(value) => selectReplacement(value, "link")} onNote={setLinkReplacementNote} />
               <button className="studio-primary-button" type="submit" disabled={busy || !preview}>{busy ? "Saving…" : preview?.isYouTube ? "Embed video in this panel" : "Add inspected link to this panel"}</button>
             </form>
           )}
@@ -581,8 +929,9 @@ export default function MaterialsWorkspace() {
               <label>Quotation or excerpt<textarea value={quoteText} onChange={(event) => setQuoteText(event.target.value)} placeholder="Paste the passage. Keep quotations short enough for your educational use and record the source." rows={6} /></label>
               <div className="studio-field-grid">
                 <label>Attribution<input value={quoteAttribution} onChange={(event) => setQuoteAttribution(event.target.value)} placeholder="Author, work, page or timestamp" /></label>
-                <label>Panel placement<select value={quotePlacement} onChange={(event) => setQuotePlacement(event.target.value)}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label>Panel placement<select value={quotePlacement} onChange={(event) => { setQuotePlacement(event.target.value); setQuoteTargetKey(""); }}>{PLACEMENTS.filter(([value]) => value !== "private-vault").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               </div>
+              <PlacementTarget placement={quotePlacement} value={quoteTargetKey} onChange={setQuoteTargetKey} lessons={lessonTargets} assignments={assignmentTargets} />
               <label>Source URL (optional)<input value={quoteSource} onChange={(event) => setQuoteSource(event.target.value)} placeholder="https://…" /></label>
               <blockquote className="studio-quote-preview"><span aria-hidden="true">“</span>{quoteText || "The quotation will be shown here with its attribution."}<footer>{quoteAttribution || "Source required before publication"}</footer></blockquote>
               <button className="studio-primary-button" type="submit" disabled={busy || !quoteText.trim()}>{busy ? "Saving…" : "Add quotation to this panel"}</button>
@@ -595,18 +944,31 @@ export default function MaterialsWorkspace() {
 
       <section className="studio-library" aria-labelledby="resource-library-title">
         <div className="studio-library-heading"><div><span className="studio-kicker">COURSE RESOURCE LIBRARY</span><h3 id="resource-library-title">Everything has an owner, location, security state, and storage mode.</h3></div><button type="button" onClick={refresh}>Refresh</button></div>
+        <div className="studio-evidence-policy">
+          <strong>Media learning evidence · publication v{mediaEvidence.version_number || "—"}</strong>
+          <span>{mediaEvidence.eligible_learners || 0} enrolled learner{mediaEvidence.eligible_learners === 1 ? "" : "s"}</span>
+          <p>Player counts support resume and accessibility review. They do not prove attention or learning and cannot replace an assessment. Required completion comes only from the linked lesson, knowledge check, or assignment.</p>
+        </div>
         {loading ? <div className="studio-library-empty">Loading secure materials…</div> : combinedResources.length === 0 ? <div className="studio-library-empty">No materials yet. Use the panel above to attach the first resource.</div> : (
           <div className="studio-resource-table">
             {combinedResources.map((resource) => {
               const status = resourceStatus(resource);
+              const evidence = evidenceByResource.get(resource.id);
               const canOpen = resource.storage_mode === "device" || resource.storage_mode === "external" || (resource.storage_mode === "cloud" && resource.security_status === "clean");
               return (
                 <article key={`${resource.storage_mode}-${resource.id}`}>
                   <ResourceIcon resource={resource} />
-                  <div className="studio-resource-main"><strong>{resource.title}</strong><p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p><small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement} · <em className={`security-${status.tone}`}>{status.label}</em></small></div>
+                  <div className="studio-resource-main">
+                    <strong>{resource.title} <small>media v{resource.resource_version || 1}</small></strong>
+                    <p>{resource.description || resource.safe_name || resource.external_url || "No description"}</p>
+                    <small>{PLACEMENTS.find(([value]) => value === resource.placement)?.[1] || resource.placement}{resource.target_key ? ` · ${resource.target_key}` : ""} · <em className={`security-${status.tone}`}>{status.label}</em>{resource.lifecycle_state && resource.lifecycle_state !== "active" ? ` · ${resource.lifecycle_state}` : ""}{resource.accessibility_status && ` · Accessibility ${resource.accessibility_status === "ready" ? "ready" : "needs review"}`}{resource.course_publication_state && ` · ${resource.course_publication_state === "published" ? `Published in v${resource.course_publication_version}` : "Draft until next publish"}`}</small>
+                    {resource.learning_requirement === "required" && <small className="studio-resource-learning">Required · {resource.completion_rule?.replaceAll("_", " ")}{resource.learning_due_at ? ` · due ${new Date(resource.learning_due_at).toLocaleString()}` : " · no separate deadline"}</small>}
+                    {evidence && <small className="studio-resource-evidence">{evidence.started_learners} started playback · {evidence.playback_completed_learners ?? evidence.completed_learners} finished playback · {Number(evidence.average_percent || 0).toFixed(0)}% average position · {evidence.transcript_learners} opened transcript</small>}
+                    {evidence?.learning_requirement === "required" && <small className="studio-resource-evidence is-learning">{evidence.learning_completed_learners || 0} of {mediaEvidence.eligible_learners || 0} completed the linked learning step · Accessibility {evidence.accessibility_status === "ready" ? "ready" : "needs review"}</small>}
+                  </div>
                   <div className="studio-resource-actions">
                     {canOpen && <button type="button" onClick={() => downloadResource(resource)}>{resource.storage_mode === "external" ? "Open" : "Download"}</button>}
-                    <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Remove</button>
+                    {(!resource.lifecycle_state || resource.lifecycle_state === "active") && <button className="is-danger" type="button" onClick={() => removeResource(resource)}>Retire</button>}
                   </div>
                 </article>
               );

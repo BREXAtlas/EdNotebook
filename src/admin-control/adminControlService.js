@@ -1,4 +1,15 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
+import { buildSecurityApprovalRpcPayload } from "./securityApprovalDecision.js";
+import { buildAccessibilityApprovalRpcPayload } from "./accessibilityApprovalDecision.js";
+import {
+  PRIVACY_RECORDS_APPROVAL_CANDIDATE,
+  buildLifecycleDecisionBatchRpcPayload,
+  buildPrivacyRecordsApprovalRpcPayload,
+} from "./privacyRecordsApprovalDecision.js";
+import { buildStudentDataPromotionPreflightRpcPayload } from "./studentDataPromotionPreflight.js";
+import { buildStudentDataProductionPromotionDecisionRpcPayload } from "./studentDataProductionPromotionDecision.js";
+import { buildStudentDataEnvironmentLaneRpcPayload } from "./studentDataEnvironmentLane.js";
+import { buildLiveServiceOperatingLaneRpcPayload } from "./liveServiceOperatingLane.js";
 
 const ADMIN_MIGRATION_MESSAGE =
   "The administration database setup is not available yet. Apply the latest institution admin control-center migration, including its Data API grants, and refresh the Supabase schema cache.";
@@ -522,6 +533,138 @@ export async function getAdminControlCenter(institutionId = null) {
   );
 }
 
+export async function getStudentDataIntakeReadiness(institutionId) {
+  return callRpc(
+    "get_student_data_intake_readiness",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "Student-data intake readiness could not be loaded.",
+  );
+}
+
+export async function getStudentDataPromotionPreflight(institutionId) {
+  return callRpc(
+    "get_student_data_promotion_preflight",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "The student-data promotion preflight could not be loaded.",
+  );
+}
+
+export function recordStudentDataPromotionPreflight(institutionId, preflight, input) {
+  return callRpc(
+    "record_student_data_promotion_preflight",
+    buildStudentDataPromotionPreflightRpcPayload(institutionId, preflight, input),
+    "The student-data promotion preflight could not be recorded.",
+  );
+}
+
+export async function getStudentDataProductionPromotionReview(institutionId) {
+  return callRpc(
+    "get_student_data_production_promotion_review",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "The final production-promotion review could not be loaded.",
+  );
+}
+
+export function recordStudentDataProductionPromotionDecision(institutionId, review, input) {
+  return callRpc(
+    "record_student_data_production_promotion_decision",
+    buildStudentDataProductionPromotionDecisionRpcPayload(institutionId, review, input),
+    "The final production-promotion decision could not be recorded.",
+  );
+}
+
+export async function getStudentDataEnvironmentLanes(institutionId) {
+  return callRpc(
+    "get_student_data_environment_lanes",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "The beta and pilot data lanes could not be loaded.",
+  );
+}
+
+export async function getLiveServiceOperatingLane() {
+  return callRpc(
+    "get_live_service_operating_lane",
+    {},
+    "The live EdNotebook operating lane could not be loaded.",
+  );
+}
+
+export function recordLiveServiceOperatingLane(input) {
+  return callRpc(
+    "record_live_service_operating_lane",
+    buildLiveServiceOperatingLaneRpcPayload(input),
+    "The live EdNotebook operating lane could not be recorded.",
+  );
+}
+
+export function recordStudentDataEnvironmentLane(institutionId, input) {
+  return callRpc(
+    "record_student_data_environment_lane",
+    buildStudentDataEnvironmentLaneRpcPayload(institutionId, input),
+    "The beta or pilot data lane could not be recorded.",
+  );
+}
+
+export async function getStudentDataLaneAudit(institutionId, dataLane, limit = 100) {
+  return callRpc(
+    "get_student_data_lane_audit",
+    {
+      p_institution_id: requiredText(institutionId, "Institution"),
+      p_data_lane: requiredText(dataLane, "Data lane"),
+      p_limit: Math.min(Math.max(Number(limit) || 100, 1), 250),
+    },
+    "The selected data-lane audit trail could not be loaded.",
+  );
+}
+
+export function recordSecurityApprovalDecision(institutionId, input) {
+  return callRpc(
+    "record_student_data_intake_evidence",
+    buildSecurityApprovalRpcPayload(institutionId, input),
+    "The accountable security decision could not be recorded.",
+  );
+}
+
+export function recordAccessibilityApprovalDecision(institutionId, input) {
+  return callRpc(
+    "record_student_data_intake_evidence",
+    buildAccessibilityApprovalRpcPayload(institutionId, input),
+    "The accountable accessibility decision could not be recorded.",
+  );
+}
+
+async function loadTosStagingLifecycleDecisionManifest() {
+  const baseUrl = String(import.meta.env.BASE_URL || "/").replace(/\/?$/u, "/");
+  const response = await fetch(`${baseUrl}${PRIVACY_RECORDS_APPROVAL_CANDIDATE.manifestPath}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    throw new AdminControlError("The signed 61-domain lifecycle decision manifest could not be loaded.", {
+      code: "lifecycle_manifest_unavailable",
+      kind: "configuration",
+    });
+  }
+  return response.text();
+}
+
+export async function recordTosStagingLifecycleDecisionBatch(institutionId, input) {
+  const manifestText = await loadTosStagingLifecycleDecisionManifest();
+  return callRpc(
+    "record_tos_staging_lifecycle_decision_batch",
+    buildLifecycleDecisionBatchRpcPayload(institutionId, manifestText, input),
+    "The signed 61-domain lifecycle decision batch could not be recorded.",
+  );
+}
+
+export function recordPrivacyRecordsApprovalDecision(institutionId, input) {
+  return callRpc(
+    "record_student_data_intake_evidence",
+    buildPrivacyRecordsApprovalRpcPayload(institutionId, input),
+    "The accountable privacy and records decision could not be recorded.",
+  );
+}
+
 export async function searchAdminAccountsCourses(query = "", institutionId = null, pathway = null) {
   const data = await callRpc(
     "admin_search_accounts_courses",
@@ -750,6 +893,102 @@ export function generateAdminControlReport(institutionId, reportType, filters = 
   );
 }
 
+export async function getMarketplaceControlCenter() {
+  const [marketplace, launch] = await Promise.all([
+    callRpc(
+      "get_marketplace_control_center",
+      undefined,
+      "Commercial publishing controls could not be loaded.",
+    ),
+    callRpc(
+      "get_marketplace_launch_control_center",
+      undefined,
+      "Marketplace production launch controls could not be loaded.",
+    ),
+  ]);
+  return {
+    ...(marketplace || {}),
+    launch_state: launch?.state || null,
+    launch_controls: launch?.controls || [],
+    launch_readiness: launch?.readiness || {},
+  };
+}
+
+export function reviewMarketplaceCase(caseType, caseId, decision, reviewNotes) {
+  return callRpc(
+    "review_marketplace_case",
+    {
+      p_case_type: requiredText(caseType, "Marketplace case type"),
+      p_case_id: requiredText(caseId, "Marketplace case"),
+      p_decision: requiredText(decision, "Decision"),
+      p_review_notes: requiredText(reviewNotes, "Review notes"),
+    },
+    "The commercial publishing decision could not be saved.",
+  );
+}
+
+export function configureMarketplaceTaxControl(taxControlId, registrationReference, liability, reviewNotes) {
+  return callRpc(
+    "configure_marketplace_tax_control",
+    {
+      p_tax_control_id: requiredText(taxControlId, "Tax control"),
+      p_registration_reference: requiredText(registrationReference, "Stripe Tax registration reference"),
+      p_liability: requiredText(liability, "Tax liability"),
+      p_review_notes: requiredText(reviewNotes, "Tax configuration notes"),
+    },
+    "Marketplace tax responsibility could not be configured.",
+  );
+}
+
+export function reviewMarketplaceLaunchControl({
+  controlKey,
+  decision,
+  evidenceReference,
+  reviewNotes,
+  expiresAt = null,
+  attestation = false,
+}) {
+  return callRpc(
+    "review_marketplace_launch_control",
+    {
+      p_control_key: requiredText(controlKey, "Launch control"),
+      p_decision: requiredText(decision, "Launch-control decision"),
+      p_evidence_reference: String(evidenceReference || "").trim(),
+      p_review_notes: requiredText(reviewNotes, "Launch-control review notes"),
+      p_expires_at: optionalText(expiresAt),
+      p_attestation: Boolean(attestation),
+    },
+    "Marketplace launch-control review could not be saved.",
+  );
+}
+
+export function setMarketplaceLiveCharging({ enable, expectedUpdatedAt, reason, attestation = false }) {
+  return callRpc(
+    "set_marketplace_live_charging",
+    {
+      p_enable: Boolean(enable),
+      p_expected_updated_at: requiredText(expectedUpdatedAt, "Current launch-state version"),
+      p_reason: requiredText(reason, "Live-charging decision reason"),
+      p_attestation: Boolean(attestation),
+    },
+    "The live-charging decision could not be saved.",
+  );
+}
+
+export async function processMarketplaceRefund(refundRequestId) {
+  const client = requireClient();
+  try {
+    const { data, error } = await client.functions.invoke("marketplace-refund", {
+      body: { refundRequestId: requiredText(refundRequestId, "Refund request") },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  } catch (error) {
+    throw friendlyError(error, "The approved refund could not be sent to Stripe.");
+  }
+}
+
 // Compatibility names used by the administration screens.
 export const signInInstitutionAdmin = (email, password) => adminSignIn({ email, password });
 export const signUpInstitutionApplicant = adminSignUp;
@@ -766,6 +1005,18 @@ export const setConnectionStatus = setIntegrationConnectionStatus;
 // Exact RPC-name aliases are useful for narrow integration tests and scripts.
 export const get_my_admin_workspaces = getMyAdminWorkspaces;
 export const get_admin_control_center = getAdminControlCenter;
+export const get_student_data_intake_readiness = getStudentDataIntakeReadiness;
+export const get_student_data_promotion_preflight = getStudentDataPromotionPreflight;
+export const record_student_data_promotion_preflight = recordStudentDataPromotionPreflight;
+export const get_student_data_production_promotion_review = getStudentDataProductionPromotionReview;
+export const record_student_data_production_promotion_decision = recordStudentDataProductionPromotionDecision;
+export const get_student_data_environment_lanes = getStudentDataEnvironmentLanes;
+export const record_student_data_environment_lane = recordStudentDataEnvironmentLane;
+export const get_student_data_lane_audit = getStudentDataLaneAudit;
+export const record_student_data_security_decision = recordSecurityApprovalDecision;
+export const record_student_data_accessibility_decision = recordAccessibilityApprovalDecision;
+export const record_tos_staging_lifecycle_decisions = recordTosStagingLifecycleDecisionBatch;
+export const record_student_data_privacy_records_decision = recordPrivacyRecordsApprovalDecision;
 export const admin_search_accounts_courses = searchAdminAccountsCourses;
 export const preview_feature_control_change = previewFeatureControlChange;
 export const apply_feature_control_change = applyFeatureControlChange;
@@ -780,6 +1031,11 @@ export const set_platform_admin_authorization = setPlatformAdminAuthorization;
 export const record_integration_test = recordIntegrationTest;
 export const set_integration_connection_status = setIntegrationConnectionStatus;
 export const generate_admin_control_report = generateAdminControlReport;
+export const get_marketplace_control_center = getMarketplaceControlCenter;
+export const review_marketplace_case = reviewMarketplaceCase;
+export const configure_marketplace_tax_control = configureMarketplaceTaxControl;
+export const review_marketplace_launch_control = reviewMarketplaceLaunchControl;
+export const set_marketplace_live_charging = setMarketplaceLiveCharging;
 
 const adminControlService = Object.freeze({
   AdminControlError,
@@ -792,6 +1048,18 @@ const adminControlService = Object.freeze({
   searchInstitutionDirectory,
   getMyAdminWorkspaces,
   getAdminControlCenter,
+  getStudentDataIntakeReadiness,
+  getStudentDataPromotionPreflight,
+  recordStudentDataPromotionPreflight,
+  getStudentDataProductionPromotionReview,
+  recordStudentDataProductionPromotionDecision,
+  getStudentDataEnvironmentLanes,
+  recordStudentDataEnvironmentLane,
+  getStudentDataLaneAudit,
+  recordSecurityApprovalDecision,
+  recordAccessibilityApprovalDecision,
+  recordTosStagingLifecycleDecisionBatch,
+  recordPrivacyRecordsApprovalDecision,
   searchAdminAccountsCourses,
   previewFeatureControlChange,
   applyFeatureControlChange,
@@ -806,6 +1074,12 @@ const adminControlService = Object.freeze({
   recordIntegrationTest,
   setIntegrationConnectionStatus,
   generateAdminControlReport,
+  getMarketplaceControlCenter,
+  reviewMarketplaceCase,
+  configureMarketplaceTaxControl,
+  reviewMarketplaceLaunchControl,
+  setMarketplaceLiveCharging,
+  processMarketplaceRefund,
   signInInstitutionAdmin,
   signUpInstitutionApplicant,
   signOutAdmin,
