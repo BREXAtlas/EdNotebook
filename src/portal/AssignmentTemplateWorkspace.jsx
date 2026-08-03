@@ -37,11 +37,13 @@ function createSection(type = "long") {
   };
 }
 
-function createTemplate(track, courseId, status = "draft") {
+function createTemplate(track, courseId, status = "draft", subjectId = null) {
   const k12 = track === "k12";
   return {
     id: `device-${crypto.randomUUID()}`,
     course_id: courseId,
+    education_division: track,
+    subject_id: k12 ? (subjectId || "other-approved-elective") : null,
     title: k12 ? "Evidence Paragraph Builder" : "Source Analysis Response",
     instructions: k12
       ? "Work through each section, then use the full-page editor to put the response together."
@@ -525,13 +527,13 @@ function StudentAssignment({ template, session, onClose }) {
 }
 
 export default function AssignmentTemplateWorkspace({ mode, session, track = "university", classes = [], initialTemplateId = null }) {
-  const fallbackClasses = classes.length ? classes : [{ id: track === "k12" ? "eng10-stories" : "sci-101-cell", code: track === "k12" ? "ENG 10" : "SCI 101", title: track === "k12" ? "Stories and Evidence" : "What Is a Cell?", division: track }];
+  const fallbackClasses = classes.length ? classes : [{ id: track === "k12" ? "eng10-stories" : "sci-101-cell", code: track === "k12" ? "ENG 10" : "SCI 101", title: track === "k12" ? "Stories and Evidence" : "What Is a Cell?", division: track, subjectId: track === "k12" ? "english-language-arts" : null }];
   const storageKey = "ednotebook-assignment-templates";
-  const initialTemplates = loadJson(storageKey, [createTemplate(track, fallbackClasses[0].id, "published")]);
+  const initialTemplates = loadJson(storageKey, [createTemplate(track, fallbackClasses[0].id, "published", fallbackClasses[0].subjectId)]);
   const [templates, setTemplates] = useState(initialTemplates);
   const [availableClasses, setAvailableClasses] = useState(fallbackClasses);
   const [courseId, setCourseId] = useState(fallbackClasses[0].id);
-  const [draft, setDraft] = useState(() => createTemplate(track, fallbackClasses[0].id));
+  const [draft, setDraft] = useState(() => createTemplate(track, fallbackClasses[0].id, "draft", fallbackClasses[0].subjectId));
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -545,7 +547,7 @@ export default function AssignmentTemplateWorkspace({ mode, session, track = "un
       setAvailableClasses(result.data);
       const firstCourse = result.data[0];
       setCourseId((current) => result.data.some((course) => course.id === current) ? current : firstCourse.id);
-      setDraft((current) => result.data.some((course) => course.id === current.course_id) ? current : createTemplate(firstCourse.division || track, firstCourse.id));
+      setDraft((current) => result.data.some((course) => course.id === current.course_id) ? current : createTemplate(firstCourse.division || track, firstCourse.id, "draft", firstCourse.subjectId));
     }
     loadCloudCourses();
     return () => { active = false; };
@@ -582,7 +584,7 @@ export default function AssignmentTemplateWorkspace({ mode, session, track = "un
   function selectCourse(nextCourseId) {
     setCourseId(nextCourseId);
     const selectedCourse = availableClasses.find((course) => course.id === nextCourseId);
-    setDraft(createTemplate(selectedCourse?.division || track, nextCourseId));
+    setDraft(createTemplate(selectedCourse?.division || track, nextCourseId, "draft", selectedCourse?.subjectId));
     setSelectedTemplate(null);
     setNotice("");
   }

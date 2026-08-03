@@ -525,10 +525,10 @@ export async function getMyAdminWorkspaces() {
   return data || { platform_access: false, platform_owner: false, institutions: [] };
 }
 
-export async function getAdminControlCenter(institutionId = null) {
+export async function getAdminControlCenter(institutionId = null, educationDivision = "university") {
   return callRpc(
-    "get_admin_control_center",
-    { p_institution_id: optionalText(institutionId) },
+    "get_admin_control_center_by_division",
+    { p_institution_id: optionalText(institutionId), p_education_division: requiredText(educationDivision, "Education division") },
     "The administration control center could not be loaded.",
   );
 }
@@ -665,17 +665,26 @@ export function recordPrivacyRecordsApprovalDecision(institutionId, input) {
   );
 }
 
-export async function searchAdminAccountsCourses(query = "", institutionId = null, pathway = null) {
+export async function searchAdminAccountsCourses(query = "", institutionId = null, pathway = null, educationDivision = "university") {
   const data = await callRpc(
-    "admin_search_accounts_courses",
+    "admin_search_accounts_courses_by_division",
     {
       p_query: String(query ?? "").trim().slice(0, 200),
       p_institution_id: optionalText(institutionId),
       p_pathway: optionalText(pathway),
+      p_education_division: requiredText(educationDivision, "Education division"),
     },
     "Accounts and courses could not be searched.",
   );
   return data || { accounts: [], courses: [] };
+}
+
+export function recordAdminDivisionScope(institutionId = null, educationDivision = "university") {
+  return callRpc(
+    "record_admin_division_scope",
+    { p_institution_id: optionalText(institutionId), p_education_division: requiredText(educationDivision, "Education division") },
+    "The education-division selection could not be recorded.",
+  );
 }
 
 export function previewFeatureControlChange(input) {
@@ -1018,6 +1027,7 @@ export const record_student_data_accessibility_decision = recordAccessibilityApp
 export const record_tos_staging_lifecycle_decisions = recordTosStagingLifecycleDecisionBatch;
 export const record_student_data_privacy_records_decision = recordPrivacyRecordsApprovalDecision;
 export const admin_search_accounts_courses = searchAdminAccountsCourses;
+export const record_admin_division_scope = recordAdminDivisionScope;
 export const preview_feature_control_change = previewFeatureControlChange;
 export const apply_feature_control_change = applyFeatureControlChange;
 export const submit_institution_access_application = submitInstitutionAccessApplication;
@@ -1061,6 +1071,7 @@ const adminControlService = Object.freeze({
   recordTosStagingLifecycleDecisionBatch,
   recordPrivacyRecordsApprovalDecision,
   searchAdminAccountsCourses,
+  recordAdminDivisionScope,
   previewFeatureControlChange,
   applyFeatureControlChange,
   submitInstitutionAccessApplication,

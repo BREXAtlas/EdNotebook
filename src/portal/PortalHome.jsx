@@ -100,11 +100,11 @@ export default function PortalHome() {
           <div style={{ padding: 28, color: "#18284a", background: "#fffdf8", border: "1px solid #ded6c8", borderRadius: 22, boxShadow: "0 18px 50px rgba(16,27,51,.08)" }}>
             <span className="portal-kicker">MEET THE DEMO TEAM</span>
             <h2 style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>Meet Brooke, Atlas, and Jaylen.</h2>
-            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Open a ready-made student, professor, or K–12 workspace and try the features for yourself.</p>
+            <p style={{ maxWidth: 820, margin: 0, color: "#657086", lineHeight: 1.65 }}>Open a ready-made student, professor, or Early Prep workspace and try the features for yourself.</p>
             <div className="portal-demo-team">
               <a href="#/tour/student"><img src="/demo-media/brooke-portrait.png" alt="Brooke, student tour guide" {...deferredImage} /><span><strong>Brooke</strong><small>University student</small></span></a>
               <a href="#/tour/professor"><img src="/demo-media/atlas-portrait.png" alt="Atlas, professor guide" {...deferredImage} /><span><strong>Atlas</strong><small>Professor</small></span></a>
-              <a href="#/tour/k12"><img src="/demo-media/jaylen-portrait.png" alt="Jaylen, K–12 student guide" {...deferredImage} /><span><strong>Jaylen</strong><small>K–12 student</small></span></a>
+              <a href="#/tour/k12"><img src="/demo-media/jaylen-portrait.png" alt="Jaylen, Early Prep student guide" {...deferredImage} /><span><strong>Jaylen</strong><small>Early Prep student</small></span></a>
             </div>
           </div>
         </section>
@@ -136,8 +136,16 @@ export default function PortalHome() {
           <div><strong>Start independently</strong><span>Students can upload syllabi and use planning, notes, sources, literacy courses, and learning search without waiting for a teacher account.</span></div>
           <div><strong>Your view stays yours</strong><span>Students see their own cross-class learning record; professors see only students and classes they are authorized to manage.</span></div>
         </section>
+        <section style={{ maxWidth: 1180, margin: "0 auto 54px", padding: "0 28px" }} aria-labelledby="early-prep-title">
+          <div style={{ padding: 28, color: "#18284a", background: "#eef6ff", border: "1px solid #b8cee9", borderRadius: 22 }}>
+            <span className="portal-kicker">A CONNECTED HIGH-SCHOOL EXPERIENCE</span>
+            <h2 id="early-prep-title" style={{ margin: "10px 0 8px", fontFamily: '"Zilla Slab", Georgia, serif', fontSize: 34 }}>EdNotebook Early Prep — Grades 9–12</h2>
+            <p style={{ maxWidth: 820, color: "#52627b", lineHeight: 1.65 }}>Students and verified high-school teachers use the shared EdNotebook foundation with school-only audiences, a stable subject taxonomy, and the canonical Digital Literacy Class. Marketplace buying, renting, and selling stay unavailable.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}><a href="#/early-prep" style={{ ...actionStyle, color: "#fff", background: "#1d4ed8" }}>Early Prep student path</a><a href="#/early-prep/teacher" style={{ ...actionStyle, color: "#153b91", border: "1px solid #9eabd0", background: "#fff" }}>High-school teacher path</a></div>
+          </div>
+        </section>
       </main>
-      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" {...deferredImage} /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a><a href="#/institution-access">Institution access</a></footer>
+      <footer className="portal-simple-footer portal-home-footer"><img src="/brand/ednotebook-logo-monochrome.svg" alt="EdNotebook" {...deferredImage} /><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/tour">Tour</a><a href="#/presentation">Product presentation</a><a href="#/business-presentation">Business presentation</a><a href="#/about">About & values</a><a href="#/careers">Work with us</a><a href="#/students">Students</a><a href="#/early-prep">Early Prep · Grades 9–12</a><a href="#/professors">Professors</a><a href="#/publishers">Publishing</a><a href="#/institution-access">Institution access</a></footer>
     </div>
   );
 }

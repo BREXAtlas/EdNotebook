@@ -537,6 +537,7 @@ export default function AdminControlCenter({ onExit }) {
   const centerRequestRef = useRef(0);
   const [workspaces, setWorkspaces] = useState(null);
   const [workspaceKey, setWorkspaceKey] = useState("");
+  const [educationDivision, setEducationDivision] = useState("university");
   const [center, setCenter] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
@@ -597,7 +598,7 @@ export default function AdminControlCenter({ onExit }) {
     setLoading(true);
     setError("");
     try {
-      const result = await adminService.getAdminControlCenter(targetInstitutionId || null);
+      const result = await adminService.getAdminControlCenter(targetInstitutionId || null, educationDivision);
       if (requestId !== centerRequestRef.current) return;
       setCenter(result);
       if (!targetInstitutionId && result?.access?.platform_access && Array.isArray(result?.institutions)) {
@@ -645,10 +646,29 @@ export default function AdminControlCenter({ onExit }) {
     setError("");
   }
 
+  async function changeEducationDivision(nextDivision) {
+    if (!["university", "k12"].includes(nextDivision) || nextDivision === educationDivision) return;
+    centerRequestRef.current += 1;
+    setEducationDivision(nextDivision);
+    setCenter(null);
+    setDrafts({});
+    setPreview(null);
+    setPreviewInput(null);
+    setSelectedTarget(null);
+    setSearchResults({ accounts: [], courses: [] });
+    setNotice("");
+    setError("");
+    try {
+      await adminService.recordAdminDivisionScope(institutionId, nextDivision);
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The division selection could not be recorded."));
+    }
+  }
+
   useEffect(() => { loadWorkspaces(); }, []);
   useEffect(() => {
     if (workspaceKey) loadCenter(institutionId);
-  }, [workspaceKey]);
+  }, [workspaceKey, educationDivision]);
 
   const features = useMemo(() => {
     if (Array.isArray(center?.features)) return center.features.map(normalizeFeature);
@@ -748,6 +768,7 @@ export default function AdminControlCenter({ onExit }) {
     }[draft.scopeType] || { institutionId: null, pathway: null, courseId: null, userId: null };
     return {
       feature_key: feature.key,
+      education_division: educationDivision,
       scope_type: draft.scopeType,
       institution_id: scopeIds.institutionId,
       pathway: scopeIds.pathway,
@@ -844,7 +865,7 @@ export default function AdminControlCenter({ onExit }) {
     setSearchBusy(true);
     setError("");
     try {
-      const result = await adminService.searchAdminAccountsCourses(searchQuery, institutionId, searchPathway || null);
+      const result = await adminService.searchAdminAccountsCourses(searchQuery, institutionId, searchPathway || null, educationDivision);
       setSearchResults({ accounts: result?.accounts || [], courses: result?.courses || [] });
     } catch (nextError) {
       setError(friendlyError(nextError, "Accounts and courses could not be searched."));
@@ -1054,7 +1075,7 @@ export default function AdminControlCenter({ onExit }) {
     setActionBusy("platform-account-search");
     setError("");
     try {
-      const result = await adminService.searchAdminAccountsCourses(platformAccountQuery, null, null);
+      const result = await adminService.searchAdminAccountsCourses(platformAccountQuery, null, null, educationDivision);
       const accountsById = new Map();
       (result?.accounts || []).forEach((account) => {
         if (account?.user_id && !accountsById.has(account.user_id)) accountsById.set(account.user_id, account);
@@ -1237,6 +1258,12 @@ export default function AdminControlCenter({ onExit }) {
               {(workspaces?.institutions || []).map((workspace) => <option key={workspace.id} value={`institution:${workspace.id}`}>{workspace.name} — {titleCase(workspace.role)}</option>)}
             </select>
           </label>
+          <label>Education division
+            <select value={educationDivision} onChange={(event) => changeEducationDivision(event.target.value)}>
+              <option value="university">University</option>
+              <option value="k12">Early Prep · Grades 9–12</option>
+            </select>
+          </label>
           <button type="button" className="ac-button ac-button--quiet" onClick={() => loadCenter()} disabled={loading}>Refresh</button>
           <a className="ac-button ac-button--quiet" href="#/admin/tos-integration">TOS integration preview</a>
           <a className="ac-button ac-button--quiet" href="#/admin/synthetic-pilot">Synthetic institution pilot</a>
@@ -1246,6 +1273,7 @@ export default function AdminControlCenter({ onExit }) {
 
       <div className="ac-scope-banner">
         <strong>{isPlatformWorkspace ? (access.platform_owner ? "Platform owner scope" : "Delegated platform scope") : selectedWorkspace?.name || center?.institutions?.[0]?.name || "Institution scope"}</strong>
+        <span>Active education division: {educationDivision === "k12" ? "Early Prep · Grades 9–12" : "University"}. Server-side queries, feature controls, connections, accounts, courses, and statistics use this scope.</span>
         <span>{isPlatformWorkspace
           ? access.platform_owner
             ? "Platform-wide owner controls can affect every institution. Delegated platform access remains limited to explicitly assigned review and testing capabilities."

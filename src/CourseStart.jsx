@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import BrandLogo from "./Brand.jsx";
+import { EARLY_PREP_SUBJECTS, earlyPrepSubjectLabel, isEarlyPrepSubject } from "./early-prep/subjectCatalog.js";
 import { supabase } from "./supabaseClient.js";
 
 const JOURNEY = [
@@ -46,10 +47,14 @@ function readDraft() {
 
 export default function CourseStart({ onContinue, onHome }) {
   const prior = useMemo(readDraft, []);
+  const preferredDivision = typeof window === "undefined" ? "university" : window.localStorage.getItem("ednotebook-course-division");
+  const initialDivision = prior?.educationDivision || (preferredDivision === "k12" ? "k12" : "university");
   const [name, setName] = useState(prior?.name || "");
   const [code, setCode] = useState(prior?.code || "");
   const [subject, setSubject] = useState(prior?.subject || "Interdisciplinary");
-  const [audience, setAudience] = useState(prior?.audience || "Undergraduate learners");
+  const [subjectId, setSubjectId] = useState(prior?.subjectId || "computer-science-digital-literacy");
+  const [educationDivision, setEducationDivision] = useState(initialDivision);
+  const [audience, setAudience] = useState(prior?.audience || (initialDivision === "k12" ? "Grades 9–12 learners" : "Undergraduate learners"));
   const [length, setLength] = useState(prior?.length || "16 weeks");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -58,6 +63,10 @@ export default function CourseStart({ onContinue, onHome }) {
     event.preventDefault();
     if (!name.trim()) {
       setError("Give the course a working title before continuing.");
+      return;
+    }
+    if (educationDivision === "k12" && !isEarlyPrepSubject(subjectId)) {
+      setError("Choose an approved Early Prep subject before continuing.");
       return;
     }
 
@@ -72,7 +81,9 @@ export default function CourseStart({ onContinue, onHome }) {
         owner_id: userData.user.id,
         title: name.trim(),
         course_code: code.trim() || null,
-        subject: subject.trim() || null,
+        education_division: educationDivision,
+        subject_id: educationDivision === "k12" ? subjectId : null,
+        subject: educationDivision === "k12" ? earlyPrepSubjectLabel(subjectId) : subject.trim() || null,
         audience: audience.trim() || null,
         teaching_window: length,
         status: "draft",
@@ -107,6 +118,8 @@ export default function CourseStart({ onContinue, onHome }) {
         id: savedCourse.id,
         name: savedCourse.title,
         code: savedCourse.course_code || "",
+        educationDivision: savedCourse.education_division || educationDivision,
+        subjectId: savedCourse.subject_id || null,
         subject: savedCourse.subject || "",
         audience: savedCourse.audience || "",
         length: savedCourse.teaching_window || length,
@@ -117,6 +130,7 @@ export default function CourseStart({ onContinue, onHome }) {
 
       window.localStorage.setItem("ednotebook-course-draft", JSON.stringify(draft));
       window.localStorage.setItem("ednotebook-course-id", savedCourse.id);
+      window.localStorage.setItem("ednotebook-course-division", draft.educationDivision);
       window.localStorage.setItem("ednotebook-course-step", "2");
       onContinue?.();
     } catch (saveError) {
@@ -171,6 +185,18 @@ export default function CourseStart({ onContinue, onHome }) {
 
           <div className="course-field-grid">
             <label>
+              Education division
+              <select value={educationDivision} disabled={Boolean(prior?.id)} onChange={(event) => {
+                const division = event.target.value;
+                setEducationDivision(division);
+                if (division === "k12" && audience === "Undergraduate learners") setAudience("Grades 9–12 learners");
+              }}>
+                <option value="university">University / college</option>
+                <option value="k12">Early Prep · Grades 9–12</option>
+              </select>
+              {prior?.id && <small>Division is locked after the course record is created.</small>}
+            </label>
+            <label>
               Course code
               <input
                 value={code}
@@ -179,16 +205,18 @@ export default function CourseStart({ onContinue, onHome }) {
                 autoComplete="off"
               />
             </label>
-            <label>
-              Subject
-              <input
-                value={subject}
-                onChange={(event) => setSubject(event.target.value)}
-                placeholder="Digital literacy, mathematics, biology…"
-                autoComplete="off"
-              />
-            </label>
           </div>
+
+          <label>
+            What subject is this for?
+            {educationDivision === "k12" ? (
+              <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)} required>
+                {EARLY_PREP_SUBJECTS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            ) : (
+              <input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Digital literacy, mathematics, biology…" autoComplete="off" />
+            )}
+          </label>
 
           <div className="course-field-grid">
             <label>

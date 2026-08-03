@@ -5,6 +5,8 @@ export const LEARNING_SYSTEMS = Object.freeze({
   BLACKBOARD: "blackboard",
   INSTITUTION_SIS: "institution_sis",
   ONEROSTER: "oneroster",
+  POWERSCHOOL: "powerschool",
+  SCHOOLOGY: "schoology",
 });
 
 export const INTEGRATION_MODES = Object.freeze({
