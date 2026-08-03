@@ -186,6 +186,15 @@ jobs:
           --echo-errors
           --file=supabase/tests/student_data_environment_lanes.sql
 
+      - name: Run final production-promotion decision gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/student_data_production_promotion_decision.sql
+
       - name: Run fail-closed Digital Literacy research gates
         env:
           PGCONNECT_TIMEOUT: "10"
