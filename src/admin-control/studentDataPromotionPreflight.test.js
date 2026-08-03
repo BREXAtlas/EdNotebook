@@ -133,6 +133,7 @@ test("CI rehearses Beta to Pilot carry-over against every fresh migration", asyn
   ]);
   assert.match(workflow, /student_data_environment_lanes\.sql/u);
   assert.match(gate, /update public\.institution_affiliations/u);
+  assert.match(gate, /and pathway='student'/u);
   assert.match(gate, /v_beta\.carried_account_ids<>v_pilot\.carried_account_ids/u);
   assert.match(gate, /v_pilot\.previous_data_lane<>'beta'/u);
   assert.match(gate, /'production','active'/u);

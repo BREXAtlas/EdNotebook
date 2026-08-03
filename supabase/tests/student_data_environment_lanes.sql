@@ -50,6 +50,13 @@ set institution_id='22222222-2222-4222-8222-222222222222',
 where user_id='10000000-0000-4000-8000-000000000172'
   and pathway='professor';
 
+update public.institution_affiliations
+set institution_id='22222222-2222-4222-8222-222222222222',
+    relationship='student',status='active',source='platform_owner',
+    verification_method='test-fixture',is_primary=true,started_at=now()
+where user_id='10000000-0000-4000-8000-000000000173'
+  and pathway='student';
+
 do $$
 begin
   if not exists (
@@ -59,6 +66,13 @@ begin
       and institution_id='22222222-2222-4222-8222-222222222222'
       and relationship='faculty' and status='active'
   ) then raise exception 'Professor fixture affiliation was not scoped to staging'; end if;
+  if not exists (
+    select 1 from public.institution_affiliations
+    where user_id='10000000-0000-4000-8000-000000000173'
+      and pathway='student'
+      and institution_id='22222222-2222-4222-8222-222222222222'
+      and relationship='student' and status='active'
+  ) then raise exception 'Student fixture affiliation was not scoped to staging'; end if;
 end $$;
 
 insert into public.courses(id,owner_id,institution_id,title,course_code,status,access_scope,education_division)
