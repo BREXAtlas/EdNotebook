@@ -22,6 +22,7 @@ import {
   validatePrivacyRecordsApprovalDecision,
 } from "./privacyRecordsApprovalDecision.js";
 import { validateStudentDataPromotionPreflight } from "./studentDataPromotionPreflight.js";
+import { validateStudentDataProductionPromotionDecision } from "./studentDataProductionPromotionDecision.js";
 import { validateStudentDataEnvironmentLane } from "./studentDataEnvironmentLane.js";
 import {
   formatMarketplaceDate,
@@ -174,6 +175,15 @@ const DEFAULT_PRIVACY_RECORDS_DECISION = Object.freeze({
 const DEFAULT_PROMOTION_PREFLIGHT = Object.freeze({
   sourceCommit: "",
   evidenceReference: "",
+  summary: "",
+  authorityAttestation: false,
+});
+
+const DEFAULT_PRODUCTION_PROMOTION_DECISION = Object.freeze({
+  decision: "hold",
+  sourceCommit: "",
+  evidenceReference: "",
+  rollbackReference: "",
   summary: "",
   authorityAttestation: false,
 });
@@ -1473,6 +1483,7 @@ export default function AdminControlCenter({ onExit }) {
 function StudentDataReadinessPanel({ institutionId }) {
   const [readiness, setReadiness] = useState(null);
   const [promotionPreflight, setPromotionPreflight] = useState(null);
+  const [productionPromotionReview, setProductionPromotionReview] = useState(null);
   const [dataLanes, setDataLanes] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1483,6 +1494,7 @@ function StudentDataReadinessPanel({ institutionId }) {
   const [lifecycleDraft, setLifecycleDraft] = useState(() => ({ ...DEFAULT_LIFECYCLE_DECISION_BATCH }));
   const [privacyRecordsDraft, setPrivacyRecordsDraft] = useState(() => ({ ...DEFAULT_PRIVACY_RECORDS_DECISION }));
   const [promotionPreflightDraft, setPromotionPreflightDraft] = useState(() => ({ ...DEFAULT_PROMOTION_PREFLIGHT }));
+  const [productionPromotionDraft, setProductionPromotionDraft] = useState(() => ({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION }));
   const [dataLaneDraft, setDataLaneDraft] = useState(() => ({ ...DEFAULT_DATA_LANE }));
 
   const loadReadiness = useCallback(async () => {
@@ -1497,6 +1509,11 @@ function StudentDataReadinessPanel({ institutionId }) {
         setPromotionPreflight(null);
       }
       try {
+        setProductionPromotionReview(await adminService.getStudentDataProductionPromotionReview(institutionId));
+      } catch {
+        setProductionPromotionReview(null);
+      }
+      try {
         setDataLanes(await adminService.getStudentDataEnvironmentLanes(institutionId));
       } catch {
         setDataLanes(null);
@@ -1504,6 +1521,7 @@ function StudentDataReadinessPanel({ institutionId }) {
     } catch (nextError) {
       setReadiness(null);
       setPromotionPreflight(null);
+      setProductionPromotionReview(null);
       setDataLanes(null);
       setError(friendlyError(nextError, "Student-data intake readiness could not be loaded."));
     } finally {
@@ -1518,6 +1536,7 @@ function StudentDataReadinessPanel({ institutionId }) {
     setLifecycleDraft({ ...DEFAULT_LIFECYCLE_DECISION_BATCH });
     setPrivacyRecordsDraft({ ...DEFAULT_PRIVACY_RECORDS_DECISION });
     setPromotionPreflightDraft({ ...DEFAULT_PROMOTION_PREFLIGHT });
+    setProductionPromotionDraft({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION });
     setDataLaneDraft({ ...DEFAULT_DATA_LANE });
     setNotice("");
   }, [institutionId]);
@@ -1536,6 +1555,9 @@ function StudentDataReadinessPanel({ institutionId }) {
   const currentPromotionPreflight = promotionPreflight?.current || null;
   const promotionSnapshot = currentPromotionPreflight?.snapshot || null;
   const latestPromotionPreflight = promotionPreflight?.latest_record || null;
+  const currentProductionPromotion = productionPromotionReview?.current || null;
+  const productionPromotionSnapshot = currentProductionPromotion?.snapshot || null;
+  const latestProductionPromotion = productionPromotionReview?.latest_record || null;
   const laneAssignments = Array.isArray(dataLanes?.assignments) ? dataLanes.assignments : [];
   const laneAuditCounts = dataLanes?.audit_counts || {};
   const productionEnabled = readiness?.production_student_intake_enabled === true;
@@ -1546,6 +1568,10 @@ function StudentDataReadinessPanel({ institutionId }) {
   const promotionPreflightValidation = validateStudentDataPromotionPreflight(
     promotionPreflight,
     promotionPreflightDraft,
+  );
+  const productionPromotionValidation = validateStudentDataProductionPromotionDecision(
+    productionPromotionReview,
+    productionPromotionDraft,
   );
   const dataLaneValidation = validateStudentDataEnvironmentLane(institutionId, dataLaneDraft);
   const isPassDecision = securityDraft.decision === "passed";
@@ -1569,6 +1595,10 @@ function StudentDataReadinessPanel({ institutionId }) {
 
   function updatePromotionPreflightDraft(field, value) {
     setPromotionPreflightDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateProductionPromotionDraft(field, value) {
+    setProductionPromotionDraft((current) => ({ ...current, [field]: value }));
   }
 
   function updateDataLaneDraft(field, value) {
@@ -1611,6 +1641,29 @@ function StudentDataReadinessPanel({ institutionId }) {
       await loadReadiness();
     } catch (nextError) {
       setError(friendlyError(nextError, "The governed promotion-preflight snapshot could not be recorded."));
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function recordProductionPromotionDecision(event) {
+    event.preventDefault();
+    if (!productionPromotionValidation.valid || recording) return;
+    setRecording(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await adminService.recordStudentDataProductionPromotionDecision(
+        institutionId,
+        productionPromotionReview,
+        productionPromotionDraft,
+      );
+      const record = result?.record || null;
+      setNotice(`Production-promotion decision v${record?.version || "current"} recorded as ${titleCase(record?.decision || "hold")}. No deployment or production intake occurred; staging Beta and Pilot remain available.`);
+      setProductionPromotionDraft({ ...DEFAULT_PRODUCTION_PROMOTION_DECISION });
+      await loadReadiness();
+    } catch (nextError) {
+      setError(friendlyError(nextError, "The final production-promotion decision could not be recorded."));
     } finally {
       setRecording(false);
     }
@@ -1814,6 +1867,64 @@ function StudentDataReadinessPanel({ institutionId }) {
             <label className="ac-check-row"><input type="checkbox" checked={dataLaneDraft.authorityAttestation} onChange={(event) => updateDataLaneDraft("authorityAttestation", event.target.checked)} /><span>I understand this changes only the governed data label. Existing accounts, courses, and work carry forward unchanged, and the transition is audited.</span></label>
             {!dataLaneValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Lane change is not ready.</strong><p>{dataLaneValidation.issues[0]}</p></div> : null}
             <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!dataLaneValidation.valid || recording}>{recording ? "Recording…" : "Record lane label"}</button></div>
+          </form>
+        </details>
+      </section>
+
+      <section className="ac-subsection" aria-labelledby="production-promotion-decision-title">
+        <div className="ac-review-heading">
+          <div>
+            <span>Final Phase 5 of 5</span>
+            <h3 id="production-promotion-decision-title">Production-promotion owner decision</h3>
+          </div>
+          <StatusPill
+            status={latestProductionPromotion?.decision === "approved_for_manual_promotion" ? "ready" : "hold"}
+            label={latestProductionPromotion?.decision === "approved_for_manual_promotion" ? "Manual promotion approved" : "Production HOLD"}
+          />
+        </div>
+        <p className="ac-section-copy">This immutable owner record closes the five-phase review. It cannot deploy code, connect to production, enable student-data intake, or execute a lifecycle action. Beta and Pilot stay available in staging.</p>
+        <div className="ac-stats">
+          <div className="ac-stat-card"><span>Current candidate</span><strong>{productionPromotionSnapshot?.eligible_for_manual_promotion === true ? "Eligible for human decision" : "HOLD"}</strong><small>Derived from the exact recorded Phase 4 preflight</small></div>
+          <div className="ac-stat-card"><span>Beta / Pilot</span><strong>{productionPromotionSnapshot?.staging_beta_testing_allowed === true && productionPromotionSnapshot?.staging_pilot_testing_allowed === true ? "Available" : "Unavailable"}</strong><small>Existing staging accounts and courses remain in place</small></div>
+          <div className="ac-stat-card"><span>Production intake</span><strong>{productionPromotionSnapshot?.production_student_intake_enabled === true ? "Enabled" : "Disabled"}</strong><small>No decision record can change this value</small></div>
+          <div className="ac-stat-card"><span>Latest owner decision</span><strong>{latestProductionPromotion ? `v${latestProductionPromotion.version}` : "Not recorded"}</strong><small>{latestProductionPromotion ? formatDate(latestProductionPromotion.recorded_at) : "Record only after exact-merge staging evidence"}</small></div>
+        </div>
+        {currentProductionPromotion ? (
+          <dl className="ac-detail-grid">
+            <div><dt>Decision checksum</dt><dd><code>{String(currentProductionPromotion.snapshot_sha256 || "").slice(0, 16)}…</code></dd></div>
+            <div><dt>Phase 4 preflight</dt><dd><code>{String(productionPromotionSnapshot?.preflight_snapshot_sha256 || "").slice(0, 16)}…</code></dd></div>
+            <div><dt>Evidence ceiling</dt><dd>{formatDate(currentProductionPromotion.valid_until)}</dd></div>
+            <div><dt>Promotion action</dt><dd>Separate manual action required</dd></div>
+          </dl>
+        ) : (
+          <div className="ac-callout ac-callout--neutral"><strong>Phase 5 recorder not deployed yet.</strong><p>The production HOLD remains authoritative. Beta and Pilot testing are unaffected.</p></div>
+        )}
+        <details className="ac-disclosure">
+          <summary>Record the accountable owner decision</summary>
+          <form onSubmit={recordProductionPromotionDecision}>
+            <div className="ac-form-grid">
+              <label className="ac-compact-field">Decision
+                <select value={productionPromotionDraft.decision} onChange={(event) => updateProductionPromotionDraft("decision", event.target.value)}>
+                  <option value="hold">HOLD production</option>
+                  <option value="approved_for_manual_promotion" disabled={productionPromotionSnapshot?.eligible_for_manual_promotion !== true}>Approve a separate manual promotion</option>
+                </select>
+              </label>
+              <label className="ac-compact-field">Exact merged staging release commit
+                <input required value={productionPromotionDraft.sourceCommit} onChange={(event) => updateProductionPromotionDraft("sourceCommit", event.target.value)} placeholder="40-character merge commit" />
+              </label>
+              <label className="ac-compact-field">Durable owner-decision evidence
+                <input required value={productionPromotionDraft.evidenceReference} onChange={(event) => updateProductionPromotionDraft("evidenceReference", event.target.value)} placeholder="Signed decision, ticket, or approved review record" />
+              </label>
+              <label className="ac-compact-field">Rollback-plan reference
+                <input required value={productionPromotionDraft.rollbackReference} onChange={(event) => updateProductionPromotionDraft("rollbackReference", event.target.value)} placeholder="Reviewed rollback runbook or release record" />
+              </label>
+            </div>
+            <label className="ac-compact-field">Decision summary, blockers, and boundaries
+              <textarea required rows="4" value={productionPromotionDraft.summary} onChange={(event) => updateProductionPromotionDraft("summary", event.target.value)} placeholder="Record why production remains on HOLD or why a separate manual promotion is authorized. Include remaining blockers and rollback ownership." />
+            </label>
+            <label className="ac-check-row"><input type="checkbox" checked={productionPromotionDraft.authorityAttestation} onChange={(event) => updateProductionPromotionDraft("authorityAttestation", event.target.checked)} /><span>I am the accountable human owner for this decision. I reviewed the exact checksum-bound evidence and understand that recording it performs no deployment, enables no production intake, and leaves staging Beta and Pilot available.</span></label>
+            {!productionPromotionValidation.valid ? <div className="ac-callout ac-callout--warning" role="note"><strong>Owner decision is not ready to record.</strong><p>{productionPromotionValidation.issues[0]}</p></div> : null}
+            <div className="ac-form-actions"><button type="submit" className="ac-button ac-button--primary" disabled={!productionPromotionValidation.valid || recording}>{recording ? "Recording…" : "Record owner decision"}</button></div>
           </form>
         </details>
       </section>

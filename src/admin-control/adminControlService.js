@@ -7,6 +7,7 @@ import {
   buildPrivacyRecordsApprovalRpcPayload,
 } from "./privacyRecordsApprovalDecision.js";
 import { buildStudentDataPromotionPreflightRpcPayload } from "./studentDataPromotionPreflight.js";
+import { buildStudentDataProductionPromotionDecisionRpcPayload } from "./studentDataProductionPromotionDecision.js";
 import { buildStudentDataEnvironmentLaneRpcPayload } from "./studentDataEnvironmentLane.js";
 
 const ADMIN_MIGRATION_MESSAGE =
@@ -555,6 +556,22 @@ export function recordStudentDataPromotionPreflight(institutionId, preflight, in
   );
 }
 
+export async function getStudentDataProductionPromotionReview(institutionId) {
+  return callRpc(
+    "get_student_data_production_promotion_review",
+    { p_institution_id: requiredText(institutionId, "Institution") },
+    "The final production-promotion review could not be loaded.",
+  );
+}
+
+export function recordStudentDataProductionPromotionDecision(institutionId, review, input) {
+  return callRpc(
+    "record_student_data_production_promotion_decision",
+    buildStudentDataProductionPromotionDecisionRpcPayload(institutionId, review, input),
+    "The final production-promotion decision could not be recorded.",
+  );
+}
+
 export async function getStudentDataEnvironmentLanes(institutionId) {
   return callRpc(
     "get_student_data_environment_lanes",
@@ -974,6 +991,8 @@ export const get_admin_control_center = getAdminControlCenter;
 export const get_student_data_intake_readiness = getStudentDataIntakeReadiness;
 export const get_student_data_promotion_preflight = getStudentDataPromotionPreflight;
 export const record_student_data_promotion_preflight = recordStudentDataPromotionPreflight;
+export const get_student_data_production_promotion_review = getStudentDataProductionPromotionReview;
+export const record_student_data_production_promotion_decision = recordStudentDataProductionPromotionDecision;
 export const get_student_data_environment_lanes = getStudentDataEnvironmentLanes;
 export const record_student_data_environment_lane = recordStudentDataEnvironmentLane;
 export const get_student_data_lane_audit = getStudentDataLaneAudit;
@@ -1015,6 +1034,8 @@ const adminControlService = Object.freeze({
   getStudentDataIntakeReadiness,
   getStudentDataPromotionPreflight,
   recordStudentDataPromotionPreflight,
+  getStudentDataProductionPromotionReview,
+  recordStudentDataProductionPromotionDecision,
   getStudentDataEnvironmentLanes,
   recordStudentDataEnvironmentLane,
   getStudentDataLaneAudit,
