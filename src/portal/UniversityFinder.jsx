@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { listPublishedCourses } from "./portalService.js";
 import { TEXAS_UNIVERSITIES, TEXAS_UNIVERSITY_SOURCE } from "./texasUniversities.js";
+import { scrollWithinHashRoute } from "../scrollWithinHashRoute.js";
 
 export default function UniversityFinder({ onOpenCourse }) {
   const [query, setQuery] = useState("");
@@ -49,7 +50,7 @@ export default function UniversityFinder({ onOpenCourse }) {
         {!matches.length && <p>No Texas universities match that search.</p>}
       </div>
       {!query.trim() && !showAll && <button className="university-show-all" type="button" onClick={() => setShowAll(true)}>Show all {TEXAS_UNIVERSITIES.length} Texas universities</button>}
-      {selected && <div className="university-selected-card"><div><span className="portal-kicker">SELECTED UNIVERSITY</span><h3>{selected.name}</h3><p>{selectedCourses.length ? "Choose a published EdNotebook class below." : "This university is in the Texas directory. No EdNotebook classes have been published for it yet."}</p></div>{selectedCourses.length ? <div>{selectedCourses.map((course) => <button type="button" onClick={() => openCourse(course)} key={course.course_id}><strong>{course.course_code} · {course.title}</strong><span>{course.professor_display_name} · {course.term || "Term to be announced"}</span></button>)}</div> : <a href="#share-ednotebook">Invite a friend or professor to EdNotebook</a>}</div>}
+      {selected && <div className="university-selected-card"><div><span className="portal-kicker">SELECTED UNIVERSITY</span><h3>{selected.name}</h3><p>{selectedCourses.length ? "Choose a published EdNotebook class below." : "This university is in the Texas directory. No EdNotebook classes have been published for it yet."}</p></div>{selectedCourses.length ? <div>{selectedCourses.map((course) => <button type="button" onClick={() => openCourse(course)} key={course.course_id}><strong>{course.course_code} · {course.title}</strong><span>{course.professor_display_name} · {course.term || "Term to be announced"}</span></button>)}</div> : <a href="#share-ednotebook" onClick={(event) => scrollWithinHashRoute(event, "share-ednotebook")}>Invite a friend or professor to EdNotebook</a>}</div>}
       <small className="university-source-note">Directory verified July 2026 from the <a href={TEXAS_UNIVERSITY_SOURCE} target="_blank" rel="noreferrer">Texas Higher Education Coordinating Board</a>. A directory listing does not mean the university has joined EdNotebook.</small>
     </section>
   );

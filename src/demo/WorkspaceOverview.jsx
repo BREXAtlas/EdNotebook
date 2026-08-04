@@ -92,11 +92,11 @@ function ClassProgressCard({ persona }) {
   );
 }
 
-function CalendarMiniCard({ persona }) {
+function CalendarMiniCard({ persona, onOpenCalendar }) {
   const grouped = persona.calendarEvents.slice(0, 6);
   return (
     <article className="paper-card mini-calendar-card">
-      <div className="dashboard-card-heading"><div><NotebookLabel>CALENDAR</NotebookLabel><h2>Dates from every class.</h2></div><a href="#calendar">Sync</a></div>
+      <div className="dashboard-card-heading"><div><NotebookLabel>CALENDAR</NotebookLabel><h2>Dates from every class.</h2></div><button type="button" onClick={onOpenCalendar}>Open calendar</button></div>
       <div className="calendar-agenda">{grouped.map((event, index) => <div key={`${event.date}-${event.title}`}><span className={cx("agenda-icon", `is-${event.type}`)}>{iconForType(event.type)}</span><div><strong>{event.title}</strong><span>{formatDate(`${event.date}T12:00:00`)} · {event.time}</span></div>{index < 2 && <i>soon</i>}</div>)}</div>
     </article>
   );
@@ -111,7 +111,7 @@ function LiteracyCard() {
   );
 }
 
-function TodayPanel({ persona, assignments, setAssignments, features, onlineStatus, statusLine }) {
+function TodayPanel({ persona, assignments, setAssignments, features, onlineStatus, statusLine, onOpenCalendar }) {
   const urgent = assignments.filter((item) => item.status !== "complete").slice(0, 4);
   return (
     <div className="workspace-panel-stack">
@@ -126,7 +126,7 @@ function TodayPanel({ persona, assignments, setAssignments, features, onlineStat
       </section>
       <section className="today-lower-grid">
         <ClassProgressCard persona={persona} />
-        {features.calendar && <CalendarMiniCard persona={persona} />}
+        {features.calendar && <CalendarMiniCard persona={persona} onOpenCalendar={onOpenCalendar} />}
         {features.conversations && <ConversationsCard persona={persona} />}
       </section>
       {features.literacy && <LiteracyCard />}
