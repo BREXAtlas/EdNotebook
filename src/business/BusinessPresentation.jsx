@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrandMark } from "../Brand.jsx";
+import { scrollWithinHashRoute } from "../scrollWithinHashRoute.js";
 import "./business-presentation.css";
 
 const PROOF_AREAS = [
@@ -178,11 +179,11 @@ export default function BusinessPresentation() {
 
   return (
     <div className="bp-page">
-      <header className="bp-nav"><a href="#/" className="bp-brand"><BrandMark size={40} /><span><strong>EdNotebook</strong><small>Business presentation</small></span></a><nav><a href="#four-areas">The strategy</a><a href="#features">Feature map</a><a href="#financials">Financials</a><a href="#partnership">Work with us</a></nav><a className="bp-nav-cta" href="#/professors">Explore EdNotebook</a></header>
+      <header className="bp-nav"><a href="#/" className="bp-brand"><BrandMark size={40} /><span><strong>EdNotebook</strong><small>Business presentation</small></span></a><nav><a href="#four-areas" onClick={(event) => scrollWithinHashRoute(event, "four-areas")}>The strategy</a><a href="#features" onClick={(event) => scrollWithinHashRoute(event, "features")}>Feature map</a><a href="#financials" onClick={(event) => scrollWithinHashRoute(event, "financials")}>Financials</a><a href="#partnership" onClick={(event) => scrollWithinHashRoute(event, "partnership")}>Work with us</a></nav><a className="bp-nav-cta" href="#/professors">Explore EdNotebook</a></header>
 
       <main>
         <section className="bp-hero">
-          <div className="bp-hero-copy"><span className="bp-kicker">PLATFORM · EVIDENCE · PUBLISHING</span><h1>Teaching starts the relationship.<br />Evidence builds the institution.</h1><p>EdNotebook connects course creation, student work, communication, educational content, publishing, and evidence of learning in one platform.</p><div className="bp-actions"><a href="#/professors">Open the live platform</a><a className="is-secondary" href="#partnership">See where you could contribute</a></div><div className="bp-stage-note"><i /> Platform shell built · Core workflows are now being connected and tested</div></div>
+          <div className="bp-hero-copy"><span className="bp-kicker">PLATFORM · EVIDENCE · PUBLISHING</span><h1>Teaching starts the relationship.<br />Evidence builds the institution.</h1><p>EdNotebook connects course creation, student work, communication, educational content, publishing, and evidence of learning in one platform.</p><div className="bp-actions"><a href="#/professors">Open the live platform</a><a className="is-secondary" href="#partnership" onClick={(event) => scrollWithinHashRoute(event, "partnership")}>See where you could contribute</a></div><div className="bp-stage-note"><i /> Platform shell built · Core workflows are now being connected and tested</div></div>
           <div className="bp-hero-visual"><div className="bp-journey-line">{["Course plan", "Student activity", "Evidence", "Outcomes", "Institutional trust"].map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item}</strong></div>)}</div></div>
         </section>
 

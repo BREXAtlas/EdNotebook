@@ -6,6 +6,7 @@ import ShareEdNotebook from "./ShareEdNotebook.jsx";
 import { STUDENT_PRICING } from "./demoData.js";
 import { educationTrack } from "./educationTracks.js";
 import UniversityFinder from "./UniversityFinder.jsx";
+import { scrollWithinHashRoute } from "../scrollWithinHashRoute.js";
 
 const STUDENT_FEATURES = [
   ["One school view", "Find campus news, useful links, published classes, professors, and student groups without jumping between five sites."],
@@ -80,7 +81,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
                 ? "Find your school, teacher, and class before creating an account. When you join, your student ID is matched to the teacher’s class list and your private school dashboard opens."
                 : "Search your university and professor before creating an account. When you are ready to join a course, your university ID is matched to the professor’s approved roster and your private dashboard opens."}
             </p>
-            <div className="student-hero-actions"><a href="#class-search">Find a class</a><button type="button" onClick={() => onEnter?.()}>Open student dashboard</button><ShareEdNotebook buttonLabel="Share with friends" /></div>
+            <div className="student-hero-actions"><a href="#class-search" onClick={(event) => scrollWithinHashRoute(event, "class-search")}>Find a class</a><button type="button" onClick={() => onEnter?.()}>Open student dashboard</button><ShareEdNotebook buttonLabel="Share with friends" /></div>
             <div className="student-hero-points"><span>No account to browse</span><span>Free school tools</span><span>{k12 ? "School-only social spaces" : "Private grades by default"}</span></div>
           </div>
           <div className={`student-dashboard-preview ${k12 ? "k12-dashboard-preview" : ""}`} aria-label={`${copy.shortLabel} student dashboard preview`}>
@@ -173,7 +174,7 @@ export default function StudentLanding({ onEnter, track = "university" }) {
         </div>
       )}
       {pricingWaitlistOpen && <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-waitlist-title"><div className="portal-modal-card waitlist-modal-card"><button className="modal-close" type="button" onClick={() => setPricingWaitlistOpen(false)} aria-label="Close paid services waitlist">×</button><div id="pricing-waitlist-title"><InterestForm kind="pricing_waitlist" title="Paid services waitlist" description="Tell us which optional future service you want to hear about. Your student account and current tools remain free." submitLabel="Join waitlist" emailRequired educationDivision={track} /></div></div></div>}
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search">Find classes</a><a href="#/professors">Educator portal</a></footer>
+      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search" onClick={(event) => scrollWithinHashRoute(event, "class-search")}>Find classes</a><a href="#/professors">Educator portal</a></footer>
     </div>
   );
 }

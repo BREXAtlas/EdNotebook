@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import PortalNav from "./PortalNav.jsx";
 import { listAlexMorrisonCatalog } from "./portalService.js";
 import { supabase } from "../supabaseClient.js";
+import { scrollWithinHashRoute } from "../scrollWithinHashRoute.js";
 import {
   beginMarketplaceCheckout,
   loadMarketplaceDashboard,
@@ -263,7 +264,7 @@ export default function PublishingLanding({ onEnter, onOpenCourse }) {
           <span className="portal-kicker">ALEX B. MORRISON LIBRARY &amp; BOOKSTORE</span>
           <h1>Find a free course, open a professor’s book, or preview what is coming to the bookstore.</h1>
           <p>One governed catalog connects approved courses, read-only books, interactive EduBooks, and assigned readings. Digital Literacy is the first free course example; professor assignment remains a separate choice.</p>
-          <div><a href="#library-catalog">Browse the Library</a><button type="button" onClick={onEnter}>Professor publishing studio</button></div>
+          <div><a href="#library-catalog" onClick={(event) => scrollWithinHashRoute(event, "library-catalog")}>Browse the Library</a><button type="button" onClick={onEnter}>Professor publishing studio</button></div>
           <figure className="publishing-hero-image">
             <img src="/landing/landing-publishing-materials.png" alt="Course books and manuscript pages being reviewed for publication" width="1536" height="1024" fetchPriority="high" />
             <figcaption><strong>Courses and books, connected.</strong><span>Publish one approved source, then choose Library, class assignment, open access, or governed commercial review.</span></figcaption>
