@@ -79,7 +79,7 @@ function DemoWorkspace({ personaId }) {
       <div className="workspace-shell">
         <WorkspaceSidebar persona={persona} accountSettings={accountSettings} tab={tab} setTab={setTab} features={features} professor={professor} onOpenSurface={setSurfacePage} />
         <main className="workspace-main" data-tour-section={`panel-${tab}`}>
-          {tab === "today" && <TodayPanel persona={persona} assignments={assignments} setAssignments={setAssignments} features={features} onlineStatus={onlineStatus} statusLine={statusLine} />}
+          {tab === "today" && <TodayPanel persona={persona} assignments={assignments} setAssignments={setAssignments} features={features} onlineStatus={onlineStatus} statusLine={statusLine} onOpenCalendar={() => setTab("calendar")} />}
           {tab === "homework" && <HomeworkPanel persona={persona} assignments={assignments} setAssignments={setAssignments} reminders={reminders} setReminders={setReminders} />}
           {tab === "calendar" && <CalendarPanel persona={persona} assignments={assignments} setAssignments={setAssignments} calendarScope={`ednotebook-demo-calendar-${persona.id}`} role={professor ? "professor" : "student"} />}
           {tab === "syllabus" && <SyllabusPanel persona={persona} assignments={assignments} setAssignments={setAssignments} />}
