@@ -70,7 +70,7 @@ test("profile messaging routes to the course room beside the shared campus feed"
   assert.match(student, /onOpenCourseCommunication=\{\(\) => chooseTab\("messages"\)\}/u);
   assert.match(student, /Profiles do not create private direct-message threads/u);
   assert.match(student, /nextTab === "settings" \|\| nextTab === "messages"[\s\S]*setDemoMode\(false\)/u);
-  assert.match(professor, /\["announcements", "Campus social"\][\s\S]*\["communication", "Course communication"\]/u);
+  assert.match(professor, /\["announcements", "Campus Social"\][\s\S]*\["communication", "Course Communication"\]/iu);
   assert.match(professor, /tab === "announcements" && <CampusSocialFeed/u);
   assert.match(professor, /tab === "communication" && <CourseCommunicationPanel/u);
   assert.match(professor, /onOpenMessages=\{\(\) => setTab\("communication"\)\}/u);

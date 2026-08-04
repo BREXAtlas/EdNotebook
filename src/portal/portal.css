@@ -641,6 +641,23 @@
 .professor-lock-summary span { color: var(--portal-muted); }
 .professor-alert-row { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--portal-line); font-size: 11px; }
 .professor-alert-row strong { color: var(--portal-amber); }
+.professor-digital-literacy-entry { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #b8cbed; background: linear-gradient(135deg, #f9fbff, #edf4ff); }
+.professor-digital-literacy-entry p { max-width: 780px; margin-bottom: 0; }
+.professor-digital-literacy-entry > button { flex: 0 0 auto; }
+.professor-canonical-library-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; padding: 17px; border: 1px solid #b8cbed; border-radius: 12px; background: #f1f6ff; }
+.professor-canonical-library-row > div { display: grid; gap: 4px; }
+.professor-canonical-library-row span { color: var(--portal-blue); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.professor-canonical-library-row strong { font-family: "Zilla Slab", Georgia, serif; font-size: 21px; }
+.professor-canonical-library-row small { color: var(--portal-muted); font-size: 10px; }
+.professor-notification-list { display: grid; gap: 8px; }
+.professor-notification-list > button { display: grid; gap: 4px; padding: 14px; color: var(--portal-ink); background: #f6f8fb; border: 1px solid var(--portal-line); border-radius: 10px; text-align: left; }
+.professor-notification-list > button span { color: var(--portal-blue); font-size: 9px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.professor-notification-list > button small { color: var(--portal-muted); }
+.professor-help-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.professor-help-grid article { display: grid; gap: 10px; align-content: start; padding: 16px; background: #f6f8fb; border-radius: 11px; }
+.professor-help-grid span { color: var(--portal-muted); font-size: 11px; line-height: 1.55; }
+.professor-help-grid button,
+.professor-help-grid a { justify-self: start; padding: 9px 12px; color: white; background: var(--portal-blue); border: 0; border-radius: 8px; font-size: 11px; font-weight: 800; text-decoration: none; }
 .professor-class-grid { display: grid; gap: 10px; }
 .professor-class-grid article { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 18px; background: #f6f8fb; border: 1px solid var(--portal-line); border-radius: 11px; }
 .professor-class-grid article > div:first-child { display: grid; gap: 4px; }
@@ -819,6 +836,7 @@
   .student-note-form button { justify-self: start; }
   .student-group-grid,
   .student-class-grid,
+  .professor-help-grid,
   .professor-plan-strip,
   .security-setting-grid { grid-template-columns: 1fr; }
   .course-completion-badges > div,
@@ -828,6 +846,8 @@
   .report-card-summary { grid-template-columns: 1fr 1fr; }
   .professor-class-grid article { grid-template-columns: 1fr; }
   .professor-class-status { justify-items: start; }
+  .professor-digital-literacy-entry,
+  .professor-canonical-library-row { align-items: flex-start; flex-direction: column; }
 }
 
 @media (max-width: 520px) {
@@ -1096,6 +1116,43 @@
 .account-bubble:hover, .account-bubble:focus-within { opacity: 1; background: rgba(22,31,49,.94); box-shadow: 0 12px 35px rgba(0,0,0,.22); }
 .account-bubble-details { max-width: 150px; }
 .account-bubble button { padding: 6px 8px !important; font-size: 11px; }
+
+.institution-review-access-banner {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px clamp(18px, 4vw, 54px);
+  border-bottom: 1px solid #e3b75e;
+  color: #553500;
+  background: #fff4d6;
+  font-family: Inter, system-ui, sans-serif;
+}
+.institution-review-access-banner > div { display: grid; gap: 3px; }
+.institution-review-access-banner strong { font-size: 12px; letter-spacing: .08em; }
+.institution-review-access-banner span { font-size: 13px; line-height: 1.45; }
+.institution-review-access-banner a {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.institution-review-access-banner.is-rejected {
+  border-bottom-color: #e3a6a6;
+  color: #7d2424;
+  background: #fff0f0;
+}
+
+@media (max-width: 620px) {
+  .institution-review-access-banner { align-items: flex-start; flex-direction: column; gap: 8px; }
+}
 
 .paid-services-coming { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 18px; padding: 20px 22px; border: 1px dashed #b8c4d6; border-radius: 17px; background: #f7f9fc; }
 .paid-services-coming h3 { margin: 5px 0; font: 800 25px/1.1 var(--portal-display); }

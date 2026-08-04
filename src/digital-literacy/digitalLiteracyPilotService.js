@@ -54,6 +54,12 @@ export async function loadProfessorDigitalLiteracyWorkspace(courseId) {
   );
 }
 
+export async function loadDigitalLiteracyCatalog() {
+  if (!configured()) return unavailable();
+  const { data, error } = await supabase.rpc("get_digital_literacy_catalog");
+  return result(data, error);
+}
+
 export async function createDigitalLiteracyAssignment({
   courseId,
   title,
