@@ -58,15 +58,11 @@ function defaultParameters(persona) {
 }
 
 function defaultSyllabusText(persona) {
-  const publishedCourseText = String(persona?.syllabusText || "").trim();
-  if (publishedCourseText) return publishedCourseText;
-  if (persona.id === "k12") return `ACCOUNTING I\nRequired text: Introduction to Accounting course packet\nLearning objectives:\n- Explain the accounting cycle\n- Prepare journals, ledgers, and a trial balance\n- Discuss ethics and accounting careers\nAssignments:\nJournal entries case due September 22, 2026 at 3:30 PM\nCareer interview due October 6, 2026 at 8:00 AM`;
-  if (persona.id === "professor") return `TRANSFORMATIVE TEACHING — EDUC 5302\nRequired reading: Teaching for Transformation\nLearning objectives:\n- Design learner-centered experiences\n- Evaluate inclusive teaching strategies\n- Use workspace assistants thoughtfully in course preparation\nAssignments:\nTeaching philosophy statement due August 21, 2026 at 5:00 PM\nLearning design prototype due September 11, 2026 at 11:59 PM`;
-  return `PRINCIPLES OF MARKETING — MKTG 2301\nRequired book: Principles of Marketing, 19th edition\nLearning objectives:\n- Analyze customer value and market segments\n- Explain positioning and ethical promotion\n- Build a basic marketing plan\nAssignments:\nMarketing reflection draft due August 21, 2026 at 11:59 PM\nAudience analysis due September 4, 2026 at 5:00 PM`;
+  return String(persona?.syllabusText || "").trim();
 }
 
 function defaultSyllabusSourceName(persona) {
-  return String(persona?.syllabusSourceName || "").trim() || "sample syllabus";
+  return String(persona?.syllabusSourceName || "").trim() || "new syllabus";
 }
 
 function pad(value) {
@@ -224,7 +220,7 @@ function extractSyllabus(text, persona, parameters, sourceId) {
   });
   return {
     title,
-    themes: persona.id === "professor" ? ["Transformative leadership", "Inclusive teaching", "Thoughtful technology use"] : persona.id === "k12" ? ["Accounting cycle", "Financial statements", "Career readiness"] : ["Customer value", "Market segments", "Ethical promotion"],
+    themes: [],
     objectives: objectiveLines.length ? objectiveLines.map((line) => line.line.replace(/^[-•*]\s*/, "")) : ["Add or correct learning objectives in the source review."],
     books: bookLines.length ? bookLines.map((line) => line.line.replace(/^Required (book|text|reading):\s*/i, "")) : ["No required material confidently detected"],
     assignments: extractedAssignments,
@@ -395,7 +391,7 @@ function StudentSemesterDraft({ draft, provenance }) {
   );
 }
 
-function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
+function IssueReportDialog({ persona, fileName, onClose, onSaved, demoMode = false }) {
   const [stage, setStage] = useState("Source detection");
   const [issue, setIssue] = useState("");
   function submit(event) {
@@ -408,16 +404,20 @@ function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
         name: persona?.name || "Guest",
         accountType: persona?.accountType || "Guest",
       },
-      sourceFile: fileName || "Pasted or sample course text",
+      sourceFile: fileName || "Pasted syllabus text",
       stage,
       issue: issue.trim(),
       status: "new",
     };
     try {
-      const key = "ednotebook-demo-admin-inbox";
+      const key = demoMode
+        ? "ednotebook-demo-admin-inbox"
+        : "ednotebook-beta-syllabus-feedback";
       const current = JSON.parse(window.localStorage.getItem(key) || "[]");
       window.localStorage.setItem(key, JSON.stringify([report, ...(Array.isArray(current) ? current : [])].slice(0, 200)));
-      onSaved("Issue saved to this device’s admin message inbox with the current demo account and source name.");
+      onSaved(demoMode
+        ? "Issue saved to this device’s demo feedback inbox."
+        : "Syllabus feedback saved on this device. No syllabus text or file was transmitted.");
       onClose();
     } catch {
       onSaved("This browser blocked device storage. Copy the issue before closing and send it from a connected account later.");
@@ -426,11 +426,11 @@ function IssueReportDialog({ persona, fileName, onClose, onSaved }) {
   return (
     <div className="syllabus-report-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <form className="syllabus-report-dialog" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="syllabus-report-title">
-        <header><div><NotebookLabel>DEMO ISSUE REPORT</NotebookLabel><h2 id="syllabus-report-title">Save this issue to the demo admin inbox.</h2></div><button type="button" onClick={onClose} aria-label="Close issue report">×</button></header>
-        <p>This sample workspace saves the report only on this device. Reporter: <strong>{persona?.name || "Guest"}</strong> · Source: <strong>{fileName || "Pasted or sample text"}</strong></p>
+        <header><div><NotebookLabel>{demoMode ? "DEMO ISSUE REPORT" : "BETA FEEDBACK"}</NotebookLabel><h2 id="syllabus-report-title">{demoMode ? "Save this issue to the demo feedback inbox." : "Record a syllabus-tool issue."}</h2></div><button type="button" onClick={onClose} aria-label="Close issue report">×</button></header>
+        <p>This report stays on this device. Reporter: <strong>{persona?.name || "Guest"}</strong> · Source: <strong>{fileName || "Pasted syllabus text"}</strong></p>
         <label>Where did it happen?<select value={stage} onChange={(event) => setStage(event.target.value)}><option>Upload or file reading</option><option>Source detection</option><option>Assignment conversion</option><option>Calendar output</option><option>Something else</option></select></label>
         <label>What was missed or converted incorrectly?<textarea autoFocus required minLength={8} rows={6} value={issue} onChange={(event) => setIssue(event.target.value)} placeholder="Example: Line 14 was highlighted as an assignment, but it is an office-hours date." /></label>
-        <footer><button type="button" onClick={onClose}>Cancel</button><button className="primary-paper-button" type="submit">Save demo report</button></footer>
+        <footer><button type="button" onClick={onClose}>Cancel</button><button className="primary-paper-button" type="submit">{demoMode ? "Save demo report" : "Save feedback"}</button></footer>
       </form>
     </div>
   );
@@ -441,6 +441,7 @@ function SyllabusPanel({
   assignments,
   setAssignments,
   enableGovernedStudentAi = false,
+  demoMode = false,
 }) {
   const [text, setTextState] = useState(() => defaultSyllabusText(persona));
   const [parameters, setParameters] = useState(() => defaultParameters(persona));
@@ -720,12 +721,12 @@ function SyllabusPanel({
   return (
     <div className="workspace-panel-stack">
       <section className="paper-card syllabus-upload-card" aria-busy={isReading}>
-        <div className="dashboard-card-heading"><div><NotebookLabel>{enableGovernedStudentAi ? "OWN YOUR SEMESTER" : "SYLLABUS REVIEW"}</NotebookLabel><h1>Upload the syllabus. Check every conversion.</h1><p>Edit the course text and highlighted lines before any date reaches the calendar.</p></div><div className="syllabus-upload-actions"><button type="button" disabled={isReading} onClick={() => setScannerOpen(true)}>Scan paper syllabus</button><button className="primary-paper-button" type="button" disabled={isReading} onClick={() => inputRef.current?.click()}>{isReading ? "Reading syllabus…" : "Upload syllabus"}</button></div></div>
-        <input ref={inputRef} className="sr-only" type="file" tabIndex={-1} aria-label="Choose a PDF, Word DOCX, TXT, Markdown, or CSV syllabus" disabled={isReading} accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; handleFile(file); }} />
+        <div className="dashboard-card-heading"><div><NotebookLabel>{enableGovernedStudentAi ? "STEP 1 · OWN YOUR SEMESTER" : "STEP 1 · SYLLABUS TOOLS"}</NotebookLabel><h1>Add one syllabus source. Check every conversion.</h1><p>Upload, scan, or paste a syllabus below. EdNotebook highlights possible course details and dates for your review before anything reaches the calendar.</p></div><div className="syllabus-upload-actions"><button type="button" disabled={isReading} onClick={() => setScannerOpen(true)}>Scan paper syllabus</button><button className="primary-paper-button" type="button" disabled={isReading} onClick={() => inputRef.current?.click()}>{isReading ? "Reading syllabus…" : "Upload syllabus file"}</button></div></div>
+        <input ref={inputRef} className="syllabus-file-input" type="file" tabIndex={-1} aria-label="Choose a PDF, Word DOCX, TXT, Markdown, or CSV syllabus" disabled={isReading} accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; handleFile(file); }} />
         {isReading && <div className="syllabus-read-progress" role="status" aria-live="polite"><span aria-hidden="true" /><strong>{readProgress || "Reading syllabus…"}</strong><button type="button" onClick={() => readControllerRef.current?.abort()}>Cancel</button></div>}
         {readError && <p className="syllabus-read-error" role="alert">{readError}</p>}
         <div className="syllabus-editor-grid">
-          <div><label>Course text<textarea spellCheck disabled={isReading} value={text} rows={14} onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || "Sample syllabus text loaded"}</span><small>PDF · Word DOCX · TXT · MD · CSV · read on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download scanned image copy (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button>{enableGovernedStudentAi && <button type="button" disabled={isReading || !STUDENT_SEMESTER_AI_ENABLED || Boolean(studentAiStatus)} onClick={runStudentAiReview}>{studentAiStatus ? "Governed review in progress…" : "Review unstructured sections with TOS"}</button>}<button type="button" disabled={isReading} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
+          <div className="syllabus-source-column"><label className="syllabus-source-field"><span>Course syllabus text</span><small>Upload a file above or paste syllabus text here. Nothing is extracted or added to the calendar until you review it.</small><textarea spellCheck disabled={isReading} value={text} rows={14} placeholder="Paste syllabus text here, or choose Upload syllabus to import a PDF, Word document, text, Markdown, or CSV file." onChange={(event) => setText(event.target.value)} /></label><div className="file-summary"><span>{fileName || (text.trim() ? "Pasted syllabus text" : "No syllabus loaded yet")}</span><small>PDF · Word DOCX · TXT · MD · CSV · processed on this device</small>{scanArtifact && <button type="button" onClick={downloadScanArtifact}>Download scanned image copy (PDF)</button>}</div><div className="syllabus-inline-actions"><button type="button" disabled={isReading || !text.trim()} onClick={runExtraction}>{extraction ? "Refresh extraction review" : "Extract course details"}</button>{enableGovernedStudentAi && <button type="button" disabled={isReading || !text.trim() || !STUDENT_SEMESTER_AI_ENABLED || Boolean(studentAiStatus)} onClick={runStudentAiReview}>{studentAiStatus ? "Governed review in progress…" : "Review unstructured sections with TOS"}</button>}<button type="button" disabled={isReading || !text.trim()} onClick={() => setSurfacePage("source")}>Open full-screen source review</button><button type="button" onClick={() => setReportOpen(true)}>Report issue</button></div></div>
           <DetectedLinePreview analysis={analysis} />
         </div>
         {enableGovernedStudentAi && !STUDENT_SEMESTER_AI_ENABLED && <p className="syllabus-read-error" role="status">Governed student-semester AI is available only in the existing staging environment. Deterministic extraction remains available here.</p>}
@@ -736,7 +737,7 @@ function SyllabusPanel({
       </section>
       {extraction && <section className="paper-card extraction-result-card"><div className="dashboard-card-heading"><div><NotebookLabel>EXTRACTION REVIEW</NotebookLabel><h2>{extraction.title}</h2><p>Draft extracted from syllabus — verify before saving</p><small>Detected source lines: {extraction.detectedLines.join(", ") || "none"}</small></div><div className="syllabus-heading-actions"><button type="button" onClick={() => setSurfacePage("review")}>Review full screen</button><button type="button" disabled={reviewStale || approved.length === 0} onClick={addApproved}>Add approved dates to calendar</button></div></div><StudentSemesterDraft draft={studentAiDraft} provenance={studentAiProvenance} /><ExtractionReview extraction={extraction} setExtraction={setExtraction} approved={approved} setApproved={setApproved} parameters={parameters} onAddAssignment={addMissingAssignment} /></section>}
       {surfacePage && <FullscreenSurface key={surfacePage} title="Syllabus review" pages={REVIEW_PAGES} initialPage={surfacePage} addressPrefix="ednotebook://syllabus" onClose={() => setSurfacePage(null)} renderPage={renderReviewPage} />}
-      {reportOpen && <IssueReportDialog persona={persona} fileName={fileName} onClose={() => setReportOpen(false)} onSaved={setNotice} />}
+      {reportOpen && <IssueReportDialog persona={persona} fileName={fileName} onClose={() => setReportOpen(false)} onSaved={setNotice} demoMode={demoMode} />}
       {scannerOpen && <Suspense fallback={<div className="syllabus-scanner-loading" role="status">Opening the paper scanner…</div>}><SyllabusScanner onClose={() => setScannerOpen(false)} onComplete={(result) => { commitSyllabusSource(result); setScannerOpen(false); }} /></Suspense>}
     </div>
   );
