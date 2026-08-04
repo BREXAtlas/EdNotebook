@@ -11,6 +11,7 @@ import {
 } from "./digitalLiteracyPilotModel.js";
 import {
   createDigitalLiteracyAssignment,
+  loadDigitalLiteracyCatalog,
   loadMyActiveDigitalLiteracyResearch,
   loadMyDigitalLiteracyAssignments,
   loadProfessorDigitalLiteracyWorkspace,
@@ -64,6 +65,8 @@ function ResearchLaunchReadiness({ readiness }) {
 }
 
 export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
+  const [catalog, setCatalog] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [courseId, setCourseId] = useState(classes[0]?.id || "");
   const [workspace, setWorkspace] = useState(null);
   const [selectedUnits, setSelectedUnits] = useState(() => new Set());
@@ -79,6 +82,21 @@ export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
   useEffect(() => {
     if (!courseId && classes[0]?.id) setCourseId(classes[0].id);
   }, [classes, courseId]);
+
+  useEffect(() => {
+    let active = true;
+    loadDigitalLiteracyCatalog().then((result) => {
+      if (active && !result.error) setCatalog(result.data);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const previewUrl = useMemo(() => {
+    const url = new URL(catalog?.source_home || "https://brexatlas.github.io/Digital-Literacy-Course/");
+    url.searchParams.set("embedded", "1");
+    url.searchParams.set("preview", "professor");
+    return url.toString();
+  }, [catalog?.source_home]);
 
   async function refresh(nextCourseId = courseId) {
     if (!nextCourseId) return;
@@ -131,7 +149,9 @@ export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
   }
 
   return <div className="dl-professor-workspace">
-    <section className="dashboard-card dl-pilot-hero"><div><span className="portal-kicker">PLATFORM STANDARD · CANONICAL COURSE</span><h1>Assign Digital Literacy to any of your students.</h1><p>Every student receives the current canonical 40-unit course automatically. Choose specific Foundations episodes or AI quests for your classes; each student keeps one release-versioned progress record across EdNotebook.</p></div><label>Class<select value={courseId} onChange={(event) => { setCourseId(event.target.value); setWorkspace(null); }}><option value="">Choose a class</option>{classes.map((course) => <option key={course.id} value={course.id}>{course.code || course.course_code || "CLASS"} · {course.title}</option>)}</select></label></section>
+    <section className="dashboard-card dl-canonical-course-card"><div><span className="portal-kicker">PLATFORM STANDARD · CANONICAL COURSE</span><h1>Digital Literacy Course</h1><p>Open and review the complete course inside EdNotebook. The same repository-backed release is available to every professor account and stays current when an approved canonical release changes.</p><dl><div><dt>Course</dt><dd>{catalog?.title || "Digital Literacy Course"}</dd></div><div><dt>Release</dt><dd>{catalog?.release_id || "Current canonical release"}</dd></div><div><dt>Content</dt><dd>{catalog?.units?.length || 40} modules, lessons, activities, and checks</dd></div></dl></div><div className="dl-canonical-course-actions"><button className="primary" type="button" onClick={() => setPreviewOpen((open) => !open)}>{previewOpen ? "Close full course preview" : "Open full course preview"}</button><a href="#digital-literacy-assign">Assign modules to students</a></div></section>
+    {previewOpen && <section className="dashboard-card dl-professor-course-preview" aria-label="Digital Literacy Course professor preview"><header><div><span className="portal-kicker">LEARNER PREVIEW · IN EDNOTEBOOK</span><h2>Full Digital Literacy Course</h2><p>Preview does not create student progress. Use the assignment controls below when you are ready to connect course units to a class.</p></div><button type="button" onClick={() => setPreviewOpen(false)}>Close preview</button></header><iframe src={previewUrl} title="Digital Literacy Course professor preview" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" referrerPolicy="strict-origin-when-cross-origin" /></section>}
+    <section id="digital-literacy-assign" className="dashboard-card dl-pilot-hero"><div><span className="portal-kicker">ASSIGN COURSE CONTENT</span><h1>Assign Digital Literacy to any of your students.</h1><p>Every student receives the current canonical 40-unit course automatically. Choose specific Foundations episodes or AI quests for your courses; each student keeps one release-versioned progress record across EdNotebook.</p></div><label>Course<select value={courseId} onChange={(event) => { setCourseId(event.target.value); setWorkspace(null); }}><option value="">Choose a course</option>{classes.map((course) => <option key={course.id} value={course.id}>{course.code || course.course_code || "COURSE"} · {course.title}</option>)}</select></label></section>
     {error && <div className="portal-form-error" role="alert">{error}</div>}
     {notice && <div className="portal-form-notice" role="status">{notice}</div>}
     {workspace && <>
