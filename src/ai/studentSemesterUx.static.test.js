@@ -55,7 +55,7 @@ test("professor and student screens render the same editable calendar", () => {
   assert.match(ownSemesterSource, /<CalendarPanel/);
   assert.match(demoWorkspaceSource, /<CalendarPanel/);
   assert.match(demoWorkspaceSource, /setAssignments=\{setAssignments\}/);
-  assert.match(professorDashboardSource, /Syllabus & Calendar/i);
+  assert.match(professorDashboardSource, /Syllabus Tools & Calendar/i);
   assert.match(professorDashboardSource, /<ProfessorSemesterCalendar/);
   assert.match(professorSemesterSource, /<SyllabusPanel/);
   assert.match(professorSemesterSource, /<CalendarPanel/);
@@ -64,8 +64,8 @@ test("professor and student screens render the same editable calendar", () => {
 });
 
 test("calendar export, reviewed import, and alert boundaries are visible", () => {
-  assert.match(calendarSource, /Download \.ics calendar/);
-  assert.match(calendarSource, /Import \.ics for review/);
+  assert.match(calendarSource, /Export course calendar \(\.ics\)/);
+  assert.match(calendarSource, /Import an existing calendar \(\.ics\)/);
   assert.match(calendarSource, /Imported dates start unchecked/);
   assert.match(calendarSource, /Browser alerts run while EdNotebook is open/);
   assert.match(calendarSource, /Time remaining determines/);
