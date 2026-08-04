@@ -55,7 +55,7 @@ test("professor and student screens render the same editable calendar", () => {
   assert.match(ownSemesterSource, /<CalendarPanel/);
   assert.match(demoWorkspaceSource, /<CalendarPanel/);
   assert.match(demoWorkspaceSource, /setAssignments=\{setAssignments\}/);
-  assert.match(professorDashboardSource, /Syllabus & calendar/);
+  assert.match(professorDashboardSource, /Syllabus & Calendar/i);
   assert.match(professorDashboardSource, /<ProfessorSemesterCalendar/);
   assert.match(professorSemesterSource, /<SyllabusPanel/);
   assert.match(professorSemesterSource, /<CalendarPanel/);
