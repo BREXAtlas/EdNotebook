@@ -1,0 +1,37 @@
+.ac-institution-picker {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.ac-institution-picker *,
+.ac-institution-picker *::before,
+.ac-institution-picker *::after {
+  box-sizing: border-box;
+}
+
+.ac-institution-picker > input,
+.ac-institution-picker > select,
+.ac-institution-picker .ac-subfield,
+.ac-institution-picker .ac-subfield > input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ac-institution-picker > input,
+.ac-institution-picker > select,
+.ac-institution-picker .ac-subfield > input {
+  min-height: 2.6rem;
+  padding: 0.52rem 0.65rem;
+  color: var(--ac-ink, #17243a);
+  background: #fff;
+  border: 1px solid #9fafc2;
+  border-radius: 0.45rem;
+  font: inherit;
+}
+
+.ac-institution-picker > select {
+  text-overflow: ellipsis;
+}
