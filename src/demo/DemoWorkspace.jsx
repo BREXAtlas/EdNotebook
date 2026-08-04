@@ -18,6 +18,12 @@ const SURFACE_PAGES = [
 
 function DemoWorkspace({ personaId }) {
   const persona = PERSONAS[personaId] || PERSONAS.student;
+  const sampleSyllabus = persona.documents?.find((item) => item.type === "Syllabus");
+  const demoSyllabusPersona = {
+    ...persona,
+    syllabusText: sampleSyllabus?.text || "",
+    syllabusSourceName: sampleSyllabus?.title || "Interactive demo syllabus",
+  };
   const professor = persona.id === "professor";
   const [tab, setTab] = useState("today");
   const [assignments, setAssignments] = useState(persona.assignments);
@@ -82,7 +88,7 @@ function DemoWorkspace({ personaId }) {
           {tab === "today" && <TodayPanel persona={persona} assignments={assignments} setAssignments={setAssignments} features={features} onlineStatus={onlineStatus} statusLine={statusLine} onOpenCalendar={() => setTab("calendar")} />}
           {tab === "homework" && <HomeworkPanel persona={persona} assignments={assignments} setAssignments={setAssignments} reminders={reminders} setReminders={setReminders} />}
           {tab === "calendar" && <CalendarPanel persona={persona} assignments={assignments} setAssignments={setAssignments} calendarScope={`ednotebook-demo-calendar-${persona.id}`} role={professor ? "professor" : "student"} />}
-          {tab === "syllabus" && <SyllabusPanel persona={persona} assignments={assignments} setAssignments={setAssignments} />}
+          {tab === "syllabus" && <SyllabusPanel persona={demoSyllabusPersona} assignments={assignments} setAssignments={setAssignments} demoMode />}
           {tab === "library" && <SourcesPanel persona={persona} />}
           {tab === "chat" && <ChatPanel persona={persona} assignments={assignments} accountSettings={accountSettings} settingsScope={settingsScope} />}
           {tab === "social" && <SocialPanel persona={persona} statusLine={statusLine} setStatusLine={setStatusLine} accountSettings={accountSettings} />}

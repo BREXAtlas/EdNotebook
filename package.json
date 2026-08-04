@@ -15,7 +15,7 @@
     "test:tos-integration": "node --test src/integrations/tos/tosControlPlane.test.js src/integrations/tos/syntheticInstitutionPilot.test.js",
     "test:ai-outline": "node --test src/ai/courseOutlineContract.test.js src/ai/providerBoundary.static.test.js",
     "test:syllabus-extraction": "node --test src/ai/syllabusExtractionContract.test.js src/ai/syllabusGovernedReview.test.js src/ai/syllabusExtractionUx.static.test.js src/ai/syllabusAiReturnedDraft.static.test.js src/syllabus/syllabusMigration.test.js",
-    "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js",
+    "test:student-semester": "node --test src/ai/studentSemesterContract.test.js src/ai/syllabusCalendarContract.test.js src/ai/studentSemesterUx.static.test.js src/demo/syllabusFirstUseUx.static.test.js",
     "test:lesson-generation": "node --test src/ai/lessonGenerationContract.test.js src/ai/contentUnitGenerationContract.test.js src/ai/finalContentUnitGenerationContract.test.js src/ai/lessonGenerationUx.static.test.js",
     "test:research-gate": "node --test src/research/researchGateModel.test.js",
     "test:digital-literacy-pilot": "node --test src/digital-literacy/digitalLiteracyPilotModel.test.js src/digital-literacy/digitalLiteracyPilotMigration.test.js src/digital-literacy/digitalLiteracyPilotUx.static.test.js src/scrollWithinHashRoute.test.js src/hashRouteSections.static.test.js",

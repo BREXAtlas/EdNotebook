@@ -49,13 +49,13 @@ export default function ProfessorSemesterCalendar({
   return (
     <div className="own-semester-page">
       <section className="dashboard-card own-semester-intro">
-        <span className="portal-kicker">PROFESSOR SYLLABUS & CALENDAR</span>
-        <h1>Review once, then share the same calendar format.</h1>
+        <span className="portal-kicker">SYLLABUS TOOLS &amp; CALENDAR</span>
+        <h1>One syllabus workflow, followed by its calendar.</h1>
         <p>
-          Extract dates from the course syllabus, correct every row, and
-          approve only the items that belong on your calendar. The resulting
-          .ics file can move directly to a student’s review screen or another
-          calendar app.
+          First upload, scan, or paste one syllabus and review the extracted
+          details. Then approve selected dates for the course calendar below.
+          Calendar .ics import and export are optional exchange tools—not a
+          second syllabus upload.
         </p>
         <div>
           <strong>Personal calendar edits do not revise the syllabus.</strong>

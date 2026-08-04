@@ -664,12 +664,12 @@ function CalendarPanel({
       <section className="paper-card calendar-control-card">
         <div className="dashboard-card-heading">
           <div>
-            <NotebookLabel>SYLLABUS-SYNCED DATE & TIME</NotebookLabel>
-            <h1>One editable calendar across every class.</h1>
+            <NotebookLabel>STEP 2 · COURSE CALENDAR</NotebookLabel>
+            <h1>Review approved syllabus dates in one calendar.</h1>
             <p>
-              Approved syllabus dates share one contract on professor and
-              student screens. Personal edits remain separate from the source
-              deadline.
+              Dates approved in Syllabus Tools appear here. The optional .ics
+              controls exchange calendar files; they do not upload or extract
+              another syllabus.
             </p>
           </div>
           <div className="calendar-export-actions">
@@ -679,17 +679,17 @@ function CalendarPanel({
               disabled={!assignments.length}
               onClick={downloadCalendar}
             >
-              Download .ics calendar
+              Export course calendar (.ics)
             </button>
             {canEdit
               ? (
                 <>
                   <button type="button" onClick={() => importRef.current?.click()}>
-                    Import .ics for review
+                    Import an existing calendar (.ics)
                   </button>
                   <input
                     ref={importRef}
-                    className="sr-only"
+                    className="calendar-import-input"
                     type="file"
                     tabIndex={-1}
                     accept=".ics,text/calendar"

@@ -42,12 +42,13 @@ test("the account gate treats professor as a workspace choice and review as a vi
 
 test("Emily's professor Beta walkthrough labels are visible and actionable", () => {
   for (const label of [
+    "My Courses",
     "Course Library",
     "Create Course",
     "Digital Literacy Course",
     "Students & Roster",
     "Assignments",
-    "Syllabus & Calendar",
+    "Syllabus Tools & Calendar",
     "Progress & Analytics",
     "Notifications",
     "Settings",
