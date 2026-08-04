@@ -132,9 +132,42 @@ const IP = [
   ["Secure document process", "Secure file pipeline", "Publishing, legal collaboration and research repositories"],
 ];
 
+const PRESENTATION_SECTIONS = new Set(["four-areas", "features", "financials", "partnership"]);
+
 function money(value) {
   if (value >= 1000000) return `$${(value / 1000000).toFixed(value % 1000000 ? 2 : 0)}M`;
   return `$${Math.round(value / 1000)}K`;
+}
+
+function scrollToSection(sectionId, { focus = false } = {}) {
+  const target = document.getElementById(sectionId);
+  if (!target) return;
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({
+    behavior: prefersReducedMotion ? "auto" : "smooth",
+    block: "start",
+  });
+
+  if (!focus) return;
+
+  const hadTabIndex = target.hasAttribute("tabindex");
+  if (!hadTabIndex) target.setAttribute("tabindex", "-1");
+
+  window.requestAnimationFrame(() => {
+    target.focus({ preventScroll: true });
+    if (!hadTabIndex) {
+      target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true });
+    }
+  });
+}
+
+function SectionScrollButton({ sectionId, className = "", children }) {
+  const handleClick = (event) => {
+    scrollToSection(sectionId, { focus: event.detail === 0 });
+  };
+
+  return <button type="button" className={className} aria-controls={sectionId} onClick={handleClick}>{children}</button>;
 }
 
 function RevenueChart() {
@@ -176,13 +209,22 @@ export default function BusinessPresentation() {
     };
   }, []);
 
+  useEffect(() => {
+    const query = window.location.hash.split("?")[1] || "";
+    const sectionId = new URLSearchParams(query).get("section");
+    if (!sectionId || !PRESENTATION_SECTIONS.has(sectionId)) return undefined;
+
+    const frame = window.requestAnimationFrame(() => scrollToSection(sectionId));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
   return (
     <div className="bp-page">
-      <header className="bp-nav"><a href="#/" className="bp-brand"><BrandMark size={40} /><span><strong>EdNotebook</strong><small>Business presentation</small></span></a><nav><a href="#four-areas">The strategy</a><a href="#features">Feature map</a><a href="#financials">Financials</a><a href="#partnership">Work with us</a></nav><a className="bp-nav-cta" href="#/professors">Explore EdNotebook</a></header>
+      <header className="bp-nav"><a href="#/" className="bp-brand"><BrandMark size={40} /><span><strong>EdNotebook</strong><small>Business presentation</small></span></a><nav aria-label="Business presentation sections"><SectionScrollButton sectionId="four-areas">The strategy</SectionScrollButton><SectionScrollButton sectionId="features">Feature map</SectionScrollButton><SectionScrollButton sectionId="financials">Financials</SectionScrollButton><SectionScrollButton sectionId="partnership">Work with us</SectionScrollButton></nav><a className="bp-nav-cta" href="#/professors">Explore EdNotebook</a></header>
 
       <main>
         <section className="bp-hero">
-          <div className="bp-hero-copy"><span className="bp-kicker">PLATFORM · EVIDENCE · PUBLISHING</span><h1>Teaching starts the relationship.<br />Evidence builds the institution.</h1><p>EdNotebook connects course creation, student work, communication, educational content, publishing, and evidence of learning in one platform.</p><div className="bp-actions"><a href="#/professors">Open the live platform</a><a className="is-secondary" href="#partnership">See where you could contribute</a></div><div className="bp-stage-note"><i /> Platform shell built · Core workflows are now being connected and tested</div></div>
+          <div className="bp-hero-copy"><span className="bp-kicker">PLATFORM · EVIDENCE · PUBLISHING</span><h1>Teaching starts the relationship.<br />Evidence builds the institution.</h1><p>EdNotebook connects course creation, student work, communication, educational content, publishing, and evidence of learning in one platform.</p><div className="bp-actions"><a href="#/professors">Open the live platform</a><SectionScrollButton className="is-secondary" sectionId="partnership">See where you could contribute</SectionScrollButton></div><div className="bp-stage-note"><i /> Platform shell built · Core workflows are now being connected and tested</div></div>
           <div className="bp-hero-visual"><div className="bp-journey-line">{["Course plan", "Student activity", "Evidence", "Outcomes", "Institutional trust"].map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item}</strong></div>)}</div></div>
         </section>
 
