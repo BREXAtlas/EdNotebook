@@ -24,9 +24,12 @@ import { ProfessorFinancialLiteracyClass } from "../financial-literacy/Financial
 const ProfessorSemesterCalendar = lazy(() =>
   import("../ai/ProfessorSemesterCalendar.jsx")
 );
+const EarlyPrepLearningSystemsAcceptance = lazy(() =>
+  import("../integrations/early-prep/EarlyPrepLearningSystemsAcceptance.jsx")
+);
 
 const NAV_GROUPS = [
-  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["financial-literacy", "Financial Literacy"], ["templates", "Assignments"]] },
+  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["financial-literacy", "Financial Literacy"], ["templates", "Assignments"], ["learning-systems", "Learning Systems"]] },
   { label: "Students", items: [["students", "Students & Roster"], ["rewards", "Social Learning"], ["grades", "Progress & Analytics"], ["attendance", "Attendance"]] },
   { label: "Connect", items: [["notifications", "Notifications"], ["announcements", "Campus Social"], ["communication", "Course Communication"], ["profile", "Educator Page"]] },
   { label: "Account", items: [["verification", "School Verification"], ["security", "Security"], ["settings", "Settings"], ["help", "Help & Support"]] },
@@ -39,6 +42,8 @@ const EARLY_PREP_NAV_LABELS = Object.freeze({
   announcements: "School Social",
   communication: "Class Communication",
 });
+
+const EARLY_PREP_ONLY_NAV_ITEMS = new Set(["financial-literacy", "learning-systems"]);
 
 const TOUR = [
   ["Teaching overview", "See your real courses, enrollment requests, progress, and upcoming work."],
@@ -54,7 +59,7 @@ function EducatorTour({ step, setStep }) {
 }
 
 function ProfessorNavigation({ tab, setTab, pendingRequests = 0, divisionScope = null }) {
-  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.filter(([id]) => id !== "financial-literacy" || divisionScope === "k12").map(([id, defaultLabel]) => { const label = divisionScope === "k12" ? (EARLY_PREP_NAV_LABELS[id] || defaultLabel) : defaultLabel; return <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>; })}</div>)}</nav>;
+  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.filter(([id]) => !EARLY_PREP_ONLY_NAV_ITEMS.has(id) || divisionScope === "k12").map(([id, defaultLabel]) => { const label = divisionScope === "k12" ? (EARLY_PREP_NAV_LABELS[id] || defaultLabel) : defaultLabel; return <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>; })}</div>)}</nav>;
 }
 
 function SensitiveAccess({ session, unlocked, onUnlock, onLock, children }) {
@@ -455,6 +460,7 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
           {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} divisionScope={divisionScope} />}
           {tab === "financial-literacy" && earlyPrep && <ProfessorFinancialLiteracyClass classes={scopedTeachingClasses} />}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} track={divisionScope || "university"} classes={scopedTeachingClasses} />}
+          {tab === "learning-systems" && earlyPrep && <Suspense fallback={<section className="dashboard-card" role="status">Opening synthetic learning-system acceptance…</section>}><EarlyPrepLearningSystemsAcceptance /></Suspense>}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel classes={scopedTeachingClasses} />}
           {tab === "notifications" && <NotificationsPanel enrollmentRequests={teachingEnrollmentRequests} onOpenRequests={() => setTab("students")} onOpenDigitalLiteracy={() => setTab("digital-literacy")} divisionScope={divisionScope} />}
