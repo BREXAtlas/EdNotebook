@@ -32,7 +32,7 @@ test("Digital Literacy is reused and assignment templates inherit the subject co
   assert.match(standard, /student_id uuid not null unique/u);
   assert.match(foundation, /assignment_form_templates_subject_guard/u);
   assert.doesNotMatch(foundation, /create table public\.digital_literacy_catalog/u);
-  assert.match(professor, /Digital Literacy Class/u);
+  assert.match(professor, /Digital Literacy Course/u);
 });
 
 test("the admin selector is backed by division-scoped RPCs, policy resolution, and audit", () => {

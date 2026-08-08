@@ -37,7 +37,7 @@ The required approving-review count is intentionally zero for the current single
 
 ## Staging safety
 
-- Staging is visibly labeled `EDNOTEBOOK STAGING · TEST DATA ONLY`.
+- Staging is visibly labeled `EDNOTEBOOK STAGING SANDBOX · TEST DATA ONLY`.
 - Staging uses the dedicated staging Supabase project.
 - Staging pages set `noindex`, `nofollow`, and `noarchive` at runtime and publish a blocking `robots.txt` under `/staging/`.
 - Production credentials, service-role keys, provider secrets, and private router keys must never appear in frontend variables.
@@ -55,6 +55,11 @@ The required approving-review count is intentionally zero for the current single
 - Course output: `https://ednotebook.com/staging/#/app/course-output`
 
 A staging user cannot sign into the production root, and a production user is not automatically present in staging. Supabase Auth users remain isolated by project.
+
+Beta and Pilot acceptance is not performed by renaming or replacing this
+sandbox. After an exact approved `staging` candidate is merged to `main`, the
+normal live root is labeled Beta or Pilot and records that operating lane. See
+`LIVE_OPERATING_LANES.md`.
 
 ## Rollback
 

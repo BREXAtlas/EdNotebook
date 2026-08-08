@@ -1,3 +1,104 @@
+.syllabus-upload-card,
+.extraction-result-card,
+.syllabus-fullscreen-page,
+.syllabus-report-dialog {
+  --demo-ink: var(--portal-ink, #18284a);
+  --demo-ink-soft: #33415f;
+  --demo-muted: var(--portal-muted, #657086);
+  --demo-blue: var(--portal-blue, #1d4ed8);
+  --demo-blue-dark: var(--portal-blue-dark, #153b91);
+  --demo-display: var(--portal-display, "Zilla Slab", Georgia, serif);
+  --demo-card: var(--portal-card, #ffffff);
+  --demo-line: var(--portal-line, #dbe2ee);
+}
+
+.syllabus-upload-card *,
+.extraction-result-card *,
+.syllabus-fullscreen-page *,
+.syllabus-report-dialog * { box-sizing: border-box; }
+
+.syllabus-file-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.syllabus-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.syllabus-source-column {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+}
+
+.syllabus-source-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--demo-ink);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.syllabus-source-field > span { font-size: 13px; }
+
+.syllabus-source-field > small {
+  max-width: 720px;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.syllabus-source-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 280px;
+  padding: 14px 15px;
+  resize: vertical;
+  color: var(--demo-ink);
+  background: #fff;
+  border: 1px solid #cfd7e5;
+  border-radius: 12px;
+  outline: none;
+  font: 500 13px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.syllabus-source-field textarea::placeholder { color: #8994a7; }
+
+.syllabus-source-field textarea:focus {
+  border-color: var(--demo-blue);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, .13);
+}
+
+.file-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 14px;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--demo-ink);
+  background: #f2f5fa;
+  border: 1px solid #e0e6ef;
+  border-radius: 10px;
+}
+
+.file-summary span { font-size: 10px; font-weight: 800; }
+.file-summary small { color: var(--demo-muted); font-size: 9px; }
+
 .syllabus-inline-actions,
 .syllabus-heading-actions,
 .syllabus-fullscreen-heading > div:last-child,
@@ -10,6 +111,12 @@
 .syllabus-heading-actions button:last-child { color: #fff; background: var(--demo-blue); border-color: var(--demo-blue); }
 .syllabus-inline-actions { justify-content: flex-start; }
 .syllabus-inline-actions > button { justify-self: auto !important; }
+.syllabus-inline-actions > button:disabled {
+  color: #8a94a7;
+  background: #eef1f5;
+  border-color: #dce1e9;
+  cursor: not-allowed;
+}
 .syllabus-read-progress,
 .syllabus-read-error { margin: 13px 0 0; padding: 11px 13px; border-radius: 10px; font-size: 10px; }
 .syllabus-read-progress { display: grid; grid-template-columns: 16px 1fr auto; gap: 9px; align-items: center; color: #263f72; background: #edf1fb; border: 1px solid #c9d3ea; }
@@ -176,6 +283,20 @@
 .calendar-edit-fields label { display: grid; gap: 4px; color: var(--demo-muted); font-size: 8px; font-weight: 850; }
 .calendar-edit-fields input { min-width: 0; width: 100%; padding: 8px; color: var(--demo-ink); background: #fff; border: 1px solid #d6cebf; border-radius: 8px; }
 .calendar-empty { margin: 14px 0 0; padding: 18px; color: var(--demo-muted); background: #f6f2eb; border: 1px dashed #cfc5b4; border-radius: 10px; }
+
+@media (max-width: 900px) {
+  .syllabus-editor-grid { grid-template-columns: 1fr; }
+  .syllabus-detection-preview { position: static; }
+  .syllabus-upload-actions { justify-content: flex-start; }
+}
+
+@media (max-width: 560px) {
+  .syllabus-upload-actions,
+  .syllabus-inline-actions { display: grid; grid-template-columns: 1fr; }
+  .syllabus-upload-actions button,
+  .syllabus-inline-actions > button { width: 100%; }
+  .file-summary { align-items: flex-start; flex-direction: column; }
+}
 
 @media (max-width: 1050px) {
   .syllabus-parameter-grid { grid-template-columns: repeat(3, 1fr); }

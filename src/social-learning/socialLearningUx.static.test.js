@@ -8,7 +8,7 @@ const professor = readFileSync(new URL("../portal/ProfessorDashboard.jsx", impor
 const student = readFileSync(new URL("../portal/StudentDashboard.jsx", import.meta.url), "utf8");
 
 test("professor and student portals expose the Social Education Learning workflow", () => {
-  assert.match(professor, /\["rewards", "Social learning"\]/u);
+  assert.match(professor, /\["rewards", "Social Learning"\]/iu);
   assert.match(student, /\["rewards", "Social learning"\]/u);
   assert.match(professor, /ProfessorSocialLearningPanel/u);
   assert.match(student, /StudentSocialLearningPanel/u);

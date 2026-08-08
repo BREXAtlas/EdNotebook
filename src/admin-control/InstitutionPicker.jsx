@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { searchInstitutionDirectory } from "./adminControlService.js";
+import "./InstitutionPicker.css";
 
 /**
  * Safe, non-authoritative directory entries used while the server directory is

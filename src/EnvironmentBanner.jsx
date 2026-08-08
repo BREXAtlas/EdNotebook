@@ -1,22 +1,24 @@
 import { useEffect, useState } from "react";
-import { isSupabaseConfigured, supabase, supabaseProjectRef } from "./supabaseClient.js";
+import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
 import "./environment-banner.css";
 
 const environment = import.meta.env.VITE_APP_ENVIRONMENT || "production";
-const isStaging = environment === "staging";
-const STAGING_PROJECT_REF = "gfalgonektwdylsxsgzc";
-
-function courseIdFromHash() {
-  const match = String(window.location.hash || "").match(/\/course\/([0-9a-f-]{36})(?:\/|$)/iu);
-  return match?.[1] || null;
-}
+const isStagingSandbox = environment === "staging";
+const configuredLiveLane = ["beta", "pilot", "production"].includes(
+  String(import.meta.env.VITE_LIVE_OPERATING_LANE || "beta").toLowerCase(),
+)
+  ? String(import.meta.env.VITE_LIVE_OPERATING_LANE || "beta").toLowerCase()
+  : "beta";
 
 export default function EnvironmentBanner() {
-  const [dataLane, setDataLane] = useState("beta");
+  const [liveLane, setLiveLane] = useState(configuredLiveLane);
 
   useEffect(() => {
-    document.documentElement.dataset.environment = environment;
-    if (!isStaging) return;
+    document.documentElement.dataset.environment = isStagingSandbox ? "staging" : "live";
+    document.documentElement.dataset.deploymentSurface = isStagingSandbox
+      ? "staging_sandbox"
+      : "live_service";
+    if (!isStagingSandbox) return;
 
     const robots = document.querySelector('meta[name="robots"]');
     if (robots) robots.setAttribute("content", "noindex, nofollow, noarchive");
@@ -26,53 +28,67 @@ export default function EnvironmentBanner() {
   }, []);
 
   useEffect(() => {
-    if (!isStaging) return undefined;
+    if (isStagingSandbox) return undefined;
     let active = true;
 
     async function refreshLane() {
-      let nextLane = "beta";
-      if (isSupabaseConfigured && supabaseProjectRef === STAGING_PROJECT_REF) {
-        const { data, error } = await supabase.rpc("get_my_student_data_environment_lane", {
-          p_course_id: courseIdFromHash(),
-        });
-        if (!error && ["beta", "pilot"].includes(data?.data_lane)) nextLane = data.data_lane;
+      let nextLane = configuredLiveLane;
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.rpc("get_live_service_operating_lane");
+        if (!error && ["beta", "pilot", "production"].includes(data?.operating_lane)) {
+          nextLane = data.operating_lane;
+        }
       }
-      if (active) setDataLane(nextLane);
+      if (active) setLiveLane(nextLane);
     }
 
-    const onHashChange = () => { refreshLane(); };
-    const authListener = isSupabaseConfigured && supabaseProjectRef === STAGING_PROJECT_REF
+    const onLaneChange = () => { refreshLane(); };
+    const authListener = isSupabaseConfigured
       ? supabase.auth.onAuthStateChange(() => { window.queueMicrotask(refreshLane); }).data
       : null;
-    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("ednotebook:live-lane-changed", onLaneChange);
     refreshLane();
     return () => {
       active = false;
-      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("ednotebook:live-lane-changed", onLaneChange);
       authListener?.subscription?.unsubscribe();
     };
   }, []);
 
   useEffect(() => {
-    if (!isStaging) return;
-    document.documentElement.dataset.dataLane = dataLane;
+    const displayLane = isStagingSandbox ? "sandbox" : liveLane;
+    document.documentElement.dataset.operatingLane = displayLane;
     const baseTitle = document.title.replace(/^(?:BETA|PILOT|STAGING) · /u, "");
-    document.title = `${dataLane.toUpperCase()} · ${baseTitle}`;
-  }, [dataLane]);
+    if (isStagingSandbox) document.title = `STAGING · ${baseTitle}`;
+    else if (["beta", "pilot"].includes(liveLane)) document.title = `${liveLane.toUpperCase()} · ${baseTitle}`;
+    else document.title = baseTitle;
+  }, [liveLane]);
 
-  if (!isStaging) return null;
+  if (isStagingSandbox) {
+    return (
+      <div
+        className="environment-banner environment-banner--staging"
+        role="status"
+        aria-label="Staging upgrade sandbox"
+      >
+        EDNOTEBOOK STAGING SANDBOX · TEST DATA ONLY
+      </div>
+    );
+  }
 
-  const isPilot = dataLane === "pilot";
+  if (liveLane === "production") return null;
+
+  const isPilot = liveLane === "pilot";
 
   return (
     <div
-      className={`environment-banner environment-banner--${dataLane}`}
+      className={`environment-banner environment-banner--${liveLane}`}
       role="status"
-      aria-label={`${isPilot ? "Pilot" : "Beta"} testing environment`}
+      aria-label={`${isPilot ? "Pilot" : "Beta"} live operating lane`}
     >
       {isPilot
-        ? "EDNOTEBOOK PILOT MODE · STAGING · AUTHORIZED PILOT DATA"
-        : "EDNOTEBOOK BETA MODE · STAGING · TEST DATA ONLY"}
+        ? "EDNOTEBOOK PILOT · LIVE SERVICE · AUTHORIZED PILOT DATA"
+        : "EDNOTEBOOK BETA · LIVE SERVICE · AUTHORIZED BETA DATA"}
     </div>
   );
 }

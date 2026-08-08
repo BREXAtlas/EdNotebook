@@ -44,7 +44,7 @@ function input(overrides = {}) {
     sourceCommit: SOURCE_COMMIT,
     evidenceReference: "github:BREXAtlas/EdNotebook;pr:phase-5",
     rollbackReference: "docs:staging-deployment-rollback",
-    summary: "Production remains on HOLD while Beta and Pilot remain available in staging.",
+    summary: "Production remains on HOLD while Beta and Pilot remain available on the live service.",
     authorityAttestation: true,
     ...overrides,
   };
@@ -64,7 +64,7 @@ test("manual promotion approval fails while blockers remain", () => {
   assert.match(result.issues.join(" "), /cannot be approved/u);
 });
 
-test("the record cannot activate production or disable staging testing", () => {
+test("the record cannot activate production or disable live Beta/Pilot testing", () => {
   for (const field of [
     "production_student_intake_enabled",
     "production_action_executed",
@@ -101,7 +101,7 @@ test("the RPC payload is checksum-bound and excludes blocker bodies", () => {
     p_source_commit: SOURCE_COMMIT,
     p_evidence_reference: "github:BREXAtlas/EdNotebook;pr:phase-5",
     p_rollback_reference: "docs:staging-deployment-rollback",
-    p_summary: "Production remains on HOLD while Beta and Pilot remain available in staging.",
+    p_summary: "Production remains on HOLD while Beta and Pilot remain available on the live service.",
     p_expected_snapshot_sha256: SNAPSHOT_SHA256,
     p_attestation: true,
   });

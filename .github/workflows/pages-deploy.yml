@@ -22,6 +22,7 @@ jobs:
     outputs:
       production_sha: ${{ steps.refs.outputs.production_sha }}
       staging_sha: ${{ steps.refs.outputs.staging_sha }}
+      live_operating_lane: ${{ steps.refs.outputs.live_operating_lane }}
     steps:
       - name: Checkout production source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -43,6 +44,13 @@ jobs:
         run: |
           echo "production_sha=$(git -C production-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "staging_sha=$(git -C staging-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          live_operating_lane="${{ vars.EDNOTEBOOK_LIVE_OPERATING_LANE }}"
+          if [[ -z "$live_operating_lane" ]]; then live_operating_lane="beta"; fi
+          if [[ "$live_operating_lane" != "beta" && "$live_operating_lane" != "pilot" ]]; then
+            echo "EDNOTEBOOK_LIVE_OPERATING_LANE must be beta or pilot; unlabeled production requires the protected production-promotion workflow" >&2
+            exit 1
+          fi
+          echo "live_operating_lane=$live_operating_lane" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -55,6 +63,9 @@ jobs:
 
       - name: Build production from main
         working-directory: production-source
+        env:
+          VITE_APP_ENVIRONMENT: live
+          VITE_LIVE_OPERATING_LANE: ${{ steps.refs.outputs.live_operating_lane }}
         run: |
           npm ci --no-audit --no-fund
           npm run build
@@ -74,6 +85,14 @@ jobs:
           cp -a production-source/dist/. pages-root/
           cp -a staging-source/dist/. pages-root/staging/
           rm -f pages-root/staging/CNAME
+          cat > pages-root/environment.json <<EOF
+          {
+            "deployment_surface": "live_service",
+            "operating_lane": "${{ steps.refs.outputs.live_operating_lane }}",
+            "source_commit": "${{ steps.refs.outputs.production_sha }}",
+            "staging_source_commit": "${{ steps.refs.outputs.staging_sha }}"
+          }
+          EOF
           cat > pages-root/staging/robots.txt <<'EOF'
           User-agent: *
           Disallow: /
@@ -81,6 +100,8 @@ jobs:
           cat > pages-root/staging/environment.json <<EOF
           {
             "environment": "staging",
+            "deployment_surface": "staging_sandbox",
+            "operating_lane": null,
             "supabase_project_ref": "gfalgonektwdylsxsgzc",
             "source_commit": "${{ steps.refs.outputs.staging_sha }}",
             "production_source_commit": "${{ steps.refs.outputs.production_sha }}"
@@ -156,7 +177,10 @@ jobs:
             "package_pages": "${{ needs.package-pages.result }}",
             "deploy": "${{ needs.deploy.result }}",
             "production_url": "https://ednotebook.com/",
+            "production_deployment_surface": "live_service",
+            "live_operating_lane": "${{ needs.package-pages.outputs.live_operating_lane }}",
             "staging_url": "https://ednotebook.com/staging/",
+            "staging_deployment_surface": "staging_sandbox",
             "page_url": "${{ needs.deploy.outputs.page_url }}",
             "production_source_commit": "${{ needs.package-pages.outputs.production_sha }}",
             "staging_source_commit": "${{ needs.package-pages.outputs.staging_sha }}",

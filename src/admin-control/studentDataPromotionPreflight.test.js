@@ -56,7 +56,7 @@ function input(overrides = {}) {
   };
 }
 
-test("a production HOLD preserves bounded staging beta and pilot testing", () => {
+test("a production HOLD preserves bounded live Beta and Pilot testing", () => {
   const validation = validateStudentDataPromotionPreflight(fixture(), input(), NOW);
   assert.equal(validation.valid, true);
 });
@@ -73,7 +73,7 @@ test("production activation and lifecycle execution fail the preflight", () => {
   }
 });
 
-test("a HOLD cannot disable staging beta or pilot testing", () => {
+test("a HOLD cannot disable live Beta or Pilot testing", () => {
   const beta = validateStudentDataPromotionPreflight(fixture({ staging_beta_testing_allowed: false }), input(), NOW);
   const pilot = validateStudentDataPromotionPreflight(fixture({ staging_pilot_testing_allowed: false }), input(), NOW);
   assert.equal(beta.valid, false);

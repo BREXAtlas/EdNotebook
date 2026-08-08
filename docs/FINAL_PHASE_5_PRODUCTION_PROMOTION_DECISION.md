@@ -9,16 +9,17 @@ human-owned decision over the exact Phase 4 promotion preflight. It does not
 deploy an application, link or migrate a Supabase project, enable production
 student-data intake, execute retention/deletion, or change a Beta/Pilot lane.
 
-The existing staging environment remains usable for:
+The normal live EdNotebook service remains usable for:
 
 - Beta demonstrations with authorized administrative staff, librarians,
   investors, and other approved walkthrough participants using test data; and
 - an explicitly authorized Pilot cohort under its recorded consent, research,
   privacy, and institutional boundaries.
 
-Beta and Pilot remain data and audit labels over the same staging accounts,
-courses, work, URLs, and database. Production has no page label and remains a
-separate environment.
+Beta and Pilot remain data and audit labels over the same live accounts,
+courses, work, URL, and database. The separate `/staging/` deployment remains
+the permanent upgrade sandbox. Production has no page label and requires the
+protected promotion workflow.
 
 ## Governed decision contract
 
@@ -84,8 +85,14 @@ No part of this migration authorizes that deployment.
 
 ## Staging continuity
 
-Staging stays active as the permanent sandbox after this five-phase closeout.
-Future work continues through feature branch → protected `staging` pull
-request → hosted staging acceptance → separately approved production
-promotion. Switching Beta to Pilot appends an audit version and preserves the
-same accounts, courses, and work.
+Staging stays active as the permanent upgrade sandbox after this five-phase
+closeout. Future work continues through feature branch → protected `staging`
+pull request → hosted staging acceptance → separately approved merge into
+`main`. The normal live site is labeled Beta, then Pilot; switching those
+labels appends an audit version and preserves the same live accounts, courses,
+work, URL, and database. A fully approved Production release has no lane label.
+
+Historical Phase 5 fields named `staging_beta_testing_allowed` and
+`staging_pilot_testing_allowed` remain in immutable records for schema
+compatibility. They are interpreted as permission for the live Beta/Pilot
+lanes, not permission to repurpose the staging sandbox.

@@ -52,7 +52,7 @@ export function validateStudentDataProductionPromotionDecision(review, input = {
     issues.push("Beta and Pilot testing must remain available while production is held.");
   }
   if (snapshot.testing_data_scope !== STUDENT_DATA_PRODUCTION_PROMOTION_CANDIDATE.testingDataScope) {
-    issues.push("The staging testing-data boundary is invalid.");
+    issues.push("The live Beta/Pilot testing-data boundary is invalid.");
   }
 
   if (!['hold', 'approved_for_manual_promotion'].includes(decision)) {

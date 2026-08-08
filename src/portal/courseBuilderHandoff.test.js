@@ -49,7 +49,7 @@ test("Early Prep teacher entry primes a new course with the internal k12 divisio
   assert.equal(storage.getItem("ednotebook-course-division"), "k12");
 });
 
-test("creating another class clears the prior course while the global builder resumes it", () => {
+test("creating another course clears the prior course while the global builder resumes it", () => {
   const storage = memoryStorage({
     "ednotebook-course-id": "11111111-1111-4111-8111-111111111111",
     "ednotebook-course-draft": "saved-draft",
@@ -68,7 +68,7 @@ test("the professor library passes the selected course and keeps new-course crea
   const router = readFileSync(new URL("../main.jsx", import.meta.url), "utf8");
 
   assert.match(dashboard, /onClick=\{\(\) => onBuild\(course\)\}>Open in Course Builder/u);
-  assert.match(dashboard, /onClick=\{\(\) => onBuild\(null\)\}>Create another class/u);
+  assert.match(dashboard, /onClick=\{\(\) => onBuild\(null\)\}>Create Course/u);
   assert.match(router, /onBuild=\{openProfessorCourseBuilder\}/u);
   assert.match(router, /prepareProfessorCourseBuilder\(window\.localStorage, course\)/u);
 });

@@ -56,6 +56,12 @@ test("the canonical course opens in-platform and validates its progress bridge",
   assert.doesNotMatch(workspace, /Open (?:course|chapter).*_blank/iu);
 });
 
+test("professor assignment navigation scrolls without leaving the dashboard route", () => {
+  assert.match(workspace, /scrollWithinHashRoute\(event, "digital-literacy-assign"\)/u);
+  assert.match(workspace, /id="digital-literacy-assign" tabIndex=\{-1\}/u);
+  assert.doesNotMatch(workspace, /href="#digital-literacy-assign">/u);
+});
+
 test("research participation is visibly optional and unavailable until activated", () => {
   assert.match(workspace, /OPTIONAL RESEARCH · SEPARATE FROM COURSE WORK/u);
   assert.match(workspace, /Research is not activated/u);

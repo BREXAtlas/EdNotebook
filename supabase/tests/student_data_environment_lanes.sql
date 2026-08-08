@@ -1,5 +1,6 @@
 -- Run only against a disposable database after every repository migration.
--- Proves that Beta/Pilot are governance labels over the same staging records.
+-- Proves that /staging stays a sandbox while live Beta/Pilot transitions carry
+-- the same accounts and courses forward without copying them.
 
 begin;
 set local statement_timeout = '60s';
@@ -14,6 +15,18 @@ begin
   end if;
   if not has_function_privilege('authenticated','public.get_my_student_data_environment_lane(uuid)','execute') then
     raise exception 'Authenticated pages must be able to resolve their governed label';
+  end if;
+  if has_function_privilege('anon','public.get_live_service_operating_lane()','execute') then
+    raise exception 'Anonymous callers must use the deployment label and must not cross the database SECURITY DEFINER boundary';
+  end if;
+  if not has_function_privilege('authenticated','public.get_live_service_operating_lane()','execute') then
+    raise exception 'Authenticated live pages must be able to resolve the governed lane label';
+  end if;
+  if has_function_privilege('anon','public.record_live_service_operating_lane(text,text,text,text,boolean)','execute') then
+    raise exception 'Anonymous callers must not change the live operating lane';
+  end if;
+  if has_table_privilege('authenticated','public.live_service_operating_lane_versions','SELECT,INSERT,UPDATE,DELETE') then
+    raise exception 'Authenticated browser role must not access protected live-lane versions directly';
   end if;
 end $$;
 
@@ -85,7 +98,20 @@ values ('40000000-0000-4000-8000-000000000171','10000000-0000-4000-8000-00000000
 
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000171',true);
 select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claim.iss','http://127.0.0.1:54321/auth/v1',true);
+select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000171","role":"authenticated","iss":"http://127.0.0.1:54321/auth/v1"}',true);
 set local role authenticated;
+
+select public.record_live_service_operating_lane(
+  'beta','1111111111111111111111111111111111111111',
+  'Authorized administrative, investor, and librarian testing on the normal live service.',
+  'test:live-beta-baseline',true
+);
+select public.record_live_service_operating_lane(
+  'pilot','2222222222222222222222222222222222222222',
+  'Authorized Digital Literacy pilot using the same live accounts, courses, and work.',
+  'test:live-pilot-transition',true
+);
 
 select public.record_student_data_environment_lane(
   '22222222-2222-4222-8222-222222222222','institution','22222222-2222-4222-8222-222222222222',
@@ -119,6 +145,8 @@ do $$
 declare
   v_beta public.student_data_environment_lane_versions%rowtype;
   v_pilot public.student_data_environment_lane_versions%rowtype;
+  v_live_beta public.live_service_operating_lane_versions%rowtype;
+  v_live_pilot public.live_service_operating_lane_versions%rowtype;
 begin
   select * into strict v_beta
   from public.student_data_environment_lane_versions
@@ -140,25 +168,47 @@ begin
      or (select count(*) from public.courses where institution_id='22222222-2222-4222-8222-222222222222')<>1 then
     raise exception 'A lane transition mutated or duplicated existing records';
   end if;
+  select * into strict v_live_beta from public.live_service_operating_lane_versions where version=1;
+  select * into strict v_live_pilot from public.live_service_operating_lane_versions where version=2;
+  if v_live_beta.operating_lane<>'beta'
+     or v_live_pilot.operating_lane<>'pilot'
+     or v_live_pilot.previous_operating_lane<>'beta'
+     or v_live_beta.carried_account_ids<>v_live_pilot.carried_account_ids
+     or v_live_beta.carried_course_ids<>v_live_pilot.carried_course_ids
+     or v_live_pilot.carried_account_count<>3
+     or v_live_pilot.carried_course_count<>1
+     or v_live_pilot.carry_set_sha256 !~ '^[0-9a-f]{64}$' then
+    raise exception 'The live Beta-to-Pilot transition did not preserve the exact carry set';
+  end if;
+  if not exists (
+    select 1 from public.audit_events
+    where event_type='student_data.live_operating_lane_recorded'
+      and data_lane='pilot' and environment_scope='live_service'
+      and details->>'new_site_created'='false'
+      and details->>'new_database_created'='false'
+      and details->>'new_url_created'='false'
+  ) then raise exception 'The global live Pilot transition audit record is missing'; end if;
   if not exists (
     select 1 from public.audit_events
     where institution_id='22222222-2222-4222-8222-222222222222'
       and event_type='student_data.environment_lane_recorded'
-      and data_lane='pilot' and environment_scope='staging'
-  ) then raise exception 'Pilot transition audit metadata was not lane-stamped'; end if;
+      and data_lane='sandbox' and environment_scope='staging_sandbox'
+  ) then raise exception 'Staging activity was not kept in the sandbox audit lane'; end if;
 end $$;
 
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000173',true);
 select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claim.iss','http://127.0.0.1:54321/auth/v1',true);
+select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000173","role":"authenticated","iss":"http://127.0.0.1:54321/auth/v1"}',true);
 set local role authenticated;
 do $$
 declare v_label jsonb;
 begin
   v_label:=public.get_my_student_data_environment_lane('40000000-0000-4000-8000-000000000171');
-  if v_label->>'data_lane'<>'pilot'
-     or v_label->>'environment_scope'<>'staging'
+  if v_label->>'data_lane'<>'sandbox'
+     or v_label->>'environment_scope'<>'staging_sandbox'
      or (v_label->>'production_label_visible')::boolean is not false then
-    raise exception 'Student page did not resolve the governed Pilot label: %',v_label;
+    raise exception 'The staging student page did not remain in the Sandbox lane: %',v_label;
   end if;
 end $$;
 

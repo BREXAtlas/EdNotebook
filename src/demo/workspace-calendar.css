@@ -1,3 +1,27 @@
+.calendar-control-card,
+.calendar-full-card,
+.calendar-event-dialog,
+.calendar-import-review {
+  --demo-ink: var(--portal-ink, #18284a);
+  --demo-muted: var(--portal-muted, #657086);
+  --demo-blue: var(--portal-blue, #1d4ed8);
+  --demo-blue-dark: var(--portal-blue-dark, #153b91);
+  --demo-line: var(--portal-line, #dbe2ee);
+  --demo-display: var(--portal-display, "Zilla Slab", Georgia, serif);
+}
+
+.calendar-import-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .calendar-control-grid {
   display: grid;
   grid-template-columns: 1fr 1fr auto auto;

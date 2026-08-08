@@ -223,7 +223,9 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
           {accountType === "institution"
             ? "Use an approved EdNotebook account. The control center will show only the platform or institution workspaces assigned to that account."
             : accountType === "professor"
-            ? `Choose the exact ${earlyPrepTeacher ? "high school or district" : "institution"} you work for. ${earlyPrepTeacher ? "Teacher" : "Professor"} access stays pending until the relationship is reviewed and approved.`
+            ? earlyPrepTeacher
+              ? "Choose the exact high school or district you work for. Your teacher workspace opens after email verification; school review adds a verified affiliation badge and access to school-owned records."
+              : "Choose the exact institution you work for. Your professor workspace opens after email verification; institutional review adds a verified affiliation badge and access to institution-owned records."
             : educationTrack === "k12"
               ? "Browse schools and classes first, then sign in when you join a class or save your work."
               : "Browse colleges and classes publicly, then sign in when you join a class or save private work."}
@@ -263,7 +265,9 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                 required
                 allowIndependent={accountType === "student"}
                 helpText={accountType === "professor"
-                  ? `Choose the exact ${earlyPrepTeacher ? "high school or district" : "institution"} you work for. An unlisted institution can be submitted for review; selection alone does not grant ${earlyPrepTeacher ? "teacher" : "professor"} access.`
+                  ? earlyPrepTeacher
+                    ? "Choose the exact high school or district you work for. An unlisted school can be submitted for review. Your teacher workspace remains available while the affiliation is unverified."
+                    : "Choose the exact institution you work for. An unlisted institution can be submitted for review. Your professor workspace remains available while the affiliation is unverified."
                   : "Choose the exact school you attend. Select Independent only for free public use without professor enrollment, assignment, roster, or institutional grade access."}
               />
               {accountType === "student" && institutionChoice?.choice !== "independent" ? (
@@ -276,7 +280,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
                   Department
                   <input style={field} value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Optional" />
-                  <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>Department is descriptive only. Institution approval—not this field—controls {earlyPrepTeacher ? "teacher" : "professor"} access.</small>
+                  <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>Department is descriptive only. {earlyPrepTeacher ? "School" : "Institution"} approval controls the verified badge and {earlyPrepTeacher ? "school" : "institution"}-owned records, not access to your {earlyPrepTeacher ? "teacher" : "professor"} workspace.</small>
                 </label>
               )}
             </>
@@ -347,7 +351,8 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   );
 }
 
-function AccountBar({ profile, user }) {
+function AccountBar({ profile, user, institutionReview }) {
+  const reviewStatus = institutionReview?.verification_status || "unverified";
   return (
     <div className="account-bubble">
       <div className="account-bubble-details">
@@ -357,6 +362,11 @@ function AccountBar({ profile, user }) {
         <div style={{ fontSize: 11, opacity: .72, textTransform: "capitalize" }}>
           {profile?.role || "learner"} · {profile?.subscription_status || "free"}
         </div>
+        {institutionReview && (
+          <div style={{ fontSize: 10, opacity: .8 }}>
+            Affiliation {reviewStatus === "approved" ? "verified" : reviewStatus === "pending" ? "review pending" : "unverified"}
+          </div>
+        )}
       </div>
       <button
         type="button"
@@ -373,6 +383,7 @@ export default function AuthGate({ children, accountType = "student", educationT
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [institutionReview, setInstitutionReview] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -400,6 +411,7 @@ export default function AuthGate({ children, accountType = "student", educationT
       if (profileUserId.current !== nextUserId) {
         profileUserId.current = nextUserId;
         setProfile(null);
+        setInstitutionReview(null);
         setProfileLoading(Boolean(nextUserId));
         setLoadError("");
       }
@@ -479,6 +491,7 @@ export default function AuthGate({ children, accountType = "student", educationT
     async function loadProfile() {
       if (!session?.user) {
         setProfile(null);
+        setInstitutionReview(null);
         setProfileLoading(false);
         return;
       }
@@ -486,18 +499,26 @@ export default function AuthGate({ children, accountType = "student", educationT
       setProfileLoading(true);
 
       try {
-        const { data, error } = await withAccountLoadTimeout(
-          supabase
-            .from("profiles")
-            .select("id,email,full_name,role,subscription_status")
-            .eq("id", session.user.id)
-            .single(),
+        const [profileResult, reviewResult] = await withAccountLoadTimeout(
+          Promise.all([
+            supabase
+              .from("profiles")
+              .select("id,email,full_name,role,subscription_status")
+              .eq("id", session.user.id)
+              .single(),
+            supabase
+              .from("identity_onboarding_requests")
+              .select("requested_role,verification_status,institution_name,education_division")
+              .eq("user_id", session.user.id)
+              .maybeSingle(),
+          ]),
           "The account profile took too long to load.",
         );
 
-        if (error) throw error;
+        if (profileResult.error) throw profileResult.error;
         if (!active) return;
-        setProfile(data);
+        setProfile(profileResult.data);
+        setInstitutionReview(reviewResult.error ? null : reviewResult.data);
         setProfileLoading(false);
       } catch (profileError) {
         if (!active) return;
@@ -563,7 +584,12 @@ export default function AuthGate({ children, accountType = "student", educationT
     );
   }
 
-  if (allowedRoles && !allowedRoles.includes(profile?.role)) {
+  const requestedProfessor = session.user.user_metadata?.requested_role === "professor";
+  const effectiveProfile = requestedProfessor && profile?.role === "learner"
+    ? { ...profile, role: "professor" }
+    : profile;
+
+  if (allowedRoles && !allowedRoles.includes(effectiveProfile?.role)) {
     return (
       <main style={shell}>
         <section style={card} aria-labelledby="role-access-title">
@@ -576,20 +602,17 @@ export default function AuthGate({ children, accountType = "student", educationT
     );
   }
 
-  const professorRole = ["professor", "admin", "owner"].includes(profile?.role);
+  const professorRole = ["professor", "admin", "owner"].includes(effectiveProfile?.role);
   if (accountType === "professor" && !professorRole) {
-    const requestedProfessor = session.user.user_metadata?.requested_role === "professor";
     return (
       <main style={shell}>
         <section style={card} aria-labelledby="professor-access-title">
           <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>{educationTrack === "k12" ? "EDNOTEBOOK EARLY PREP · TEACHER PORTAL" : "EDNOTEBOOK · PROFESSOR PORTAL"}</div>
           <h1 id="professor-access-title" style={{ marginBottom: 8 }}>
-            {requestedProfessor ? "Finish creating your educator workspace" : "This is not an educator account"}
+            This is not an educator account
           </h1>
           <p style={{ color: "#59667a", lineHeight: 1.55 }}>
-            {requestedProfessor
-              ? `Your ${educationTrack === "k12" ? "teacher" : "professor"} request is pending institution review. You cannot open institutional teaching, roster, assignment, or grade tools until the selected institution relationship is approved.`
-              : "Use the student portal for class work, or sign out and use an educator account for teaching tools."}
+            Use the student portal for class work, or sign out and use an educator account for teaching tools.
           </p>
           <a href={educationTrack === "k12" ? "#/early-prep" : "#/professors"} style={{ ...primaryButton, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}>Return to educator information</a>
           <button type="button" style={{ ...primaryButton, background: "#eef2f8", color: "#245397" }} onClick={() => supabase.auth.signOut()}>Sign out</button>
@@ -599,13 +622,29 @@ export default function AuthGate({ children, accountType = "student", educationT
   }
 
   const content = typeof children === "function"
-    ? children({ session, profile, user: session.user })
+    ? children({ session, profile: effectiveProfile, user: session.user })
     : children;
+
+  const reviewStatus = institutionReview?.verification_status || "unverified";
+  const reviewPending = institutionReview && reviewStatus !== "approved";
 
   return (
     <>
+      {reviewPending && (
+        <aside className={`institution-review-access-banner is-${reviewStatus}`} role="status">
+          <div>
+            <strong>{accountType === "professor" ? "UNVERIFIED EDUCATOR" : "INSTITUTION MATCH"} · {reviewStatus === "pending" ? "REVIEW PENDING" : "NOT VERIFIED"}</strong>
+            <span>
+              {accountType === "professor"
+                ? "Your professor workspace is active. Review controls the verified institution badge and institution-owned records—not course building, independent teaching tools, or Beta testing."
+                : "Your student workspace is active. Institution review controls the verified school match and protected institution records—not your account access."}
+            </span>
+          </div>
+          <a href={accountType === "professor" ? "#/professor/dashboard" : `#/student/${educationTrack}/app`}>Workspace active</a>
+        </aside>
+      )}
       {content}
-      <AccountBar profile={profile} user={session.user} />
+      <AccountBar profile={effectiveProfile} user={session.user} institutionReview={institutionReview} />
     </>
   );
 }

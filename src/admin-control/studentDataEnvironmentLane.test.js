@@ -22,12 +22,12 @@ function input(overrides = {}) {
   };
 }
 
-test("beta and pilot are the only assignable staging lanes", () => {
+test("beta and pilot are the only assignable live audit labels", () => {
   assert.equal(validateStudentDataEnvironmentLane(INSTITUTION_ID, input()).valid, true);
   assert.equal(validateStudentDataEnvironmentLane(INSTITUTION_ID, input({ dataLane: "pilot" })).valid, true);
   const production = validateStudentDataEnvironmentLane(INSTITUTION_ID, input({ dataLane: "production" }));
   assert.equal(production.valid, false);
-  assert.match(production.issues.join(" "), /production promotion/iu);
+  assert.match(production.issues.join(" "), /protected production-promotion/iu);
 });
 
 test("institution scope uses the institution ID and produces an attested RPC payload", () => {
@@ -52,16 +52,21 @@ test("course and account assignments require exact IDs", () => {
 });
 
 test("the global page label is server-resolved and production has no banner", async () => {
-  const [banner, migration] = await Promise.all([
+  const [banner, migration, correction] = await Promise.all([
     readFile(new URL("../EnvironmentBanner.jsx", import.meta.url), "utf8"),
     readFile(new URL("../../supabase/migrations/20260802233000_govern_student_data_promotion_preflight.sql", import.meta.url), "utf8"),
+    readFile(new URL("../../supabase/migrations/20260803033914_correct_live_beta_pilot_release_lanes.sql", import.meta.url), "utf8"),
   ]);
-  assert.match(banner, /get_my_student_data_environment_lane/u);
-  assert.match(banner, /EDNOTEBOOK BETA MODE/u);
-  assert.match(banner, /EDNOTEBOOK PILOT MODE/u);
-  assert.match(banner, /if \(!isStaging\) return null/u);
+  assert.match(banner, /get_live_service_operating_lane/u);
+  assert.match(banner, /EDNOTEBOOK STAGING SANDBOX/u);
+  assert.match(banner, /EDNOTEBOOK BETA · LIVE SERVICE/u);
+  assert.match(banner, /EDNOTEBOOK PILOT · LIVE SERVICE/u);
+  assert.match(banner, /if \(liveLane === "production"\) return null/u);
   assert.doesNotMatch(banner, /URLSearchParams/u);
-  assert.match(migration, /if p_data_lane not in \('beta','pilot'\) then raise exception 'Production lane cannot be assigned in staging'/u);
+  assert.match(correction, /The live lane may be Beta or Pilot; unlabeled Production requires the protected production-promotion workflow/u);
+  assert.match(correction, /private\.current_request_deployment_surface/u);
+  assert.match(correction, /v_lane := 'sandbox'/u);
+  assert.match(correction, /v_lane := private\.resolve_student_data_environment_lane/u);
   assert.match(migration, /new\.data_lane := v_lane/u);
   assert.match(migration, /audit_events_institution_data_lane_occurred_idx/u);
   assert.match(migration, /legacy_unclassified_audit_count/u);
