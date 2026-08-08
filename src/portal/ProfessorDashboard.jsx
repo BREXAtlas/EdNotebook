@@ -19,13 +19,14 @@ import { ProfessorSocialLearningPanel } from "../social-learning/SocialLearningP
 import CampusSocialFeed from "../social-learning/CampusSocialFeed.jsx";
 import CourseCommunicationPanel from "../communication/CourseCommunicationPanel.jsx";
 import { ProfessorDigitalLiteracyPilot } from "../digital-literacy/DigitalLiteracyPilotWorkspace.jsx";
+import { ProfessorFinancialLiteracyClass } from "../financial-literacy/FinancialLiteracyWorkspace.jsx";
 
 const ProfessorSemesterCalendar = lazy(() =>
   import("../ai/ProfessorSemesterCalendar.jsx")
 );
 
 const NAV_GROUPS = [
-  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["templates", "Assignments"]] },
+  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["financial-literacy", "Financial Literacy"], ["templates", "Assignments"]] },
   { label: "Students", items: [["students", "Students & Roster"], ["rewards", "Social Learning"], ["grades", "Progress & Analytics"], ["attendance", "Attendance"]] },
   { label: "Connect", items: [["notifications", "Notifications"], ["announcements", "Campus Social"], ["communication", "Course Communication"], ["profile", "Educator Page"]] },
   { label: "Account", items: [["verification", "School Verification"], ["security", "Security"], ["settings", "Settings"], ["help", "Help & Support"]] },
@@ -34,6 +35,7 @@ const NAV_GROUPS = [
 const EARLY_PREP_NAV_LABELS = Object.freeze({
   classes: "My Classes",
   "digital-literacy": "Digital Literacy Class",
+  "financial-literacy": "Financial Literacy Class",
   announcements: "School Social",
   communication: "Class Communication",
 });
@@ -52,7 +54,7 @@ function EducatorTour({ step, setStep }) {
 }
 
 function ProfessorNavigation({ tab, setTab, pendingRequests = 0, divisionScope = null }) {
-  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.map(([id, defaultLabel]) => { const label = divisionScope === "k12" ? (EARLY_PREP_NAV_LABELS[id] || defaultLabel) : defaultLabel; return <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>; })}</div>)}</nav>;
+  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.filter(([id]) => id !== "financial-literacy" || divisionScope === "k12").map(([id, defaultLabel]) => { const label = divisionScope === "k12" ? (EARLY_PREP_NAV_LABELS[id] || defaultLabel) : defaultLabel; return <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>; })}</div>)}</nav>;
 }
 
 function SensitiveAccess({ session, unlocked, onUnlock, onLock, children }) {
@@ -73,6 +75,7 @@ function Overview({ setTab, classes, enrollmentRequests, divisionScope = null })
   return <div className="professor-panel-stack">
     <section className="professor-welcome-card"><div><span>{earlyPrep ? "EARLY PREP TEACHER WORKSPACE" : "EDUCATOR WORKSPACE"}</span><h1>{earlyPrep ? "Every class, student, and conversation in one teaching home." : "Every course, student, and conversation in one teaching home."}</h1><p>{earlyPrep ? "Create and manage classes, review the learner experience, organize assignments, and publish when ready." : "Create and manage courses, review the learner experience, organize assignments, and publish when ready."}</p></div><button type="button" onClick={() => setTab("classes")}>{earlyPrep ? "Open My Classes" : "Open My Courses"}</button></section>
     <section className="dashboard-card professor-digital-literacy-entry"><div><span className="portal-kicker">{earlyPrep ? "AUTOMATIC CLASS · READY TO REVIEW" : "AUTOMATIC COURSE · READY TO REVIEW"}</span><h2>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</h2><p>{earlyPrep ? "The canonical Digital Literacy Class is available to every Early Prep teacher account. Preview it or assign selected content without creating a duplicate curriculum copy." : "The full canonical course is available to every professor account. Open it to preview the learner experience, review modules and quizzes, or assign selected content to your students."}</p></div><button type="button" onClick={() => setTab("digital-literacy")}>{earlyPrep ? "Open Digital Literacy Class" : "Open Digital Literacy Course"}</button></section>
+    {earlyPrep && <section className="dashboard-card professor-financial-literacy-entry"><div><span className="portal-kicker">FREE AUTOMATIC CLASS · GRADES 9–12</span><h2>Financial Literacy / Personal Finance</h2><p>The canonical Ram Ready Financial Futures starter class is ready for every Early Prep student. It is separate from marketplace, checkout, and all University publishing work.</p></div><button type="button" onClick={() => setTab("financial-literacy")}>Open Financial Literacy Class</button></section>}
     <section className="student-stat-grid professor-stat-grid"><article><span>Published {earlyPrep ? "classes" : "courses"}</span><strong>{published.length}</strong><button type="button" onClick={() => setTab("classes")}>Manage</button></article><article><span>Enrolled students</span><strong>{students}</strong><button type="button" onClick={() => setTab("students")}>Open roster</button></article><article><span>Enrollment requests</span><strong>{pending.length}</strong><button type="button" onClick={() => setTab("students")}>{pending.length ? "Review now" : "Queue is clear"}</button></article><article><span>Draft {earlyPrep ? "classes" : "courses"}</span><strong>{classes.length - published.length}</strong><button type="button" onClick={() => setTab("classes")}>Continue building</button></article></section>
     <section className="professor-dashboard-columns"><article className="dashboard-card"><span className="portal-kicker">ACCOUNT LINKING</span><h2>{pending.length ? "Students waiting" : "No requests waiting"}</h2>{pending.slice(0, 4).map((request) => <div className="professor-alert-row" key={request.id}><span>{request.course?.course_code || "COURSE"}</span><strong>approval requested</strong></div>)}<button type="button" onClick={() => setTab("students")}>Open approval queue</button></article><article className="dashboard-card"><span className="portal-kicker">SCHOOL AFFILIATION</span><h2>Verification is separate from workspace access.</h2><p>{earlyPrep ? "Your teacher workspace remains active. School review adds the verified affiliation badge and governs access to school-owned records." : "Your professor workspace remains active. Institutional review adds the verified affiliation badge and governs access to institution-owned records."}</p><button type="button" onClick={() => setTab("verification")}>Open School Verification</button></article></section>
   </div>;
@@ -144,7 +147,7 @@ function CourseLibraryControls({ course, onSave, busy }) {
   </div>;
 }
 
-function Classes({ onBuild, onOpenDigitalLiteracy, classes, divisionScope = null, onSaveAccess, accessBusyCourse, onSaveLibrary, libraryBusyCourse }) {
+function Classes({ onBuild, onOpenDigitalLiteracy, onOpenFinancialLiteracy, classes, divisionScope = null, onSaveAccess, accessBusyCourse, onSaveLibrary, libraryBusyCourse }) {
   const [query, setQuery] = useState("");
   const [division, setDivision] = useState(divisionScope || "all");
   const [status, setStatus] = useState("all");
@@ -160,11 +163,12 @@ function Classes({ onBuild, onOpenDigitalLiteracy, classes, divisionScope = null
       <div>
         <span className="portal-kicker">{earlyPrep ? "MY CLASSES" : "MY COURSES"}</span>
         <h1>{earlyPrep ? "My Classes" : "My Courses"}</h1>
-        <p>{earlyPrep ? "Your class library contains the automatic Digital Literacy Class plus only the Early Prep classes you create. Commercial library and marketplace tools stay unavailable." : "The Course Library contains the automatic Digital Literacy Course plus only the original courses you create."}</p>
+        <p>{earlyPrep ? "Your class library contains the automatic Digital Literacy and Financial Literacy classes plus only the Early Prep classes you create. Commercial library and marketplace tools stay unavailable." : "The Course Library contains the automatic Digital Literacy Course plus only the original courses you create."}</p>
       </div>
       {earlyPrep ? <button type="button" onClick={() => onBuild(null)}>Create Class</button> : <button type="button" onClick={() => onBuild(null)}>Create Course</button>}
     </div>
     <article className="professor-canonical-library-row"><div><span>{earlyPrep ? "CLASS" : "COURSE"} LIBRARY · AUTOMATIC</span><strong>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</strong><small>Full repository-backed {earlyPrep ? "class" : "course"} · learner preview · modules, activities, and quizzes</small></div><button type="button" onClick={onOpenDigitalLiteracy}>Open {earlyPrep ? "Class" : "Course"}</button></article>
+    {earlyPrep && <article className="professor-canonical-library-row is-financial"><div><span>CLASS LIBRARY · AUTOMATIC · FREE</span><strong>Financial Literacy / Personal Finance</strong><small>20 Financial Foundations episodes · 20 optional Future Wealth quests · no payments</small></div><button type="button" onClick={onOpenFinancialLiteracy}>Open Class</button></article>}
     <div className="class-library-controls professor-library-controls">
       <label>Search My {earlyPrep ? "Classes" : "Courses"}<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label>
       <label>Division<select value={division} disabled={Boolean(divisionScope)} onChange={(event) => setDivision(event.target.value)}><option value="all">All divisions</option><option value="university">University</option><option value="k12">Early Prep · Grades 9–12</option></select></label>
@@ -446,9 +450,10 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
         <main className="student-dashboard-main professor-dashboard-main">
           {portalNotice && <div className="portal-form-notice class-link-status" role="status">{portalNotice}<button type="button" onClick={() => setPortalNotice("")}>×</button></div>}
           {tab === "overview" && <Overview setTab={setTab} classes={scopedTeachingClasses} enrollmentRequests={teachingEnrollmentRequests} divisionScope={divisionScope} />}
-          {tab === "classes" && <Classes onBuild={onBuild} onOpenDigitalLiteracy={() => setTab("digital-literacy")} classes={scopedTeachingClasses} divisionScope={divisionScope} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
+          {tab === "classes" && <Classes onBuild={onBuild} onOpenDigitalLiteracy={() => setTab("digital-literacy")} onOpenFinancialLiteracy={() => setTab("financial-literacy")} classes={scopedTeachingClasses} divisionScope={divisionScope} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={scopedTeachingClasses} /></Suspense>}
           {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} divisionScope={divisionScope} />}
+          {tab === "financial-literacy" && earlyPrep && <ProfessorFinancialLiteracyClass classes={scopedTeachingClasses} />}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} track={divisionScope || "university"} classes={scopedTeachingClasses} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel classes={scopedTeachingClasses} />}

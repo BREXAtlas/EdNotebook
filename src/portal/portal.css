@@ -644,6 +644,10 @@
 .professor-digital-literacy-entry { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #b8cbed; background: linear-gradient(135deg, #f9fbff, #edf4ff); }
 .professor-digital-literacy-entry p { max-width: 780px; margin-bottom: 0; }
 .professor-digital-literacy-entry > button { flex: 0 0 auto; }
+.professor-financial-literacy-entry { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #d6b56e; background: linear-gradient(135deg, #fffefa, #fff5da); }
+.professor-financial-literacy-entry p { max-width: 780px; margin-bottom: 0; }
+.professor-financial-literacy-entry > button { flex: 0 0 auto; }
+.professor-canonical-library-row.is-financial { border-color: #d6b56e; background: #fffaf0; }
 .professor-canonical-library-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; padding: 17px; border: 1px solid #b8cbed; border-radius: 12px; background: #f1f6ff; }
 .professor-canonical-library-row > div { display: grid; gap: 4px; }
 .professor-canonical-library-row span { color: var(--portal-blue); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
@@ -847,6 +851,7 @@
   .professor-class-grid article { grid-template-columns: 1fr; }
   .professor-class-status { justify-items: start; }
   .professor-digital-literacy-entry,
+  .professor-financial-literacy-entry,
   .professor-canonical-library-row { align-items: flex-start; flex-direction: column; }
 }
 
