@@ -16,7 +16,7 @@ test("student route is K12-only and does not add a University Financial Literacy
 });
 
 test("University professor navigation is unchanged by filtering the Early Prep-only tab", () => {
-  assert.match(professor, /EARLY_PREP_ONLY_NAV_ITEMS = new Set\(\["financial-literacy", "learning-systems"\]\)/u);
+  assert.match(professor, /EARLY_PREP_ONLY_NAV_ITEMS = new Set\(\["financial-literacy", "readiness", "learning-systems"\]\)/u);
   assert.match(professor, /!EARLY_PREP_ONLY_NAV_ITEMS\.has\(id\) \|\| divisionScope === "k12"/u);
   assert.match(professor, /tab === "financial-literacy" && earlyPrep/u);
   assert.match(professor, /separate from marketplace, checkout, and all University publishing work/u);
