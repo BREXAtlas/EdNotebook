@@ -9,7 +9,7 @@ import {
   requirePost,
   requireUser,
 } from "../_shared/runtime.ts";
-import { stripeClient } from "../_shared/marketplace.ts";
+import { requireUniversityMarketplaceOrder, stripeClient } from "../_shared/marketplace.ts";
 import { recordAuditRequired } from "../_shared/security.ts";
 
 interface RefundRequest {
@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
       .eq("id", refundRequest.order_id)
       .maybeSingle();
     if (orderError) throw orderError;
+    await requireUniversityMarketplaceOrder(admin, order);
     if (!order?.stripe_payment_intent_id || !["paid", "fulfilled", "partially_refunded"].includes(order.status)) {
       throw new HttpError(409, "The order is not eligible for a processor refund.");
     }

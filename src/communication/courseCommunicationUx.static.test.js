@@ -20,7 +20,7 @@ test("professor, student, and studio surfaces use the same course communication 
     readFile(studioRoomUrl, "utf8"),
   ]);
   assert.match(student, /CourseCommunicationPanel[\s\S]*role="student"[\s\S]*educationDivision=\{track\}/u);
-  assert.match(professor, /CourseCommunicationPanel[\s\S]*role="professor"[\s\S]*educationDivision="both"/u);
+  assert.match(professor, /CourseCommunicationPanel[\s\S]*role="professor"[\s\S]*educationDivision=\{divisionScope \|\| "both"\}/u);
   assert.match(studio, /courseCommunicationService/u);
   assert.doesNotMatch(studio, /\.from\("learning_messages"\)/u);
   assert.match(panel, /Device-only notes are not messages/u);

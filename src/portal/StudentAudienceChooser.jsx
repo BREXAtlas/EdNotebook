@@ -13,10 +13,10 @@ const PATHS = [
   {
     id: "k12",
     number: "02",
-    title: "K–12 school",
+    title: "Early Prep · Grades 9–12",
     copy: "Keep classes, teachers, assignments, grades, attendance, clubs, and school updates together in a student-friendly space.",
     href: "#/students/k12",
-    points: ["School and teacher search", "School-only social spaces", "Memory that can move into college"],
+    points: ["High school and teacher search", "School-only social spaces", "Governed continuity into university"],
   },
 ];
 
@@ -28,7 +28,7 @@ export default function StudentAudienceChooser() {
         <section className="student-audience-heading">
           <span className="portal-kicker">CHOOSE YOUR STUDENT SPACE</span>
           <h1>Same learning tools. The right school language.</h1>
-          <p>Choose where you are now. A K–12 account can move into the university experience later while keeping learning history and saved work. Social profiles and feeds remain separate.</p>
+          <p>Choose where you are now. An Early Prep account can request a governed move into the university experience later while keeping approved learning history and saved work. Social profiles and feeds remain separate.</p>
         </section>
         <section className="student-audience-grid">
           {PATHS.map((path) => (
@@ -43,7 +43,7 @@ export default function StudentAudienceChooser() {
         </section>
         <section className="student-continuity-card">
           <BrandLogo size={42} tagline="One account across school stages" />
-          <div><strong>Your progress can move forward.</strong><span>Classes, milestones, selected notes, badges, and portfolio work can transfer from K–12 to university. K–12 and university social audiences never merge automatically.</span></div>
+          <div><strong>Your progress can move forward.</strong><span>Approved classes, milestones, selected notes, badges, and portfolio work can transfer from Early Prep to university after review. Early Prep and university social audiences never merge automatically.</span></div>
         </section>
       </main>
     </div>

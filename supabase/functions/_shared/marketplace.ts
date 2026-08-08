@@ -85,3 +85,32 @@ export function sellerRequirementSummary(account: Stripe.Account): string[] {
     ...(account.requirements?.past_due || []),
   ].filter((value, index, all) => all.indexOf(value) === index).slice(0, 100);
 }
+
+export function requireUniversityMarketplaceApplication(application: any): void {
+  if (!application || application.education_division !== "university") {
+    throw new HttpError(403, "Marketplace seller tools are unavailable in EdNotebook Early Prep.");
+  }
+}
+
+export async function requireUniversityMarketplaceListing(admin: any, listing: any, buyerId?: string): Promise<void> {
+  if (!listing) throw new HttpError(404, "This marketplace listing is not available.");
+  if (listing.course_id) {
+    const { data: course, error } = await admin.from("courses").select("education_division").eq("id", listing.course_id).maybeSingle();
+    if (error) throw error;
+    if (!course || course.education_division !== "university") {
+      throw new HttpError(403, "Buying and renting are unavailable for EdNotebook Early Prep classes.");
+    }
+  }
+  if (buyerId) {
+    const { data: path, error } = await admin.from("student_education_paths").select("current_division").eq("user_id", buyerId).maybeSingle();
+    if (error) throw error;
+    if (path?.current_division === "k12") {
+      throw new HttpError(403, "Buying and renting are unavailable in EdNotebook Early Prep.");
+    }
+  }
+}
+
+export async function requireUniversityMarketplaceOrder(admin: any, order: any): Promise<void> {
+  if (!order) throw new HttpError(404, "Marketplace order not found.");
+  await requireUniversityMarketplaceListing(admin, { course_id: order.course_id }, order.buyer_id);
+}

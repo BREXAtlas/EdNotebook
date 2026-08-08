@@ -37,11 +37,13 @@ function createSection(type = "long") {
   };
 }
 
-function createTemplate(track, courseId, status = "draft") {
+function createTemplate(track, courseId, status = "draft", subjectId = null) {
   const k12 = track === "k12";
   return {
     id: `device-${crypto.randomUUID()}`,
     course_id: courseId,
+    education_division: track,
+    subject_id: k12 ? (subjectId || "other-approved-elective") : null,
     title: k12 ? "Evidence Paragraph Builder" : "Source Analysis Response",
     instructions: k12
       ? "Work through each section, then use the full-page editor to put the response together."
@@ -525,13 +527,14 @@ function StudentAssignment({ template, session, onClose }) {
 }
 
 export default function AssignmentTemplateWorkspace({ mode, session, track = "university", classes = [], initialTemplateId = null }) {
-  const firstCourseId = classes[0]?.id || "";
+  const firstCourse = classes[0];
+  const firstCourseId = firstCourse?.id || "";
   const storageKey = `ednotebook-assignment-templates-${session?.user?.id || "guest"}`;
   const initialTemplates = loadJson(storageKey, []);
   const [templates, setTemplates] = useState(initialTemplates);
   const [availableClasses, setAvailableClasses] = useState(classes);
   const [courseId, setCourseId] = useState(firstCourseId);
-  const [draft, setDraft] = useState(() => createTemplate(track, firstCourseId));
+  const [draft, setDraft] = useState(() => createTemplate(track, firstCourseId, "draft", firstCourse?.subjectId));
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -545,7 +548,7 @@ export default function AssignmentTemplateWorkspace({ mode, session, track = "un
       setAvailableClasses(result.data);
       const firstCourse = result.data[0];
       setCourseId((current) => result.data.some((course) => course.id === current) ? current : firstCourse.id);
-      setDraft((current) => result.data.some((course) => course.id === current.course_id) ? current : createTemplate(firstCourse.division || track, firstCourse.id));
+      setDraft((current) => result.data.some((course) => course.id === current.course_id) ? current : createTemplate(firstCourse.division || track, firstCourse.id, "draft", firstCourse.subjectId));
     }
     loadCloudCourses();
     return () => { active = false; };
@@ -583,7 +586,7 @@ export default function AssignmentTemplateWorkspace({ mode, session, track = "un
   function selectCourse(nextCourseId) {
     setCourseId(nextCourseId);
     const selectedCourse = availableClasses.find((course) => course.id === nextCourseId);
-    setDraft(createTemplate(selectedCourse?.division || track, nextCourseId));
+    setDraft(createTemplate(selectedCourse?.division || track, nextCourseId, "draft", selectedCourse?.subjectId));
     setSelectedTemplate(null);
     setNotice("");
   }
@@ -606,5 +609,5 @@ export default function AssignmentTemplateWorkspace({ mode, session, track = "un
   if (mode === "student" && selectedTemplate) return <StudentAssignment template={selectedTemplate} session={session} onClose={() => setSelectedTemplate(null)} />;
 
   if (mode === "professor" && !availableClasses.length) return <div className="assignment-template-workspace"><section className="dashboard-card assignment-template-hero"><div><span className="portal-kicker">ASSIGNMENTS</span><h1>Create an original course before adding assignments.</h1><p>New professor accounts start empty. The Digital Literacy Course is already available to review and assign from its dedicated course area; no sample course or student data is inserted here.</p></div></section></div>;
-  return <div className="assignment-template-workspace"><section className="dashboard-card assignment-template-hero"><div><span className="portal-kicker">{mode === "professor" ? "ASSIGNMENT STUDIO" : "ASSIGNMENTS"}</span><h1>{mode === "professor" ? "Build the work right into the course." : "Read, write, and submit in one place."}</h1><p>{mode === "professor" ? "Create reusable form-style assignments with custom sections and an optional full-page writing workspace. Students never need a blank Word document just to begin." : "Open a guided template, write in a full-size page, save your draft, and export when you need a copy."}</p></div><label>Course<select value={courseId} onChange={(event) => selectCourse(event.target.value)}>{availableClasses.map((course) => <option key={course.id} value={course.id}>{course.code} · {course.title}</option>)}</select></label></section>{notice && <div className="portal-form-notice" role="status">{notice}</div>}{mode === "professor" ? <><section className="template-library"><div className="dashboard-card-heading"><div><span className="portal-kicker">TEMPLATE LIBRARY</span><h2>Reuse or revise.</h2></div><button type="button" onClick={() => { const selectedCourse = availableClasses.find((course) => course.id === courseId); setDraft(createTemplate(selectedCourse?.division || track, courseId)); }}>New template</button></div><div>{visibleTemplates.length ? visibleTemplates.map((template) => <button type="button" className={draft.id === template.id ? "is-active" : ""} key={template.id} onClick={() => setDraft(template)}><span>{template.status}</span><strong>{template.title}</strong><small>{template.sections.length} sections · {template.editor_config.full_page_editor ? "full-page editor" : "guided form"}</small></button>) : <p>No templates for this course yet.</p>}</div></section><TemplateBuilder template={draft} setTemplate={setDraft} onSave={persistTemplate} onPreview={() => setSelectedTemplate(draft)} busy={busy} /><ProfessorReviewWorkspace courseId={courseId} session={session} />{selectedTemplate && <TemplatePreview template={selectedTemplate} onClose={() => setSelectedTemplate(null)} />}</> : <section className="student-assignment-list"><div className="dashboard-card-heading"><div><span className="portal-kicker">READY TO WORK</span><h2>Your template assignments</h2></div><span>{visibleTemplates.length} available</span></div>{visibleTemplates.length ? visibleTemplates.map((template) => <article className="dashboard-card" key={template.id}><div><span>{availableClasses.find((course) => course.id === template.course_id)?.code || "COURSE"}</span><strong>{template.title}</strong><p>{template.instructions}</p></div><ul><li>{template.sections.length} guided sections</li><li>{template.editor_config.full_page_editor ? "Full-page editor included" : "Guided answers"}</li><li>Spelling check on</li></ul><button className="primary" type="button" onClick={() => setSelectedTemplate(template)}>Open assignment</button></article>) : <div className="dashboard-card"><h2>No published templates yet.</h2><p>Your educator's published assignments will appear here.</p></div>}</section>}</div>;
+  return <div className="assignment-template-workspace"><section className="dashboard-card assignment-template-hero"><div><span className="portal-kicker">{mode === "professor" ? "ASSIGNMENT STUDIO" : "ASSIGNMENTS"}</span><h1>{mode === "professor" ? "Build the work right into the course." : "Read, write, and submit in one place."}</h1><p>{mode === "professor" ? "Create reusable form-style assignments with custom sections and an optional full-page writing workspace. Students never need a blank Word document just to begin." : "Open a guided template, write in a full-size page, save your draft, and export when you need a copy."}</p></div><label>Course<select value={courseId} onChange={(event) => selectCourse(event.target.value)}>{availableClasses.map((course) => <option key={course.id} value={course.id}>{course.code} · {course.title}</option>)}</select></label></section>{notice && <div className="portal-form-notice" role="status">{notice}</div>}{mode === "professor" ? <><section className="template-library"><div className="dashboard-card-heading"><div><span className="portal-kicker">TEMPLATE LIBRARY</span><h2>Reuse or revise.</h2></div><button type="button" onClick={() => { const selectedCourse = availableClasses.find((course) => course.id === courseId); setDraft(createTemplate(selectedCourse?.division || track, courseId, "draft", selectedCourse?.subjectId)); }}>New template</button></div><div>{visibleTemplates.length ? visibleTemplates.map((template) => <button type="button" className={draft.id === template.id ? "is-active" : ""} key={template.id} onClick={() => setDraft(template)}><span>{template.status}</span><strong>{template.title}</strong><small>{template.sections.length} sections · {template.editor_config.full_page_editor ? "full-page editor" : "guided form"}</small></button>) : <p>No templates for this course yet.</p>}</div></section><TemplateBuilder template={draft} setTemplate={setDraft} onSave={persistTemplate} onPreview={() => setSelectedTemplate(draft)} busy={busy} /><ProfessorReviewWorkspace courseId={courseId} session={session} />{selectedTemplate && <TemplatePreview template={selectedTemplate} onClose={() => setSelectedTemplate(null)} />}</> : <section className="student-assignment-list"><div className="dashboard-card-heading"><div><span className="portal-kicker">READY TO WORK</span><h2>Your template assignments</h2></div><span>{visibleTemplates.length} available</span></div>{visibleTemplates.length ? visibleTemplates.map((template) => <article className="dashboard-card" key={template.id}><div><span>{availableClasses.find((course) => course.id === template.course_id)?.code || "COURSE"}</span><strong>{template.title}</strong><p>{template.instructions}</p></div><ul><li>{template.sections.length} guided sections</li><li>{template.editor_config.full_page_editor ? "Full-page editor included" : "Guided answers"}</li><li>Spelling check on</li></ul><button className="primary" type="button" onClick={() => setSelectedTemplate(template)}>Open assignment</button></article>) : <div className="dashboard-card"><h2>No published templates yet.</h2><p>Your educator's published assignments will appear here.</p></div>}</section>}</div>;
 }
