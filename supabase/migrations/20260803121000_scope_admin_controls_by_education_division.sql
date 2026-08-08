@@ -368,8 +368,9 @@ stable
 security definer
 set search_path=''
 as $$
-declare v_base jsonb; v_statistics jsonb;
+declare v_user_id uuid:=(select auth.uid()); v_base jsonb; v_statistics jsonb;
 begin
+  if v_user_id is null then raise exception 'Authentication required'; end if;
   if p_education_division not in ('university','k12') then raise exception 'Unknown education division'; end if;
   v_base:=public.get_admin_control_center(p_institution_id);
   v_statistics:=(v_base->'statistics') || jsonb_build_object(

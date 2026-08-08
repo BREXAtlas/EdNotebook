@@ -36,8 +36,14 @@ test("Digital Literacy is reused and assignment templates inherit the subject co
 });
 
 test("the admin selector is backed by division-scoped RPCs, policy resolution, and audit", () => {
+  const divisionControlCenter = adminScope.slice(
+    adminScope.indexOf("create or replace function public.get_admin_control_center_by_division"),
+    adminScope.indexOf("create or replace function public.admin_search_accounts_courses_by_division"),
+  );
   assert.match(adminScope, /get_admin_control_center_by_division/u);
   assert.match(adminScope, /admin_search_accounts_courses_by_division/u);
+  assert.match(divisionControlCenter, /v_user_id uuid:=\(select auth\.uid\(\)\)/u);
+  assert.match(divisionControlCenter, /if v_user_id is null then raise exception 'Authentication required'/u);
   assert.match(adminScope, /policy\.education_division in \(p_education_division,'both'\)/u);
   assert.match(adminScope, /fp\.education_division in \(v_division,'both'\)/u);
   assert.match(adminScope, /fp\.education_division=v_division/u);
