@@ -1,3 +1,4 @@
+-- Staging migration history version: 20260808211028.
 -- EdNotebook Early Prep foundation. Audience-facing language is Early Prep,
 -- while the existing internal education_division identifier remains `k12`.
 

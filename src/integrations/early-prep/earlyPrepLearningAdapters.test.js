@@ -44,3 +44,18 @@ test("grade export requires a reviewed, clean preview and matching idempotency k
   assert.equal(approved.writeAuthorized, true);
   assert.equal(approved.reviewStatus, "approved");
 });
+
+test("grade export rejects an empty preview instead of approving a zero-row write", () => {
+  const preview = prepareEarlyPrepGradeExport({
+    provider: "powerschool",
+    courseId: "course-1",
+    idempotencyKey: "export-empty-2026-08",
+    rows: [],
+  });
+  assert.deepEqual(preview.issues, [{ row: null, issue: "rows_required" }]);
+  assert.equal(preview.noOp, false);
+  assert.throws(
+    () => authorizeEarlyPrepGradeExport(preview, { reviewedBy: "teacher-1", idempotencyKey: preview.idempotencyKey }),
+    /preview_issues_unresolved/u,
+  );
+});

@@ -1,3 +1,4 @@
+-- Staging migration history version: 20260808211036.
 -- Make the existing EdNotebook/TOS control plane authoritative by education
 -- division. `both` is reserved for shared safeguards and legacy defaults.
 

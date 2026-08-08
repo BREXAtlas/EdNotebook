@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
-const foundation = read("../../supabase/migrations/20260803120000_early_prep_foundation.sql");
-const adminScope = read("../../supabase/migrations/20260803121000_scope_admin_controls_by_education_division.sql");
+const foundation = read("../../supabase/migrations/20260808211028_early_prep_foundation.sql");
+const adminScope = read("../../supabase/migrations/20260808211036_scope_admin_controls_by_education_division.sql");
 const main = read("../main.jsx");
 const landing = read("../portal/StudentLanding.jsx");
 const courseStart = read("../CourseStart.jsx");
@@ -33,6 +33,9 @@ test("Digital Literacy is reused and assignment templates inherit the subject co
   assert.match(foundation, /assignment_form_templates_subject_guard/u);
   assert.doesNotMatch(foundation, /create table public\.digital_literacy_catalog/u);
   assert.match(professor, /Digital Literacy Course/u);
+  assert.match(professor, /"digital-literacy": "Digital Literacy Class"/u);
+  assert.match(professor, /divisionScope === "k12" \? \(EARLY_PREP_NAV_LABELS\[id\]/u);
+  assert.match(professor, /Early Prep teacher portal/u);
 });
 
 test("the admin selector is backed by division-scoped RPCs, policy resolution, and audit", () => {
