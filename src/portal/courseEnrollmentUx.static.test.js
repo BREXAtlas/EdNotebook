@@ -17,6 +17,8 @@ test("student notifications clear persistently and route into the triggering cou
   assert.match(studentDashboard, /markStudentAccountNotificationRead/u);
   assert.match(studentDashboard, /notification\.route === "library"/u);
   assert.match(studentDashboard, /notification\.dedupe_key\?\.startsWith\("digital-literacy-assignment:"\)/u);
+  assert.match(studentDashboard, /notification\.dedupe_key\?\.startsWith\("digital-literacy-feedback:"\)/u);
+  assert.match(studentDashboard, /type === "course_feedback"/u);
   assert.match(studentDashboard, /setNotificationAssignmentId/u);
   assert.match(studentDashboard, /setTab\("assignments"\)/u);
   assert.match(studentDashboard, /notification\.route === "rewards" \? "rewards" : "classes"/u);

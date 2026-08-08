@@ -77,3 +77,18 @@ test("the professor launch gate separates ready course work from blocked researc
   assert.match(workspace, /reads the database's live launch blockers/iu);
   assert.match(styles, /grid-template-columns: repeat\(auto-fit, minmax\(240px, 1fr\)\)/u);
 });
+
+test("Early Prep uses class and teacher language with an accessible private feedback loop", () => {
+  assert.match(professor, /divisionScope=\{divisionScope\}/u);
+  assert.match(workspace, /Digital Literacy Class/u);
+  assert.match(workspace, /PLATFORM STANDARD · CANONICAL CLASS/u);
+  assert.match(workspace, /Private feedback for/u);
+  assert.match(workspace, /Send private feedback/u);
+  assert.match(workspace, /Private teacher feedback/u);
+  assert.match(workspace, /I read this/u);
+  assert.match(workspace, /Marked helpful/u);
+  assert.match(workspace, /role="status"/u);
+  assert.match(workspace, /role="alert"/u);
+  assert.match(styles, /\.dl-standard-badge/u);
+  assert.match(styles, /\.dl-student-feedback/u);
+});

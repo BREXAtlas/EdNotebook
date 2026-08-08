@@ -30,6 +30,27 @@ const launchReadinessSql = readFileSync(
   ),
   "utf8",
 );
+const earlyPrepFeedbackSql = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260808221507_early_prep_digital_literacy_feedback.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const earlyPrepFeedbackIndexSql = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260808221644_index_early_prep_digital_literacy_feedback.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const earlyPrepFeedbackRouteSql = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260808222049_route_early_prep_digital_literacy_feedback.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const integratedSql = `${researchGateSql}\n${sql}`;
 
 test("migration anchors EdNotebook to one versioned canonical 40-unit catalog", () => {
@@ -170,4 +191,63 @@ test("the final launch view reports database blockers without activating researc
     /grant execute on function public\.get_digital_literacy_research_launch_readiness\(uuid\)\s+to authenticated/iu,
   );
   assert.doesNotMatch(launchReadinessSql, /response_payload/iu);
+});
+
+test("Early Prep feedback is private, course-scoped, and content-free outside its RPC", () => {
+  for (const token of [
+    "private.digital_literacy_teacher_feedback",
+    "record_digital_literacy_teacher_feedback",
+    "get_digital_literacy_course_feedback",
+    "get_my_digital_literacy_feedback",
+    "acknowledge_digital_literacy_teacher_feedback",
+    "course.education_division='k12'",
+    "private.can_manage_course",
+    "feedback_length",
+  ])
+    assert.ok(earlyPrepFeedbackSql.includes(token), `missing ${token}`);
+  assert.match(
+    earlyPrepFeedbackSql,
+    /revoke all on private\.digital_literacy_teacher_feedback from public, anon, authenticated/iu,
+  );
+  assert.match(
+    earlyPrepFeedbackSql,
+    /Feedback is ready for .* Open the assignment to review and acknowledge it/iu,
+  );
+  assert.doesNotMatch(
+    earlyPrepFeedbackSql,
+    /jsonb_build_object\([^;]*'feedback_text',v_feedback\.feedback_text[^;]*event_hash/iu,
+  );
+});
+
+test("the standard completion milestone is K12-only and separate from University badges", () => {
+  for (const token of [
+    "private.digital_literacy_standard_badges",
+    "issue_early_prep_digital_literacy_badge",
+    "path.current_division='k12'",
+    "digital-literacy-standard-badge:",
+    "get_my_digital_literacy_standard_badges",
+  ])
+    assert.ok(earlyPrepFeedbackSql.includes(token), `missing ${token}`);
+  assert.doesNotMatch(earlyPrepFeedbackSql, /insert into public\.course_completion_badges/iu);
+  assert.doesNotMatch(earlyPrepFeedbackSql, /update public\.course_completion_badges/iu);
+  assert.doesNotMatch(earlyPrepFeedbackSql, /published_course_directory/iu);
+  assert.doesNotMatch(earlyPrepFeedbackSql, /course_publications/iu);
+});
+
+test("every new Early Prep feedback foreign key has a covering index", () => {
+  for (const token of [
+    "digital_literacy_teacher_feedback_recipient_idx",
+    "digital_literacy_teacher_feedback_unit_idx",
+    "digital_literacy_teacher_feedback_educator_idx",
+    "digital_literacy_standard_badges_release_idx",
+  ])
+    assert.ok(earlyPrepFeedbackIndexSql.includes(token), `missing ${token}`);
+});
+
+test("feedback notifications retain a unique ID and deep-link the exact assignment", () => {
+  assert.match(
+    earlyPrepFeedbackRouteSql,
+    /'digital-literacy-feedback:'\|\|p_assignment_id::text\|\|':'\|\|v_feedback.id::text/u,
+  );
+  assert.match(earlyPrepFeedbackRouteSql, /private\.create_student_course_notification\([\s\S]*'course_feedback'/u);
 });

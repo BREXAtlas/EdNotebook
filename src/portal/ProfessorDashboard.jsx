@@ -448,7 +448,7 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
           {tab === "overview" && <Overview setTab={setTab} classes={scopedTeachingClasses} enrollmentRequests={teachingEnrollmentRequests} divisionScope={divisionScope} />}
           {tab === "classes" && <Classes onBuild={onBuild} onOpenDigitalLiteracy={() => setTab("digital-literacy")} classes={scopedTeachingClasses} divisionScope={divisionScope} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={scopedTeachingClasses} /></Suspense>}
-          {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} />}
+          {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} divisionScope={divisionScope} />}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} track={divisionScope || "university"} classes={scopedTeachingClasses} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel classes={scopedTeachingClasses} />}
