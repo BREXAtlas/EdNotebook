@@ -64,6 +64,9 @@ jobs:
       - name: Test Early Prep synthetic pilot contracts
         run: npm run test:early-prep
 
+      - name: Test Early Prep Financial Literacy integration
+        run: npm run test:financial-literacy
+
       - name: Test Digital Literacy student learning workspace
         run: npm run test:student-learning
 
@@ -254,6 +257,15 @@ jobs:
           --set=ON_ERROR_STOP=1
           --echo-errors
           --file=supabase/tests/early_prep_digital_literacy_acceptance.sql
+
+      - name: Run Early Prep Financial Literacy isolation gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/early_prep_financial_literacy_acceptance.sql
 
       - name: Run Alex B. Morrison Library publishing gate
         env:

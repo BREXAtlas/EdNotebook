@@ -38,6 +38,9 @@ const SyntheticInstitutionPilot = lazy(() => import("./integrations/tos/Syntheti
 const DigitalLiteracyCoursePage = lazy(() =>
   import("./digital-literacy/DigitalLiteracyPilotWorkspace.jsx").then((module) => ({ default: module.DigitalLiteracyCoursePage }))
 );
+const FinancialLiteracyCoursePage = lazy(() =>
+  import("./financial-literacy/FinancialLiteracyWorkspace.jsx").then((module) => ({ default: module.FinancialLiteracyCoursePage }))
+);
 
 function RouteLoading() { return <main className="portal-route-loading" aria-live="polite"><strong>EdNotebook</strong><span>Opening your portal…</span></main>; }
 
@@ -86,6 +89,12 @@ function Router() {
   if (digitalLiteracyRoute) {
     const [, track, assignmentId, unitId] = digitalLiteracyRoute;
     return <AuthGate accountType="student" educationTrack={track} returnTo={route}>{() => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.course_runtime"><DigitalLiteracyCoursePage assignmentId={assignmentId} unitId={unitId} track={track} onBack={() => navigate(`#/student/${track}/app`)} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
+  }
+
+  const financialLiteracyRoute = route.match(/^#\/student\/k12\/financial-literacy\/([a-z0-9-]+)/i);
+  if (financialLiteracyRoute) {
+    const [, unitId] = financialLiteracyRoute;
+    return <AuthGate accountType="student" educationTrack="k12" returnTo={route}>{() => <FeatureManifestProvider pathway="student"><FeatureBoundary featureKey="student.course_runtime"><FinancialLiteracyCoursePage unitId={unitId} onBack={() => navigate("#/student/k12/app")} /></FeatureBoundary></FeatureManifestProvider>}</AuthGate>;
   }
 
   const courseRoute = route.match(/^#\/student\/(?:university\/|k12\/)?course\/([0-9a-f-]{36})/i) || route.match(/^#\/student\/course\/([0-9a-f-]{36})/i);
