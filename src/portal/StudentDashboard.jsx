@@ -68,6 +68,7 @@ function GradeStatus({ status }) { return <span className={`grade-status is-${st
 function notificationLabel(type) {
   if (type === "course_completed") return "Badge earned";
   if (type === "course_assigned") return "Course assigned";
+  if (type === "course_feedback") return "Feedback ready";
   if (type === "marketplace_purchase") return "Purchase ready";
   if (type === "marketplace_rental") return "Rental ready";
   if (type === "marketplace_refund") return "Refund completed";
@@ -476,6 +477,11 @@ export default function StudentDashboard({
       return;
     }
     if (notification.dedupe_key?.startsWith("digital-literacy-assignment:")) {
+      setNotificationAssignmentId(notification.dedupe_key.split(":")[1] || null);
+      setTab("assignments");
+      return;
+    }
+    if (notification.dedupe_key?.startsWith("digital-literacy-feedback:")) {
       setNotificationAssignmentId(notification.dedupe_key.split(":")[1] || null);
       setTab("assignments");
       return;

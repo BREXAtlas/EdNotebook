@@ -202,6 +202,53 @@
 .dl-student-evidence small {
   min-width: 75px;
 }
+.dl-recipient-evidence {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #edf1ef;
+}
+.dl-teacher-feedback details {
+  border-left: 3px solid #abc6ee;
+  padding-left: 12px;
+}
+.dl-teacher-feedback summary {
+  color: #245397;
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 800;
+}
+.dl-teacher-feedback form {
+  display: grid;
+  grid-template-columns: minmax(190px, .45fr) minmax(260px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 10px;
+}
+.dl-teacher-feedback form label {
+  display: grid;
+  gap: 5px;
+  font-size: .78rem;
+  font-weight: 750;
+}
+.dl-feedback-history {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dl-feedback-history article {
+  padding: 10px;
+  border: 1px solid #e0e7e3;
+  border-radius: 10px;
+  background: #fafcfb;
+}
+.dl-feedback-history article header {
+  margin: 0;
+}
+.dl-feedback-history article p {
+  margin: 6px 0;
+  white-space: pre-wrap;
+}
 .dl-research-readiness .is-blocked {
   color: #8b3f23;
 }
@@ -315,6 +362,52 @@
 .dl-student-assignments article footer span {
   font-size: 0.83rem;
   color: #53615e;
+}
+.dl-standard-badge {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 14px 0;
+  padding: 15px;
+  border: 1px solid #c99a2e;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff9e8, #fffdf6);
+}
+.dl-standard-badge > span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  color: #734f00;
+  background: #f3cf70;
+  font-size: 1.4rem;
+}
+.dl-standard-badge div { display: grid; gap: 3px; }
+.dl-standard-badge p { margin: 0; }
+.dl-student-feedback {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #abc6ee;
+  border-radius: 12px;
+  background: #f6f9ff;
+}
+.dl-student-assignments .dl-student-feedback article {
+  gap: 8px;
+  padding: 11px;
+  border-radius: 10px;
+  background: #fff;
+}
+.dl-student-feedback article header { margin: 0; }
+.dl-student-feedback article p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.dl-student-feedback article > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .dl-course-page {
   min-height: 100vh;
@@ -510,5 +603,8 @@
   }
   .dl-student-evidence span {
     min-width: 100%;
+  }
+  .dl-teacher-feedback form {
+    grid-template-columns: 1fr;
   }
 }

@@ -246,6 +246,15 @@ jobs:
           --echo-errors
           --file=supabase/tests/early_prep_staging_pilot.sql
 
+      - name: Run Early Prep Digital Literacy feedback and milestone gate
+        env:
+          PGCONNECT_TIMEOUT: "10"
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --set=ON_ERROR_STOP=1
+          --echo-errors
+          --file=supabase/tests/early_prep_digital_literacy_acceptance.sql
+
       - name: Run Alex B. Morrison Library publishing gate
         env:
           PGCONNECT_TIMEOUT: "10"
