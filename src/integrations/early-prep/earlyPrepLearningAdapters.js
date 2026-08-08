@@ -30,7 +30,7 @@ export const EARLY_PREP_PROVIDERS = Object.freeze({
 
 function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  if (value && typeof value === "object") return `{${Object.keys(value).filter((key) => key !== "receivedAt").sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
   return JSON.stringify(value);
 }
 
@@ -47,7 +47,7 @@ export function stablePreviewHash(value) {
 export function powerSchoolCsvPreview({ courses = [], people = [], enrollments = [] } = {}) {
   const provider = LEARNING_SYSTEMS.POWERSCHOOL;
   const mode = INTEGRATION_MODES.CSV;
-  return {
+  const preview = {
     educationDivision: "k12",
     provider,
     mode,
@@ -80,6 +80,15 @@ export function powerSchoolCsvPreview({ courses = [], people = [], enrollments =
     reviewStatus: "pending_review",
     writeAuthorized: false,
   };
+  return {
+    ...preview,
+    previewHash: stablePreviewHash(preview),
+    summary: {
+      courses: preview.courses.length,
+      people: preview.people.length,
+      enrollments: preview.enrollments.length,
+    },
+  };
 }
 
 export function schoologyLtiContract() {
@@ -95,7 +104,24 @@ export function schoologyLtiContract() {
 export function prepareEarlyPrepGradeExport({ provider, courseId, rows = [], idempotencyKey = null } = {}) {
   const canonicalRows = rows.map((row) => canonicalGradeResultRecord({ ...row, course_id: courseId, status: row.status || RESULT_STATUS.FINALIZED }));
   const issues = canonicalRows.flatMap((row, index) => validateCanonicalGradeResult(row).map((issue) => ({ row: index, issue })));
-  const preview = { educationDivision: "k12", provider, courseId, rows: canonicalRows };
+  if (!canonicalRows.length) issues.push({ row: null, issue: "rows_required" });
+  const changedRowCount = rows.reduce((count, row, index) => {
+    const hasCurrentScore = Object.hasOwn(row, "current_score") || Object.hasOwn(row, "currentScore");
+    const hasCurrentMaximum = Object.hasOwn(row, "current_max_points") || Object.hasOwn(row, "currentMaxPoints");
+    if (!hasCurrentScore || !hasCurrentMaximum) return count + 1;
+    const currentScore = Number(row.current_score ?? row.currentScore);
+    const currentMaximum = Number(row.current_max_points ?? row.currentMaxPoints);
+    return count + (currentScore === canonicalRows[index].scoreGiven && currentMaximum === canonicalRows[index].scoreMaximum ? 0 : 1);
+  }, 0);
+  const preview = {
+    educationDivision: "k12",
+    provider,
+    courseId,
+    rows: canonicalRows,
+    rowCount: canonicalRows.length,
+    changedRowCount,
+    noOp: canonicalRows.length > 0 && changedRowCount === 0,
+  };
   return {
     ...preview,
     idempotencyKey,
@@ -110,5 +136,23 @@ export function authorizeEarlyPrepGradeExport(preview, { reviewedBy, idempotency
   if (!reviewedBy) throw new Error("reviewer_required");
   if (!idempotencyKey || idempotencyKey !== preview?.idempotencyKey) throw new Error("idempotency_key_mismatch");
   if (preview?.issues?.length) throw new Error("preview_issues_unresolved");
-  return { ...preview, reviewedBy, reviewStatus: "approved", writeAuthorized: true };
+  return { ...preview, reviewedBy, reviewStatus: "approved", writeAuthorized: !preview.noOp };
+}
+
+export function reconcileEarlyPrepNoopGradeExport(approvedPreview, { reconciledBy, actualWriteCount = 0 } = {}) {
+  if (approvedPreview?.reviewStatus !== "approved") throw new Error("approved_preview_required");
+  if (!approvedPreview?.noOp) throw new Error("noop_preview_required");
+  if (!reconciledBy) throw new Error("reconciler_required");
+  if (actualWriteCount !== 0) throw new Error("noop_export_must_not_write");
+  return {
+    ...approvedPreview,
+    reviewStatus: "reconciled",
+    writeAuthorized: false,
+    reconciliation: {
+      expectedWriteCount: 0,
+      actualWriteCount: 0,
+      reconciledBy,
+      providerReceipt: null,
+    },
+  };
 }

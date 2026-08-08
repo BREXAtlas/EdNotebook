@@ -31,6 +31,13 @@ const NAV_GROUPS = [
   { label: "Account", items: [["verification", "School Verification"], ["security", "Security"], ["settings", "Settings"], ["help", "Help & Support"]] },
 ];
 
+const EARLY_PREP_NAV_LABELS = Object.freeze({
+  classes: "My Classes",
+  "digital-literacy": "Digital Literacy Class",
+  announcements: "School Social",
+  communication: "Class Communication",
+});
+
 const TOUR = [
   ["Teaching overview", "See your real courses, enrollment requests, progress, and upcoming work."],
   ["Review Digital Literacy", "Open the complete canonical course inside EdNotebook and preview the learner experience."],
@@ -44,8 +51,8 @@ function EducatorTour({ step, setStep }) {
   return <div className="dashboard-tour-backdrop" role="dialog" aria-modal="true"><div className="dashboard-tour-card"><span>EDUCATOR TOUR · {step + 1} OF {TOUR.length}</span><h2>{TOUR[step][0]}</h2><p>{TOUR[step][1]}</p><div><button type="button" onClick={() => setStep(null)}>Close</button><button type="button" onClick={() => setStep(step === TOUR.length - 1 ? null : step + 1)}>{step === TOUR.length - 1 ? "Finish" : "Next"}</button></div></div></div>;
 }
 
-function ProfessorNavigation({ tab, setTab, pendingRequests = 0 }) {
-  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.map(([id, label]) => <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>)}</div>)}</nav>;
+function ProfessorNavigation({ tab, setTab, pendingRequests = 0, divisionScope = null }) {
+  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.map(([id, defaultLabel]) => { const label = divisionScope === "k12" ? (EARLY_PREP_NAV_LABELS[id] || defaultLabel) : defaultLabel; return <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>; })}</div>)}</nav>;
 }
 
 function SensitiveAccess({ session, unlocked, onUnlock, onLock, children }) {
@@ -58,15 +65,16 @@ function SensitiveAccess({ session, unlocked, onUnlock, onLock, children }) {
   return <section className="sensitive-access-card"><span className="portal-kicker">SENSITIVE EDUCATOR AREA</span><h1>Verify it's you before opening student progress.</h1><p>Re-enter the password for {session?.user?.email || "this educator account"}. This area locks when you leave the tab or after five minutes.</p><form onSubmit={verify}><label>Account password<input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>{error && <div role="alert">{error}</div>}<button type="submit" disabled={busy}>{busy ? "Verifying…" : "Unlock for five minutes"}</button></form></section>;
 }
 
-function Overview({ setTab, classes, enrollmentRequests }) {
+function Overview({ setTab, classes, enrollmentRequests, divisionScope = null }) {
   const published = classes.filter((course) => course.published);
   const students = classes.reduce((sum, course) => sum + course.students, 0);
   const pending = enrollmentRequests.filter((request) => request.status === "pending");
+  const earlyPrep = divisionScope === "k12";
   return <div className="professor-panel-stack">
-    <section className="professor-welcome-card"><div><span>EDUCATOR WORKSPACE</span><h1>Every course, student, and conversation in one teaching home.</h1><p>Create and manage courses, review the learner experience, organize assignments, and publish when ready.</p></div><button type="button" onClick={() => setTab("classes")}>Open My Courses</button></section>
-    <section className="dashboard-card professor-digital-literacy-entry"><div><span className="portal-kicker">AUTOMATIC COURSE · READY TO REVIEW</span><h2>Digital Literacy Course</h2><p>The full canonical course is available to every professor account. Open it to preview the learner experience, review modules and quizzes, or assign selected content to your students.</p></div><button type="button" onClick={() => setTab("digital-literacy")}>Open Digital Literacy Course</button></section>
-    <section className="student-stat-grid professor-stat-grid"><article><span>Published courses</span><strong>{published.length}</strong><button type="button" onClick={() => setTab("classes")}>Manage</button></article><article><span>Enrolled students</span><strong>{students}</strong><button type="button" onClick={() => setTab("students")}>Open roster</button></article><article><span>Enrollment requests</span><strong>{pending.length}</strong><button type="button" onClick={() => setTab("students")}>{pending.length ? "Review now" : "Queue is clear"}</button></article><article><span>Draft courses</span><strong>{classes.length - published.length}</strong><button type="button" onClick={() => setTab("classes")}>Continue building</button></article></section>
-    <section className="professor-dashboard-columns"><article className="dashboard-card"><span className="portal-kicker">ACCOUNT LINKING</span><h2>{pending.length ? "Students waiting" : "No requests waiting"}</h2>{pending.slice(0, 4).map((request) => <div className="professor-alert-row" key={request.id}><span>{request.course?.course_code || "COURSE"}</span><strong>approval requested</strong></div>)}<button type="button" onClick={() => setTab("students")}>Open approval queue</button></article><article className="dashboard-card"><span className="portal-kicker">SCHOOL AFFILIATION</span><h2>Verification is separate from workspace access.</h2><p>Your professor workspace remains active. Institutional review adds the verified affiliation badge and governs access to institution-owned records.</p><button type="button" onClick={() => setTab("verification")}>Open School Verification</button></article></section>
+    <section className="professor-welcome-card"><div><span>{earlyPrep ? "EARLY PREP TEACHER WORKSPACE" : "EDUCATOR WORKSPACE"}</span><h1>{earlyPrep ? "Every class, student, and conversation in one teaching home." : "Every course, student, and conversation in one teaching home."}</h1><p>{earlyPrep ? "Create and manage classes, review the learner experience, organize assignments, and publish when ready." : "Create and manage courses, review the learner experience, organize assignments, and publish when ready."}</p></div><button type="button" onClick={() => setTab("classes")}>{earlyPrep ? "Open My Classes" : "Open My Courses"}</button></section>
+    <section className="dashboard-card professor-digital-literacy-entry"><div><span className="portal-kicker">{earlyPrep ? "AUTOMATIC CLASS · READY TO REVIEW" : "AUTOMATIC COURSE · READY TO REVIEW"}</span><h2>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</h2><p>{earlyPrep ? "The canonical Digital Literacy Class is available to every Early Prep teacher account. Preview it or assign selected content without creating a duplicate curriculum copy." : "The full canonical course is available to every professor account. Open it to preview the learner experience, review modules and quizzes, or assign selected content to your students."}</p></div><button type="button" onClick={() => setTab("digital-literacy")}>{earlyPrep ? "Open Digital Literacy Class" : "Open Digital Literacy Course"}</button></section>
+    <section className="student-stat-grid professor-stat-grid"><article><span>Published {earlyPrep ? "classes" : "courses"}</span><strong>{published.length}</strong><button type="button" onClick={() => setTab("classes")}>Manage</button></article><article><span>Enrolled students</span><strong>{students}</strong><button type="button" onClick={() => setTab("students")}>Open roster</button></article><article><span>Enrollment requests</span><strong>{pending.length}</strong><button type="button" onClick={() => setTab("students")}>{pending.length ? "Review now" : "Queue is clear"}</button></article><article><span>Draft {earlyPrep ? "classes" : "courses"}</span><strong>{classes.length - published.length}</strong><button type="button" onClick={() => setTab("classes")}>Continue building</button></article></section>
+    <section className="professor-dashboard-columns"><article className="dashboard-card"><span className="portal-kicker">ACCOUNT LINKING</span><h2>{pending.length ? "Students waiting" : "No requests waiting"}</h2>{pending.slice(0, 4).map((request) => <div className="professor-alert-row" key={request.id}><span>{request.course?.course_code || "COURSE"}</span><strong>approval requested</strong></div>)}<button type="button" onClick={() => setTab("students")}>Open approval queue</button></article><article className="dashboard-card"><span className="portal-kicker">SCHOOL AFFILIATION</span><h2>Verification is separate from workspace access.</h2><p>{earlyPrep ? "Your teacher workspace remains active. School review adds the verified affiliation badge and governs access to school-owned records." : "Your professor workspace remains active. Institutional review adds the verified affiliation badge and governs access to institution-owned records."}</p><button type="button" onClick={() => setTab("verification")}>Open School Verification</button></article></section>
   </div>;
 }
 
@@ -82,7 +90,7 @@ function CourseAccessControls({ course, onSave, busy }) {
   }
   return <div className="professor-course-access-controls">
     <div>
-      <label>Student access<select value={enrollmentPolicy} onChange={changePolicy} disabled={busy}><option value="approval_required">Professor approval required</option><option value="open_self_enroll">Open · students join immediately</option></select></label>
+      <label>Student access<select value={enrollmentPolicy} onChange={changePolicy} disabled={busy}><option value="approval_required">{course.division === "k12" ? "Teacher approval required" : "Professor approval required"}</option><option value="open_self_enroll">Open · students join immediately</option></select></label>
       <label className="professor-universal-course"><input type="checkbox" checked={universalAssignment} disabled={busy || enrollmentPolicy !== "open_self_enroll"} onChange={(event) => setUniversalAssignment(event.target.checked)} />Assign to every eligible new student</label>
     </div>
     <p>{enrollmentPolicy === "approval_required"
@@ -140,6 +148,7 @@ function Classes({ onBuild, onOpenDigitalLiteracy, classes, divisionScope = null
   const [query, setQuery] = useState("");
   const [division, setDivision] = useState(divisionScope || "all");
   const [status, setStatus] = useState("all");
+  const earlyPrep = divisionScope === "k12";
   const visible = classes.filter((course) => {
     const matchesQuery = `${course.code} ${course.title} ${course.subject || ""}`.toLowerCase().includes(query.trim().toLowerCase());
     const matchesDivision = division === "all" || course.division === division;
@@ -149,20 +158,20 @@ function Classes({ onBuild, onOpenDigitalLiteracy, classes, divisionScope = null
   return <section className="dashboard-card">
     <div className="dashboard-card-heading">
       <div>
-        <span className="portal-kicker">MY COURSES</span>
-        <h1>My Courses</h1>
-        <p>{divisionScope === "k12" ? "The Course Library contains the automatic Digital Literacy Course plus only the Early Prep courses you create. Commercial library and marketplace tools stay unavailable." : "The Course Library contains the automatic Digital Literacy Course plus only the original courses you create."}</p>
+        <span className="portal-kicker">{earlyPrep ? "MY CLASSES" : "MY COURSES"}</span>
+        <h1>{earlyPrep ? "My Classes" : "My Courses"}</h1>
+        <p>{earlyPrep ? "Your class library contains the automatic Digital Literacy Class plus only the Early Prep classes you create. Commercial library and marketplace tools stay unavailable." : "The Course Library contains the automatic Digital Literacy Course plus only the original courses you create."}</p>
       </div>
-      <button type="button" onClick={() => onBuild(null)}>Create Course</button>
+      {earlyPrep ? <button type="button" onClick={() => onBuild(null)}>Create Class</button> : <button type="button" onClick={() => onBuild(null)}>Create Course</button>}
     </div>
-    <article className="professor-canonical-library-row"><div><span>COURSE LIBRARY · AUTOMATIC</span><strong>Digital Literacy Course</strong><small>Full repository-backed course · learner preview · modules, activities, and quizzes</small></div><button type="button" onClick={onOpenDigitalLiteracy}>Open Course</button></article>
+    <article className="professor-canonical-library-row"><div><span>{earlyPrep ? "CLASS" : "COURSE"} LIBRARY · AUTOMATIC</span><strong>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</strong><small>Full repository-backed {earlyPrep ? "class" : "course"} · learner preview · modules, activities, and quizzes</small></div><button type="button" onClick={onOpenDigitalLiteracy}>Open {earlyPrep ? "Class" : "Course"}</button></article>
     <div className="class-library-controls professor-library-controls">
-      <label>Search My Courses<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label>
+      <label>Search My {earlyPrep ? "Classes" : "Courses"}<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label>
       <label>Division<select value={division} disabled={Boolean(divisionScope)} onChange={(event) => setDivision(event.target.value)}><option value="all">All divisions</option><option value="university">University</option><option value="k12">Early Prep · Grades 9–12</option></select></label>
       <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft or review</option></select></label>
     </div>
     {classes.length === 0 ? (
-      <div className="empty-class-list"><strong>No original courses yet.</strong><p>The Digital Literacy Course above is ready to review. Select Create Course only when you want to build your own course.</p><button type="button" onClick={() => onBuild(null)}>Create Course</button></div>
+      <div className="empty-class-list"><strong>No original {earlyPrep ? "classes" : "courses"} yet.</strong><p>{earlyPrep ? "The Digital Literacy Class above is ready to review. Select Create Class only when you want to build your own." : "The Digital Literacy Course above is ready to review. Select Create Course only when you want to build your own course."}</p><button type="button" onClick={() => onBuild(null)}>{earlyPrep ? "Create Class" : "Create Course"}</button></div>
     ) : visible.length === 0 ? (
       <div className="empty-class-list"><strong>No courses match these filters.</strong><button type="button" onClick={() => { setQuery(""); setDivision(divisionScope || "all"); setStatus("all"); }}>Clear filters</button></div>
     ) : (
@@ -324,9 +333,10 @@ function VerificationPanel({ session, divisionScope = null }) {
 
 function SecurityPanel({ unlocked, onLock }) { return <section className="dashboard-card professor-security-panel"><span className="portal-kicker">EDUCATOR SECURITY</span><h1>Private student areas get an extra lock.</h1><div className="security-setting-grid"><article><strong>Current sensitive session</strong><span className={unlocked ? "is-on" : "is-off"}>{unlocked ? "Unlocked · less than five minutes" : "Locked"}</span><button type="button" onClick={onLock}>Lock now</button></article><article><strong>Auto-lock</strong><span>Five minutes or whenever this browser tab is hidden</span></article><article><strong>Grade publishing</strong><span>Password re-entry before opening the gradebook; course ownership still controls writes</span></article><article><strong>Student account links</strong><span>Notifications appear when a student ID match needs educator approval</span></article></div></section>; }
 
-function NotificationsPanel({ enrollmentRequests = [], onOpenRequests, onOpenDigitalLiteracy }) {
+function NotificationsPanel({ enrollmentRequests = [], onOpenRequests, onOpenDigitalLiteracy, divisionScope = null }) {
   const pending = enrollmentRequests.filter((request) => request.status === "pending");
-  return <section className="dashboard-card professor-notification-panel"><div className="dashboard-card-heading"><div><span className="portal-kicker">NOTIFICATIONS</span><h1>Teaching updates in one place.</h1><p>Open the item that triggered a notification. Course reminders, enrollment requests, published feedback, and school-verification updates stay connected to their source.</p></div><span>{pending.length} action{pending.length === 1 ? "" : "s"}</span></div><div className="professor-notification-list">{pending.map((request) => <button type="button" key={request.id} onClick={onOpenRequests}><span>Enrollment request</span><strong>{request.course?.course_code || "COURSE"} · {request.course?.title || "Published course"}</strong><small>Open Students & Roster to review</small></button>)}<button type="button" onClick={onOpenDigitalLiteracy}><span>Course ready</span><strong>Digital Literacy Course</strong><small>Open the full course or assign modules</small></button></div></section>;
+  const earlyPrep = divisionScope === "k12";
+  return <section className="dashboard-card professor-notification-panel"><div className="dashboard-card-heading"><div><span className="portal-kicker">NOTIFICATIONS</span><h1>Teaching updates in one place.</h1><p>Open the item that triggered a notification. {earlyPrep ? "Class" : "Course"} reminders, enrollment requests, published feedback, and school-verification updates stay connected to their source.</p></div><span>{pending.length} action{pending.length === 1 ? "" : "s"}</span></div><div className="professor-notification-list">{pending.map((request) => <button type="button" key={request.id} onClick={onOpenRequests}><span>Enrollment request</span><strong>{request.course?.course_code || "COURSE"} · {request.course?.title || `Published ${earlyPrep ? "class" : "course"}`}</strong><small>Open Students & Roster to review</small></button>)}<button type="button" onClick={onOpenDigitalLiteracy}><span>{earlyPrep ? "Class" : "Course"} ready</span><strong>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</strong><small>Open the full {earlyPrep ? "class" : "course"} or assign modules</small></button></div></section>;
 }
 
 function HelpSupportPanel({ onTour }) {
@@ -408,7 +418,8 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
         : "Commercial catalog preview submitted for review. Checkout remains unavailable until marketplace controls are approved.");
     setLibraryBusyCourse("");
   }
-  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={() => onBuild(null)}>Create Course</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{scopedTeachingClasses.length} original course{scopedTeachingClasses.length === 1 ? "" : "s"} · Digital Literacy ready</small></div></div><ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} /></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
+  const earlyPrep = divisionScope === "k12";
+  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline={earlyPrep ? "Early Prep teacher portal" : "Educator portal"} /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={() => onBuild(null)}>Create {earlyPrep ? "Class" : "Course"}</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{scopedTeachingClasses.length} original {earlyPrep ? "class" : "course"}{scopedTeachingClasses.length === 1 ? "" : earlyPrep ? "es" : "s"} · Digital Literacy ready</small></div></div><ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} divisionScope={divisionScope} /></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
   const protectedContent = tab === "students"
     ? <StudentsPanel enrollmentRequests={teachingEnrollmentRequests} onApproveEnrollment={approveEnrollment} />
     : tab === "rewards"
@@ -417,31 +428,31 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
   return (
     <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}>
       <header className="dashboard-topbar professor-topbar">
-        <button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button>
+        <button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline={earlyPrep ? "Early Prep teacher portal" : "Educator portal"} /></button>
         <span className="sample-workspace-badge">Teaching workspace</span>
         <div className="dashboard-top-actions">
           <LiveDateTime />
           {["admin", "owner"].includes(profile?.role) && <button type="button" onClick={onAdmin}>Master admin</button>}
           <button type="button" onClick={() => setTourStep(0)}>Take the tour</button>
-          <button className="primary" type="button" onClick={() => onBuild(null)}>Create Course</button>
+          <button className="primary" type="button" onClick={() => onBuild(null)}>Create {earlyPrep ? "Class" : "Course"}</button>
         </div>
       </header>
       <div className="student-dashboard-shell professor-dashboard-shell">
         <aside className="student-dashboard-sidebar professor-sidebar">
           <div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{scopedTeachingClasses.length} class{scopedTeachingClasses.length === 1 ? "" : "es"} · {pendingRequestCount} waiting</small></div></div>
-          <ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} />
+          <ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} divisionScope={divisionScope} />
           <div className="professor-lock-summary"><strong>{unlocked ? "Sensitive areas unlocked" : "Sensitive areas locked"}</strong><span>{unlocked ? "Locks in less than five minutes" : "Password required for rosters and grades"}</span>{unlocked && <button type="button" onClick={lock}>Lock now</button>}</div>
         </aside>
         <main className="student-dashboard-main professor-dashboard-main">
           {portalNotice && <div className="portal-form-notice class-link-status" role="status">{portalNotice}<button type="button" onClick={() => setPortalNotice("")}>×</button></div>}
-          {tab === "overview" && <Overview setTab={setTab} classes={scopedTeachingClasses} enrollmentRequests={teachingEnrollmentRequests} />}
+          {tab === "overview" && <Overview setTab={setTab} classes={scopedTeachingClasses} enrollmentRequests={teachingEnrollmentRequests} divisionScope={divisionScope} />}
           {tab === "classes" && <Classes onBuild={onBuild} onOpenDigitalLiteracy={() => setTab("digital-literacy")} classes={scopedTeachingClasses} divisionScope={divisionScope} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={scopedTeachingClasses} /></Suspense>}
           {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} />}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} track={divisionScope || "university"} classes={scopedTeachingClasses} />}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel classes={scopedTeachingClasses} />}
-          {tab === "notifications" && <NotificationsPanel enrollmentRequests={teachingEnrollmentRequests} onOpenRequests={() => setTab("students")} onOpenDigitalLiteracy={() => setTab("digital-literacy")} />}
+          {tab === "notifications" && <NotificationsPanel enrollmentRequests={teachingEnrollmentRequests} onOpenRequests={() => setTab("students")} onOpenDigitalLiteracy={() => setTab("digital-literacy")} divisionScope={divisionScope} />}
           {tab === "announcements" && <CampusSocialFeed key={`campus-social-${settingsScope}`} session={session} role="professor" educationDivision={divisionScope || "university"} displayName={displayName} onOpenMessages={() => setTab("communication")} />}
           {tab === "communication" && <CourseCommunicationPanel key={`course-communication-${settingsScope}`} role="professor" session={session} educationDivision={divisionScope || "both"} />}
           {tab === "profile" && <EducatorProfile profile={profile} classes={scopedTeachingClasses} />}

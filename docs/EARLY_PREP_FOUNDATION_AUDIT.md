@@ -45,4 +45,6 @@ This unit extends the shared EdNotebook foundation. It does not create a second 
 
 ## Recommended next controlled unit
 
-Run an Early Prep staging pilot with synthetic district data: apply migrations, verify the Control Center selector under platform and institution roles, exercise negative commerce API cases, import a small OneRoster/PowerSchool fixture, and reconcile a reviewed no-op grade export. Do not start a live district connector or Move to University application until that evidence is approved.
+The synthetic Early Prep staging pilot was executed on 2026-08-08 and is documented in `docs/EARLY_PREP_STAGING_PILOT.md`. It applied the reviewed migrations, verified Control Center role boundaries and negative commerce paths, imported a small deterministic OneRoster/PowerSchool fixture, and reconciled a reviewed no-op grade export with zero writes.
+
+After owner review and passing CI, the next controlled unit is the Early Prep Digital Literacy Class prototype experience upgrade in staging. Do not start a live district connector, use real student data, promote to production, or automate Move to University until each action has separate evidence and approval.
