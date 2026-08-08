@@ -354,7 +354,7 @@ export default function StudentDashboard({
   useEffect(() => {
     let active = true;
     Promise.all([
-      listCurrentStudentCourses(),
+      listCurrentStudentCourses(track),
       listCurrentStudentEnrollmentRequests(session?.user?.id),
       listStudentAccountNotifications(session?.user?.id),
       listStudentCourseBadges(session?.user?.id),
@@ -373,6 +373,7 @@ export default function StudentDashboard({
         grade: null,
         next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
         division: course.education_division,
+        subjectId: course.subject_id || null,
         publicationId: course.publication_id,
       })));
     });
@@ -414,7 +415,7 @@ export default function StudentDashboard({
         : "Class request sent. It will appear in your library after the educator approves it.");
       const [requestResult, courseResult, notificationResult] = await Promise.all([
         listCurrentStudentEnrollmentRequests(studentId),
-        listCurrentStudentCourses(),
+        listCurrentStudentCourses(track),
         listStudentAccountNotifications(studentId),
       ]);
       if (!active) return;
@@ -428,8 +429,9 @@ export default function StudentDashboard({
         progress: 0,
         points: 0,
         grade: null,
-        next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
         division: course.education_division,
+        subjectId: course.subject_id || null,
+        next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
         publicationId: course.publication_id,
       })));
     });
