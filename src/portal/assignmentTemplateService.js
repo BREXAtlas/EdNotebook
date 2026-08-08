@@ -4,13 +4,16 @@ export function isDatabaseId(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
 
-export async function listAssignmentCourses() {
+export async function listAssignmentCourses(educationDivision = null) {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("courses")
-    .select("id,course_code,title,education_division,subject_id")
-    .order("updated_at", { ascending: false });
+    .select("id,course_code,title,education_division,subject_id");
+  if (["k12", "university"].includes(educationDivision)) {
+    query = query.eq("education_division", educationDivision);
+  }
+  const { data, error } = await query.order("updated_at", { ascending: false });
 
   if (error) return { data: [], error, source: "device" };
   return {

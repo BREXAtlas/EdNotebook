@@ -95,12 +95,15 @@ export async function searchEducatorProfiles(query, educationDivision) {
   return { data: unique, error, source: error ? "device" : "cloud" };
 }
 
-export async function listCurrentStudentCourses() {
+export async function listCurrentStudentCourses(educationDivision = null) {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
-  const { data, error } = await supabase
+  let query = supabase
     .from("courses")
-    .select("id,course_code,title,subject,teaching_window,status,education_division")
-    .order("updated_at", { ascending: false });
+    .select("id,course_code,title,subject,subject_id,teaching_window,status,education_division");
+  if (["k12", "university"].includes(educationDivision)) {
+    query = query.eq("education_division", educationDivision);
+  }
+  const { data, error } = await query.order("updated_at", { ascending: false });
   if (error || !data?.length) return { data: data || [], error, source: error ? "device" : "cloud" };
   const [publicationResult, directoryResult] = await Promise.all([
     supabase
@@ -225,6 +228,7 @@ export async function listProfessorCourseLibrary() {
         code: course.course_code || "CLASS",
         term: course.teaching_window || "Term not set",
         division: course.education_division,
+        subjectId: course.subject_id || null,
         published: course.status === "published" && Boolean(listing?.is_listed),
         publicationStatus: course.status,
         students: (membershipResult.data || []).filter((item) => item.course_id === course.id && item.role === "learner").length,
