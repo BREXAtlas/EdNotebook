@@ -8,15 +8,16 @@ const PORTALS = [
 const EARLY_PREP_PORTALS = [
   ["student", "Early Prep student portal", "#/students/k12"],
   ["teacher", "High-school teacher portal", "#/early-prep/teacher"],
-  ["tour", "Take the tour", "#/tour"],
+  ["tour", "Take the tour", "#/tour/k12"],
 ];
 
 export default function PortalNav({ active, action, actionLabel = "Sign in", track = "university" }) {
+  const earlyPrep = track === "k12";
   const portals = track === "k12" ? EARLY_PREP_PORTALS : PORTALS;
 
   return (
     <header className="portal-nav">
-      <a className="portal-brand" href="#/" aria-label="EdNotebook portal home">
+      <a className="portal-brand" href={earlyPrep ? "#/students/k12" : "#/"} aria-label={earlyPrep ? "EdNotebook Early Prep home" : "EdNotebook portal home"}>
         <img className="portal-nav-logo" src="/brand/ednotebook-logo-primary.svg" alt="EdNotebook — fun, connected learning" />
       </a>
       <nav aria-label="EdNotebook portals">
