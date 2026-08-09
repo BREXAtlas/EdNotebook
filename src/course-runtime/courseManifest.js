@@ -8,16 +8,20 @@ export const COURSE_PRESETS = {
 const clean = (value, fallback = "") => String(value ?? fallback).trim();
 const makeId = (prefix) => `${prefix}-${crypto.randomUUID()}`;
 
-export function createStarterLesson(courseTitle = "Course", index = 1) {
+export function createStarterLesson(courseTitle = "Course", index = 1, educationDivision = "university") {
+  const earlyPrep = educationDivision === "k12";
+  const educatorLabel = earlyPrep ? "teacher" : "professor";
+  const educatorTitle = earlyPrep ? "Teacher" : "Professor";
+  const learningContainer = earlyPrep ? "class" : "course";
   const title = index === 1 ? `Start ${courseTitle}` : `Lesson ${index}`;
-  const correct = `Explain ${title} in your own words and connect it to the course material.`;
+  const correct = `Explain ${title} in your own words and connect it to the ${learningContainer} material.`;
   return {
     id: makeId("lesson"), groupId: "module-1", title,
     subtitle: "Learn the idea, apply it, and check your understanding", estimatedMinutes: 15,
-    learningObjectives: [`Explain the central idea in ${title}.`, "Apply the idea to a course example."],
+    learningObjectives: [`Explain the central idea in ${title}.`, `Apply the idea to a ${learningContainer} example.`],
     openingNarrative: `This lesson introduces ${title} through a practical example and a decision you can examine.`,
     realWorldExample: `A learner studies ${title}, reviews the available evidence, and decides how to apply it.`,
-    visual: { title: `${title} in four steps`, type: "flow", items: ["Notice", "Study", "Apply", "Check"], textAlternative: `A four-step sequence for ${title}.`, credit: "Original EdNotebook course figure" },
+    visual: { title: `${title} in four steps`, type: "flow", items: ["Notice", "Study", "Apply", "Check"], textAlternative: `A four-step sequence for ${title}.`, credit: `Original EdNotebook ${learningContainer} figure` },
     concept: {
       what: `${title} is the main idea explored in this lesson.`,
       why: "It gives learners a shared starting point before practice.",
@@ -27,12 +31,12 @@ export function createStarterLesson(courseTitle = "Course", index = 1) {
       risks: "A short explanation can oversimplify a complex topic.",
       whoMayNotBenefit: "Advanced learners may need a more challenging extension.",
       misunderstandingRisk: "Memorizing a phrase without being able to explain it.",
-      verifyNote: "Compare the lesson with professor-approved course material and sources.",
+      verifyNote: `Compare the lesson with ${educatorLabel}-approved ${learningContainer} material and sources.`,
     },
     scenario: { prompt: `What should a learner do after studying ${title}?`, type: "multiple_choice" },
     choices: [
-      { id: "a", text: "Explain the idea, verify it, and apply it to an example", whyChosen: "This combines understanding and transfer.", possibleBenefit: "The learner can show understanding.", possibleCost: "It takes additional time.", possibleRisk: "The explanation may need revision.", whatCouldChangeThisOutcome: "Professor feedback may improve it.", sourceIds: [] },
-      { id: "b", text: "Review the lesson and write one specific question", whyChosen: "Part of the idea remains unclear.", possibleBenefit: "A focused question supports useful help.", possibleCost: "The learner pauses before finishing.", possibleRisk: "The question may need a response.", whatCouldChangeThisOutcome: "A source or professor response may resolve it.", sourceIds: [] },
+      { id: "a", text: "Explain the idea, verify it, and apply it to an example", whyChosen: "This combines understanding and transfer.", possibleBenefit: "The learner can show understanding.", possibleCost: "It takes additional time.", possibleRisk: "The explanation may need revision.", whatCouldChangeThisOutcome: `${educatorTitle} feedback may improve it.`, sourceIds: [] },
+      { id: "b", text: "Review the lesson and write one specific question", whyChosen: "Part of the idea remains unclear.", possibleBenefit: "A focused question supports useful help.", possibleCost: "The learner pauses before finishing.", possibleRisk: "The question may need a response.", whatCouldChangeThisOutcome: `A source or ${educatorLabel} response may resolve it.`, sourceIds: [] },
       { id: "c", text: "Continue without checking understanding", whyChosen: "The learner may be short on time.", possibleBenefit: "The page is completed quickly.", possibleCost: "A knowledge gap may remain.", possibleRisk: "Later work may be harder.", whatCouldChangeThisOutcome: "Returning to review can repair the gap.", sourceIds: [] },
     ],
     consequences: {
@@ -40,7 +44,7 @@ export function createStarterLesson(courseTitle = "Course", index = 1) {
       later: { a: "The learner is prepared to use the idea.", b: "A focused follow-up can build understanding.", c: "The uncertainty may return later." },
       longTerm: { a: "Explanation and verification become habits.", b: "Specific questions become a recovery strategy.", c: "Skipping review can create gaps." },
     },
-    recoveryPath: "Return to the lesson, compare it with the approved source, and ask the professor one specific question.",
+    recoveryPath: `Return to the lesson, compare it with the approved source, and ask the ${educatorLabel} one specific question.`,
     knowledgeChecks: [{ id: makeId("check"), question: `Which response best demonstrates understanding of “${title}”?`, type: "multiple_choice", options: [correct, "Repeat one phrase without explanation.", "Skip the material and guess.", "Move on without checking."], correctAnswer: correct, explanation: "Understanding is demonstrated through explanation, connection, and verification." }],
     endQuiz: [], sourceIds: [], achievementId: null, recommendedNextNodeId: null,
     accessibilitySummary: "All content and interactions are keyboard accessible and do not rely on color alone.", reviewedDate: new Date().toISOString().slice(0, 10), assignmentTemplateIds: [],
@@ -49,14 +53,17 @@ export function createStarterLesson(courseTitle = "Course", index = 1) {
 
 export function createStarterManifest(course = {}) {
   const title = clean(course.title || course.name, "Untitled course");
-  const lesson = createStarterLesson(title, 1);
+  const educationDivision = clean(course.education_division || course.educationDivision, "university");
+  const earlyPrep = educationDivision === "k12";
+  const learningContainer = earlyPrep ? "class" : "course";
+  const lesson = createStarterLesson(title, 1, educationDivision);
   return {
     format: COURSE_FORMAT,
-    course: { id: clean(course.id, makeId("course")), sourceEdNotebookCourseId: clean(course.id) || null, courseCode: clean(course.course_code || course.code, "COURSE"), title, subtitle: clean(course.subtitle, "A guided EdNotebook course"), description: clean(course.description || course.audience, "Learn through explanation, decisions, checks, and reflection."), subject: clean(course.subject, "Interdisciplinary"), audience: clean(course.audience, "Learners"), teachingWindow: clean(course.teaching_window || course.length, "Self-paced"), language: "en", contentVersion: "1.0.0" },
+    course: { id: clean(course.id, makeId("course")), sourceEdNotebookCourseId: clean(course.id) || null, courseCode: clean(course.course_code || course.code, "COURSE"), title, subtitle: clean(course.subtitle, `A guided EdNotebook ${learningContainer}`), description: clean(course.description || course.audience, "Learn through explanation, decisions, checks, and reflection."), subject: clean(course.subject, "Interdisciplinary"), audience: clean(course.audience, "Learners"), teachingWindow: clean(course.teaching_window || course.length, "Self-paced"), educationDivision, language: "en", contentVersion: "1.0.0" },
     template: { family: "ram-ready", version: "1.0", allNodesOpen: true, endQuizEnabled: false },
     preset: { id: "ednotebook-default", version: "1.0" },
     experience: { starsEnabled: true, achievementsEnabled: true, certificatesEnabled: true },
-    grading: { mode: "auto", maxPoints: 100, title: `Course completion · ${title}`, dueAt: "" },
+    grading: { mode: "auto", maxPoints: 100, title: `${earlyPrep ? "Class" : "Course"} completion · ${title}`, dueAt: "" },
     paths: [{ id: "foundations", label: "Foundations", description: "The core learning path", unitLabel: "Lesson", groupLabel: "Module", required: true, groups: [{ id: "module-1", number: 1, title: "Module 1", nodeIds: [lesson.id] }], nodes: [lesson] }],
     sources: [], achievements: [], certificates: [],
   };
@@ -64,6 +71,45 @@ export function createStarterManifest(course = {}) {
 
 export const cloneManifest = (manifest) => JSON.parse(JSON.stringify(manifest));
 export const flattenLessons = (manifest) => (manifest?.paths || []).flatMap((path) => (path.nodes || []).map((lesson) => ({ ...lesson, pathId: path.id, pathLabel: path.label })));
+
+function earlyPrepGeneratedCopy(value) {
+  return typeof value === "string"
+    ? value
+      .replaceAll("A guided EdNotebook course", "A guided EdNotebook class")
+      .replaceAll("Course completion ·", "Class completion ·")
+      .replaceAll("professor-approved course", "teacher-approved class")
+      .replaceAll("professor-approved lesson", "teacher-approved lesson")
+      .replaceAll("Professor feedback", "Teacher feedback")
+      .replaceAll("professor response", "teacher response")
+      .replaceAll("ask the professor", "ask the teacher")
+      .replaceAll("Original EdNotebook course figure", "Original EdNotebook class figure")
+      .replaceAll("The professor-approved learning pathway", "The teacher-approved learning pathway")
+    : value;
+}
+
+export function applyEducationDivisionLanguage(manifest, educationDivision = "university") {
+  const next = cloneManifest(manifest);
+  next.course = { ...next.course, educationDivision };
+  if (educationDivision !== "k12") return next;
+
+  next.course.subtitle = earlyPrepGeneratedCopy(next.course.subtitle);
+  next.grading = { ...next.grading, title: earlyPrepGeneratedCopy(next.grading?.title) };
+  next.paths = (next.paths || []).map((path) => ({
+    ...path,
+    description: earlyPrepGeneratedCopy(path.description),
+    nodes: (path.nodes || []).map((node) => ({
+      ...node,
+      visual: node.visual ? { ...node.visual, credit: earlyPrepGeneratedCopy(node.visual.credit) } : node.visual,
+      concept: node.concept ? { ...node.concept, verifyNote: earlyPrepGeneratedCopy(node.concept.verifyNote) } : node.concept,
+      choices: (node.choices || []).map((choice) => ({
+        ...choice,
+        whatCouldChangeThisOutcome: earlyPrepGeneratedCopy(choice.whatCouldChangeThisOutcome),
+      })),
+      recoveryPath: earlyPrepGeneratedCopy(node.recoveryPath),
+    })),
+  }));
+  return next;
+}
 
 export function validateCourseManifest(manifest) {
   const errors = [];
@@ -86,7 +132,7 @@ export function validateCourseManifest(manifest) {
 
 export function addLessonToManifest(manifest, pathId, groupId) {
   const next = cloneManifest(manifest); const path = next.paths.find((item) => item.id === pathId) || next.paths[0]; const group = path.groups.find((item) => item.id === groupId) || path.groups[0];
-  const lesson = createStarterLesson(next.course.title, path.nodes.length + 1); lesson.groupId = group.id; path.nodes.push(lesson); group.nodeIds.push(lesson.id); return next;
+  const lesson = createStarterLesson(next.course.title, path.nodes.length + 1, next.course.educationDivision); lesson.groupId = group.id; path.nodes.push(lesson); group.nodeIds.push(lesson.id); return next;
 }
 
 export function removeLessonFromManifest(manifest, pathId, lessonId) {
