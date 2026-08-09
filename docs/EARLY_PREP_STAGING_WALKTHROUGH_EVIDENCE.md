@@ -76,3 +76,17 @@ No files from those directories are part of this change. University, professor, 
 - Promotion to `main`: **not authorized**.
 
 Authorized institution owners must independently record every required security, privacy/records, accessibility, minor-data/consent, support/incident/rollback, and bounded-pilot decision before any real pilot. A separate explicit owner decision is required before promotion to `main`.
+
+## Post-merge targeted replay
+
+PR #136 merged as `a8aba26ef0ce7b24400057c9753a724aea9705a9`. The exact commit was confirmed on the staging environment marker while production remained on its prior commit. A synthetic teacher/student replay confirmed Digital Literacy teacher instructions and feedback, K–12 runtime/media/lesson labels, assignment feedback, one-class teacher reward scope, payment-free boundaries, research-off state, and zero browser console errors.
+
+The replay found two remaining display-only uses of internal University-oriented role wording in the Early Prep account bubble and course package rail. Static review found the same raw role presentation in school-social profile/post labels. The controlled follow-up adapts those K–12 display labels to `teacher` while preserving the internal role contract and all University wording. The focused verification passed:
+
+- `npm run test:early-prep` — 66/66 passed.
+- `npm run test:social-learning` — 21/21 passed.
+- `npm run test:student-experience` — 44/44 passed.
+- `npm run test:media-resources` — 9/9 passed.
+- `npm run build:staging` — passed.
+
+The four protected work areas retained their recorded file counts and aggregate fingerprints. No production, University, professor, publisher, marketplace, payment, live integration, research, or real-minor-data operation was performed.
