@@ -13,7 +13,7 @@
   "staging_source_commit": "abcd7a5838e913880e9726c3a54f98b706acc391",
   "trigger_branch": "staging",
   "trigger_commit": "abcd7a5838e913880e9726c3a54f98b706acc391",
-  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/31334669665",
-  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/31334741082",
-  "deployed_at": "2026-08-09T20:38:40Z"
+  "validation_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/31334792120",
+  "deployment_run_url": "https://github.com/BREXAtlas/EdNotebook/actions/runs/31334860527",
+  "deployed_at": "2026-08-09T20:41:40Z"
 }
