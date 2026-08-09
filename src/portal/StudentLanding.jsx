@@ -70,7 +70,7 @@ export default function StudentLanding({ onEnter, onTeacher, track = "university
 
   return (
     <div className={`portal-page student-landing-page ${k12 ? "is-k12" : "is-university"}`}>
-      <PortalNav active="student" action={() => onEnter?.()} actionLabel={`${copy.shortLabel} student sign in`} />
+      <PortalNav active="student" action={() => onEnter?.()} actionLabel={`${copy.shortLabel} student sign in`} track={track} />
       <main>
         <section className="student-hero">
           <div className="student-hero-copy">
@@ -148,7 +148,7 @@ export default function StudentLanding({ onEnter, onTeacher, track = "university
           {!k12 && <div className="paid-services-coming"><div><span className="portal-kicker">PAID SERVICES</span><h3>Coming soon—not required.</h3><p>Join the waitlist if you want updates about future sync, customization, and expanded storage options.</p></div><button type="button" onClick={() => setPricingWaitlistOpen(true)}>Join paid-services waitlist</button></div>}
         </section>
 
-        <section id="share-ednotebook" className="student-share-section"><img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" /><div><span className="portal-kicker">BRING YOUR PEOPLE</span><h2>EdNotebook works better when your class can find each other.</h2><p>Share a direct link on social media, send it to a professor, or download the invitation graphic for a group chat or campus post.</p><ShareEdNotebook buttonLabel="Share or download the invite" /></div></section>
+        <section id="share-ednotebook" className="student-share-section"><img src="/ednotebook-share-card.png" alt="EdNotebook invitation to find classes and people and join free" /><div><span className="portal-kicker">BRING YOUR PEOPLE</span><h2>EdNotebook works better when your class can find each other.</h2><p>{k12 ? "Share a direct link on social media, send it to a teacher, or download the invitation graphic for a class group chat or school post." : "Share a direct link on social media, send it to a professor, or download the invitation graphic for a group chat or campus post."}</p><ShareEdNotebook buttonLabel="Share or download the invite" /></div></section>
 
         <section className="student-opportunity-section">
           <InterestForm kind="feature_feedback" title="Tell us what students need" description={`Suggest a feature or describe what should be easier during the ${k12 ? "school day" : "semester"}.`} submitLabel="Save feature suggestion" educationDivision={track} />
