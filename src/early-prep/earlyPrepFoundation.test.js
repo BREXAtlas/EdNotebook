@@ -7,6 +7,7 @@ const foundation = read("../../supabase/migrations/20260808211028_early_prep_fou
 const adminScope = read("../../supabase/migrations/20260808211036_scope_admin_controls_by_education_division.sql");
 const main = read("../main.jsx");
 const landing = read("../portal/StudentLanding.jsx");
+const portalNav = read("../portal/PortalNav.jsx");
 const courseStart = read("../CourseStart.jsx");
 const professor = read("../portal/ProfessorDashboard.jsx");
 
@@ -16,6 +17,16 @@ test("public Early Prep routes expose separate student and high-school teacher a
   assert.match(main, /#\/early-prep\/student/u);
   assert.match(landing, /Student sign in or create account/u);
   assert.match(landing, /High-school teacher sign in or create account/u);
+});
+
+test("the public Early Prep shell stays inside student and teacher paths", () => {
+  assert.match(landing, /track=\{track\}/u);
+  assert.match(landing, /send it to a teacher/u);
+  assert.match(portalNav, /track === "k12" \? EARLY_PREP_PORTALS : PORTALS/u);
+  assert.match(portalNav, /Early Prep student portal/u);
+  assert.match(portalNav, /High-school teacher portal/u);
+  assert.equal((portalNav.match(/\["professor", "Professor portal"/gu) || []).length, 1);
+  assert.equal((portalNav.match(/\["publishing", "Publishing portal"/gu) || []).length, 1);
 });
 
 test("course creation uses the exact subject prompt and persists stable subject metadata", () => {
