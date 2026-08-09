@@ -90,3 +90,7 @@ The replay found two remaining display-only uses of internal University-oriented
 - `npm run build:staging` — passed.
 
 The four protected work areas retained their recorded file counts and aggregate fingerprints. No production, University, professor, publisher, marketplace, payment, live integration, research, or real-minor-data operation was performed.
+
+PR #137 merged as `135ad94f4bc1d3ad4e74a76769769cdfbaf6495d`. Validation run [31290837949](https://github.com/BREXAtlas/EdNotebook/actions/runs/31290837949) and deployment run [31290902432](https://github.com/BREXAtlas/EdNotebook/actions/runs/31290902432) succeeded. The staging environment marker reported that exact commit while production remained at `3205d37c96a63323cfe4078e072e8126ab494669`.
+
+The final deployed replay passed: the Early Prep educator account bubble displayed `teacher`; the K–12 course rail displayed `Teacher-published package` while the conditional University contract remained `Professor-published`; school-social teacher role presentation was scoped to K–12; Digital Literacy retained teacher-facing instructions and `RESEARCH OFF`; the recognition panel exposed only the teacher's one synthetic K–12 class; and the browser console reported zero entries. Both synthetic sessions were signed out. No corrective source PR was required after #137.

@@ -18,6 +18,18 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
+export const EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE = deepFreeze({
+  version: "early-prep-staging-walkthrough-v1",
+  status: "passed",
+  classification: "synthetic_test_data_only",
+  completedChecks: 16,
+  sourcePullRequest: "https://github.com/BREXAtlas/EdNotebook/pull/137",
+  deployedCommit: "135ad94f4bc1d3ad4e74a76769769cdfbaf6495d",
+  validationRun: "https://github.com/BREXAtlas/EdNotebook/actions/runs/31290837949",
+  deploymentRun: "https://github.com/BREXAtlas/EdNotebook/actions/runs/31290902432",
+  evidenceReference: "docs:EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.md",
+});
+
 export const EARLY_PREP_TECHNICAL_EVIDENCE = deepFreeze([
   {
     id: "foundation-and-isolation",
@@ -94,7 +106,13 @@ export const EARLY_PREP_STAGING_WALKTHROUGH_CHECKS = deepFreeze([
   ["synthetic-learning-systems", "teacher", "Run synthetic OneRoster, PowerSchool, and Schoology acceptance with zero provider writes and no credentials."],
   ["portfolio-transition", "student", "Build a synthetic item-by-item transition manifest and verify protected records remain excluded."],
   ["cross-cutting-boundaries", "both", "Verify keyboard, responsive, session recovery, logout, data isolation, payment denial, and no University crossover."],
-].map(([id, persona, label]) => ({ id, persona, label, status: "pending_staging_walkthrough" })));
+].map(([id, persona, label]) => ({
+  id,
+  persona,
+  label,
+  status: "passed_staging_walkthrough",
+  evidenceReference: EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.evidenceReference,
+})));
 
 export const EARLY_PREP_HUMAN_APPROVAL_GATES = deepFreeze([
   {
@@ -165,21 +183,23 @@ export function previewEarlyPrepPilotReadiness(input = {}) {
     version: EARLY_PREP_PILOT_READINESS_VERSION,
     classification: "synthetic_test_data_only",
     division: "k12",
-    requestedLane: "pilot_review_only",
+    requestedLane: "beta_review_only",
     technicalEvidence: EARLY_PREP_TECHNICAL_EVIDENCE,
     humanApprovalGates: EARLY_PREP_HUMAN_APPROVAL_GATES,
     counts: {
       technicalEvidenceReady: EARLY_PREP_TECHNICAL_EVIDENCE.length,
-      stagingWalkthroughChecksPending: EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.length,
-      stagingWalkthroughChecksCompleted: 0,
+      stagingWalkthroughChecksPending: 0,
+      stagingWalkthroughChecksCompleted: EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.length,
       humanDecisionsRequired: EARLY_PREP_HUMAN_APPROVAL_GATES.length,
       institutionApprovalsRecorded: 0,
     },
-    status: "awaiting_authorized_institution_review",
+    status: "ready_for_beta_promotion_review",
+    betaPromotionDecisionStatus: "not_recorded",
+    betaPromotionAuthorized: false,
     institutionDecisionStatus: "not_recorded",
     pilotApproved: false,
     pilotActivated: false,
-    stagingWalkthroughCompleted: false,
+    stagingWalkthroughCompleted: true,
     mainPromotionAuthorized: false,
     liveDataLaneAssigned: false,
     realMinorDataAuthorized: false,
@@ -211,7 +231,9 @@ export function prepareEarlyPrepInstitutionReviewPacket(preview, acknowledgement
     version: EARLY_PREP_PILOT_READINESS_VERSION,
     classification: "synthetic_test_data_only",
     division: "k12",
-    status: "ready_for_authorized_institution_review",
+    status: "ready_for_beta_promotion_review",
+    betaPromotionDecisionStatus: "not_recorded",
+    betaPromotionAuthorized: false,
     technicalEvidenceReferences: rebuilt.technicalEvidence.map(({ id, evidenceReference }) => ({ id, evidenceReference })),
     stagingWalkthroughChecks: EARLY_PREP_STAGING_WALKTHROUGH_CHECKS,
     humanApprovalGates: rebuilt.humanApprovalGates.map(({ id, status, evidenceReference }) => ({ id, status, evidenceReference })),
@@ -219,7 +241,7 @@ export function prepareEarlyPrepInstitutionReviewPacket(preview, acknowledgement
     institutionDecisionStatus: "not_recorded",
     pilotApproved: false,
     pilotActivated: false,
-    stagingWalkthroughCompleted: false,
+    stagingWalkthroughCompleted: true,
     mainPromotionAuthorized: false,
     liveDataLaneAssigned: false,
     realMinorDataAuthorized: false,
@@ -228,7 +250,7 @@ export function prepareEarlyPrepInstitutionReviewPacket(preview, acknowledgement
     researchActivated: false,
     paymentsEnabled: false,
     universityRecordsModified: false,
-    nextRequiredAction: "Authorized institution reviewers must independently record every required decision in the governed controls.",
+    nextRequiredAction: "The accountable owner must make the separate protected staging-to-main Beta promotion decision. Authorized institution reviewers must independently record every required decision before any real-minor-data pilot.",
   };
   return deepFreeze({ ...packet, packetHash: stablePreviewHash(packet) });
 }

@@ -5,6 +5,7 @@ import {
   EARLY_PREP_HUMAN_APPROVAL_GATES,
   EARLY_PREP_PILOT_ACKNOWLEDGEMENTS,
   EARLY_PREP_STAGING_WALKTHROUGH_CHECKS,
+  EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE,
   EARLY_PREP_TECHNICAL_EVIDENCE,
   prepareEarlyPrepInstitutionReviewPacket,
   previewEarlyPrepPilotReadiness,
@@ -26,7 +27,10 @@ test("readiness inventory separates eight technical evidence items from seven hu
   assert.ok(Object.isFrozen(EARLY_PREP_TECHNICAL_EVIDENCE));
   assert.ok(Object.isFrozen(EARLY_PREP_HUMAN_APPROVAL_GATES));
   assert.equal(EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.length, 16);
-  assert.ok(EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.every(({ status }) => status === "pending_staging_walkthrough"));
+  assert.ok(EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.every(({ status }) => status === "passed_staging_walkthrough"));
+  assert.equal(EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.status, "passed");
+  assert.equal(EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.completedChecks, 16);
+  assert.match(EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.deployedCommit, /^[0-9a-f]{40}$/u);
 });
 
 test("preview is Early Prep-only and rejects real data, integrations, production, research, and commerce", () => {
@@ -41,13 +45,15 @@ test("preview is Early Prep-only and rejects real data, integrations, production
 test("technical evidence cannot claim institution approval or activate a pilot", () => {
   const preview = previewEarlyPrepPilotReadiness();
   assert.equal(preview.counts.technicalEvidenceReady, 8);
-  assert.equal(preview.counts.stagingWalkthroughChecksPending, 16);
-  assert.equal(preview.counts.stagingWalkthroughChecksCompleted, 0);
+  assert.equal(preview.counts.stagingWalkthroughChecksPending, 0);
+  assert.equal(preview.counts.stagingWalkthroughChecksCompleted, 16);
   assert.equal(preview.counts.humanDecisionsRequired, 7);
   assert.equal(preview.counts.institutionApprovalsRecorded, 0);
-  assert.equal(preview.status, "awaiting_authorized_institution_review");
+  assert.equal(preview.status, "ready_for_beta_promotion_review");
+  assert.equal(preview.betaPromotionDecisionStatus, "not_recorded");
+  assert.equal(preview.betaPromotionAuthorized, false);
   assert.equal(preview.pilotApproved, false);
-  assert.equal(preview.stagingWalkthroughCompleted, false);
+  assert.equal(preview.stagingWalkthroughCompleted, true);
   assert.equal(preview.mainPromotionAuthorized, false);
   assert.equal(preview.liveDataLaneAssigned, false);
   assert.equal(preview.realMinorDataAuthorized, false);
@@ -65,15 +71,17 @@ test("institution review packet requires every boundary acknowledgement", () => 
 
 test("packet remains review evidence with no approval, activation, or real-data authority", () => {
   const packet = prepareEarlyPrepInstitutionReviewPacket(previewEarlyPrepPilotReadiness(), ALL_ACKNOWLEDGEMENTS);
-  assert.equal(packet.status, "ready_for_authorized_institution_review");
+  assert.equal(packet.status, "ready_for_beta_promotion_review");
+  assert.equal(packet.betaPromotionDecisionStatus, "not_recorded");
+  assert.equal(packet.betaPromotionAuthorized, false);
   assert.equal(packet.institutionDecisionStatus, "not_recorded");
   assert.equal(packet.humanApprovalGates.length, 7);
   assert.ok(packet.humanApprovalGates.every(({ status }) => status === "authorized_human_decision_required"));
   assert.equal(packet.pilotApproved, false);
   assert.equal(packet.pilotActivated, false);
   assert.equal(packet.stagingWalkthroughChecks.length, 16);
-  assert.ok(packet.stagingWalkthroughChecks.every(({ status }) => status === "pending_staging_walkthrough"));
-  assert.equal(packet.stagingWalkthroughCompleted, false);
+  assert.ok(packet.stagingWalkthroughChecks.every(({ status }) => status === "passed_staging_walkthrough"));
+  assert.equal(packet.stagingWalkthroughCompleted, true);
   assert.equal(packet.mainPromotionAuthorized, false);
   assert.equal(packet.liveDataLaneAssigned, false);
   assert.equal(packet.realMinorDataAuthorized, false);
