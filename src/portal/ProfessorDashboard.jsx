@@ -436,7 +436,7 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
   const protectedContent = tab === "students"
     ? <StudentsPanel enrollmentRequests={teachingEnrollmentRequests} onApproveEnrollment={approveEnrollment} />
     : tab === "rewards"
-      ? <ProfessorSocialLearningPanel />
+      ? <ProfessorSocialLearningPanel educationDivision={divisionScope || "university"} courseIds={earlyPrep ? scopedTeachingClasses.map((course) => course.id) : null} />
       : <GradesPanel onLock={lock} />;
   return (
     <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}>

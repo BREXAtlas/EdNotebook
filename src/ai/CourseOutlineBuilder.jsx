@@ -41,7 +41,7 @@ function Field({ label, hint, children }) {
   );
 }
 
-function DraftEditor({ draft, setDraft }) {
+function DraftEditor({ draft, setDraft, educatorLabel = "professor" }) {
   const updateUnit = (unitIndex, update) => {
     setDraft((current) => ({
       ...current,
@@ -70,7 +70,7 @@ function DraftEditor({ draft, setDraft }) {
         <div>
           <span className="ai-outline-badge">AI DRAFT · NOT PUBLISHED</span>
           <h2 id="ai-outline-draft-title">Review every part of the proposed course map</h2>
-          <p>The model produced a draft. You remain the author and approving professor.</p>
+          <p>The model produced a draft. You remain the author and approving {educatorLabel}.</p>
         </div>
         <dl className="ai-outline-provenance">
           <div><dt>Provider route</dt><dd>{draft.provenance.provider || "Governed route"}</dd></div>
@@ -165,15 +165,19 @@ function DraftEditor({ draft, setDraft }) {
 
 export default function CourseOutlineBuilder({ session, onBack, onStudio, onCourseOutput }) {
   const existingCourse = useMemo(readCourseDraft, []);
+  const earlyPrep = existingCourse.educationDivision === "k12";
+  const educatorLabel = earlyPrep ? "teacher" : "professor";
   const [form, setForm] = useState({
     courseTitle: existingCourse.name || "",
     subject: existingCourse.subject || "Interdisciplinary",
     audience: existingCourse.audience || "Undergraduate learners",
-    academicLevel: "Undergraduate",
+    academicLevel: earlyPrep ? "Grades 9–12" : "Undergraduate",
     duration: existingCourse.length || "16 weeks",
     learningObjectives: "",
     templateKey: "ramready",
-    teachingApproach: "Professor-directed learning with discussion, application, and human-reviewed assessment.",
+    teachingApproach: earlyPrep
+      ? "Teacher-directed learning with discussion, application, and human-reviewed assessment."
+      : "Professor-directed learning with discussion, application, and human-reviewed assessment.",
     sourceMaterials: "",
     assessmentPreferences: "Discussion\nReflective writing\nApplied project",
   });
@@ -210,7 +214,7 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
       return;
     }
     if (input.learningObjectives.length === 0) {
-      setError("Add at least one professor-written learning objective.");
+      setError(`Add at least one ${educatorLabel}-written learning objective.`);
       return;
     }
 
@@ -272,15 +276,15 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
     setReviewConfirmed(false);
     setPhase("input");
     setError("");
-    setMessage("The AI draft was rejected. Your professor-written inputs remain available for revision.");
+    setMessage(`The AI draft was rejected. Your ${educatorLabel}-written inputs remain available for revision.`);
   }
 
   return (
     <main className="ai-outline-page" aria-labelledby="ai-outline-title">
       <header className="ai-outline-hero">
         <div>
-          <span>PHASE 2 · PROFESSOR COURSE-OUTLINE GENERATION</span>
-          <h1 id="ai-outline-title">Build the course map first. Keep the professor in control.</h1>
+          <span>PHASE 2 · {earlyPrep ? "TEACHER" : "PROFESSOR"} COURSE-OUTLINE GENERATION</span>
+          <h1 id="ai-outline-title">Build the course map first. Keep the {educatorLabel} in control.</h1>
           <p>EdNotebook sends one structured course-outline task to the TOS AI Learning Router. The browser never chooses a provider, sees a model key, or publishes the result.</p>
         </div>
         <div className="ai-outline-boundaries" aria-label="AI workflow boundaries">
@@ -298,7 +302,7 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
 
       <section className="ai-outline-form" aria-labelledby="outline-input-title">
         <div className="ai-outline-section-heading">
-          <div><span>1 · PROFESSOR INPUT</span><h2 id="outline-input-title">Describe the course and its destination</h2></div>
+          <div><span>1 · {earlyPrep ? "TEACHER" : "PROFESSOR"} INPUT</span><h2 id="outline-input-title">Describe the course and its destination</h2></div>
           <button type="button" className="ai-outline-secondary" onClick={onBack}>Back to course setup</button>
         </div>
 
@@ -317,11 +321,11 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
         </div>
 
         <div className="ai-outline-grid ai-outline-grid--two">
-          <Field label="Learning objectives" hint="Required. One professor-written objective per line.">
+          <Field label="Learning objectives" hint={`Required. One ${educatorLabel}-written objective per line.`}>
             <textarea rows={7} value={form.learningObjectives} onChange={(event) => setField("learningObjectives", event.target.value)} placeholder="Analyze leadership through systems thinking&#10;Apply transformative leadership concepts to an organizational challenge" />
           </Field>
           <Field label="Source materials and constraints" hint="One source, required reading, syllabus note, or constraint per line. Do not include student records.">
-            <textarea rows={7} value={form.sourceMaterials} onChange={(event) => setField("sourceMaterials", event.target.value)} placeholder="Department outcome: evaluate evidence&#10;Required text: professor-approved course reader&#10;No student names, IDs, grades, or private messages" />
+            <textarea rows={7} value={form.sourceMaterials} onChange={(event) => setField("sourceMaterials", event.target.value)} placeholder={`Department outcome: evaluate evidence\nRequired text: ${educatorLabel}-approved course reader\nNo student names, IDs, grades, or private messages`} />
           </Field>
           <Field label="Teaching approach"><textarea rows={5} value={form.teachingApproach} onChange={(event) => setField("teachingApproach", event.target.value)} /></Field>
           <Field label="Assessment preferences" hint="One approach per line"><textarea rows={5} value={form.assessmentPreferences} onChange={(event) => setField("assessmentPreferences", event.target.value)} /></Field>
@@ -337,7 +341,7 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
         </div>
       </section>
 
-      {draft ? <DraftEditor draft={draft} setDraft={setDraft} /> : null}
+      {draft ? <DraftEditor draft={draft} setDraft={setDraft} educatorLabel={educatorLabel} /> : null}
 
       {draft && phase !== "accepted" ? (
         <section className="ai-outline-approval" aria-labelledby="outline-approval-title">
@@ -363,7 +367,7 @@ export default function CourseOutlineBuilder({ session, onBack, onStudio, onCour
 
       {accepted ? (
         <section className="ai-outline-accepted" aria-labelledby="outline-accepted-title">
-          <span>PROFESSOR ACCEPTED · STILL NOT PUBLISHED</span>
+          <span>{earlyPrep ? "TEACHER" : "PROFESSOR"} ACCEPTED · STILL NOT PUBLISHED</span>
           <h2 id="outline-accepted-title">The course map is ready in Course Output</h2>
           <p>{accepted.course.acts.reduce((total, unit) => total + unit.episodes.length, 0)} title-only lessons are mapped. Detailed lesson content must be generated and reviewed later.</p>
           <div className="ai-outline-actions">

@@ -93,7 +93,7 @@ function LessonFigure({ visual }) {
   );
 }
 
-function LessonReadings({ lesson, manifest, onOpenTool }) {
+function LessonReadings({ lesson, manifest, onOpenTool, educatorLabel = "professor" }) {
   const lessonSourceIds = new Set(lesson.sourceIds || []);
   const sources = (manifest.sources || []).filter((source) =>
     lessonSourceIds.has(source.id || source.sourceId),
@@ -106,7 +106,7 @@ function LessonReadings({ lesson, manifest, onOpenTool }) {
       aria-labelledby="course-lesson-sources-title"
     >
       <div>
-        <span className="course-kicker">PROFESSOR-APPROVED SOURCES</span>
+        <span className="course-kicker">{educatorLabel.toUpperCase()}-APPROVED SOURCES</span>
         <h2 id="course-lesson-sources-title">
           Read, verify, and keep the source trail.
         </h2>
@@ -173,7 +173,9 @@ export default function StudentLessonPlayer({
   initialStage,
   focusResourceId,
   resources = [],
+  educationDivision = "university",
 }) {
+  const educatorLabel = educationDivision === "k12" ? "teacher" : "professor";
   const recoveryKey = useMemo(
     () =>
       lessonRecoveryKey({
@@ -429,7 +431,7 @@ export default function StudentLessonPlayer({
           <aside className="course-next-action">
             <strong>Next action</strong>
             <span>
-              Read the professor-approved lesson, then apply it before checking
+              Read the {educatorLabel}-approved lesson, then apply it before checking
               your understanding.
             </span>
           </aside>
@@ -439,7 +441,7 @@ export default function StudentLessonPlayer({
       {stage === 1 && (
         <section className="course-stage">
           <span className="course-kicker">
-            READ · PROFESSOR-APPROVED LESSON
+            READ · {educatorLabel.toUpperCase()}-APPROVED LESSON
           </span>
           <h1 ref={stageHeadingRef} tabIndex="-1">
             {lesson.title}
@@ -462,11 +464,12 @@ export default function StudentLessonPlayer({
             lesson={lesson}
             manifest={manifest}
             onOpenTool={onOpenTool}
+            educatorLabel={educatorLabel}
           />
           {resources.length > 0 && (
             <section className="course-lesson-media" aria-labelledby={`lesson-media-${lesson.id}`}>
               <div>
-                <span className="course-kicker">PROFESSOR-PUBLISHED MEDIA</span>
+                <span className="course-kicker">{educatorLabel.toUpperCase()}-PUBLISHED MEDIA</span>
                 <h2 id={`lesson-media-${lesson.id}`}>Watch and explore without leaving the lesson.</h2>
               </div>
               {resources.map((resource) => (
@@ -708,7 +711,7 @@ export default function StudentLessonPlayer({
             Lesson complete
           </h1>
           <p>
-            Your submitted lesson progress is connected to the professor’s
+            Your submitted lesson progress is connected to the {educatorLabel}’s
             course view.
           </p>
           {quiz.questions.length > 0 && (
@@ -744,7 +747,7 @@ export default function StudentLessonPlayer({
                 {summary.grade_status === "auto_graded"
                   ? `Automatic course grade: ${summary.final_score}%`
                   : summary.grade_status === "awaiting_grading"
-                    ? "Course complete · awaiting professor grading"
+                    ? `Course complete · awaiting ${educatorLabel} grading`
                     : "Continue to the next lesson"}
               </span>
             </div>

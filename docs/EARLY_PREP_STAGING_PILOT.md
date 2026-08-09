@@ -71,3 +71,8 @@ The deployment workflow now runs both the Early Prep foundation database gate an
 ## Decision boundary
 
 This pilot is ready for review and CI confirmation. The next controlled unit is the Early Prep Digital Literacy Class prototype experience upgrade in staging. Live district connectors, real data, production promotion, and Move to University automation remain out of scope until separately reviewed and approved.
+
+The later complete teacher/student staging walkthrough is recorded in
+[`EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.md`](./EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.md).
+That evidence remains technical validation only: no institution approval or `main`
+promotion is implied.

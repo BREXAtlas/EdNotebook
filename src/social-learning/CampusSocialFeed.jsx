@@ -209,7 +209,7 @@ export default function CampusSocialFeed({
         <div>
           <span className="portal-kicker">{university ? "SOCIAL EDUCATION LEARNING" : "SCHOOL COMMUNITY"}</span>
           <h1>Learn in public. Keep private work private.</h1>
-          <p>Students and professors share the same education community. Course messages and protected feedback stay in their governed class rooms.</p>
+          <p>{university ? "Students and professors share the same education community." : "Students and teachers share the same school community."} Course messages and protected feedback stay in their governed class rooms.</p>
         </div>
         <div className="campus-social-heading-actions">
           <button type="button" onClick={() => setProfileOpen((value) => !value)}>Edit profile</button>
@@ -240,7 +240,7 @@ export default function CampusSocialFeed({
 
       <section className="dashboard-card campus-story-rail" aria-label="People in this feed">
         {storyProfiles.map((person) => <article key={person.user_id}><div><Avatar profile={person} large /></div><strong>{person.display_name.split(" ")[0]}</strong><span>{person.account_type}</span></article>)}
-        {!storyProfiles.length && <p>Profile circles will appear as students and professors join this feed.</p>}
+        {!storyProfiles.length && <p>Profile circles will appear as students and {university ? "professors" : "teachers"} join this feed.</p>}
       </section>
 
       <div className="campus-social-layout">

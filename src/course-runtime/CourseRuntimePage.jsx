@@ -60,7 +60,7 @@ function ToolLoading({ name }) {
   );
 }
 
-function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [], onMediaEvidence, onOpenLearningActivity }) {
+function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [], onMediaEvidence, onOpenLearningActivity, educatorLabel = "professor" }) {
   if (!item) return null;
   const workType = item.workType === "grade_item"
     ? "Grade item"
@@ -82,7 +82,7 @@ function PublishedWorkDetail({ item, onClose, onOpenCalendar, resources = [], on
       </header>
       <p>
         {item.instructions ||
-          "Your professor has not added a longer description yet."}
+          `Your ${educatorLabel} has not added a longer description yet.`}
       </p>
       <dl>
         <div>
@@ -124,6 +124,7 @@ export default function CourseRuntimePage({
   track = "university",
   onBack,
 }) {
+  const educatorLabel = track === "k12" ? "teacher" : "professor";
   const [state, setState] = useState({
     loading: true,
     error: "",
@@ -471,7 +472,7 @@ export default function CourseRuntimePage({
     title: course.title,
     division: course.education_division || track,
     education_division: course.education_division || track,
-    professor: "Course professor",
+    professor: `Course ${educatorLabel}`,
     progress: state.progress?.summary?.completion_percent || 0,
     points: 0,
     grade: state.progress?.summary?.final_score ?? null,
@@ -610,7 +611,7 @@ export default function CourseRuntimePage({
                   <h1 id="course-orientation-title">
                     {state.progress?.summary?.current_lesson_id
                       ? "Pick up where you left off."
-                      : "Start with the first professor-published lesson."}
+                      : `Start with the first ${educatorLabel}-published lesson.`}
                   </h1>
                   <p>
                     {state.progress?.summary?.current_lesson_id
@@ -747,6 +748,7 @@ export default function CourseRuntimePage({
               initialStage={active.initialStage}
               focusResourceId={active.focusResourceId}
               userId={session?.user?.id}
+              educationDivision={track}
               onOpenTool={openTool}
               onExit={() => {
                 setActive(null);
@@ -770,7 +772,7 @@ export default function CourseRuntimePage({
                 aria-labelledby="published-course-work-title"
               >
                 <div>
-                  <span className="course-kicker">PROFESSOR-PUBLISHED</span>
+                  <span className="course-kicker">{educatorLabel.toUpperCase()}-PUBLISHED</span>
                   <h2 id="published-course-work-title">
                     Course work and official dates
                   </h2>
@@ -803,6 +805,7 @@ export default function CourseRuntimePage({
                   onOpenCalendar={() => openTool("calendar")}
                   onMediaEvidence={handleMediaEvidence}
                   onOpenLearningActivity={openMediaLearningActivity}
+                  educatorLabel={educatorLabel}
                 />
               </section>
               <AssignmentTemplateWorkspace
@@ -826,7 +829,7 @@ export default function CourseRuntimePage({
                 calendarScope={studentCalendarScope}
                 onOpenAssignment={openDueWorkItem}
                 initialSyllabusText={publishedSyllabusText}
-                syllabusSourceName={`${course.course_code || "COURSE"} professor-published dates`}
+                syllabusSourceName={`${course.course_code || "COURSE"} ${educatorLabel}-published dates`}
               />
             </Suspense>
           )}
@@ -844,6 +847,7 @@ export default function CourseRuntimePage({
             <CourseResourcesPanel
               courseId={course.id}
               resources={state.resources}
+              educationDivision={track}
               onMediaEvidence={handleMediaEvidence}
             />
           )}

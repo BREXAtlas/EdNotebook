@@ -627,6 +627,7 @@ export default function AuthGate({ children, accountType = "student", educationT
 
   const reviewStatus = institutionReview?.verification_status || "unverified";
   const reviewPending = institutionReview && reviewStatus !== "approved";
+  const earlyPrepEducator = accountType === "professor" && educationTrack === "k12";
 
   return (
     <>
@@ -636,11 +637,13 @@ export default function AuthGate({ children, accountType = "student", educationT
             <strong>{accountType === "professor" ? "UNVERIFIED EDUCATOR" : "INSTITUTION MATCH"} · {reviewStatus === "pending" ? "REVIEW PENDING" : "NOT VERIFIED"}</strong>
             <span>
               {accountType === "professor"
-                ? "Your professor workspace is active. Review controls the verified institution badge and institution-owned records—not course building, independent teaching tools, or Beta testing."
+                ? earlyPrepEducator
+                  ? "Your teacher workspace is active. School review controls the verified school badge and school-owned records—not class building or independent teaching tools."
+                  : "Your professor workspace is active. Review controls the verified institution badge and institution-owned records—not course building, independent teaching tools, or Beta testing."
                 : "Your student workspace is active. Institution review controls the verified school match and protected institution records—not your account access."}
             </span>
           </div>
-          <a href={accountType === "professor" ? "#/professor/dashboard" : `#/student/${educationTrack}/app`}>Workspace active</a>
+          <a href={accountType === "professor" ? (earlyPrepEducator ? "#/early-prep/teacher" : "#/professor/dashboard") : `#/student/${educationTrack}/app`}>Workspace active</a>
         </aside>
       )}
       {content}
