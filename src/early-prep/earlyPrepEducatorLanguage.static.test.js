@@ -18,6 +18,7 @@ const socialLearning = await readFile(new URL("../social-learning/SocialLearning
 const courseRuntime = await readFile(new URL("../course-runtime/CourseRuntimePage.jsx", import.meta.url), "utf8");
 const lessonPlayer = await readFile(new URL("../course-runtime/StudentLessonPlayer.jsx", import.meta.url), "utf8");
 const digitalLiteracy = await readFile(new URL("../digital-literacy/DigitalLiteracyPilotWorkspace.jsx", import.meta.url), "utf8");
+const learningStudio = await readFile(new URL("../studio/LearningStudio.jsx", import.meta.url), "utf8");
 
 test("Early Prep educator language stays teacher-specific while University professor language remains intact", () => {
   assert.match(authGate, /earlyPrepEducator/u);
@@ -64,4 +65,12 @@ test("Early Prep teacher context survives every shared class-building route", ()
   assert.match(coursePackage, /onOpenStudentCourse\(publication\.id, activeCourse\.education_division\)/u);
   assert.match(syllabus, /function educatorCopy\(value, earlyPrep\)/u);
   assert.match(syllabus, /educationDivision = "university"/u);
+});
+
+test("Early Prep class materials cannot enter University publisher or marketplace tools", () => {
+  assert.match(main, /courseBuilderTrack !== "k12" && route\.includes\("tab=reader"\)/u);
+  assert.match(main, /<LearningStudio educationTrack=\{courseBuilderTrack\}/u);
+  assert.match(learningStudio, /const EARLY_PREP_TABS = TABS\.filter\(\(\[value\]\) => value !== "reader"\)/u);
+  assert.match(learningStudio, /const tabs = earlyPrep \? EARLY_PREP_TABS : TABS/u);
+  assert.match(learningStudio, /tabFromHash\(tabs\)/u);
 });
