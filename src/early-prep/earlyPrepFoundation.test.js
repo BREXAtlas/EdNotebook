@@ -8,6 +8,7 @@ const adminScope = read("../../supabase/migrations/20260808211036_scope_admin_co
 const main = read("../main.jsx");
 const landing = read("../portal/StudentLanding.jsx");
 const portalNav = read("../portal/PortalNav.jsx");
+const studentDashboard = read("../portal/StudentDashboard.jsx");
 const courseStart = read("../CourseStart.jsx");
 const professor = read("../portal/ProfessorDashboard.jsx");
 
@@ -27,6 +28,16 @@ test("the public Early Prep shell stays inside student and teacher paths", () =>
   assert.match(portalNav, /High-school teacher portal/u);
   assert.equal((portalNav.match(/\["professor", "Professor portal"/gu) || []).length, 1);
   assert.equal((portalNav.match(/\["publishing", "Publishing portal"/gu) || []).length, 1);
+  assert.match(portalNav, /"Take the tour", "#\/tour\/k12"/u);
+  assert.match(portalNav, /earlyPrep \? "#\/students\/k12" : "#\/"/u);
+  assert.match(landing, /k12 \? "#\/students\/k12" : "#\/students"/u);
+  assert.match(landing, /feature\.replace\("campus", "school"\)/u);
+});
+
+test("the signed-in Early Prep student shell cannot route into publisher or campus surfaces", () => {
+  assert.match(studentDashboard, /track === "k12" && id === "life" \? "School social" : visibleLabel/u);
+  assert.match(studentDashboard, /if \(track === "k12"\) \{[\s\S]*setTab\("classes"\);[\s\S]*return;[\s\S]*\}[\s\S]*window\.location\.hash = "#\/publishers"/u);
+  assert.match(studentDashboard, /track === "k12" \? "School" : "School or university"/u);
 });
 
 test("course creation uses the exact subject prompt and persists stable subject metadata", () => {

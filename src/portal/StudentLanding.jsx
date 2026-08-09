@@ -144,7 +144,7 @@ export default function StudentLanding({ onEnter, onTeacher, track = "university
 
         <section className="student-pricing-section">
           <div className="student-section-heading"><span className="portal-kicker">FREE STUDENT ACCOUNTS</span><h2>Every current student plan opens the same free account.</h2><p>{k12 ? "Early Prep learning tools are free. Marketplace buying, renting, selling, and seller onboarding are unavailable." : "Choose any tab below to create a free account. Optional paid services are still being designed and are not for sale."}</p></div>
-          <div className="student-pricing-grid">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p><ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><button type="button" onClick={() => onEnter?.()}>Open free account</button></article>)}</div>
+          <div className="student-pricing-grid">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p><ul>{plan.features.map((feature) => <li key={feature}>{k12 ? feature.replace("campus", "school") : feature}</li>)}</ul><button type="button" onClick={() => onEnter?.()}>Open free account</button></article>)}</div>
           {!k12 && <div className="paid-services-coming"><div><span className="portal-kicker">PAID SERVICES</span><h3>Coming soon—not required.</h3><p>Join the waitlist if you want updates about future sync, customization, and expanded storage options.</p></div><button type="button" onClick={() => setPricingWaitlistOpen(true)}>Join paid-services waitlist</button></div>}
         </section>
 
@@ -174,7 +174,7 @@ export default function StudentLanding({ onEnter, onTeacher, track = "university
         </div>
       )}
       {!k12 && pricingWaitlistOpen && <div className="portal-modal" role="dialog" aria-modal="true" aria-labelledby="pricing-waitlist-title"><div className="portal-modal-card waitlist-modal-card"><button className="modal-close" type="button" onClick={() => setPricingWaitlistOpen(false)} aria-label="Close paid services waitlist">×</button><div id="pricing-waitlist-title"><InterestForm kind="pricing_waitlist" title="Paid services waitlist" description="Tell us which optional future service you want to hear about. Your student account and current tools remain free." submitLabel="Join waitlist" emailRequired educationDivision={track} /></div></div></div>}
-      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href="#/students">Student paths</a><a href="#class-search" onClick={(event) => scrollWithinHashRoute(event, "class-search")}>Find classes</a><a href={k12 ? "#/early-prep/teacher" : "#/professors"}>{k12 ? "High-school teacher portal" : "Educator portal"}</a></footer>
+      <footer className="portal-simple-footer"><span>© {new Date().getFullYear()} EdNotebook</span><a href={k12 ? "#/students/k12" : "#/students"}>{k12 ? "Early Prep student portal" : "Student paths"}</a><a href="#class-search" onClick={(event) => scrollWithinHashRoute(event, "class-search")}>Find classes</a><a href={k12 ? "#/early-prep/teacher" : "#/professors"}>{k12 ? "High-school teacher portal" : "Educator portal"}</a></footer>
     </div>
   );
 }
