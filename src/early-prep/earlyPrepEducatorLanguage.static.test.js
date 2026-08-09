@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const authGate = await readFile(new URL("../AuthGate.jsx", import.meta.url), "utf8");
+const main = await readFile(new URL("../main.jsx", import.meta.url), "utf8");
+const courseStart = await readFile(new URL("../CourseStart.jsx", import.meta.url), "utf8");
+const courseJourney = await readFile(new URL("../CourseJourneyShell.jsx", import.meta.url), "utf8");
+const coursePackage = await readFile(new URL("../course-runtime/CoursePackageStudio.jsx", import.meta.url), "utf8");
+const syllabus = await readFile(new URL("../ai/SyllabusToCourse.jsx", import.meta.url), "utf8");
 const outline = await readFile(new URL("../ai/CourseOutlineBuilder.jsx", import.meta.url), "utf8");
 const communication = await readFile(new URL("../communication/CourseCommunicationPanel.jsx", import.meta.url), "utf8");
 const assignment = await readFile(new URL("../portal/AssignmentTemplateWorkspace.jsx", import.meta.url), "utf8");
@@ -42,4 +47,21 @@ test("Early Prep course creation and student workspaces default to Grades 9–12
   assert.match(courseRuntime, /track === "k12" \? state\.packageIdentity\.label\.replace\(\/\^Professor-\/u, "Teacher-"\)/u);
   assert.match(lessonPlayer, /educationDivision === "k12" \? "teacher" : "professor"/u);
   assert.match(digitalLiteracy, /earlyPrepEducatorCopy\(assignment\.instructions, earlyPrep\)/u);
+});
+
+test("Early Prep teacher context survives every shared class-building route", () => {
+  assert.match(main, /function readCourseBuilderEducationTrack\(\)/u);
+  assert.match(main, /accountType="professor" educationTrack=\{courseBuilderTrack\} returnTo="#\/app\/course-output"/u);
+  assert.match(main, /accountType="professor" educationTrack=\{courseBuilderTrack\} returnTo="#\/app\/syllabus"/u);
+  assert.match(main, /accountType="professor" educationTrack=\{courseBuilderTrack\} returnTo="#\/app\/builder"/u);
+  assert.match(main, /#\/student\/\$\{educationDivision === "k12" \? "k12" : "university"\}\/course/u);
+
+  assert.match(courseStart, /earlyPrep \? "Teacher workspace" : "Professor workspace"/u);
+  assert.match(courseStart, /earlyPrep \? "class" : "course"/u);
+  assert.match(courseJourney, /educationDivision === "k12"/u);
+  assert.match(courseJourney, /earlyPrep \? "CLASS" : "COURSE"/u);
+  assert.match(coursePackage, /const educatorLabel = earlyPrep \? "Teacher" : "Professor"/u);
+  assert.match(coursePackage, /onOpenStudentCourse\(publication\.id, activeCourse\.education_division\)/u);
+  assert.match(syllabus, /function educatorCopy\(value, earlyPrep\)/u);
+  assert.match(syllabus, /educationDivision = "university"/u);
 });
