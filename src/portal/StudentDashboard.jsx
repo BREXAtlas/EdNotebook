@@ -14,6 +14,7 @@ import {
 import { educationTrack as getTrack } from "./educationTracks.js";
 import AssignmentTemplateWorkspace from "./AssignmentTemplateWorkspace.jsx";
 import { StudentDigitalLiteracyAssignments } from "../digital-literacy/DigitalLiteracyPilotWorkspace.jsx";
+import { StudentFinancialLiteracyClass } from "../financial-literacy/FinancialLiteracyWorkspace.jsx";
 import StudentLearningWorkspace from "../learning/StudentLearningWorkspace.jsx";
 import AccountSettings, { LiveDateTime, readAccountSettings, saveAccountSettings } from "../AccountSettings.jsx";
 import { STORY_GUIDES, STORY_REACTION_TYPES, generateStoryFeed, getDefaultConnection, localCalendarDate } from "../demo/storyEngine.js";
@@ -37,6 +38,8 @@ import CampusSocialFeed from "../social-learning/CampusSocialFeed.jsx";
 import CourseCommunicationPanel from "../communication/CourseCommunicationPanel.jsx";
 
 const OwnYourSemester = lazy(() => import("../ai/OwnYourSemester.jsx"));
+const EarlyPrepReadinessWorkspace = lazy(() => import("../early-prep/EarlyPrepReadinessWorkspace.jsx"));
+const EarlyPrepPortfolioTransition = lazy(() => import("../early-prep/EarlyPrepPortfolioTransition.jsx"));
 
 const TABS = [
   ["overview", "Overview"], ["semester", "Own your semester"], ["classes", "Classes"], ["assignments", "Assignments"], ["grades", "Grades"], ["rewards", "Social learning"], ["notes", "Learning workspace"],
@@ -68,6 +71,7 @@ function GradeStatus({ status }) { return <span className={`grade-status is-${st
 function notificationLabel(type) {
   if (type === "course_completed") return "Badge earned";
   if (type === "course_assigned") return "Course assigned";
+  if (type === "course_feedback") return "Feedback ready";
   if (type === "marketplace_purchase") return "Purchase ready";
   if (type === "marketplace_rental") return "Rental ready";
   if (type === "marketplace_refund") return "Refund completed";
@@ -132,7 +136,7 @@ function ConnectedCoursesPanel({ courses = [], notice = "", track }) {
           <div>
             <span>CONNECTED COURSES</span>
             <h1 id="connected-course-title">Continue learning inside EdNotebook.</h1>
-            <p>Published lessons, due work, progress, completion, and grades remain connected to your professor.</p>
+            <p>Published lessons, due work, progress, completion, and grades remain connected to your {track === "k12" ? "teacher" : "professor"}.</p>
           </div>
           <div>
             {courses.map((item) => {
@@ -171,7 +175,7 @@ function ClassesPanel({ classes, track, enrollmentRequests = [], badges = [], fo
       <div className="dashboard-card-heading"><div><span className="portal-kicker">MY CLASS LIBRARY</span><h1>Every class, organized.</h1><p>Published classes appear after educator approval. Search, sort, and reopen the same protected course workspace.</p></div><a href={destination}>Find another class</a></div>
       {pending.length > 0 && <div className="class-request-queue"><strong>{pending.length} class request{pending.length === 1 ? "" : "s"} awaiting educator approval</strong>{pending.map((request) => <article key={request.id}><span>{request.course?.course_code || "CLASS"}</span><div><strong>{request.course?.title || "Published class"}</strong><small>{request.course?.professor_display_name || "Educator"} · Requested {new Date(request.requested_at).toLocaleDateString()}</small></div><i>Pending</i></article>)}</div>}
       <CourseCompletionBadges badges={badges} />
-      {classes.length > 0 && <div className="class-library-controls"><label>Search classes<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or professor" /></label><label>Sort<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="code">Course code</option><option value="title">Course title</option></select></label></div>}
+      {classes.length > 0 && <div className="class-library-controls"><label>Search classes<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Code, title, or ${track === "k12" ? "teacher" : "professor"}`} /></label><label>Sort<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="code">Course code</option><option value="title">Course title</option></select></label></div>}
       {classes.length === 0 ? <div className="empty-class-list"><strong>No approved classes yet.</strong><p>Find a published class and request access. It will move from the pending queue into this library after educator approval.</p><a href={destination}>Search for a class</a></div> : visibleClasses.length === 0 ? <div className="empty-class-list"><strong>No classes match that search.</strong><button type="button" onClick={() => setQuery("")}>Clear search</button></div> : <div className="student-class-grid">{visibleClasses.map((course) => {
         const assignedBooks = courseBooks.filter((book) => book.course_id === course.id);
         return <article key={course.id}><span>{course.code}</span><h2>{course.title}</h2><p>{course.professor}</p><div className="class-grade-line"><strong>{course.grade === null ? "—" : `${course.grade}%`}</strong><span>{course.points} points</span></div><div className="mini-progress"><i style={{ width: `${course.progress}%` }} /></div><small>{course.progress}% complete · {course.next}</small><button type="button" onClick={() => setOpenClass(openClass === course.id ? null : course.id)}>{openClass === course.id ? "Close class" : "Open class"}</button>{openClass === course.id && <div className="protected-course-preview"><span>ENROLLMENT CONFIRMED</span><strong>Protected class content</strong><p>Your lessons, assignments, files, class group, and educator feedback open here.</p>{course.publicationId ? <a href={`#/student/${track}/course/${course.publicationId}`}>Continue current lesson</a> : <span>The educator has not published a course version yet.</span>}{assignedBooks.length > 0 && <div className="assigned-course-books"><strong>Assigned Library books</strong>{assignedBooks.map((book) => <a href={`#/library/book/${book.id}`} key={book.id}>{book.title}<small>{book.reading_mode === "interactive" ? "Interactive EduBook" : "Read-only book"}</small></a>)}</div>}</div>}</article>;
@@ -272,7 +276,8 @@ function FriendsPanelV2({ track, userId, storageScope, onOpenCourseCommunication
   }
   function toggleGuideFollow() { const next = !following; setFollowing(next); window.localStorage.setItem(followingKey, JSON.stringify(next ? [personaId] : [])); }
   const people = [{ user_id: `guide-${personaId}`, display_name: guide.name, school_name: guide.role, bio: selected.guide ? selected.bio : "Weekly EdNotebook guide.", online: true, image: guide.image, guide: true }, ...results].filter((person) => !onlineOnly || person.online);
-  return <div className="portal-friends-layout"><section className="dashboard-card friend-finder"><span className="portal-kicker">FIND YOUR PEOPLE</span><h1>Friends and followers</h1><p>Search visible profiles, filter who is online, and open a profile before following or visiting the course room.</p><form onSubmit={search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Student or professor name" aria-label="Student or professor name" /><button type="submit">Search</button></form><label className="friends-online-toggle"><input type="checkbox" checked={onlineOnly} onChange={(event) => setOnlineOnly(event.target.checked)} />Online now</label>{status && <p role="status" className="friend-search-status">{status}</p>}<div className="friend-result-grid">{people.map((person) => <button type="button" className={selected?.user_id === person.user_id ? "is-active" : ""} key={person.user_id} onClick={() => setSelected(person)}>{person.image ? <img src={person.image} alt="" /> : <span>{person.display_name.slice(0, 1).toUpperCase()}</span>}<div><strong>{person.display_name}</strong><small>{person.role ? `${person.role} · ${person.school_name || "School profile"}` : person.school_name || (track === "k12" ? "School student" : "University student")} · {person.online ? "Online" : "Status unavailable"}</small><p>{person.bio || "Learning with EdNotebook."}</p></div></button>)}</div></section><aside className="dashboard-card portal-friend-profile">{selected && <><div className="portal-friend-profile-hero">{selected.image ? <img src={selected.image} alt="" /> : <span>{selected.display_name.slice(0, 1)}</span>}<div><span className="portal-kicker">PROFILE</span><h2>{selected.display_name}</h2><p>{selected.bio}</p></div></div>{selected.guide && <button type="button" onClick={toggleGuideFollow}>{following ? `Following ${guide.shortName}` : `Follow ${guide.shortName}`}</button>}<div className="course-communication-route"><strong>Messages belong to an enrolled course.</strong><p>Profiles do not create private direct-message threads. Open the synced course room to choose a current class and contact the professor or class there.</p><button type="button" onClick={onOpenCourseCommunication}>Open course communication</button></div></>}</aside></div>;
+  const educatorLabel = track === "k12" ? "teacher" : "professor";
+  return <div className="portal-friends-layout"><section className="dashboard-card friend-finder"><span className="portal-kicker">FIND YOUR PEOPLE</span><h1>Friends and followers</h1><p>Search visible profiles, filter who is online, and open a profile before following or visiting the course room.</p><form onSubmit={search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Student or ${educatorLabel} name`} aria-label={`Student or ${educatorLabel} name`} /><button type="submit">Search</button></form><label className="friends-online-toggle"><input type="checkbox" checked={onlineOnly} onChange={(event) => setOnlineOnly(event.target.checked)} />Online now</label>{status && <p role="status" className="friend-search-status">{status}</p>}<div className="friend-result-grid">{people.map((person) => <button type="button" className={selected?.user_id === person.user_id ? "is-active" : ""} key={person.user_id} onClick={() => setSelected(person)}>{person.image ? <img src={person.image} alt="" /> : <span>{person.display_name.slice(0, 1).toUpperCase()}</span>}<div><strong>{person.display_name}</strong><small>{person.role ? `${person.role} · ${person.school_name || "School profile"}` : person.school_name || (track === "k12" ? "School student" : "University student")} · {person.online ? "Online" : "Status unavailable"}</small><p>{person.bio || "Learning with EdNotebook."}</p></div></button>)}</div></section><aside className="dashboard-card portal-friend-profile">{selected && <><div className="portal-friend-profile-hero">{selected.image ? <img src={selected.image} alt="" /> : <span>{selected.display_name.slice(0, 1)}</span>}<div><span className="portal-kicker">PROFILE</span><h2>{selected.display_name}</h2><p>{selected.bio}</p></div></div>{selected.guide && <button type="button" onClick={toggleGuideFollow}>{following ? `Following ${guide.shortName}` : `Follow ${guide.shortName}`}</button>}<div className="course-communication-route"><strong>Messages belong to an enrolled course.</strong><p>Profiles do not create private direct-message threads. Open the synced course room to choose a current class and contact the {educatorLabel} or class there.</p><button type="button" onClick={onOpenCourseCommunication}>Open course communication</button></div></>}</aside></div>;
 }
 
 function StudentPagePanel({ name, track, userId, storageScope, accountSettings, onSettingsChange }) {
@@ -285,6 +290,7 @@ function StudentPagePanel({ name, track, userId, storageScope, accountSettings, 
   const [visibility, setVisibility] = useState(stored.visibility ?? accountSettings.profileVisibility ?? "private");
   const [discoverable, setDiscoverable] = useState(Object.prototype.hasOwnProperty.call(stored, "discoverable") ? Boolean(stored.discoverable) : accountSettings.discoverable !== false);
   const [notice, setNotice] = useState("");
+  const [transitionOpen, setTransitionOpen] = useState(false);
   useEffect(() => {
     let active = true;
     loadPublicStudentPage(userId, track).then(({ data }) => {
@@ -293,6 +299,7 @@ function StudentPagePanel({ name, track, userId, storageScope, accountSettings, 
     });
     return () => { active = false; };
   }, [track, userId]);
+  if (track === "k12" && transitionOpen) return <Suspense fallback={<section className="dashboard-card" role="status">Opening transition preview…</section>}><EarlyPrepPortfolioTransition onClose={() => setTransitionOpen(false)} /></Suspense>;
   async function save() {
     const local = { bio, schoolName, graduationYear, youtubeUrl, visibility, discoverable, track };
     window.localStorage.setItem(key, JSON.stringify(local));
@@ -301,7 +308,7 @@ function StudentPagePanel({ name, track, userId, storageScope, accountSettings, 
     const { error } = await savePublicStudentPage({ user_id: userId, education_division: track, display_name: nextSettings.displayName || name, school_name: schoolName.trim() || null, graduation_year: graduationYear ? Number(graduationYear) : null, bio: bio.trim() || null, youtube_url: youtubeUrl.trim() || null, visibility, discoverable_by_name: discoverable, social_links: {}, theme_key: "classic" });
     setNotice(error ? "Saved on this device. Cloud publishing unlocks after your class profile is linked." : discoverable && visibility !== "private" ? "Page saved. Students can now find it by name at the visibility you selected." : "Page saved. Your profile remains hidden from name search.");
   }
-  return <div className="student-page-builder"><section className="dashboard-card"><span className="portal-kicker">MY {track === "k12" ? "SCHOOL" : "STUDENT"} PAGE</span><h1>A page for the work and interests you choose.</h1><p>New pages start private and hidden from name search. You decide if classmates or the public can see yours.</p><label>School or university<input value={schoolName} onChange={(event) => setSchoolName(event.target.value)} /></label><label>Bio<textarea rows={4} spellCheck="true" lang="en" value={bio} onChange={(event) => setBio(event.target.value)} /></label><div className="interest-field-grid"><label>Graduation year<input type="number" min="1900" max="2200" value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)} placeholder="2028" /></label><label>Page visibility<select value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="private">Private</option><option value="class">Classmates</option><option value="public">Public</option></select></label></div><label>YouTube or project link<input type="url" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://…" /></label><label className="profile-discovery-toggle"><input type="checkbox" checked={discoverable} onChange={(event) => setDiscoverable(event.target.checked)} />Allow students to find this page by my name</label><button type="button" onClick={save}>Save page</button>{notice && <div className="portal-form-notice" role="status">{notice}</div>}</section><aside className="student-public-page"><span>{schoolName || (track === "k12" ? "YOUR SCHOOL" : "YOUR UNIVERSITY")}</span><h2>{name}</h2><p>{bio || "Add a short bio when you are ready."}</p><div><strong>0</strong><span>learning points</span></div><article><strong>Discovery</strong><span>{discoverable && visibility !== "private" ? `Findable · ${visibility}` : "Hidden"}</span></article></aside>{track === "k12" && <section className="dashboard-card student-transfer-card"><span className="portal-kicker">AFTER HIGH SCHOOL</span><h2>Carry your progress forward.</h2><p>When you move to the university portal, completed work history and selected preferences can transfer. Your K–12 posts, groups, messages, and school profile stay in the K–12 space.</p><button type="button">Preview university transfer</button></section>}<section className="professor-plan-strip">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p></article>)}</section></div>;
+  return <div className="student-page-builder"><section className="dashboard-card"><span className="portal-kicker">MY {track === "k12" ? "SCHOOL" : "STUDENT"} PAGE</span><h1>A page for the work and interests you choose.</h1><p>New pages start private and hidden from name search. You decide if classmates or the public can see yours.</p><label>School or university<input value={schoolName} onChange={(event) => setSchoolName(event.target.value)} /></label><label>Bio<textarea rows={4} spellCheck="true" lang="en" value={bio} onChange={(event) => setBio(event.target.value)} /></label><div className="interest-field-grid"><label>Graduation year<input type="number" min="1900" max="2200" value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)} placeholder="2028" /></label><label>Page visibility<select value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="private">Private</option><option value="class">Classmates</option><option value="public">Public</option></select></label></div><label>YouTube or project link<input type="url" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://…" /></label><label className="profile-discovery-toggle"><input type="checkbox" checked={discoverable} onChange={(event) => setDiscoverable(event.target.checked)} />Allow students to find this page by my name</label><button type="button" onClick={save}>Save page</button>{notice && <div className="portal-form-notice" role="status">{notice}</div>}</section><aside className="student-public-page"><span>{schoolName || (track === "k12" ? "YOUR SCHOOL" : "YOUR UNIVERSITY")}</span><h2>{name}</h2><p>{bio || "Add a short bio when you are ready."}</p><div><strong>0</strong><span>learning points</span></div><article><strong>Discovery</strong><span>{discoverable && visibility !== "private" ? `Findable · ${visibility}` : "Hidden"}</span></article></aside>{track === "k12" && <section className="dashboard-card student-transfer-card"><span className="portal-kicker">AFTER HIGH SCHOOL</span><h2>Carry your progress forward.</h2><p>Preview selected learning work and completion evidence before any future reviewed transition. Grades, school messages, safety records, and social audiences stay behind.</p><button type="button" onClick={() => setTransitionOpen(true)}>Preview university transition</button></section>}<section className="professor-plan-strip">{STUDENT_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p></article>)}</section></div>;
 }
 
 function OpportunitiesPanel({ track }) {
@@ -352,7 +359,7 @@ export default function StudentDashboard({
   useEffect(() => {
     let active = true;
     Promise.all([
-      listCurrentStudentCourses(),
+      listCurrentStudentCourses(track),
       listCurrentStudentEnrollmentRequests(session?.user?.id),
       listStudentAccountNotifications(session?.user?.id),
       listStudentCourseBadges(session?.user?.id),
@@ -371,6 +378,7 @@ export default function StudentDashboard({
         grade: null,
         next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
         division: course.education_division,
+        subjectId: course.subject_id || null,
         publicationId: course.publication_id,
       })));
     });
@@ -412,7 +420,7 @@ export default function StudentDashboard({
         : "Class request sent. It will appear in your library after the educator approves it.");
       const [requestResult, courseResult, notificationResult] = await Promise.all([
         listCurrentStudentEnrollmentRequests(studentId),
-        listCurrentStudentCourses(),
+        listCurrentStudentCourses(track),
         listStudentAccountNotifications(studentId),
       ]);
       if (!active) return;
@@ -426,8 +434,9 @@ export default function StudentDashboard({
         progress: 0,
         points: 0,
         grade: null,
-        next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
         division: course.education_division,
+        subjectId: course.subject_id || null,
+        next: course.publication_id ? `Published version ${course.publication_version || 1}` : "No work published yet",
         publicationId: course.publication_id,
       })));
     });
@@ -476,6 +485,11 @@ export default function StudentDashboard({
       return;
     }
     if (notification.dedupe_key?.startsWith("digital-literacy-assignment:")) {
+      setNotificationAssignmentId(notification.dedupe_key.split(":")[1] || null);
+      setTab("assignments");
+      return;
+    }
+    if (notification.dedupe_key?.startsWith("digital-literacy-feedback:")) {
       setNotificationAssignmentId(notification.dedupe_key.split(":")[1] || null);
       setTab("assignments");
       return;
@@ -531,7 +545,10 @@ export default function StudentDashboard({
       <div className="student-dashboard-shell">
         <aside className="student-dashboard-sidebar">
           <div className="student-sidebar-profile"><span>{(demoMode ? "B" : displayName.slice(0, 1)).toUpperCase()}</span><div><strong>{demoMode ? "Brooke" : displayName}</strong><small>{demoMode ? "Demonstration student" : liveClasses.length ? `${liveClasses.length} linked class${liveClasses.length === 1 ? "" : "es"}` : "New student workspace"}</small></div></div>
-          <nav aria-label={`${copy.shortLabel} student dashboard`}>{TABS.map(([id, label]) => <button className={(id === "demo" ? demoMode : tab === id && !demoMode) ? "is-active" : ""} aria-current={(id === "demo" ? demoMode : tab === id && !demoMode) ? "page" : undefined} type="button" key={id} onClick={() => chooseTab(id)}>{label}{id === "grades" && classes.length > 0 && <i>{rows.filter((row) => row.status !== "final").length}</i>}</button>)}</nav>
+          <nav aria-label={`${copy.shortLabel} student dashboard`}>{TABS.map(([id, label]) => {
+            const visibleLabel = track === "k12" && id === "opportunities" ? "College & Career" : label;
+            return <button className={(id === "demo" ? demoMode : tab === id && !demoMode) ? "is-active" : ""} aria-current={(id === "demo" ? demoMode : tab === id && !demoMode) ? "page" : undefined} type="button" key={id} onClick={() => chooseTab(id)}>{visibleLabel}{id === "grades" && classes.length > 0 && <i>{rows.filter((row) => row.status !== "final").length}</i>}</button>;
+          })}</nav>
           <div className="student-sidebar-points"><span>SOCIAL EDUCATION LEARNING</span><strong>{rewardSummary.totalPoints} points</strong><div><i style={{ width: `${rewardSummary.progressPercent}%` }} /></div><small>{rewardSummary.nextMilestone ? `${rewardSummary.pointsToNext} to ${rewardSummary.nextMilestone.badge_name}` : "Current path complete"}</small></div>
         </aside>
         <main className="student-dashboard-main">
@@ -542,15 +559,16 @@ export default function StudentDashboard({
           {tab === "overview" && <OverviewPanel name={demoMode ? "Brooke" : displayName} onTab={chooseTab} classes={classes} track={track} rewardSummary={rewardSummary} />}
           {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening Own Your Semester…</section>}><OwnYourSemester profile={profile} session={session} track={track} classes={classes} /></Suspense>}
           {tab === "classes" && <ClassesPanel classes={classes} track={track} enrollmentRequests={enrollmentRequests} badges={courseBadges} focusCourseId={notificationCourseId} courseBooks={demoMode ? [] : courseBooks} />}
-          {tab === "assignments" && <>{!demoMode && <StudentDigitalLiteracyAssignments track={track} session={session} focusAssignmentId={notificationAssignmentId} />}{classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">OTHER ASSIGNMENTS</span><h1>No other assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>}</>}
+          {tab === "assignments" && <>{!demoMode && <StudentDigitalLiteracyAssignments track={track} session={session} focusAssignmentId={notificationAssignmentId} />}{!demoMode && track === "k12" && <StudentFinancialLiteracyClass track={track} />}{classes.length ? <AssignmentTemplateWorkspace mode="student" session={session} track={track} classes={classes} /> : <section className="dashboard-card empty-dashboard-card"><span className="portal-kicker">OTHER ASSIGNMENTS</span><h1>No other assignments yet.</h1><p>Templates, full-page writing, and submitted work will appear here after you join a class.</p><a href={`#/students/${track}`}>Find a class</a></section>}</>}
           {tab === "grades" && <GradesPanel classes={classes} rows={rows} track={track} />}
-          {tab === "rewards" && <StudentSocialLearningPanel userId={session?.user?.id} demo={demoMode} courseBadges={demoMode ? [] : courseBadges} onSummary={setRewardSummary} />}
+          {tab === "rewards" && <StudentSocialLearningPanel userId={session?.user?.id} demo={demoMode} courseBadges={demoMode ? [] : courseBadges} onSummary={setRewardSummary} track={track} />}
           {tab === "notes" && <StudentLearningWorkspace key={`learning-${settingsScope}-${track}`} classes={classes} session={session} track={track} storageScope={settingsScope} />}
           {tab === "life" && <CampusSocialFeed key={`life-${settingsScope}-${track}`} session={session} role="student" educationDivision={track} displayName={accountSettings.displayName || profile?.full_name || displayName} onOpenMessages={() => chooseTab("messages")} />}
           {tab === "friends" && <FriendsPanelV2 key={`friends-${settingsScope}-${track}`} track={track} userId={session?.user?.id} storageScope={settingsScope} onOpenCourseCommunication={() => chooseTab("messages")} />}
           {tab === "messages" && <CourseCommunicationPanel key={`messages-${settingsScope}-${track}`} role="student" session={session} educationDivision={track} />}
           {tab === "page" && <StudentPagePanel key={`page-${settingsScope}-${track}`} name={accountSettings.displayName || profile?.full_name || displayName} track={track} userId={session?.user?.id} storageScope={settingsScope} accountSettings={accountSettings} onSettingsChange={applyAccountSettings} />}
-          {tab === "opportunities" && <OpportunitiesPanel track={track} />}
+          {tab === "opportunities" && track === "k12" && <Suspense fallback={<section className="dashboard-card" role="status">Opening College & Career tools…</section>}><EarlyPrepReadinessWorkspace mode="student" onOpenLearningWorkspace={() => setTab("notes")} onOpenPortfolio={() => setTab("page")} /></Suspense>}
+          {tab === "opportunities" && track !== "k12" && <OpportunitiesPanel track={track} />}
           {tab === "settings" && <AccountSettings scope={settingsScope} accountType="student" settings={accountSettings} onSettingsChange={applyAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} />}
         </main>
       </div>

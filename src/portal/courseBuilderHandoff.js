@@ -7,6 +7,8 @@ function courseDraft(course) {
     id: course.id,
     name: course.title || "",
     code: course.course_code || course.code || "",
+    educationDivision: course.education_division || course.division || "university",
+    subjectId: course.subject_id || course.subjectId || null,
     subject: course.subject || "",
     audience: course.audience || "",
     length: course.teaching_window || course.term || "16 weeks",
@@ -16,11 +18,12 @@ function courseDraft(course) {
   };
 }
 
-export function prepareProfessorCourseBuilder(storage, course) {
+export function prepareProfessorCourseBuilder(storage, course, educationDivision = null) {
   if (course === null) {
     storage.removeItem(COURSE_DRAFT_KEY);
     storage.removeItem(COURSE_ID_KEY);
     storage.removeItem(COURSE_STEP_KEY);
+    if (educationDivision) storage.setItem("ednotebook-course-division", educationDivision);
     return "#/app";
   }
 
@@ -28,6 +31,7 @@ export function prepareProfessorCourseBuilder(storage, course) {
     storage.setItem(COURSE_DRAFT_KEY, JSON.stringify(courseDraft(course)));
     storage.setItem(COURSE_ID_KEY, course.id);
     storage.setItem(COURSE_STEP_KEY, "2");
+    storage.setItem("ednotebook-course-division", course.education_division || course.division || educationDivision || "university");
     return "#/app/builder";
   }
 

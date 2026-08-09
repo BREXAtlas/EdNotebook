@@ -3,7 +3,8 @@ import EdNotebookMediaReader from "../media/EdNotebookMediaReader.jsx";
 import { normalizeHttpsUrl } from "../media/courseMediaModel.js";
 import { deleteMyCourseLink, listMyCourseResources, saveMyCourseLink } from "./courseService.js";
 
-export default function CourseResourcesPanel({ courseId, resources = [], onMediaEvidence }) {
+export default function CourseResourcesPanel({ courseId, resources = [], onMediaEvidence, educationDivision = "university" }) {
+  const educatorLabel = educationDivision === "k12" ? "teacher" : "professor";
   const [personal, setPersonal] = useState([]);
   const [form, setForm] = useState({ url: "", title: "", description: "" });
   const [notice, setNotice] = useState("");
@@ -60,10 +61,10 @@ export default function CourseResourcesPanel({ courseId, resources = [], onMedia
       <header>
         <span className="course-kicker">MEDIA &amp; RESOURCES</span>
         <h1 id="course-resources-title">Watch, read, and keep your source trail here.</h1>
-        <p>Professor-published media stays attached to this course. Your saved resources remain private.</p>
+        <p>{educatorLabel[0].toUpperCase() + educatorLabel.slice(1)}-published media stays attached to this course. Your saved resources remain private.</p>
       </header>
       <section aria-labelledby="professor-course-resources">
-        <h2 id="professor-course-resources">From your professor</h2>
+        <h2 id="professor-course-resources">From your {educatorLabel}</h2>
         <div className="course-resource-grid">
           {courseResources.map((resource) => <EdNotebookMediaReader key={resource.id} resource={resource} onEvidence={onMediaEvidence} />)}
         </div>

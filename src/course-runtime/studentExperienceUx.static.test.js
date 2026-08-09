@@ -69,7 +69,7 @@ test("student course stays in the signed-in course shell and reuses existing too
 
 test("lesson follows orient, read, act, check, recover, and continue acceptance flow", () => {
   assert.match(player, /ORIENT/u);
-  assert.match(player, /READ · PROFESSOR-APPROVED LESSON/u);
+  assert.match(player, /READ · \{educatorLabel\.toUpperCase\(\)\}-APPROVED LESSON/u);
   assert.match(player, /ACT · APPLY THE LESSON/u);
   assert.match(player, /CHECK · FEEDBACK AND RECOVERY/u);
   assert.match(player, /Not yet—this is recoverable/u);

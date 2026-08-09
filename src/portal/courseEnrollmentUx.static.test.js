@@ -17,6 +17,8 @@ test("student notifications clear persistently and route into the triggering cou
   assert.match(studentDashboard, /markStudentAccountNotificationRead/u);
   assert.match(studentDashboard, /notification\.route === "library"/u);
   assert.match(studentDashboard, /notification\.dedupe_key\?\.startsWith\("digital-literacy-assignment:"\)/u);
+  assert.match(studentDashboard, /notification\.dedupe_key\?\.startsWith\("digital-literacy-feedback:"\)/u);
+  assert.match(studentDashboard, /type === "course_feedback"/u);
   assert.match(studentDashboard, /setNotificationAssignmentId/u);
   assert.match(studentDashboard, /setTab\("assignments"\)/u);
   assert.match(studentDashboard, /notification\.route === "rewards" \? "rewards" : "classes"/u);
@@ -50,7 +52,7 @@ test("professors control approval, open enrollment, universal assignment, and ba
 });
 
 test("public discovery explains the enrollment handoff before sign in", () => {
-  assert.match(classDirectory, /Professor approval required/u);
+  assert.match(classDirectory, /track === "k12" \? "Teacher" : "Professor"/u);
   assert.match(classDirectory, /Open · join immediately/u);
   assert.match(studentLanding, /Sign in and join this class/u);
   assert.match(studentLanding, /Sign in to request this class/u);

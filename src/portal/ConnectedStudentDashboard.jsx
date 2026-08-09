@@ -12,7 +12,7 @@ export default function ConnectedStudentDashboard(props) {
   useEffect(() => {
     let active = true;
     (async () => {
-      const courseResult = await listCurrentStudentCourses();
+      const courseResult = await listCurrentStudentCourses(track);
       if (!active) return;
       if (courseResult.error) { setNotice(courseResult.error.message); return; }
       const courseRows = courseResult.data || [];
@@ -27,7 +27,7 @@ export default function ConnectedStudentDashboard(props) {
       if (active) setCourses(connected.filter((item) => item.course));
     })();
     return () => { active = false; };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, track]);
 
   return (
     <StudentDashboard

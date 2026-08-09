@@ -1,0 +1,57 @@
+.fl-professor-workspace,
+.fl-course-page { display: grid; gap: 18px; }
+.fl-hero { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; align-items: center; border-color: #d6b56e; background: linear-gradient(135deg,#fffdf7,#fff5d9); }
+.fl-hero h1 { margin: 6px 0; }
+.fl-hero p { max-width: 780px; }
+.fl-hero > div:last-child { display: grid; gap: 10px; min-width: 220px; text-align: center; }
+.fl-hero a { color: #765713; font-size: .84rem; font-weight: 800; }
+.fl-hero dl { display: flex; flex-wrap: wrap; gap: 14px 28px; margin: 18px 0 0; }
+.fl-hero dl div { display: grid; gap: 2px; }
+.fl-hero dt { color: #756641; font-size: .69rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.fl-hero dd { margin: 0; color: #684b0c; font-weight: 800; }
+.fl-boundary { border-left: 5px solid #1f7a55; background: #f2fbf6; }
+.fl-boundary p { margin-bottom: 0; }
+.fl-preview { padding: 0; overflow: hidden; }
+.fl-preview > header { display: flex; justify-content: space-between; gap: 18px; padding: 20px 22px 0; }
+.fl-preview iframe { display: block; width: 100%; min-height: 720px; border: 0; border-top: 1px solid #e7dec8; background: white; }
+.fl-roster-progress label { display: grid; min-width: 280px; gap: 6px; font-weight: 750; }
+.fl-roster-progress > div:last-child { display: grid; gap: 8px; }
+.fl-roster-progress article { display: grid; grid-template-columns: minmax(210px,.6fr) minmax(180px,1fr) auto; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid #eee7d8; }
+.fl-roster-progress article div { display: grid; gap: 3px; }
+.fl-roster-progress article span,.fl-roster-progress article small { color: #6d6659; font-size: .78rem; }
+.fl-unit-groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.fl-unit-groups section { padding: 14px; border: 1px solid #e4dccb; border-radius: 14px; }
+.fl-unit-groups header { display: grid; gap: 3px; }
+.fl-unit-groups header span { color: #876920; font-size: .68rem; font-weight: 850; letter-spacing: .08em; }
+.fl-unit-groups ol { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.fl-unit-groups li { display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 8px; font-size: .8rem; }
+.fl-unit-groups li span { color: #876920; font-weight: 850; }
+.fl-student-card { border-color: #d6b56e; background: linear-gradient(135deg,#fffefa,#fff8e6); }
+.fl-student-card > i { text-transform: uppercase; }
+.fl-progress { display: grid; grid-template-columns: minmax(180px,1fr) auto auto; gap: 12px; align-items: center; margin: 16px 0; }
+.fl-student-card footer { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.fl-badge { display: flex; gap: 12px; padding: 12px; margin: 12px 0; border: 1px solid #d6b56e; border-radius: 12px; background: #fffaf0; }
+.fl-badge > span { color: #b08016; font-size: 1.4rem; }
+.fl-badge p { margin: 3px 0; }
+.fl-course-page { min-height: 100vh; padding: 18px; background: #f5f2ea; }
+.fl-course-page > header { display: grid; grid-template-columns: auto minmax(0,1fr) minmax(180px,.35fr); gap: 18px; align-items: center; padding: 14px 18px; border: 1px solid #ded5c1; border-radius: 14px; background: white; }
+.fl-course-page > header > div { display: grid; gap: 4px; }
+.fl-course-page > header span { color: #756641; font-size: .72rem; font-weight: 800; }
+.fl-course-shell { display: grid; grid-template-columns: minmax(230px,280px) minmax(0,1fr); min-height: 760px; border: 1px solid #ded5c1; border-radius: 14px; overflow: hidden; background: white; }
+.fl-course-shell > nav { max-height: 820px; overflow: auto; padding: 10px; background: #f9f6ee; border-right: 1px solid #ded5c1; }
+.fl-course-shell > nav button { width: 100%; display: grid; gap: 3px; padding: 10px; border: 0; border-radius: 9px; background: transparent; text-align: left; }
+.fl-course-shell > nav button:hover,.fl-course-shell > nav button.is-active { background: #fff; box-shadow: 0 0 0 1px #d6b56e; }
+.fl-course-shell > nav button.is-complete { color: #176b47; }
+.fl-course-shell > nav span,.fl-course-shell > nav i { font-size: .68rem; }
+.fl-course-shell > nav i { font-style: normal; }
+.fl-course-frame { display: grid; grid-template-rows: auto minmax(650px,1fr) auto; min-width: 0; }
+.fl-course-frame > div,.fl-course-frame > footer { display: flex; justify-content: space-between; gap: 18px; align-items: center; padding: 13px 16px; }
+.fl-course-frame > div > div { display: grid; gap: 2px; }
+.fl-course-frame > div span { color: #6d6659; font-size: .72rem; }
+.fl-course-frame iframe { width: 100%; height: 100%; min-height: 650px; border: 0; border-block: 1px solid #eee7d8; }
+.fl-course-frame > footer p { max-width: 700px; margin: 0; font-size: .8rem; }
+@media (max-width: 840px) {
+  .fl-hero,.fl-unit-groups,.fl-course-shell { grid-template-columns: 1fr; }
+  .fl-roster-progress article,.fl-course-page > header { grid-template-columns: 1fr; }
+  .fl-course-shell > nav { max-height: 300px; border-right: 0; border-bottom: 1px solid #ded5c1; }
+}

@@ -178,9 +178,9 @@ export const K12_SCHOOLS = [
 ];
 
 export const K12_STUDENT_CLASSES = [
-  { id: "eng10-stories", code: "ENG 10", title: "Stories and Evidence", professor: "Ms. Carter", progress: 71, points: 620, grade: 91.2, next: "Evidence paragraph · tomorrow" },
-  { id: "alg1-functions", code: "ALG I", title: "Algebra I", professor: "Mr. Brooks", progress: 58, points: 510, grade: 86.5, next: "Functions practice · Friday" },
-  { id: "bio9-cells", code: "BIO 9", title: "Living Systems", professor: "Dr. Kim", progress: 64, points: 575, grade: 89.7, next: "Cell model check · Monday" },
+  { id: "eng10-stories", code: "ENG 10", title: "Stories and Evidence", professor: "Ms. Carter", progress: 71, points: 620, grade: 91.2, next: "Evidence paragraph · tomorrow", division: "k12", subjectId: "english-language-arts" },
+  { id: "alg1-functions", code: "ALG I", title: "Algebra I", professor: "Mr. Brooks", progress: 58, points: 510, grade: 86.5, next: "Functions practice · Friday", division: "k12", subjectId: "mathematics" },
+  { id: "bio9-cells", code: "BIO 9", title: "Living Systems", professor: "Dr. Kim", progress: 64, points: 575, grade: 89.7, next: "Cell model check · Monday", division: "k12", subjectId: "science" },
 ];
 
 export const K12_GRADE_ROWS = [

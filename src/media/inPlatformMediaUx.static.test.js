@@ -25,7 +25,7 @@ test("learner media stays in the course and in the selected lesson", () => {
   assert.match(runtime, /CourseResourcesPanel/);
   assert.match(runtime, /Media &amp; resources/);
   assert.match(runtime, /target_kind === "assignment"/);
-  assert.match(player, /PROFESSOR-PUBLISHED MEDIA/);
+  assert.match(player, /\{educatorLabel\.toUpperCase\(\)\}-PUBLISHED MEDIA/);
   assert.match(reader, /Play here in EdNotebook/);
   assert.match(reader, /youtubePrivacyEmbedUrl/);
   assert.match(model, /youtube-nocookie\.com/);

@@ -4,13 +4,16 @@ export function isDatabaseId(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
 
-export async function listAssignmentCourses() {
+export async function listAssignmentCourses(educationDivision = null) {
   if (!isSupabaseConfigured) return { data: [], source: "device" };
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("courses")
-    .select("id,course_code,title,education_division")
-    .order("updated_at", { ascending: false });
+    .select("id,course_code,title,education_division,subject_id");
+  if (["k12", "university"].includes(educationDivision)) {
+    query = query.eq("education_division", educationDivision);
+  }
+  const { data, error } = await query.order("updated_at", { ascending: false });
 
   if (error) return { data: [], error, source: "device" };
   return {
@@ -19,6 +22,7 @@ export async function listAssignmentCourses() {
       code: course.course_code || "CLASS",
       title: course.title,
       division: course.education_division || "university",
+      subjectId: course.subject_id || null,
     })),
     source: "cloud",
   };
@@ -29,7 +33,7 @@ export async function listAssignmentTemplates(courseId, includeDrafts = false) {
 
   let query = supabase
     .from("assignment_form_templates")
-    .select("id,course_id,created_by,title,instructions,sections,editor_config,status,published_at,updated_at")
+    .select("id,course_id,created_by,title,instructions,sections,editor_config,status,subject_id,published_at,updated_at")
     .eq("course_id", courseId)
     .order("updated_at", { ascending: false });
 
@@ -47,6 +51,7 @@ export async function saveAssignmentTemplate(template, userId) {
   const payload = {
     ...(isDatabaseId(template.id) ? { id: template.id } : {}),
     course_id: template.course_id,
+    subject_id: template.subject_id || null,
     created_by: userId,
     title: template.title,
     instructions: template.instructions || "",

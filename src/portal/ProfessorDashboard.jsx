@@ -19,17 +19,35 @@ import { ProfessorSocialLearningPanel } from "../social-learning/SocialLearningP
 import CampusSocialFeed from "../social-learning/CampusSocialFeed.jsx";
 import CourseCommunicationPanel from "../communication/CourseCommunicationPanel.jsx";
 import { ProfessorDigitalLiteracyPilot } from "../digital-literacy/DigitalLiteracyPilotWorkspace.jsx";
+import { ProfessorFinancialLiteracyClass } from "../financial-literacy/FinancialLiteracyWorkspace.jsx";
 
 const ProfessorSemesterCalendar = lazy(() =>
   import("../ai/ProfessorSemesterCalendar.jsx")
 );
+const EarlyPrepLearningSystemsAcceptance = lazy(() =>
+  import("../integrations/early-prep/EarlyPrepLearningSystemsAcceptance.jsx")
+);
+const EarlyPrepReadinessWorkspace = lazy(() =>
+  import("../early-prep/EarlyPrepReadinessWorkspace.jsx")
+);
 
 const NAV_GROUPS = [
-  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["templates", "Assignments"]] },
+  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["financial-literacy", "Financial Literacy"], ["templates", "Assignments"], ["readiness", "College & Career"], ["learning-systems", "Learning Systems"]] },
   { label: "Students", items: [["students", "Students & Roster"], ["rewards", "Social Learning"], ["grades", "Progress & Analytics"], ["attendance", "Attendance"]] },
   { label: "Connect", items: [["notifications", "Notifications"], ["announcements", "Campus Social"], ["communication", "Course Communication"], ["profile", "Educator Page"]] },
   { label: "Account", items: [["verification", "School Verification"], ["security", "Security"], ["settings", "Settings"], ["help", "Help & Support"]] },
 ];
+
+const EARLY_PREP_NAV_LABELS = Object.freeze({
+  classes: "My Classes",
+  "digital-literacy": "Digital Literacy Class",
+  "financial-literacy": "Financial Literacy Class",
+  readiness: "College & Career Tools",
+  announcements: "School Social",
+  communication: "Class Communication",
+});
+
+const EARLY_PREP_ONLY_NAV_ITEMS = new Set(["financial-literacy", "readiness", "learning-systems"]);
 
 const TOUR = [
   ["Teaching overview", "See your real courses, enrollment requests, progress, and upcoming work."],
@@ -44,8 +62,8 @@ function EducatorTour({ step, setStep }) {
   return <div className="dashboard-tour-backdrop" role="dialog" aria-modal="true"><div className="dashboard-tour-card"><span>EDUCATOR TOUR · {step + 1} OF {TOUR.length}</span><h2>{TOUR[step][0]}</h2><p>{TOUR[step][1]}</p><div><button type="button" onClick={() => setStep(null)}>Close</button><button type="button" onClick={() => setStep(step === TOUR.length - 1 ? null : step + 1)}>{step === TOUR.length - 1 ? "Finish" : "Next"}</button></div></div></div>;
 }
 
-function ProfessorNavigation({ tab, setTab, pendingRequests = 0 }) {
-  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.map(([id, label]) => <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>)}</div>)}</nav>;
+function ProfessorNavigation({ tab, setTab, pendingRequests = 0, divisionScope = null }) {
+  return <nav aria-label="Educator dashboard">{NAV_GROUPS.map((group) => <div className="professor-nav-group" key={group.label}><span>{group.label}</span>{group.items.filter(([id]) => !EARLY_PREP_ONLY_NAV_ITEMS.has(id) || divisionScope === "k12").map(([id, defaultLabel]) => { const label = divisionScope === "k12" ? (EARLY_PREP_NAV_LABELS[id] || defaultLabel) : defaultLabel; return <button className={tab === id ? "is-active" : ""} aria-current={tab === id ? "page" : undefined} type="button" key={id} onClick={() => setTab(id)}>{label}{id === "students" && pendingRequests > 0 && <i>{pendingRequests}</i>}</button>; })}</div>)}</nav>;
 }
 
 function SensitiveAccess({ session, unlocked, onUnlock, onLock, children }) {
@@ -58,15 +76,17 @@ function SensitiveAccess({ session, unlocked, onUnlock, onLock, children }) {
   return <section className="sensitive-access-card"><span className="portal-kicker">SENSITIVE EDUCATOR AREA</span><h1>Verify it's you before opening student progress.</h1><p>Re-enter the password for {session?.user?.email || "this educator account"}. This area locks when you leave the tab or after five minutes.</p><form onSubmit={verify}><label>Account password<input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>{error && <div role="alert">{error}</div>}<button type="submit" disabled={busy}>{busy ? "Verifying…" : "Unlock for five minutes"}</button></form></section>;
 }
 
-function Overview({ setTab, classes, enrollmentRequests }) {
+function Overview({ setTab, classes, enrollmentRequests, divisionScope = null }) {
   const published = classes.filter((course) => course.published);
   const students = classes.reduce((sum, course) => sum + course.students, 0);
   const pending = enrollmentRequests.filter((request) => request.status === "pending");
+  const earlyPrep = divisionScope === "k12";
   return <div className="professor-panel-stack">
-    <section className="professor-welcome-card"><div><span>EDUCATOR WORKSPACE</span><h1>Every course, student, and conversation in one teaching home.</h1><p>Create and manage courses, review the learner experience, organize assignments, and publish when ready.</p></div><button type="button" onClick={() => setTab("classes")}>Open My Courses</button></section>
-    <section className="dashboard-card professor-digital-literacy-entry"><div><span className="portal-kicker">AUTOMATIC COURSE · READY TO REVIEW</span><h2>Digital Literacy Course</h2><p>The full canonical course is available to every professor account. Open it to preview the learner experience, review modules and quizzes, or assign selected content to your students.</p></div><button type="button" onClick={() => setTab("digital-literacy")}>Open Digital Literacy Course</button></section>
-    <section className="student-stat-grid professor-stat-grid"><article><span>Published courses</span><strong>{published.length}</strong><button type="button" onClick={() => setTab("classes")}>Manage</button></article><article><span>Enrolled students</span><strong>{students}</strong><button type="button" onClick={() => setTab("students")}>Open roster</button></article><article><span>Enrollment requests</span><strong>{pending.length}</strong><button type="button" onClick={() => setTab("students")}>{pending.length ? "Review now" : "Queue is clear"}</button></article><article><span>Draft courses</span><strong>{classes.length - published.length}</strong><button type="button" onClick={() => setTab("classes")}>Continue building</button></article></section>
-    <section className="professor-dashboard-columns"><article className="dashboard-card"><span className="portal-kicker">ACCOUNT LINKING</span><h2>{pending.length ? "Students waiting" : "No requests waiting"}</h2>{pending.slice(0, 4).map((request) => <div className="professor-alert-row" key={request.id}><span>{request.course?.course_code || "COURSE"}</span><strong>approval requested</strong></div>)}<button type="button" onClick={() => setTab("students")}>Open approval queue</button></article><article className="dashboard-card"><span className="portal-kicker">SCHOOL AFFILIATION</span><h2>Verification is separate from workspace access.</h2><p>Your professor workspace remains active. Institutional review adds the verified affiliation badge and governs access to institution-owned records.</p><button type="button" onClick={() => setTab("verification")}>Open School Verification</button></article></section>
+    <section className="professor-welcome-card"><div><span>{earlyPrep ? "EARLY PREP TEACHER WORKSPACE" : "EDUCATOR WORKSPACE"}</span><h1>{earlyPrep ? "Every class, student, and conversation in one teaching home." : "Every course, student, and conversation in one teaching home."}</h1><p>{earlyPrep ? "Create and manage classes, review the learner experience, organize assignments, and publish when ready." : "Create and manage courses, review the learner experience, organize assignments, and publish when ready."}</p></div><button type="button" onClick={() => setTab("classes")}>{earlyPrep ? "Open My Classes" : "Open My Courses"}</button></section>
+    <section className="dashboard-card professor-digital-literacy-entry"><div><span className="portal-kicker">{earlyPrep ? "AUTOMATIC CLASS · READY TO REVIEW" : "AUTOMATIC COURSE · READY TO REVIEW"}</span><h2>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</h2><p>{earlyPrep ? "The canonical Digital Literacy Class is available to every Early Prep teacher account. Preview it or assign selected content without creating a duplicate curriculum copy." : "The full canonical course is available to every professor account. Open it to preview the learner experience, review modules and quizzes, or assign selected content to your students."}</p></div><button type="button" onClick={() => setTab("digital-literacy")}>{earlyPrep ? "Open Digital Literacy Class" : "Open Digital Literacy Course"}</button></section>
+    {earlyPrep && <section className="dashboard-card professor-financial-literacy-entry"><div><span className="portal-kicker">FREE AUTOMATIC CLASS · GRADES 9–12</span><h2>Financial Literacy / Personal Finance</h2><p>The canonical Ram Ready Financial Futures starter class is ready for every Early Prep student. It is separate from marketplace, checkout, and all University publishing work.</p></div><button type="button" onClick={() => setTab("financial-literacy")}>Open Financial Literacy Class</button></section>}
+    <section className="student-stat-grid professor-stat-grid"><article><span>Published {earlyPrep ? "classes" : "courses"}</span><strong>{published.length}</strong><button type="button" onClick={() => setTab("classes")}>Manage</button></article><article><span>Enrolled students</span><strong>{students}</strong><button type="button" onClick={() => setTab("students")}>Open roster</button></article><article><span>Enrollment requests</span><strong>{pending.length}</strong><button type="button" onClick={() => setTab("students")}>{pending.length ? "Review now" : "Queue is clear"}</button></article><article><span>Draft {earlyPrep ? "classes" : "courses"}</span><strong>{classes.length - published.length}</strong><button type="button" onClick={() => setTab("classes")}>Continue building</button></article></section>
+    <section className="professor-dashboard-columns"><article className="dashboard-card"><span className="portal-kicker">ACCOUNT LINKING</span><h2>{pending.length ? "Students waiting" : "No requests waiting"}</h2>{pending.slice(0, 4).map((request) => <div className="professor-alert-row" key={request.id}><span>{request.course?.course_code || "COURSE"}</span><strong>approval requested</strong></div>)}<button type="button" onClick={() => setTab("students")}>Open approval queue</button></article><article className="dashboard-card"><span className="portal-kicker">SCHOOL AFFILIATION</span><h2>Verification is separate from workspace access.</h2><p>{earlyPrep ? "Your teacher workspace remains active. School review adds the verified affiliation badge and governs access to school-owned records." : "Your professor workspace remains active. Institutional review adds the verified affiliation badge and governs access to institution-owned records."}</p><button type="button" onClick={() => setTab("verification")}>Open School Verification</button></article></section>
   </div>;
 }
 
@@ -82,7 +102,7 @@ function CourseAccessControls({ course, onSave, busy }) {
   }
   return <div className="professor-course-access-controls">
     <div>
-      <label>Student access<select value={enrollmentPolicy} onChange={changePolicy} disabled={busy}><option value="approval_required">Professor approval required</option><option value="open_self_enroll">Open · students join immediately</option></select></label>
+      <label>Student access<select value={enrollmentPolicy} onChange={changePolicy} disabled={busy}><option value="approval_required">{course.division === "k12" ? "Teacher approval required" : "Professor approval required"}</option><option value="open_self_enroll">Open · students join immediately</option></select></label>
       <label className="professor-universal-course"><input type="checkbox" checked={universalAssignment} disabled={busy || enrollmentPolicy !== "open_self_enroll"} onChange={(event) => setUniversalAssignment(event.target.checked)} />Assign to every eligible new student</label>
     </div>
     <p>{enrollmentPolicy === "approval_required"
@@ -109,6 +129,7 @@ function CourseLibraryControls({ course, onSave, busy }) {
   const [price, setPrice] = useState(course.libraryPriceCents ? (course.libraryPriceCents / 100).toFixed(2) : "");
   const [rentalDays, setRentalDays] = useState(course.libraryRentalDays || 30);
   const commercial = accessModel === "purchase" || accessModel === "rental";
+  if (course.division === "k12") return <div className="class-publishing-note"><strong>Commerce unavailable in Early Prep</strong><span>This class can be published to enrolled students, but it cannot be bought, rented, sold, or listed in the Alex B. Morrison marketplace.</span></div>;
   return <div className="professor-library-listing-controls">
     <div>
       <label>Alex B. Morrison listing<select value={accessModel} disabled={busy} onChange={(event) => setAccessModel(event.target.value)}>
@@ -135,17 +156,48 @@ function CourseLibraryControls({ course, onSave, busy }) {
   </div>;
 }
 
-function Classes({ onBuild, onOpenDigitalLiteracy, classes, onSaveAccess, accessBusyCourse, onSaveLibrary, libraryBusyCourse }) {
+function Classes({ onBuild, onOpenDigitalLiteracy, onOpenFinancialLiteracy, classes, divisionScope = null, onSaveAccess, accessBusyCourse, onSaveLibrary, libraryBusyCourse }) {
   const [query, setQuery] = useState("");
-  const [division, setDivision] = useState("all");
+  const [division, setDivision] = useState(divisionScope || "all");
   const [status, setStatus] = useState("all");
+  const earlyPrep = divisionScope === "k12";
   const visible = classes.filter((course) => {
     const matchesQuery = `${course.code} ${course.title} ${course.subject || ""}`.toLowerCase().includes(query.trim().toLowerCase());
     const matchesDivision = division === "all" || course.division === division;
     const matchesStatus = status === "all" || (status === "published" ? course.published : !course.published);
     return matchesQuery && matchesDivision && matchesStatus;
   });
-  return <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">MY COURSES</span><h1>My Courses</h1><p>The Course Library contains the automatic Digital Literacy Course plus only the original courses you create.</p></div><button type="button" onClick={() => onBuild(null)}>Create Course</button></div><article className="professor-canonical-library-row"><div><span>COURSE LIBRARY · AUTOMATIC</span><strong>Digital Literacy Course</strong><small>Full repository-backed course · learner preview · modules, activities, and quizzes</small></div><button type="button" onClick={onOpenDigitalLiteracy}>Open Course</button></article><div className="class-library-controls professor-library-controls"><label>Search My Courses<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label><label>Division<select value={division} onChange={(event) => setDivision(event.target.value)}><option value="all">All divisions</option><option value="university">University</option><option value="k12">K–12</option></select></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft or review</option></select></label></div>{classes.length === 0 ? <div className="empty-class-list"><strong>No original courses yet.</strong><p>The Digital Literacy Course above is ready to review. Select Create Course only when you want to build your own course.</p><button type="button" onClick={() => onBuild(null)}>Create Course</button></div> : visible.length === 0 ? <div className="empty-class-list"><strong>No courses match these filters.</strong><button type="button" onClick={() => { setQuery(""); setDivision("all"); setStatus("all"); }}>Clear filters</button></div> : <div className="professor-class-grid">{visible.map((course) => <article key={course.id}><div><span>{course.code} · {course.division === "k12" ? "K–12" : "University"}</span><strong>{course.title}</strong><small>{course.term} · {course.students} student{course.students === 1 ? "" : "s"} · {course.pendingRequests} waiting</small></div><div className="professor-class-status"><span className={course.published ? "is-live" : "is-draft"}>{course.published ? "Published to student search" : `${course.publicationStatus || "draft"} · not in search`}</span><span className={`educator-verification-badge is-${course.verificationStatus}`}>Affiliation {course.verificationStatus}</span></div>{course.published && <CourseAccessControls course={course} onSave={onSaveAccess} busy={accessBusyCourse === course.id} />}{course.published && <CourseLibraryControls course={course} onSave={onSaveLibrary} busy={libraryBusyCourse === course.id} />}<footer><button type="button" onClick={() => onBuild(course)}>Open in Course Builder</button>{course.published && <a href={`#/students/${course.division}?course=${course.id}`}>View student listing</a>}{course.published && <a href={`#/publishers?course=${course.id}`}>View Alex B. Morrison</a>}</footer></article>)}</div>}<div className="class-publishing-note"><strong>One course package, three governed choices</strong><span>Course Builder controls the live state and owns the approved package. Student enrollment, universal assignment, and Library/Bookstore visibility reference that same package instead of creating duplicate courses.</span></div></section>;
+  return <section className="dashboard-card">
+    <div className="dashboard-card-heading">
+      <div>
+        <span className="portal-kicker">{earlyPrep ? "MY CLASSES" : "MY COURSES"}</span>
+        <h1>{earlyPrep ? "My Classes" : "My Courses"}</h1>
+        <p>{earlyPrep ? "Your class library contains the automatic Digital Literacy and Financial Literacy classes plus only the Early Prep classes you create. Commercial library and marketplace tools stay unavailable." : "The Course Library contains the automatic Digital Literacy Course plus only the original courses you create."}</p>
+      </div>
+      {earlyPrep ? <button type="button" onClick={() => onBuild(null)}>Create Class</button> : <button type="button" onClick={() => onBuild(null)}>Create Course</button>}
+    </div>
+    <article className="professor-canonical-library-row"><div><span>{earlyPrep ? "CLASS" : "COURSE"} LIBRARY · AUTOMATIC</span><strong>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</strong><small>Full repository-backed {earlyPrep ? "class" : "course"} · learner preview · modules, activities, and quizzes</small></div><button type="button" onClick={onOpenDigitalLiteracy}>Open {earlyPrep ? "Class" : "Course"}</button></article>
+    {earlyPrep && <article className="professor-canonical-library-row is-financial"><div><span>CLASS LIBRARY · AUTOMATIC · FREE</span><strong>Financial Literacy / Personal Finance</strong><small>20 Financial Foundations episodes · 20 optional Future Wealth quests · no payments</small></div><button type="button" onClick={onOpenFinancialLiteracy}>Open Class</button></article>}
+    <div className="class-library-controls professor-library-controls">
+      <label>Search My {earlyPrep ? "Classes" : "Courses"}<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Code, title, or subject" /></label>
+      <label>Division<select value={division} disabled={Boolean(divisionScope)} onChange={(event) => setDivision(event.target.value)}><option value="all">All divisions</option><option value="university">University</option><option value="k12">Early Prep · Grades 9–12</option></select></label>
+      <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft or review</option></select></label>
+    </div>
+    {classes.length === 0 ? (
+      <div className="empty-class-list"><strong>No original {earlyPrep ? "classes" : "courses"} yet.</strong><p>{earlyPrep ? "The Digital Literacy Class above is ready to review. Select Create Class only when you want to build your own." : "The Digital Literacy Course above is ready to review. Select Create Course only when you want to build your own course."}</p><button type="button" onClick={() => onBuild(null)}>{earlyPrep ? "Create Class" : "Create Course"}</button></div>
+    ) : visible.length === 0 ? (
+      <div className="empty-class-list"><strong>No courses match these filters.</strong><button type="button" onClick={() => { setQuery(""); setDivision(divisionScope || "all"); setStatus("all"); }}>Clear filters</button></div>
+    ) : (
+      <div className="professor-class-grid">{visible.map((course) => <article key={course.id}>
+        <div><span>{course.code} · {course.division === "k12" ? "Early Prep · Grades 9–12" : "University"}</span><strong>{course.title}</strong><small>{course.term} · {course.students} student{course.students === 1 ? "" : "s"} · {course.pendingRequests} waiting</small></div>
+        <div className="professor-class-status"><span className={course.published ? "is-live" : "is-draft"}>{course.published ? "Published to student search" : `${course.publicationStatus || "draft"} · not in search`}</span><span className={`educator-verification-badge is-${course.verificationStatus}`}>Affiliation {course.verificationStatus}</span></div>
+        {course.published && <CourseAccessControls course={course} onSave={onSaveAccess} busy={accessBusyCourse === course.id} />}
+        {course.published && <CourseLibraryControls course={course} onSave={onSaveLibrary} busy={libraryBusyCourse === course.id} />}
+        <footer><button type="button" onClick={() => onBuild(course)}>Open in Course Builder</button>{course.published && <a href={`#/students/${course.division}?course=${course.id}`}>View student listing</a>}{course.published && course.division !== "k12" && <a href={`#/publishers?course=${course.id}`}>View Alex B. Morrison</a>}</footer>
+      </article>)}</div>
+    )}
+    <div className="class-publishing-note"><strong>One course package, three governed choices</strong><span>Course Builder controls the live state and owns the approved package. Student enrollment and universal assignment reference it directly; Library and Bookstore distribution remain available only in the University division.</span></div>
+  </section>;
 }
 
 function parseRosterCsv(text) {
@@ -286,24 +338,25 @@ function EducatorProfile({ profile, classes = [] }) {
   return <div className="professor-profile-layout"><section className="dashboard-card"><span className="portal-kicker">EDUCATOR PAGE</span><h1>Your public home for courses and announcements.</h1><p>Your profile starts empty. Add only information you want to make public. A verified badge requires manual school-affiliation review.</p><label>Public bio<textarea rows={5} value={bio} onChange={(event) => setBio(event.target.value)} placeholder="Describe your teaching, research, or academic-support work." /></label><div className="interest-field-grid"><label>Office hours<input placeholder="Optional" /></label><label>Department or subject<input placeholder="Optional" /></label></div><label>Professional or school page<input type="url" placeholder="https://…" /></label><label>Video or YouTube link<input type="url" placeholder="https://youtube.com/…" /></label><button type="button">Save educator page</button></section><aside className="professor-public-page"><span>UNVERIFIED SCHOOL AFFILIATION</span><h2>{profile?.full_name || "Educator"}</h2><p>{bio || "Your public biography will appear here after you add it."}</p><div><strong>{published.length}</strong><span>published courses</span></div>{published.length ? published.slice(0, 3).map((course) => <article key={course.id}><strong>{course.code || course.course_code || "COURSE"} · {course.title}</strong><span>{course.term || course.teaching_window || "Published course"}</span></article>) : <article><strong>No published courses yet</strong><span>The automatic Digital Literacy Course remains available in your private professor workspace.</span></article>}</aside><section className="professor-plan-strip">{PROFESSOR_PRICING.map((plan) => <article key={plan.name}><span>{plan.name}</span><strong>{plan.price}</strong><p>{plan.description}</p></article>)}</section></div>;
 }
 
-function VerificationPanel({ session }) {
-  const [division, setDivision] = useState("university"); const [school, setSchool] = useState(""); const [department, setDepartment] = useState(""); const [teacherId, setTeacherId] = useState(""); const [file, setFile] = useState(null); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState(""); const [error, setError] = useState("");
+function VerificationPanel({ session, divisionScope = null }) {
+  const [division, setDivision] = useState(divisionScope || "university"); const [school, setSchool] = useState(""); const [department, setDepartment] = useState(""); const [teacherId, setTeacherId] = useState(""); const [file, setFile] = useState(null); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState(""); const [error, setError] = useState("");
   async function submit(event) { event.preventDefault(); setBusy(true); setError(""); setNotice(""); try { if (!file) throw new Error("Choose a teacher ID image or PDF."); if (file.size > 10 * 1024 * 1024) throw new Error("Teacher ID files must be 10 MB or smaller."); if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) throw new Error("Upload a PDF, JPG, or PNG."); const uploaded = await uploadCloudFile(file, { scope: "private", title: "Educator verification document", category: "educator-verification", metadata: { educationDivision: division } }); const { error: requestError } = await submitEducatorVerification({ user_id: session.user.id, institution_name: school.trim(), education_division: division, department: department.trim() || null, teacher_identifier_last4: teacherId.trim().slice(-4) || null, secure_file_id: uploaded.secureFileId, status: "pending", submitted_at: new Date().toISOString() }); if (requestError) throw requestError; setNotice("Verification request submitted to the governed TOS affiliation queue. Authorized university reviewers can now see it in Control Center. Your classes remain available while you wait."); } catch (submitError) { setError(submitError.message || "Verification request could not be submitted."); } finally { setBusy(false); } }
-  return <section className="dashboard-card verification-panel"><div className="dashboard-card-heading"><div><span className="portal-kicker">GOVERNED SCHOOL VERIFICATION</span><h1>Add a verified affiliation badge.</h1><p>Your request, private evidence file, institution scope, and final decision follow the TOS Control Center review route. Verification is not required to create or publish an independent class.</p></div><span className="educator-verification-badge is-unverified">Currently unverified</span></div><form onSubmit={submit}><div className="interest-field-grid"><label>Education division<select value={division} onChange={(event) => setDivision(event.target.value)}><option value="university">University / college</option><option value="k12">K–12 school</option><option value="both">Both</option></select></label><label>School or university<input required value={school} onChange={(event) => setSchool(event.target.value)} /></label><label>Department or subject<input value={department} onChange={(event) => setDepartment(event.target.value)} /></label><label>Teacher ID number, if shown<input value={teacherId} onChange={(event) => setTeacherId(event.target.value)} autoComplete="off" /><small>Only the last four characters are saved in the review queue.</small></label></div><label>Teacher ID or staff document<input required type="file" accept="application/pdf,image/jpeg,image/png" onChange={(event) => setFile(event.target.files?.[0] || null)} /><small>PDF, JPG, or PNG · 10 MB maximum · stored in the private file service</small></label>{error && <div className="portal-form-error" role="alert">{error}</div>}{notice && <div className="portal-form-notice" role="status">{notice}</div>}<button type="submit" disabled={busy}>{busy ? "Uploading securely…" : "Submit to TOS review queue"}</button></form></section>;
+  return <section className="dashboard-card verification-panel"><div className="dashboard-card-heading"><div><span className="portal-kicker">GOVERNED SCHOOL VERIFICATION</span><h1>Add a verified affiliation badge.</h1><p>Your request, private evidence file, institution scope, and final decision follow the TOS Control Center review route. Verification is not required to create or publish an independent class.</p></div><span className="educator-verification-badge is-unverified">Currently unverified</span></div><form onSubmit={submit}><div className="interest-field-grid"><label>Education division<select value={division} disabled={Boolean(divisionScope)} onChange={(event) => setDivision(event.target.value)}><option value="university">University / college</option><option value="k12">Early Prep · Grades 9–12</option>{!divisionScope && <option value="both">Both</option>}</select></label><label>School or university<input required value={school} onChange={(event) => setSchool(event.target.value)} /></label><label>Department or subject<input value={department} onChange={(event) => setDepartment(event.target.value)} /></label><label>Teacher ID number, if shown<input value={teacherId} onChange={(event) => setTeacherId(event.target.value)} autoComplete="off" /><small>Only the last four characters are saved in the review queue.</small></label></div><label>Teacher ID or staff document<input required type="file" accept="application/pdf,image/jpeg,image/png" onChange={(event) => setFile(event.target.files?.[0] || null)} /><small>PDF, JPG, or PNG · 10 MB maximum · stored in the private file service</small></label>{error && <div className="portal-form-error" role="alert">{error}</div>}{notice && <div className="portal-form-notice" role="status">{notice}</div>}<button type="submit" disabled={busy}>{busy ? "Uploading securely…" : "Submit to TOS review queue"}</button></form></section>;
 }
 
 function SecurityPanel({ unlocked, onLock }) { return <section className="dashboard-card professor-security-panel"><span className="portal-kicker">EDUCATOR SECURITY</span><h1>Private student areas get an extra lock.</h1><div className="security-setting-grid"><article><strong>Current sensitive session</strong><span className={unlocked ? "is-on" : "is-off"}>{unlocked ? "Unlocked · less than five minutes" : "Locked"}</span><button type="button" onClick={onLock}>Lock now</button></article><article><strong>Auto-lock</strong><span>Five minutes or whenever this browser tab is hidden</span></article><article><strong>Grade publishing</strong><span>Password re-entry before opening the gradebook; course ownership still controls writes</span></article><article><strong>Student account links</strong><span>Notifications appear when a student ID match needs educator approval</span></article></div></section>; }
 
-function NotificationsPanel({ enrollmentRequests = [], onOpenRequests, onOpenDigitalLiteracy }) {
+function NotificationsPanel({ enrollmentRequests = [], onOpenRequests, onOpenDigitalLiteracy, divisionScope = null }) {
   const pending = enrollmentRequests.filter((request) => request.status === "pending");
-  return <section className="dashboard-card professor-notification-panel"><div className="dashboard-card-heading"><div><span className="portal-kicker">NOTIFICATIONS</span><h1>Teaching updates in one place.</h1><p>Open the item that triggered a notification. Course reminders, enrollment requests, published feedback, and school-verification updates stay connected to their source.</p></div><span>{pending.length} action{pending.length === 1 ? "" : "s"}</span></div><div className="professor-notification-list">{pending.map((request) => <button type="button" key={request.id} onClick={onOpenRequests}><span>Enrollment request</span><strong>{request.course?.course_code || "COURSE"} · {request.course?.title || "Published course"}</strong><small>Open Students & Roster to review</small></button>)}<button type="button" onClick={onOpenDigitalLiteracy}><span>Course ready</span><strong>Digital Literacy Course</strong><small>Open the full course or assign modules</small></button></div></section>;
+  const earlyPrep = divisionScope === "k12";
+  return <section className="dashboard-card professor-notification-panel"><div className="dashboard-card-heading"><div><span className="portal-kicker">NOTIFICATIONS</span><h1>Teaching updates in one place.</h1><p>Open the item that triggered a notification. {earlyPrep ? "Class" : "Course"} reminders, enrollment requests, published feedback, and school-verification updates stay connected to their source.</p></div><span>{pending.length} action{pending.length === 1 ? "" : "s"}</span></div><div className="professor-notification-list">{pending.map((request) => <button type="button" key={request.id} onClick={onOpenRequests}><span>Enrollment request</span><strong>{request.course?.course_code || "COURSE"} · {request.course?.title || `Published ${earlyPrep ? "class" : "course"}`}</strong><small>Open Students & Roster to review</small></button>)}<button type="button" onClick={onOpenDigitalLiteracy}><span>{earlyPrep ? "Class" : "Course"} ready</span><strong>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</strong><small>Open the full {earlyPrep ? "class" : "course"} or assign modules</small></button></div></section>;
 }
 
 function HelpSupportPanel({ onTour }) {
   return <section className="dashboard-card professor-help-panel"><span className="portal-kicker">HELP & SUPPORT · PROFESSOR BETA</span><h1>Test confidently and tell us what needs attention.</h1><p>Use non-sensitive content during Beta. If something does not work, include the page, device, browser, expected result, actual result, and a screenshot when possible.</p><div className="professor-help-grid"><article><strong>First-time walkthrough</strong><span>Account, Digital Literacy Course, Course Library, Create Course, Syllabus & Calendar, assignments, due dates, and learner preview.</span><button type="button" onClick={onTour}>Take the professor tour</button></article><article><strong>Account access</strong><span>Institutional review does not block the professor workspace. Pending accounts remain visibly unverified until the affiliation is approved.</span><a href="mailto:support@ednotebook.com?subject=Professor%20Beta%20feedback">Email Beta feedback</a></article></div></section>;
 }
 
-export default function ProfessorDashboard({ profile, session, onHome, onBuild, onAdmin }) {
+export default function ProfessorDashboard({ profile, session, divisionScope = null, onHome, onBuild, onAdmin }) {
   const [tab, setTab] = useState("overview"); const [tourStep, setTourStep] = useState(null); const [unlockedUntil, setUnlockedUntil] = useState(0); const [, setClock] = useState(Date.now());
   const [courseLibrary, setCourseLibrary] = useState([]);
   const [enrollmentRequests, setEnrollmentRequests] = useState([]);
@@ -314,7 +367,9 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
   const [accountSettings, setAccountSettings] = useState(() => readAccountSettings(settingsScope, { accountType: "professor", name: profile?.full_name || "Educator", email: session?.user?.email || "" }));
   const unlocked = unlockedUntil > Date.now(); const sensitive = tab === "students" || tab === "rewards" || tab === "grades"; const displayName = useMemo(() => accountSettings.displayName || profile?.full_name || "Educator", [accountSettings.displayName, profile?.full_name]);
   const teachingClasses = courseLibrary;
-  const pendingRequestCount = enrollmentRequests.filter((request) => request.status === "pending").length;
+  const scopedTeachingClasses = divisionScope ? teachingClasses.filter((course) => course.division === divisionScope) : teachingClasses;
+  const teachingEnrollmentRequests = divisionScope ? enrollmentRequests.filter((request) => request.course?.education_division === divisionScope) : enrollmentRequests;
+  const pendingRequestCount = teachingEnrollmentRequests.filter((request) => request.status === "pending").length;
   useEffect(() => { setAccountSettings(readAccountSettings(settingsScope, { accountType: "professor", name: profile?.full_name || "Educator", email: session?.user?.email || "" })); }, [settingsScope, profile?.full_name, session?.user?.email]);
   useEffect(() => { if (!unlockedUntil) return undefined; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [unlockedUntil]);
   useEffect(() => {
@@ -376,44 +431,48 @@ export default function ProfessorDashboard({ profile, session, onHome, onBuild, 
         : "Commercial catalog preview submitted for review. Checkout remains unavailable until marketplace controls are approved.");
     setLibraryBusyCourse("");
   }
-  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={() => onBuild(null)}>Create Course</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{courseLibrary.length} original course{courseLibrary.length === 1 ? "" : "s"} · Digital Literacy ready</small></div></div><ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} /></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
+  const earlyPrep = divisionScope === "k12";
+  if (tab === "settings") return <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}><header className="dashboard-topbar professor-topbar"><button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline={earlyPrep ? "Early Prep teacher portal" : "Educator portal"} /></button><span className="sample-workspace-badge">Teaching workspace</span><div className="dashboard-top-actions"><LiveDateTime /><button type="button" onClick={() => setTourStep(0)}>Take the tour</button><button className="primary" type="button" onClick={() => onBuild(null)}>Create {earlyPrep ? "Class" : "Course"}</button></div></header><div className="student-dashboard-shell professor-dashboard-shell"><aside className="student-dashboard-sidebar professor-sidebar"><div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{scopedTeachingClasses.length} original {earlyPrep ? "class" : "course"}{scopedTeachingClasses.length === 1 ? "" : earlyPrep ? "es" : "s"} · Digital Literacy ready</small></div></div><ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} divisionScope={divisionScope} /></aside><main className="student-dashboard-main professor-dashboard-main"><AccountSettings scope={settingsScope} accountType="professor" settings={accountSettings} onSettingsChange={setAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} /></main></div><EducatorTour step={tourStep} setStep={setTourStep} /></div>;
   const protectedContent = tab === "students"
-    ? <StudentsPanel enrollmentRequests={enrollmentRequests} onApproveEnrollment={approveEnrollment} />
+    ? <StudentsPanel enrollmentRequests={teachingEnrollmentRequests} onApproveEnrollment={approveEnrollment} />
     : tab === "rewards"
-      ? <ProfessorSocialLearningPanel />
+      ? <ProfessorSocialLearningPanel educationDivision={divisionScope || "university"} courseIds={earlyPrep ? scopedTeachingClasses.map((course) => course.id) : null} />
       : <GradesPanel onLock={lock} />;
   return (
     <div className={`professor-dashboard-page ${accountSettings.showDescriptions ? "" : "is-description-light"}`}>
       <header className="dashboard-topbar professor-topbar">
-        <button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline="Educator portal" /></button>
+        <button className="dashboard-brand" type="button" onClick={onHome}><BrandLogo size={38} tagline={earlyPrep ? "Early Prep teacher portal" : "Educator portal"} /></button>
         <span className="sample-workspace-badge">Teaching workspace</span>
         <div className="dashboard-top-actions">
           <LiveDateTime />
           {["admin", "owner"].includes(profile?.role) && <button type="button" onClick={onAdmin}>Master admin</button>}
           <button type="button" onClick={() => setTourStep(0)}>Take the tour</button>
-          <button className="primary" type="button" onClick={() => onBuild(null)}>Create Course</button>
+          <button className="primary" type="button" onClick={() => onBuild(null)}>Create {earlyPrep ? "Class" : "Course"}</button>
         </div>
       </header>
       <div className="student-dashboard-shell professor-dashboard-shell">
         <aside className="student-dashboard-sidebar professor-sidebar">
-          <div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{courseLibrary.length} original course{courseLibrary.length === 1 ? "" : "s"} · Digital Literacy ready</small></div></div>
-          <ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} />
+          <div className="student-sidebar-profile"><span>{displayName.slice(0, 1).toUpperCase()}</span><div><strong>{displayName}</strong><small>{scopedTeachingClasses.length} class{scopedTeachingClasses.length === 1 ? "" : "es"} · {pendingRequestCount} waiting</small></div></div>
+          <ProfessorNavigation tab={tab} setTab={setTab} pendingRequests={pendingRequestCount} divisionScope={divisionScope} />
           <div className="professor-lock-summary"><strong>{unlocked ? "Sensitive areas unlocked" : "Sensitive areas locked"}</strong><span>{unlocked ? "Locks in less than five minutes" : "Password required for rosters and grades"}</span>{unlocked && <button type="button" onClick={lock}>Lock now</button>}</div>
         </aside>
         <main className="student-dashboard-main professor-dashboard-main">
           {portalNotice && <div className="portal-form-notice class-link-status" role="status">{portalNotice}<button type="button" onClick={() => setPortalNotice("")}>×</button></div>}
-          {tab === "overview" && <Overview setTab={setTab} classes={courseLibrary} enrollmentRequests={enrollmentRequests} />}
-          {tab === "classes" && <Classes onBuild={onBuild} onOpenDigitalLiteracy={() => setTab("digital-literacy")} classes={courseLibrary} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
-          {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={teachingClasses} /></Suspense>}
-          {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={teachingClasses} />}
-          {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} classes={teachingClasses} />}
+          {tab === "overview" && <Overview setTab={setTab} classes={scopedTeachingClasses} enrollmentRequests={teachingEnrollmentRequests} divisionScope={divisionScope} />}
+          {tab === "classes" && <Classes onBuild={onBuild} onOpenDigitalLiteracy={() => setTab("digital-literacy")} onOpenFinancialLiteracy={() => setTab("financial-literacy")} classes={scopedTeachingClasses} divisionScope={divisionScope} onSaveAccess={saveCourseAccess} accessBusyCourse={accessBusyCourse} onSaveLibrary={saveLibraryListing} libraryBusyCourse={libraryBusyCourse} />}
+          {tab === "semester" && <Suspense fallback={<section className="dashboard-card" role="status">Opening syllabus and calendar…</section>}><ProfessorSemesterCalendar profile={profile} session={session} classes={scopedTeachingClasses} /></Suspense>}
+          {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} divisionScope={divisionScope} />}
+          {tab === "financial-literacy" && earlyPrep && <ProfessorFinancialLiteracyClass classes={scopedTeachingClasses} />}
+          {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} track={divisionScope || "university"} classes={scopedTeachingClasses} />}
+          {tab === "readiness" && earlyPrep && <Suspense fallback={<section className="dashboard-card" role="status">Opening College & Career tools…</section>}><EarlyPrepReadinessWorkspace mode="teacher" onOpenAssignments={() => setTab("templates")} /></Suspense>}
+          {tab === "learning-systems" && earlyPrep && <Suspense fallback={<section className="dashboard-card" role="status">Opening synthetic learning-system acceptance…</section>}><EarlyPrepLearningSystemsAcceptance /></Suspense>}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
-          {tab === "attendance" && <AttendancePanel classes={teachingClasses} />}
-          {tab === "notifications" && <NotificationsPanel enrollmentRequests={enrollmentRequests} onOpenRequests={() => setTab("students")} onOpenDigitalLiteracy={() => setTab("digital-literacy")} />}
-          {tab === "announcements" && <CampusSocialFeed key={`campus-social-${settingsScope}`} session={session} role="professor" educationDivision="university" displayName={displayName} onOpenMessages={() => setTab("communication")} />}
-          {tab === "communication" && <CourseCommunicationPanel key={`course-communication-${settingsScope}`} role="professor" session={session} educationDivision="both" />}
-          {tab === "profile" && <EducatorProfile profile={profile} classes={courseLibrary} />}
-          {tab === "verification" && <VerificationPanel session={session} />}
+          {tab === "attendance" && <AttendancePanel classes={scopedTeachingClasses} />}
+          {tab === "notifications" && <NotificationsPanel enrollmentRequests={teachingEnrollmentRequests} onOpenRequests={() => setTab("students")} onOpenDigitalLiteracy={() => setTab("digital-literacy")} divisionScope={divisionScope} />}
+          {tab === "announcements" && <CampusSocialFeed key={`campus-social-${settingsScope}`} session={session} role="professor" educationDivision={divisionScope || "university"} displayName={displayName} onOpenMessages={() => setTab("communication")} />}
+          {tab === "communication" && <CourseCommunicationPanel key={`course-communication-${settingsScope}`} role="professor" session={session} educationDivision={divisionScope || "both"} />}
+          {tab === "profile" && <EducatorProfile profile={profile} classes={scopedTeachingClasses} />}
+          {tab === "verification" && <VerificationPanel session={session} divisionScope={divisionScope} />}
           {tab === "security" && <SecurityPanel unlocked={unlocked} onLock={lock} />}
           {tab === "help" && <HelpSupportPanel onTour={() => setTourStep(0)} />}
         </main>

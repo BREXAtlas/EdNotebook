@@ -150,7 +150,9 @@ function Ledger({ events, roster = [], professorMode = false, onCorrect }) {
   );
 }
 
-export function ProfessorSocialLearningPanel() {
+export function ProfessorSocialLearningPanel({ educationDivision = "university", courseIds = null }) {
+  const earlyPrep = educationDivision === "k12";
+  const courseIdsKey = Array.isArray(courseIds) ? courseIds.join("|") : "";
   const [state, setState] = useState({
     roster: [],
     events: [],
@@ -177,12 +179,20 @@ export function ProfessorSocialLearningPanel() {
     let active = true;
     loadManagedSocialLearning().then((result) => {
       if (!active) return;
-      setState(result);
-      const first = result.roster[0];
+      const allowedCourseIds = Array.isArray(courseIds) ? new Set(courseIds) : null;
+      const scopedResult = allowedCourseIds
+        ? {
+            ...result,
+            roster: result.roster.filter((row) => allowedCourseIds.has(row.course_id)),
+            events: result.events.filter((event) => allowedCourseIds.has(event.course_id)),
+          }
+        : result;
+      setState(scopedResult);
+      const first = scopedResult.roster[0];
       if (first) setForm((current) => ({ ...current, courseId: first.course_id, studentId: first.student_id }));
     });
     return () => { active = false; };
-  }, []);
+  }, [courseIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const courseRows = useMemo(
     () => [...new Map(state.roster.map((row) => [row.course_id, row])).values()],
@@ -320,7 +330,7 @@ export function ProfessorSocialLearningPanel() {
       <section className="social-learning-professor-grid">
         <form className="dashboard-card social-learning-award-form" onSubmit={submitReward}>
           <div>
-            <span className="portal-kicker">PROFESSOR RECOGNITION</span>
+            <span className="portal-kicker">{earlyPrep ? "TEACHER RECOGNITION" : "PROFESSOR RECOGNITION"}</span>
             <h2>Create a learning reward</h2>
             <p>Name the exact learning moment. Points are capped and cannot be purchased or attached to a grade.</p>
           </div>
@@ -385,7 +395,7 @@ export function ProfessorSocialLearningPanel() {
           <small>{visual.label} recognition</small>
           <h2>{form.rewardName || "Named learning reward"}</h2>
           <strong>+{Number(form.points) || 0} points</strong>
-          <p>{form.reason || "The professor’s plain-language message appears here."}</p>
+          <p>{form.reason || `The ${earlyPrep ? "teacher’s" : "professor’s"} plain-language message appears here.`}</p>
           <footer>{selectedStudent?.student_display_name || "Selected student"} · private by default</footer>
         </aside>
       </section>
@@ -460,7 +470,8 @@ export function CourseCompletionBadges({ badges = [], rewardsView = false }) {
   );
 }
 
-export function StudentSocialLearningPanel({ userId, demo = false, courseBadges = [], onSummary }) {
+export function StudentSocialLearningPanel({ userId, demo = false, courseBadges = [], onSummary, track = "university" }) {
+  const earlyPrep = track === "k12";
   const [state, setState] = useState({
     events: [],
     milestones: SOCIAL_LEARNING_MILESTONES,
@@ -521,7 +532,7 @@ export function StudentSocialLearningPanel({ userId, demo = false, courseBadges 
           <span>SOCIAL EDUCATION LEARNING</span>
           <h1>{latestAward ? `You earned “${latestAward.reward_name}.”` : "Your learning deserves to be seen."}</h1>
           <p>
-            {latestAward?.reason || "When a professor recognizes a specific learning moment, the reason and points will appear here."}
+            {latestAward?.reason || `When a ${earlyPrep ? "teacher" : "professor"} recognizes a specific learning moment, the reason and points will appear here.`}
           </p>
           {latestAward && <small>{latestAward.issuer_display_name} · {latestAward.activity_reference}</small>}
         </div>
@@ -587,7 +598,7 @@ export function StudentSocialLearningPanel({ userId, demo = false, courseBadges 
           <ul>
             <li>What did you change after checking the evidence?</li>
             <li>Which part of your process would you repeat next time?</li>
-            <li>What question can your professor help you answer next?</li>
+            <li>What question can your {earlyPrep ? "teacher" : "professor"} help you answer next?</li>
           </ul>
         </section>
       )}

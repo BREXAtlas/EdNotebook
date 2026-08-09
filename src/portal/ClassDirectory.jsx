@@ -114,7 +114,7 @@ export default function ClassDirectory({ onOpen, compact = false, track = "unive
                   ? "Enrollment paused"
                   : course.enrollmentPolicy === "open_self_enroll"
                     ? course.universalAssignment ? "Open · assigned to new students" : "Open · join immediately"
-                    : "Professor approval required"
+                    : `${track === "k12" ? "Teacher" : "Professor"} approval required`
                 : `${course.enrolled} / ${course.seats} seats`}</span>
               <button type="button" onClick={() => onOpen?.({ ...course, school })}>View class</button>
             </div>

@@ -25,9 +25,12 @@ function result(data, error) {
   return { data: null, error, source: "cloud" };
 }
 
-export async function loadProfessorDigitalLiteracyWorkspace(courseId) {
+export async function loadProfessorDigitalLiteracyWorkspace(
+  courseId,
+  { includeEarlyPrepFeedback = false } = {},
+) {
   if (!configured() || !courseId) return unavailable();
-  const [workspace, standardProgress, launchReadiness] = await Promise.all([
+  const [workspace, standardProgress, launchReadiness, feedback] = await Promise.all([
     supabase.rpc("get_digital_literacy_professor_workspace", {
       p_course_id: courseId,
     }),
@@ -37,11 +40,18 @@ export async function loadProfessorDigitalLiteracyWorkspace(courseId) {
     supabase.rpc("get_digital_literacy_research_launch_readiness", {
       p_course_id: courseId,
     }),
+    includeEarlyPrepFeedback
+      ? supabase.rpc("get_digital_literacy_course_feedback", {
+          p_course_id: courseId,
+        })
+      : Promise.resolve({ data: { feedback: [] }, error: null }),
   ]);
   if (workspace.error) return result(null, workspace.error);
   if (standardProgress.error) return result(null, standardProgress.error);
   if (launchReadiness.error && !isSetupError(launchReadiness.error))
     return result(null, launchReadiness.error);
+  if (feedback.error && !isSetupError(feedback.error))
+    return result(null, feedback.error);
   return result(
     {
       ...workspace.data,
@@ -49,6 +59,7 @@ export async function loadProfessorDigitalLiteracyWorkspace(courseId) {
       research_launch_readiness: launchReadiness.error
         ? null
         : launchReadiness.data,
+      feedback: feedback.error ? [] : feedback.data?.feedback || [],
     },
     null,
   );
@@ -85,14 +96,18 @@ export async function createDigitalLiteracyAssignment({
 
 export async function loadMyDigitalLiteracyAssignments(courseId = null) {
   if (!configured()) return unavailable();
-  const [assigned, standard] = await Promise.all([
+  const [assigned, standard, feedback, badges] = await Promise.all([
     supabase.rpc("get_my_digital_literacy_assignments", {
       p_course_id: courseId,
     }),
     supabase.rpc("get_my_standard_digital_literacy_course"),
+    supabase.rpc("get_my_digital_literacy_feedback"),
+    supabase.rpc("get_my_digital_literacy_standard_badges"),
   ]);
   if (assigned.error) return result(null, assigned.error);
   if (standard.error) return result(null, standard.error);
+  if (feedback.error && !isSetupError(feedback.error)) return result(null, feedback.error);
+  if (badges.error && !isSetupError(badges.error)) return result(null, badges.error);
   const platformStandard = standard.data?.assignment;
   return result(
     {
@@ -101,9 +116,42 @@ export async function loadMyDigitalLiteracyAssignments(courseId = null) {
         platformStandard,
         ...(assigned.data?.assignments || []),
       ].filter(Boolean),
+      feedback: feedback.error ? [] : feedback.data?.feedback || [],
+      badges: badges.error ? [] : badges.data?.badges || [],
     },
     null,
   );
+}
+
+export async function recordDigitalLiteracyTeacherFeedback({
+  assignmentId,
+  studentId,
+  unitId,
+  feedbackText,
+}) {
+  if (!configured()) return unavailable();
+  const { data, error } = await supabase.rpc(
+    "record_digital_literacy_teacher_feedback",
+    {
+      p_assignment_id: assignmentId,
+      p_student_id: studentId,
+      p_unit_id: unitId,
+      p_feedback_text: feedbackText,
+    },
+  );
+  return result(data, error);
+}
+
+export async function acknowledgeDigitalLiteracyTeacherFeedback(
+  feedbackId,
+  helpful = null,
+) {
+  if (!configured()) return unavailable();
+  const { data, error } = await supabase.rpc(
+    "acknowledge_digital_literacy_teacher_feedback",
+    { p_feedback_id: feedbackId, p_helpful: helpful },
+  );
+  return result(data, error);
 }
 
 export async function syncDigitalLiteracyProgress({

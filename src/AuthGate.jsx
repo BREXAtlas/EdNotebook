@@ -84,18 +84,19 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const earlyPrepTeacher = accountType === "professor" && educationTrack === "k12";
 
   const title = useMemo(() => {
     if (mode === "signup") {
-      if (accountType === "professor") return "Create a professor account";
+      if (accountType === "professor") return earlyPrepTeacher ? "Create a high-school teacher account" : "Create a professor account";
       if (accountType === "institution") return "Create an institution account";
       return "Create a student account";
     }
     if (mode === "reset") return "Reset your password";
-    if (accountType === "professor") return "Professor sign in";
+    if (accountType === "professor") return earlyPrepTeacher ? "High-school teacher sign in" : "Professor sign in";
     if (accountType === "institution") return "Institution administrator sign in";
     return "Student sign in";
-  }, [accountType, mode]);
+  }, [accountType, earlyPrepTeacher, mode]);
 
   async function submit(event) {
     event.preventDefault();
@@ -222,7 +223,9 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
           {accountType === "institution"
             ? "Use an approved EdNotebook account. The control center will show only the platform or institution workspaces assigned to that account."
             : accountType === "professor"
-            ? "Choose the exact institution you work for. Your professor workspace opens after email verification; institutional review adds a verified affiliation badge and access to institution-owned records."
+            ? earlyPrepTeacher
+              ? "Choose the exact high school or district you work for. Your teacher workspace opens after email verification; school review adds a verified affiliation badge and access to school-owned records."
+              : "Choose the exact institution you work for. Your professor workspace opens after email verification; institutional review adds a verified affiliation badge and access to institution-owned records."
             : educationTrack === "k12"
               ? "Browse schools and classes first, then sign in when you join a class or save your work."
               : "Browse colleges and classes publicly, then sign in when you join a class or save private work."}
@@ -245,10 +248,10 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
               {accountType === "professor" && (
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
                   Teaching audience
-                  <select style={field} value={educationDivision} onChange={(event) => setEducationDivision(event.target.value)}>
-                    <option value="university">University / college</option>
-                    <option value="k12">K–12 school</option>
-                    <option value="both">Both</option>
+                  <select style={field} value={educationDivision} disabled={earlyPrepTeacher} onChange={(event) => setEducationDivision(event.target.value)}>
+                    {!earlyPrepTeacher && <option value="university">University / college</option>}
+                    <option value="k12">Early Prep · Grades 9–12</option>
+                    {!earlyPrepTeacher && <option value="both">Both</option>}
                   </select>
                 </label>
               )}
@@ -262,8 +265,10 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                 required
                 allowIndependent={accountType === "student"}
                 helpText={accountType === "professor"
-                  ? "Choose the exact institution you work for. An unlisted institution can be submitted for review. Your professor workspace remains available while the affiliation is unverified."
-                  : "Choose the exact school you attend. Select Independent only for free public use without professor enrollment, assignment, roster, or institutional grade access."}
+                  ? earlyPrepTeacher
+                    ? "Choose the exact high school or district you work for. An unlisted school can be submitted for review. Your teacher workspace remains available while the affiliation is unverified."
+                    : "Choose the exact institution you work for. An unlisted institution can be submitted for review. Your professor workspace remains available while the affiliation is unverified."
+                  : `Choose the exact school you attend. Select Independent only for free public use without ${educationTrack === "k12" ? "teacher" : "professor"} enrollment, assignment, roster, or institutional grade access.`}
               />
               {accountType === "student" && institutionChoice?.choice !== "independent" ? (
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
@@ -275,7 +280,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
                   Department
                   <input style={field} value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Optional" />
-                  <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>Department is descriptive only. Institution approval controls the verified badge and institution-owned records, not access to your professor workspace.</small>
+                  <small style={{ display: "block", marginTop: 6, color: "#68758a", fontWeight: 500 }}>Department is descriptive only. {earlyPrepTeacher ? "School" : "Institution"} approval controls the verified badge and {earlyPrepTeacher ? "school" : "institution"}-owned records, not access to your {earlyPrepTeacher ? "teacher" : "professor"} workspace.</small>
                 </label>
               )}
             </>
@@ -346,8 +351,11 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   );
 }
 
-function AccountBar({ profile, user, institutionReview }) {
+function AccountBar({ profile, user, institutionReview, accountType = "student", educationTrack = "university" }) {
   const reviewStatus = institutionReview?.verification_status || "unverified";
+  const displayRole = accountType === "professor" && educationTrack === "k12"
+    ? "teacher"
+    : profile?.role || "learner";
   return (
     <div className="account-bubble">
       <div className="account-bubble-details">
@@ -355,7 +363,7 @@ function AccountBar({ profile, user, institutionReview }) {
           {profile?.full_name || user.email}
         </div>
         <div style={{ fontSize: 11, opacity: .72, textTransform: "capitalize" }}>
-          {profile?.role || "learner"} · {profile?.subscription_status || "free"}
+          {displayRole} · {profile?.subscription_status || "free"}
         </div>
         {institutionReview && (
           <div style={{ fontSize: 10, opacity: .8 }}>
@@ -602,14 +610,14 @@ export default function AuthGate({ children, accountType = "student", educationT
     return (
       <main style={shell}>
         <section style={card} aria-labelledby="professor-access-title">
-          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>EDNOTEBOOK · PROFESSOR PORTAL</div>
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: "#245397" }}>{educationTrack === "k12" ? "EDNOTEBOOK EARLY PREP · TEACHER PORTAL" : "EDNOTEBOOK · PROFESSOR PORTAL"}</div>
           <h1 id="professor-access-title" style={{ marginBottom: 8 }}>
             This is not an educator account
           </h1>
           <p style={{ color: "#59667a", lineHeight: 1.55 }}>
             Use the student portal for class work, or sign out and use an educator account for teaching tools.
           </p>
-          <a href="#/professors" style={{ ...primaryButton, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}>Return to professor information</a>
+          <a href={educationTrack === "k12" ? "#/early-prep" : "#/professors"} style={{ ...primaryButton, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}>Return to educator information</a>
           <button type="button" style={{ ...primaryButton, background: "#eef2f8", color: "#245397" }} onClick={() => supabase.auth.signOut()}>Sign out</button>
         </section>
       </main>
@@ -622,6 +630,7 @@ export default function AuthGate({ children, accountType = "student", educationT
 
   const reviewStatus = institutionReview?.verification_status || "unverified";
   const reviewPending = institutionReview && reviewStatus !== "approved";
+  const earlyPrepEducator = accountType === "professor" && educationTrack === "k12";
 
   return (
     <>
@@ -631,15 +640,17 @@ export default function AuthGate({ children, accountType = "student", educationT
             <strong>{accountType === "professor" ? "UNVERIFIED EDUCATOR" : "INSTITUTION MATCH"} · {reviewStatus === "pending" ? "REVIEW PENDING" : "NOT VERIFIED"}</strong>
             <span>
               {accountType === "professor"
-                ? "Your professor workspace is active. Review controls the verified institution badge and institution-owned records—not course building, independent teaching tools, or Beta testing."
+                ? earlyPrepEducator
+                  ? "Your teacher workspace is active. School review controls the verified school badge and school-owned records—not class building or independent teaching tools."
+                  : "Your professor workspace is active. Review controls the verified institution badge and institution-owned records—not course building, independent teaching tools, or Beta testing."
                 : "Your student workspace is active. Institution review controls the verified school match and protected institution records—not your account access."}
             </span>
           </div>
-          <a href={accountType === "professor" ? "#/professor/dashboard" : `#/student/${educationTrack}/app`}>Workspace active</a>
+          <a href={accountType === "professor" ? (earlyPrepEducator ? "#/early-prep/teacher" : "#/professor/dashboard") : `#/student/${educationTrack}/app`}>Workspace active</a>
         </aside>
       )}
       {content}
-      <AccountBar profile={effectiveProfile} user={session.user} institutionReview={institutionReview} />
+      <AccountBar profile={effectiveProfile} user={session.user} institutionReview={institutionReview} accountType={accountType} educationTrack={educationTrack} />
     </>
   );
 }

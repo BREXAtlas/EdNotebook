@@ -10,18 +10,25 @@ import {
   researchStatusLabel,
 } from "./digitalLiteracyPilotModel.js";
 import {
+  acknowledgeDigitalLiteracyTeacherFeedback,
   createDigitalLiteracyAssignment,
   loadDigitalLiteracyCatalog,
   loadMyActiveDigitalLiteracyResearch,
   loadMyDigitalLiteracyAssignments,
   loadProfessorDigitalLiteracyWorkspace,
   recordDigitalLiteracyResearchChoice,
+  recordDigitalLiteracyTeacherFeedback,
   requestDigitalLiteracyResearchAction,
   submitDigitalLiteracyResearchResponse,
   syncDigitalLiteracyProgress,
 } from "./digitalLiteracyPilotService.js";
 import { scrollWithinHashRoute } from "../scrollWithinHashRoute.js";
 import "./digital-literacy.css";
+
+const UNIVERSITY_CANONICAL_KICKER = "PLATFORM STANDARD · CANONICAL COURSE";
+const UNIVERSITY_STUDENT_KICKER = "YOUR PLATFORM-STANDARD COURSE";
+const EARLY_PREP_CANONICAL_KICKER = "PLATFORM STANDARD · CANONICAL CLASS";
+const UNIVERSITY_OPEN_PREVIEW = "Open full course preview";
 
 function localDueDefault() {
   const date = new Date(Date.now() + 7 * 86400000);
@@ -33,6 +40,15 @@ function localDueDefault() {
 function readableDue(value) {
   if (!value) return "No due date";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function earlyPrepEducatorCopy(value, earlyPrep) {
+  if (!earlyPrep) return value;
+  return String(value || "")
+    .replace(/\bProfessors\b/gu, "Teachers")
+    .replace(/\bprofessors\b/gu, "teachers")
+    .replace(/\bProfessor\b/gu, "Teacher")
+    .replace(/\bprofessor\b/gu, "teacher");
 }
 
 function UnitGroup({ group, selected, toggle }) {
@@ -65,7 +81,33 @@ function ResearchLaunchReadiness({ readiness }) {
   return <section className="dashboard-card dl-research-readiness"><div className="dashboard-card-heading"><div><span className="portal-kicker">FINAL PILOT EVIDENCE GATE</span><h2>Course delivery is ready. Research remains independently governed.</h2><p>This panel reads the database's live launch blockers. It cannot record an approval or activate a study.</p></div><span className={collectionActive ? "is-ready" : "is-blocked"}>{collectionActive ? "APPROVED VERSION ACTIVE" : "RESEARCH OFF"}</span></div><div className="dl-launch-boundary"><article className="is-ready"><span>COURSE WORK</span><strong>Available</strong><p>Assignments, completion, grades, feedback, and ordinary course surveys continue.</p></article><article className={collectionActive ? "is-ready" : "is-blocked"}><span>OPTIONAL RESEARCH</span><strong>{collectionActive ? "Approved version active" : "Not collecting"}</strong><p>Enrollment and course completion never count as research consent.</p></article></div><div className="dl-readiness-grid">{checks.map((check) => <article className={check.status === "pass" ? "is-ready" : "is-blocked"} key={check.key}><header><i aria-hidden="true">{check.status === "pass" ? "✓" : "○"}</i><strong>{check.label}</strong><span>{check.status === "pass" ? "PASS" : "BLOCKED"}</span></header><p>{check.description}</p></article>)}</div>{project ? <article className="dl-research-project"><header><div><strong>{project.project_title} · version {project.version_number}</strong><span>{project.version_status}</span></div><i>{project.blockers.length ? `${project.blockers.length} blocker${project.blockers.length === 1 ? "" : "s"}` : "gate complete"}</i></header><p>{project.purpose_statement}</p></article> : <div className="dl-launch-message"><strong>No research version is configured for this class.</strong><p>This is the correct fail-closed state until an authorized institution reviewer records the real written determination, approved instruments, participant notice, and data rules.</p></div>}<p className="dl-boundary-note">Any authorized dataset is pseudonymized, not anonymous. It excludes direct identifiers, enforces a minimum cohort, and requires manual disclosure review for qualitative text.</p></section>;
 }
 
-export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
+function TeacherFeedbackComposer({ assignment, recipient, feedback = [], onRecorded }) {
+  const [unitId, setUnitId] = useState(assignment.units[0]?.unit_id || "");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const result = await recordDigitalLiteracyTeacherFeedback({
+      assignmentId: assignment.assignment_id,
+      studentId: recipient.student_id,
+      unitId,
+      feedbackText,
+    });
+    if (result.error) setError(result.error.message);
+    else {
+      setFeedbackText("");
+      await onRecorded(recipient.display_name, unitId);
+    }
+    setBusy(false);
+  }
+  return <div className="dl-teacher-feedback"><details><summary>Private feedback for {recipient.display_name}</summary><form onSubmit={submit}><label>Assigned unit<select required value={unitId} onChange={(event) => setUnitId(event.target.value)}>{assignment.units.map((unit) => <option key={unit.unit_id} value={unit.unit_id}>{unit.unit_id.toUpperCase()} · {unit.title}</option>)}</select></label><label>Feedback<textarea required minLength={1} maxLength={3000} rows={3} value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} placeholder="Share a specific next step or encouragement." /></label>{error && <div className="portal-form-error" role="alert">{error}</div>}<button type="submit" disabled={busy || !unitId || !feedbackText.trim()}>{busy ? "Sending…" : "Send private feedback"}</button></form>{feedback.length ? <div className="dl-feedback-history" aria-label={`Feedback history for ${recipient.display_name}`}>{feedback.map((item) => <article key={item.id}><header><strong>{item.unit_id.toUpperCase()}</strong><span>{item.acknowledged_at ? "Acknowledged" : "Awaiting acknowledgement"}</span></header><p>{item.feedback_text}</p>{item.helpful === true && <small>Student marked this helpful.</small>}</article>)}</div> : null}</details></div>;
+}
+
+export function ProfessorDigitalLiteracyPilot({ classes = [], divisionScope = "university" }) {
+  const earlyPrep = divisionScope === "k12";
   const [catalog, setCatalog] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [courseId, setCourseId] = useState(classes[0]?.id || "");
@@ -74,7 +116,9 @@ export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
   const [recipientMode, setRecipientMode] = useState("all");
   const [selectedStudents, setSelectedStudents] = useState(() => new Set());
   const [title, setTitle] = useState("Digital Literacy learning path");
-  const [instructions, setInstructions] = useState("Complete each assigned chapter or quest in EdNotebook. Your completed units and stars will be recorded for you and your professor.");
+  const [instructions, setInstructions] = useState(() => earlyPrep
+    ? "Complete each assigned chapter or quest in EdNotebook. Your completed units and stars will be recorded for you and your teacher."
+    : "Complete each assigned chapter or quest in EdNotebook. Your completed units and stars will be recorded for you and your professor.");
   const [dueAt, setDueAt] = useState(localDueDefault);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -102,7 +146,9 @@ export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
   async function refresh(nextCourseId = courseId) {
     if (!nextCourseId) return;
     setError("");
-    const result = await loadProfessorDigitalLiteracyWorkspace(nextCourseId);
+    const result = await loadProfessorDigitalLiteracyWorkspace(nextCourseId, {
+      includeEarlyPrepFeedback: earlyPrep,
+    });
     if (result.error) { setWorkspace(null); setError(result.error.message); return; }
     setWorkspace(result.data);
   }
@@ -149,31 +195,59 @@ export function ProfessorDigitalLiteracyPilot({ classes = [] }) {
     setBusy(false);
   }
 
+  async function feedbackRecorded(displayName, unitId) {
+    setNotice(`Private feedback sent to ${displayName} for ${unitId.toUpperCase()}. The student received a content-free notification.`);
+    await refresh();
+  }
+
   return <div className="dl-professor-workspace">
-    <section className="dashboard-card dl-canonical-course-card"><div><span className="portal-kicker">PLATFORM STANDARD · CANONICAL COURSE</span><h1>Digital Literacy Course</h1><p>Open and review the complete course inside EdNotebook. The same repository-backed release is available to every professor account and stays current when an approved canonical release changes.</p><dl><div><dt>Course</dt><dd>{catalog?.title || "Digital Literacy Course"}</dd></div><div><dt>Release</dt><dd>{catalog?.release_id || "Current canonical release"}</dd></div><div><dt>Content</dt><dd>{catalog?.units?.length || 40} modules, lessons, activities, and checks</dd></div></dl></div><div className="dl-canonical-course-actions"><button className="primary" type="button" onClick={() => setPreviewOpen((open) => !open)}>{previewOpen ? "Close full course preview" : "Open full course preview"}</button><a href="#digital-literacy-assign" onClick={(event) => scrollWithinHashRoute(event, "digital-literacy-assign")}>Assign modules to students</a></div></section>
-    {previewOpen && <section className="dashboard-card dl-professor-course-preview" aria-label="Digital Literacy Course professor preview"><header><div><span className="portal-kicker">LEARNER PREVIEW · IN EDNOTEBOOK</span><h2>Full Digital Literacy Course</h2><p>Preview does not create student progress. Use the assignment controls below when you are ready to connect course units to a class.</p></div><button type="button" onClick={() => setPreviewOpen(false)}>Close preview</button></header><iframe src={previewUrl} title="Digital Literacy Course professor preview" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" referrerPolicy="strict-origin-when-cross-origin" /></section>}
-    <section id="digital-literacy-assign" tabIndex={-1} className="dashboard-card dl-pilot-hero"><div><span className="portal-kicker">ASSIGN COURSE CONTENT</span><h1>Assign Digital Literacy to any of your students.</h1><p>Every student receives the current canonical 40-unit course automatically. Choose specific Foundations episodes or AI quests for your courses; each student keeps one release-versioned progress record across EdNotebook.</p></div><label>Course<select value={courseId} onChange={(event) => { setCourseId(event.target.value); setWorkspace(null); }}><option value="">Choose a course</option>{classes.map((course) => <option key={course.id} value={course.id}>{course.code || course.course_code || "COURSE"} · {course.title}</option>)}</select></label></section>
+    <section className="dashboard-card dl-canonical-course-card"><div><span className="portal-kicker">{earlyPrep ? EARLY_PREP_CANONICAL_KICKER : UNIVERSITY_CANONICAL_KICKER}</span><h1>{earlyPrep ? "Digital Literacy Class" : "Digital Literacy Course"}</h1><p>{earlyPrep ? "Open and review the complete class inside EdNotebook. The same repository-backed release is available to every Early Prep teacher account and stays current when an approved canonical release changes." : "Open and review the complete course inside EdNotebook. The same repository-backed release is available to every professor account and stays current when an approved canonical release changes."}</p><dl><div><dt>{earlyPrep ? "Class" : "Course"}</dt><dd>{earlyPrep ? "Digital Literacy Class" : catalog?.title || "Digital Literacy Course"}</dd></div><div><dt>Release</dt><dd>{catalog?.release_id || "Current canonical release"}</dd></div><div><dt>Content</dt><dd>{catalog?.units?.length || 40} modules, lessons, activities, and checks</dd></div></dl></div><div className="dl-canonical-course-actions"><button className="primary" type="button" onClick={() => setPreviewOpen((open) => !open)}>{previewOpen ? (earlyPrep ? "Close full class preview" : "Close full course preview") : (earlyPrep ? "Open full class preview" : UNIVERSITY_OPEN_PREVIEW)}</button><a href="#digital-literacy-assign" onClick={(event) => scrollWithinHashRoute(event, "digital-literacy-assign")}>Assign modules to students</a></div></section>
+    {previewOpen && <section className="dashboard-card dl-professor-course-preview" aria-label={`Digital Literacy ${earlyPrep ? "Class teacher" : "Course professor"} preview`}><header><div><span className="portal-kicker">LEARNER PREVIEW · IN EDNOTEBOOK</span><h2>Full Digital Literacy {earlyPrep ? "Class" : "Course"}</h2><p>Preview does not create student progress. Use the assignment controls below when you are ready to connect {earlyPrep ? "class" : "course"} units to a class.</p></div><button type="button" onClick={() => setPreviewOpen(false)}>Close preview</button></header><iframe src={previewUrl} title={`Digital Literacy ${earlyPrep ? "Class teacher" : "Course professor"} preview`} sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" referrerPolicy="strict-origin-when-cross-origin" /></section>}
+    <section id="digital-literacy-assign" tabIndex={-1} className="dashboard-card dl-pilot-hero"><div><span className="portal-kicker">ASSIGN {earlyPrep ? "CLASSWORK" : "COURSE CONTENT"}</span><h1>Assign Digital Literacy to any of your students.</h1><p>Every student receives the current canonical 40-unit {earlyPrep ? "class" : "course"} automatically. Choose specific Foundations episodes or AI quests for your {earlyPrep ? "classes" : "courses"}; each student keeps one release-versioned progress record across EdNotebook.</p></div><label>{earlyPrep ? "Class" : "Course"}<select value={courseId} onChange={(event) => { setCourseId(event.target.value); setWorkspace(null); }}><option value="">Choose a {earlyPrep ? "class" : "course"}</option>{classes.map((course) => <option key={course.id} value={course.id}>{course.code || course.course_code || (earlyPrep ? "CLASS" : "COURSE")} · {course.title}</option>)}</select></label></section>
     {error && <div className="portal-form-error" role="alert">{error}</div>}
     {notice && <div className="portal-form-notice" role="status">{notice}</div>}
     {workspace && <>
       <section className="dashboard-card dl-source-boundary"><div><span>Source of truth</span><strong>{workspace.catalog.title}</strong><a href={workspace.catalog.source_repository} target="_blank" rel="noreferrer">Canonical repository ↗</a></div><dl><div><dt>Release</dt><dd>{workspace.catalog.release_id}</dd></div><div><dt>Catalog</dt><dd>{units.length} units</dd></div><div><dt>Content owner</dt><dd>Canonical repository</dd></div></dl></section>
       <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">PLATFORM-STANDARD PROGRESS</span><h2>Your students' canonical course progress.</h2><p>One student-owned record follows the active repository release. You see only learners currently enrolled in this class.</p></div><span>Release {workspace.standard_progress?.catalog_release || workspace.catalog.release_id}</span></div><div className="dl-professor-evidence">{(workspace.standard_progress?.learners || []).map((learner) => <div className="dl-student-evidence" key={learner.student_id}><span>{learner.display_name}</span><progress max={workspace.standard_progress.total_units} value={learner.completed_units} /><strong>{learner.completed_units}/{workspace.standard_progress.total_units}</strong><small>{learner.completed_units === workspace.standard_progress.total_units ? "complete" : learner.completed_units ? "in progress" : "ready"}</small></div>)}</div></section>
-      <form className="dashboard-card dl-assignment-builder" onSubmit={publish}><div className="dashboard-card-heading"><div><span className="portal-kicker">PROFESSOR ASSIGNMENT</span><h2>Build a chapter path.</h2></div><strong>{selectedUnits.size} selected</strong></div><div className="dl-builder-fields"><label>Assignment title<input required minLength={3} maxLength={220} value={title} onChange={(event) => setTitle(event.target.value)} /></label><label>Due date and time<input required type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} /></label><label className="dl-wide">Student directions<textarea rows={3} maxLength={5000} value={instructions} onChange={(event) => setInstructions(event.target.value)} /></label></div><div className="dl-quick-select"><button type="button" onClick={() => selectPath("foundations")}>All Foundations</button><button type="button" onClick={() => selectPath("ai-quest")}>All AI quests</button><button type="button" onClick={() => selectPath()}>Full 40-unit course</button><button type="button" onClick={() => setSelectedUnits(new Set())}>Clear</button></div><div className="dl-unit-groups">{groups.map((group) => <UnitGroup key={group.key} group={group} selected={selectedUnits} toggle={toggleUnit} />)}</div><fieldset className="dl-recipient-picker"><legend>Assign to</legend><label><input type="radio" name="recipient-mode" checked={recipientMode === "all"} onChange={() => setRecipientMode("all")} />All current students ({workspace.learners.length})</label><label><input type="radio" name="recipient-mode" checked={recipientMode === "selected"} onChange={() => setRecipientMode("selected")} />Selected students</label>{recipientMode === "selected" && <div>{workspace.learners.map((learner) => <label key={learner.student_id}><input type="checkbox" checked={selectedStudents.has(learner.student_id)} onChange={() => toggleStudent(learner.student_id)} />{learner.display_name}</label>)}</div>}</fieldset><button className="primary dl-publish" type="submit" disabled={busy || !selectedUnits.size || (recipientMode === "selected" && !selectedStudents.size)}>{busy ? "Publishing…" : "Publish assignment"}</button><p className="dl-boundary-note">Course work is required only by the professor's assignment. Research participation is always separate and optional.</p></form>
-      <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">SHARED EVIDENCE</span><h2>Assignments and student completion.</h2></div><span>{workspace.assignments.length} published</span></div><div className="dl-professor-evidence">{workspace.assignments.length ? workspace.assignments.map((assignment) => <article key={assignment.assignment_id}><header><div><strong>{assignment.title}</strong><span>{assignment.units.length} units · due {readableDue(assignment.due_at)}</span></div><i>{assignment.status}</i></header>{assignment.recipients.map((recipient) => <div className="dl-student-evidence" key={recipient.student_id}><span>{recipient.display_name}</span><progress max={assignment.units.length} value={recipient.completed_units} /><strong>{recipient.completed_units}/{assignment.units.length}</strong><small>{recipient.status}</small></div>)}</article>) : <p>No canonical course assignments have been published for this class.</p>}</div></section>
+      <form className="dashboard-card dl-assignment-builder" onSubmit={publish}><div className="dashboard-card-heading"><div><span className="portal-kicker">{earlyPrep ? "TEACHER" : "PROFESSOR"} ASSIGNMENT</span><h2>Build a chapter path.</h2></div><strong>{selectedUnits.size} selected</strong></div><div className="dl-builder-fields"><label>Assignment title<input required minLength={3} maxLength={220} value={title} onChange={(event) => setTitle(event.target.value)} /></label><label>Due date and time<input required type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} /></label><label className="dl-wide">Student directions<textarea rows={3} maxLength={5000} value={instructions} onChange={(event) => setInstructions(event.target.value)} /></label></div><div className="dl-quick-select"><button type="button" onClick={() => selectPath("foundations")}>All Foundations</button><button type="button" onClick={() => selectPath("ai-quest")}>All AI quests</button><button type="button" onClick={() => selectPath()}>Full 40-unit {earlyPrep ? "class" : "course"}</button><button type="button" onClick={() => setSelectedUnits(new Set())}>Clear</button></div><div className="dl-unit-groups">{groups.map((group) => <UnitGroup key={group.key} group={group} selected={selectedUnits} toggle={toggleUnit} />)}</div><fieldset className="dl-recipient-picker"><legend>Assign to</legend><label><input type="radio" name="recipient-mode" checked={recipientMode === "all"} onChange={() => setRecipientMode("all")} />All current students ({workspace.learners.length})</label><label><input type="radio" name="recipient-mode" checked={recipientMode === "selected"} onChange={() => setRecipientMode("selected")} />Selected students</label>{recipientMode === "selected" && <div>{workspace.learners.map((learner) => <label key={learner.student_id}><input type="checkbox" checked={selectedStudents.has(learner.student_id)} onChange={() => toggleStudent(learner.student_id)} />{learner.display_name}</label>)}</div>}</fieldset><button className="primary dl-publish" type="submit" disabled={busy || !selectedUnits.size || (recipientMode === "selected" && !selectedStudents.size)}>{busy ? "Publishing…" : "Publish assignment"}</button><p className="dl-boundary-note">{earlyPrep ? "Classwork" : "Course work"} is required only by the {earlyPrep ? "teacher's" : "professor's"} assignment. Research participation is always separate and optional.</p></form>
+      <section className="dashboard-card"><div className="dashboard-card-heading"><div><span className="portal-kicker">SHARED EVIDENCE</span><h2>Assignments and student completion.</h2></div><span>{workspace.assignments.length} published</span></div><div className="dl-professor-evidence">{workspace.assignments.length ? workspace.assignments.map((assignment) => <article key={assignment.assignment_id}><header><div><strong>{assignment.title}</strong><span>{assignment.units.length} units · due {readableDue(assignment.due_at)}</span></div><i>{assignment.status}</i></header>{assignment.recipients.map((recipient) => <div className="dl-recipient-evidence" key={recipient.student_id}><div className="dl-student-evidence"><span>{recipient.display_name}</span><progress max={assignment.units.length} value={recipient.completed_units} /><strong>{recipient.completed_units}/{assignment.units.length}</strong><small>{recipient.status}</small></div>{earlyPrep && <TeacherFeedbackComposer assignment={assignment} recipient={recipient} feedback={(workspace.feedback || []).filter((item) => item.assignment_id === assignment.assignment_id && item.student_id === recipient.student_id)} onRecorded={feedbackRecorded} />}</div>)}</article>) : <p>No canonical {earlyPrep ? "class" : "course"} assignments have been published for this class.</p>}</div></section>
       <ResearchLaunchReadiness readiness={workspace.research_launch_readiness} />
     </>}
   </div>;
 }
 
 export function StudentDigitalLiteracyAssignments({ track = "university", session, focusAssignmentId = null }) {
+  const earlyPrep = track === "k12";
   const [assignments, setAssignments] = useState([]);
+  const [feedback, setFeedback] = useState([]);
+  const [badges, setBadges] = useState([]);
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  async function refresh() {
+    const result = await loadMyDigitalLiteracyAssignments();
+    if (result.error) setError(result.error.message);
+    else {
+      setAssignments((result.data?.assignments || []).map((assignment) => ({
+        ...assignment,
+        instructions: earlyPrepEducatorCopy(assignment.instructions, earlyPrep),
+      })));
+      setFeedback(result.data?.feedback || []);
+      setBadges(result.data?.badges || []);
+    }
+  }
   useEffect(() => {
     let active = true;
     loadMyDigitalLiteracyAssignments().then((result) => {
       if (!active) return;
       if (result.error) setError(result.error.message);
-      else setAssignments(result.data?.assignments || []);
+      else {
+        setAssignments((result.data?.assignments || []).map((assignment) => ({
+          ...assignment,
+          instructions: earlyPrepEducatorCopy(assignment.instructions, earlyPrep),
+        })));
+        setFeedback(result.data?.feedback || []);
+        setBadges(result.data?.badges || []);
+      }
     });
     return () => { active = false; };
   }, [session?.user?.id]);
@@ -183,8 +257,18 @@ export function StudentDigitalLiteracyAssignments({ track = "university", sessio
     assignment?.scrollIntoView({ behavior: "smooth", block: "center" });
     assignment?.focus({ preventScroll: true });
   }, [assignments, focusAssignmentId]);
-  if (error) return <section className="dashboard-card dl-student-assignments"><span className="portal-kicker">DIGITAL LITERACY COURSE</span><p>{error}</p></section>;
-  return <section className="dashboard-card dl-student-assignments"><div className="dashboard-card-heading"><div><span className="portal-kicker">YOUR PLATFORM-STANDARD COURSE</span><h2>Digital Literacy is ready when you are.</h2><p>Your full canonical course appears automatically. Professor assignments use the same student-owned, release-versioned progress instead of creating duplicate completion records.</p></div><span>{assignments.filter((assignment) => assignment.status !== "completed").length} open</span></div>{assignments.length ? <div>{assignments.map((assignment) => { const summary = assignmentProgressSummary(assignment); const next = firstOpenUnit(assignment); const notificationFocus = assignment.assignment_id === focusAssignmentId; return <article id={`digital-literacy-assignment-${assignment.assignment_id}`} className={notificationFocus ? "is-notification-focus" : undefined} tabIndex={notificationFocus ? -1 : undefined} key={assignment.assignment_id}><header><div><span>{assignment.course_code || "COURSE"}</span><strong>{assignment.title}</strong><small>{assignment.course_title} · {assignment.due_at ? `due ${readableDue(assignment.due_at)}` : `release ${assignment.catalog_release}`}</small></div><i>{assignment.status}</i></header><p>{assignment.instructions}</p><div className="dl-progress-row"><progress max={summary.total} value={summary.completed} /><strong>{summary.completed}/{summary.total}</strong><span>{summary.percent}%</span></div><footer><button className="primary" type="button" disabled={!next} onClick={() => { window.location.hash = `#/student/${track}/digital-literacy/${assignment.assignment_id}/${next.unit_id}`; }}>{assignment.status === "completed" ? "Review course" : "Continue next unit"}</button><span>{next ? `${next.unit_id.toUpperCase()} · ${next.title}` : "No units assigned"}</span></footer></article>; })}</div> : <p>Your standard Digital Literacy course is being prepared.</p>}</section>;
+  async function acknowledge(feedbackId, helpful = null) {
+    setError("");
+    setNotice("");
+    const result = await acknowledgeDigitalLiteracyTeacherFeedback(feedbackId, helpful);
+    if (result.error) setError(result.error.message);
+    else {
+      setNotice(helpful ? "Feedback marked helpful." : "Feedback acknowledged.");
+      await refresh();
+    }
+  }
+  if (error) return <section className="dashboard-card dl-student-assignments"><span className="portal-kicker">DIGITAL LITERACY {earlyPrep ? "CLASS" : "COURSE"}</span><p role="alert">{error}</p></section>;
+  return <section className="dashboard-card dl-student-assignments"><div className="dashboard-card-heading"><div><span className="portal-kicker">{earlyPrep ? "YOUR PLATFORM-STANDARD CLASS" : UNIVERSITY_STUDENT_KICKER}</span><h2>Digital Literacy is ready when you are.</h2><p>Your full canonical {earlyPrep ? "class" : "course"} appears automatically. {earlyPrep ? "Teacher" : "Professor"} assignments use the same student-owned, release-versioned progress instead of creating duplicate completion records.</p></div><span>{assignments.filter((assignment) => assignment.status !== "completed").length} open</span></div>{notice && <div className="portal-form-notice" role="status">{notice}</div>}{earlyPrep && badges.map((badge) => <aside className="dl-standard-badge" key={badge.id} aria-label="Digital Literacy milestone"><span aria-hidden="true">★</span><div><strong>{badge.title}</strong><p>{badge.description}</p><small>Earned {readableDue(badge.earned_at)} · release {badge.release_id}</small></div></aside>)}{assignments.length ? <div>{assignments.map((assignment) => { const summary = assignmentProgressSummary(assignment); const next = firstOpenUnit(assignment); const notificationFocus = assignment.assignment_id === focusAssignmentId; const assignmentFeedback = feedback.filter((item) => item.assignment_id === assignment.assignment_id); return <article id={`digital-literacy-assignment-${assignment.assignment_id}`} className={notificationFocus ? "is-notification-focus" : undefined} tabIndex={notificationFocus ? -1 : undefined} key={assignment.assignment_id}><header><div><span>{assignment.course_code || (earlyPrep ? "CLASS" : "COURSE")}</span><strong>{assignment.title}</strong><small>{assignment.course_title} · {assignment.due_at ? `due ${readableDue(assignment.due_at)}` : `release ${assignment.catalog_release}`}</small></div><i>{assignment.status}</i></header><p>{assignment.instructions}</p><div className="dl-progress-row"><progress max={summary.total} value={summary.completed} /><strong>{summary.completed}/{summary.total}</strong><span>{summary.percent}%</span></div>{assignmentFeedback.length ? <section className="dl-student-feedback" aria-label={`Teacher feedback for ${assignment.title}`}><strong>Private teacher feedback</strong>{assignmentFeedback.map((item) => <article key={item.id}><header><span>{item.unit_id.toUpperCase()}</span><small>{readableDue(item.created_at)}</small></header><p>{item.feedback_text}</p><div><button type="button" disabled={Boolean(item.acknowledged_at)} onClick={() => acknowledge(item.id)}>{item.acknowledged_at ? "Acknowledged" : "I read this"}</button><button type="button" disabled={item.helpful === true} onClick={() => acknowledge(item.id, true)}>{item.helpful === true ? "Marked helpful" : "Helpful"}</button></div></article>)}</section> : null}<footer><button className="primary" type="button" disabled={!next} onClick={() => { window.location.hash = `#/student/${track}/digital-literacy/${assignment.assignment_id}/${next.unit_id}`; }}>{assignment.status === "completed" ? `Review ${earlyPrep ? "class" : "course"}` : "Continue next unit"}</button><span>{next ? `${next.unit_id.toUpperCase()} · ${next.title}` : "No units assigned"}</span></footer></article>; })}</div> : <p>Your standard Digital Literacy {earlyPrep ? "class" : "course"} is being prepared.</p>}</section>;
 }
 
 function InstrumentForm({ instrument, onSubmitted }) {

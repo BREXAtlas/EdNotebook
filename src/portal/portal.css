@@ -644,6 +644,10 @@
 .professor-digital-literacy-entry { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #b8cbed; background: linear-gradient(135deg, #f9fbff, #edf4ff); }
 .professor-digital-literacy-entry p { max-width: 780px; margin-bottom: 0; }
 .professor-digital-literacy-entry > button { flex: 0 0 auto; }
+.professor-financial-literacy-entry { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #d6b56e; background: linear-gradient(135deg, #fffefa, #fff5da); }
+.professor-financial-literacy-entry p { max-width: 780px; margin-bottom: 0; }
+.professor-financial-literacy-entry > button { flex: 0 0 auto; }
+.professor-canonical-library-row.is-financial { border-color: #d6b56e; background: #fffaf0; }
 .professor-canonical-library-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; padding: 17px; border: 1px solid #b8cbed; border-radius: 12px; background: #f1f6ff; }
 .professor-canonical-library-row > div { display: grid; gap: 4px; }
 .professor-canonical-library-row span { color: var(--portal-blue); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
@@ -847,6 +851,7 @@
   .professor-class-grid article { grid-template-columns: 1fr; }
   .professor-class-status { justify-items: start; }
   .professor-digital-literacy-entry,
+  .professor-financial-literacy-entry,
   .professor-canonical-library-row { align-items: flex-start; flex-direction: column; }
 }
 
@@ -1948,6 +1953,17 @@
 .admin-message-list dd { margin: 3px 0 0; font-size: 11px; }
 .admin-message-list footer button { padding: 8px 10px; color: #fff; background: var(--portal-blue); border: 0; border-radius: 8px; font-size: 10px; font-weight: 850; }
 
+.early-prep-subject-workspace { display: grid; gap: 18px; overflow: hidden; border-top: 5px solid #2d5c48; background: linear-gradient(145deg, #f4fbf7 0%, #fff 62%, #fff8eb 100%); }
+.early-prep-subject-workspace-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.early-prep-subject-workspace-heading h2 { margin: 5px 0 7px; color: #16382b; }
+.early-prep-subject-workspace-heading p { max-width: 760px; margin: 0; color: var(--portal-muted); line-height: 1.6; }
+.early-prep-subject-standard { flex: 0 0 auto; max-width: 240px; padding: 8px 10px; color: #315c49; background: #e3f1e9; border: 1px solid #bdd8c8; border-radius: 99px; font-size: 10px; font-weight: 800; text-align: center; }
+.early-prep-subject-workspace-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.early-prep-subject-workspace-grid > div { padding: 14px; background: rgba(255, 255, 255, .82); border: 1px solid #d7e2dc; border-radius: 12px; }
+.early-prep-subject-workspace-grid strong { color: #213d33; font-size: 12px; }
+.early-prep-subject-workspace-grid ul, .early-prep-subject-workspace-grid ol { display: grid; gap: 7px; margin: 10px 0 0; padding-left: 20px; color: #46594f; font-size: 11px; line-height: 1.45; }
+.early-prep-subject-workspace-note { margin: 0; padding-top: 12px; color: #50645a; border-top: 1px solid #d7e2dc; font-size: 10px; line-height: 1.55; }
+
 @media (max-width: 850px) {
   .student-feed-welcome { grid-template-columns: 70px 1fr; }
   .student-feed-welcome img { width: 70px; height: 70px; }
@@ -1957,4 +1973,7 @@
   .faculty-feed-guide { grid-template-columns: 72px 1fr; }
   .faculty-feed-guide img { width: 72px; height: 72px; }
   .faculty-feed-guide button { grid-column: 1 / -1; }
+  .early-prep-subject-workspace-heading { display: grid; }
+  .early-prep-subject-standard { max-width: none; justify-self: start; }
+  .early-prep-subject-workspace-grid { grid-template-columns: 1fr; }
 }

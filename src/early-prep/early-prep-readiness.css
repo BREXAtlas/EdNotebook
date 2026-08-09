@@ -1,0 +1,54 @@
+.early-prep-readiness { display: grid; gap: 16px; }
+.readiness-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 5px solid #3d657d; background: linear-gradient(135deg, #edf7fa, #fff 60%, #f7f1e4); }
+.readiness-hero > div { max-width: 840px; }
+.readiness-hero h1 { margin: 7px 0; color: #17394d; }
+.readiness-hero p, .readiness-active-module > p, .readiness-teacher-preview > p, .readiness-resume-builder > p { color: #52627b; line-height: 1.65; }
+.readiness-hero button { flex: 0 0 auto; }
+.readiness-module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.readiness-module-grid > button { display: grid; gap: 7px; min-height: 112px; padding: 15px; text-align: left; color: #28475b; background: #fff; border: 1px solid #d8e1e7; border-radius: 12px; }
+.readiness-module-grid > button:hover, .readiness-module-grid > button:focus-visible { border-color: #7899ad; box-shadow: 0 8px 20px rgba(35, 69, 90, .09); }
+.readiness-module-grid > button.is-active { color: #17394d; background: #eaf4f8; border-color: #3d657d; box-shadow: inset 0 0 0 1px #3d657d; }
+.readiness-module-grid strong { font-size: 13px; }
+.readiness-module-grid span { color: #667587; font-size: 10px; line-height: 1.5; }
+.readiness-active-module, .readiness-teacher-preview, .readiness-resume-builder, .readiness-interview, .readiness-checklist { display: grid; gap: 14px; }
+.readiness-active-module > header, .readiness-teacher-preview > header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.readiness-active-module h2, .readiness-teacher-preview h2, .readiness-resume-builder h2, .readiness-interview h2, .readiness-boundary h2 { margin: 6px 0 0; }
+.readiness-active-module > header > span, .readiness-teacher-preview > header > span { padding: 6px 9px; color: #315a70; background: #e9f3f7; border-radius: 99px; font-size: 9px; font-weight: 850; }
+.readiness-module-columns, .readiness-teacher-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.readiness-module-columns > div, .readiness-teacher-columns > div { padding: 14px; background: #f8fafc; border: 1px solid #dce4ea; border-radius: 11px; }
+.readiness-module-columns h3, .readiness-teacher-columns h3 { margin: 0 0 10px; color: #294b5f; }
+.readiness-module-columns ul, .readiness-module-columns ol, .readiness-teacher-columns ul, .readiness-teacher-columns ol { display: grid; gap: 8px; margin: 0; padding-left: 20px; color: #52627b; line-height: 1.5; }
+.readiness-teacher-columns ol { padding: 0; list-style: none; }
+.readiness-teacher-columns ol li { display: grid; gap: 4px; padding: 10px; background: #fff; border-radius: 8px; }
+.readiness-teacher-columns ol span { color: #657487; font-size: 10px; }
+.readiness-active-module > label, .readiness-interview > label { display: grid; gap: 6px; color: #40536a; font-size: 10px; font-weight: 800; }
+.readiness-active-module textarea, .readiness-interview textarea, .readiness-form-grid input, .readiness-form-grid textarea { width: 100%; box-sizing: border-box; padding: 10px; color: #243c4c; background: #fff; border: 1px solid #cfdbe2; border-radius: 8px; font: inherit; }
+.readiness-status-line { display: flex; gap: 10px; padding: 11px; color: #6a5125; background: #fff7df; border: 1px solid #ead7a4; border-radius: 9px; }
+.readiness-status-line span { font-size: 10px; }
+.readiness-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.readiness-form-grid label { display: grid; gap: 6px; color: #40536a; font-size: 10px; font-weight: 800; }
+.readiness-form-grid .is-wide { grid-column: 1 / -1; }
+.readiness-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.readiness-interview ul { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.readiness-interview li { padding: 6px 8px; color: #34556a; background: #edf5f8; border-radius: 99px; font-size: 9px; font-weight: 800; }
+.readiness-no-score { margin: 0; color: #6a5125; font-size: 10px; }
+.readiness-checklist h2 { margin: 6px 0 0; }
+.readiness-checklist > p { margin: 0; color: #657487; }
+.readiness-checklist > div { display: grid; gap: 8px; }
+.readiness-checklist label { display: flex; align-items: center; gap: 9px; padding: 10px; color: #40536a; background: #f8fafc; border: 1px solid #dce4ea; border-radius: 9px; }
+.readiness-checklist input { width: 17px; height: 17px; accent-color: #3d657d; }
+.readiness-boundary { border-left: 4px solid #a06e2a; }
+.readiness-boundary p { margin-bottom: 0; color: #5c6674; line-height: 1.6; }
+
+@media (max-width: 900px) {
+  .readiness-module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 650px) {
+  .readiness-hero { display: grid; }
+  .readiness-hero button { justify-self: start; }
+  .readiness-module-grid, .readiness-module-columns, .readiness-teacher-columns, .readiness-form-grid { grid-template-columns: 1fr; }
+  .readiness-form-grid .is-wide { grid-column: auto; }
+  .readiness-active-module > header, .readiness-teacher-preview > header { display: grid; }
+  .readiness-active-module > header > span, .readiness-teacher-preview > header > span { justify-self: start; }
+}
