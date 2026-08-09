@@ -27,9 +27,12 @@ const ProfessorSemesterCalendar = lazy(() =>
 const EarlyPrepLearningSystemsAcceptance = lazy(() =>
   import("../integrations/early-prep/EarlyPrepLearningSystemsAcceptance.jsx")
 );
+const EarlyPrepReadinessWorkspace = lazy(() =>
+  import("../early-prep/EarlyPrepReadinessWorkspace.jsx")
+);
 
 const NAV_GROUPS = [
-  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["financial-literacy", "Financial Literacy"], ["templates", "Assignments"], ["learning-systems", "Learning Systems"]] },
+  { label: "Teach", items: [["overview", "Overview"], ["classes", "My Courses"], ["semester", "Syllabus Tools & Calendar"], ["digital-literacy", "Digital Literacy Course"], ["financial-literacy", "Financial Literacy"], ["templates", "Assignments"], ["readiness", "College & Career"], ["learning-systems", "Learning Systems"]] },
   { label: "Students", items: [["students", "Students & Roster"], ["rewards", "Social Learning"], ["grades", "Progress & Analytics"], ["attendance", "Attendance"]] },
   { label: "Connect", items: [["notifications", "Notifications"], ["announcements", "Campus Social"], ["communication", "Course Communication"], ["profile", "Educator Page"]] },
   { label: "Account", items: [["verification", "School Verification"], ["security", "Security"], ["settings", "Settings"], ["help", "Help & Support"]] },
@@ -39,11 +42,12 @@ const EARLY_PREP_NAV_LABELS = Object.freeze({
   classes: "My Classes",
   "digital-literacy": "Digital Literacy Class",
   "financial-literacy": "Financial Literacy Class",
+  readiness: "College & Career Tools",
   announcements: "School Social",
   communication: "Class Communication",
 });
 
-const EARLY_PREP_ONLY_NAV_ITEMS = new Set(["financial-literacy", "learning-systems"]);
+const EARLY_PREP_ONLY_NAV_ITEMS = new Set(["financial-literacy", "readiness", "learning-systems"]);
 
 const TOUR = [
   ["Teaching overview", "See your real courses, enrollment requests, progress, and upcoming work."],
@@ -460,6 +464,7 @@ export default function ProfessorDashboard({ profile, session, divisionScope = n
           {tab === "digital-literacy" && <ProfessorDigitalLiteracyPilot classes={scopedTeachingClasses} divisionScope={divisionScope} />}
           {tab === "financial-literacy" && earlyPrep && <ProfessorFinancialLiteracyClass classes={scopedTeachingClasses} />}
           {tab === "templates" && <AssignmentTemplateWorkspace mode="professor" session={session} track={divisionScope || "university"} classes={scopedTeachingClasses} />}
+          {tab === "readiness" && earlyPrep && <Suspense fallback={<section className="dashboard-card" role="status">Opening College & Career tools…</section>}><EarlyPrepReadinessWorkspace mode="teacher" onOpenAssignments={() => setTab("templates")} /></Suspense>}
           {tab === "learning-systems" && earlyPrep && <Suspense fallback={<section className="dashboard-card" role="status">Opening synthetic learning-system acceptance…</section>}><EarlyPrepLearningSystemsAcceptance /></Suspense>}
           {sensitive && <SensitiveAccess session={session} unlocked={unlocked} onUnlock={unlock} onLock={lock}>{protectedContent}</SensitiveAccess>}
           {tab === "attendance" && <AttendancePanel classes={scopedTeachingClasses} />}

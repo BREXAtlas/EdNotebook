@@ -8,7 +8,7 @@ const professorDashboard = await readFile(new URL("../../portal/ProfessorDashboa
 
 test("the learning-system rehearsal is lazy and Early Prep-only", () => {
   assert.match(professorDashboard, /lazy\(\(\) =>\s*import\("\.\.\/integrations\/early-prep\/EarlyPrepLearningSystemsAcceptance\.jsx"\)/u);
-  assert.match(professorDashboard, /EARLY_PREP_ONLY_NAV_ITEMS = new Set\(\["financial-literacy", "learning-systems"\]\)/u);
+  assert.match(professorDashboard, /EARLY_PREP_ONLY_NAV_ITEMS = new Set\(\["financial-literacy", "readiness", "learning-systems"\]\)/u);
   assert.match(professorDashboard, /tab === "learning-systems" && earlyPrep/u);
   assert.match(professorDashboard, /!EARLY_PREP_ONLY_NAV_ITEMS\.has\(id\) \|\| divisionScope === "k12"/u);
 });

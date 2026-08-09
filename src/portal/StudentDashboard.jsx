@@ -38,6 +38,7 @@ import CampusSocialFeed from "../social-learning/CampusSocialFeed.jsx";
 import CourseCommunicationPanel from "../communication/CourseCommunicationPanel.jsx";
 
 const OwnYourSemester = lazy(() => import("../ai/OwnYourSemester.jsx"));
+const EarlyPrepReadinessWorkspace = lazy(() => import("../early-prep/EarlyPrepReadinessWorkspace.jsx"));
 
 const TABS = [
   ["overview", "Overview"], ["semester", "Own your semester"], ["classes", "Classes"], ["assignments", "Assignments"], ["grades", "Grades"], ["rewards", "Social learning"], ["notes", "Learning workspace"],
@@ -540,7 +541,10 @@ export default function StudentDashboard({
       <div className="student-dashboard-shell">
         <aside className="student-dashboard-sidebar">
           <div className="student-sidebar-profile"><span>{(demoMode ? "B" : displayName.slice(0, 1)).toUpperCase()}</span><div><strong>{demoMode ? "Brooke" : displayName}</strong><small>{demoMode ? "Demonstration student" : liveClasses.length ? `${liveClasses.length} linked class${liveClasses.length === 1 ? "" : "es"}` : "New student workspace"}</small></div></div>
-          <nav aria-label={`${copy.shortLabel} student dashboard`}>{TABS.map(([id, label]) => <button className={(id === "demo" ? demoMode : tab === id && !demoMode) ? "is-active" : ""} aria-current={(id === "demo" ? demoMode : tab === id && !demoMode) ? "page" : undefined} type="button" key={id} onClick={() => chooseTab(id)}>{label}{id === "grades" && classes.length > 0 && <i>{rows.filter((row) => row.status !== "final").length}</i>}</button>)}</nav>
+          <nav aria-label={`${copy.shortLabel} student dashboard`}>{TABS.map(([id, label]) => {
+            const visibleLabel = track === "k12" && id === "opportunities" ? "College & Career" : label;
+            return <button className={(id === "demo" ? demoMode : tab === id && !demoMode) ? "is-active" : ""} aria-current={(id === "demo" ? demoMode : tab === id && !demoMode) ? "page" : undefined} type="button" key={id} onClick={() => chooseTab(id)}>{visibleLabel}{id === "grades" && classes.length > 0 && <i>{rows.filter((row) => row.status !== "final").length}</i>}</button>;
+          })}</nav>
           <div className="student-sidebar-points"><span>SOCIAL EDUCATION LEARNING</span><strong>{rewardSummary.totalPoints} points</strong><div><i style={{ width: `${rewardSummary.progressPercent}%` }} /></div><small>{rewardSummary.nextMilestone ? `${rewardSummary.pointsToNext} to ${rewardSummary.nextMilestone.badge_name}` : "Current path complete"}</small></div>
         </aside>
         <main className="student-dashboard-main">
@@ -559,7 +563,8 @@ export default function StudentDashboard({
           {tab === "friends" && <FriendsPanelV2 key={`friends-${settingsScope}-${track}`} track={track} userId={session?.user?.id} storageScope={settingsScope} onOpenCourseCommunication={() => chooseTab("messages")} />}
           {tab === "messages" && <CourseCommunicationPanel key={`messages-${settingsScope}-${track}`} role="student" session={session} educationDivision={track} />}
           {tab === "page" && <StudentPagePanel key={`page-${settingsScope}-${track}`} name={accountSettings.displayName || profile?.full_name || displayName} track={track} userId={session?.user?.id} storageScope={settingsScope} accountSettings={accountSettings} onSettingsChange={applyAccountSettings} />}
-          {tab === "opportunities" && <OpportunitiesPanel track={track} />}
+          {tab === "opportunities" && track === "k12" && <Suspense fallback={<section className="dashboard-card" role="status">Opening College & Career tools…</section>}><EarlyPrepReadinessWorkspace mode="student" onOpenLearningWorkspace={() => setTab("notes")} onOpenPortfolio={() => setTab("page")} /></Suspense>}
+          {tab === "opportunities" && track !== "k12" && <OpportunitiesPanel track={track} />}
           {tab === "settings" && <AccountSettings scope={settingsScope} accountType="student" settings={accountSettings} onSettingsChange={applyAccountSettings} authenticated={Boolean(session?.user)} accountEmail={session?.user?.email || ""} />}
         </main>
       </div>
