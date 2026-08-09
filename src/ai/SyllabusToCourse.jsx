@@ -103,6 +103,11 @@ function fieldStatusClass(item) {
   return `syllabus-field-status is-${item?.status || "review"}`;
 }
 
+function educatorCopy(value, earlyPrep) {
+  if (!earlyPrep || typeof value !== "string") return value;
+  return value.replaceAll("Professor", "Teacher").replaceAll("professor", "teacher");
+}
+
 function blankSyllabusResult() {
   return {
     sourceText: "",
@@ -115,7 +120,8 @@ function blankSyllabusResult() {
   };
 }
 
-export default function SyllabusToCourse({ onBack, onContinue }) {
+export default function SyllabusToCourse({ onBack, onContinue, educationDivision = "university" }) {
+  const earlyPrep = educationDivision === "k12";
   const courseDraft = useMemo(
     () => environmentStorage.getJson(STORAGE_KEYS.courseDraft, {}) || {},
     [],
@@ -507,7 +513,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
           <h1>Extract, create, validate, and map the syllabus before it reaches Blackboard.</h1>
           <p>
             EdNotebook uses the Angelo State 2026 checklist as a versioned
-            requirement profile. Professor content, institution-managed policy
+            requirement profile. {earlyPrep ? "Teacher" : "Professor"} content, institution-managed policy
             blocks, optional program content, and Blackboard mapping remain distinct.
           </p>
         </div>
@@ -516,7 +522,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
 
       <section ref={statusRef} className="syllabus-course-status" role="status" aria-live="polite">
         <strong>Current status</strong>
-        <p>{status}</p>
+        <p>{educatorCopy(status, earlyPrep)}</p>
       </section>
 
       <section
@@ -534,7 +540,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
         </div>
         <dl>
           <div>
-            <dt>Professor-managed required</dt>
+            <dt>{earlyPrep ? "Teacher" : "Professor"}-managed required</dt>
             <dd>{requirementReview.requiredComplete}/{requirementReview.requiredTotal}</dd>
           </div>
           <div>
@@ -598,7 +604,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
               setPhase("review");
               setCloudRecord(null);
               setStatus(
-                "Blank institutional syllabus shell opened. Complete required professor fields; institution-managed blocks remain locked.",
+                `Blank institutional syllabus shell opened. Complete required ${earlyPrep ? "teacher" : "professor"} fields; institution-managed blocks remain locked.`,
               );
             }}
           >
@@ -612,7 +618,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
             aria-live="polite"
           >
             <strong>{operationNotice.title}</strong>
-            <p>{operationNotice.message}</p>
+            <p>{educatorCopy(operationNotice.message, earlyPrep)}</p>
           </div>
         ) : null}
         <textarea
@@ -664,7 +670,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
               aria-live="polite"
             >
               <strong>{operationNotice.title}</strong>
-              <p>{operationNotice.message}</p>
+              <p>{educatorCopy(operationNotice.message, earlyPrep)}</p>
             </div>
           ) : null}
 
@@ -697,7 +703,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
                   <span>RETURNED GOVERNED DRAFT</span>
                   <h3>{aiReview.fields.length} source-grounded field{aiReview.fields.length === 1 ? "" : "s"}</h3>
                 </div>
-                <strong>Professor review required</strong>
+                <strong>{earlyPrep ? "Teacher" : "Professor"} review required</strong>
               </div>
               <div className="syllabus-ai-returned-field-list">
                 {aiReview.fields.map((field) => (
@@ -801,7 +807,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
                             {field?.sourceExcerpt
                               || (institutionManaged
                                 ? "Institution template source will be recorded here."
-                                : "No source excerpt recorded. Professor entry or review is required.")}
+                                : `No source excerpt recorded. ${earlyPrep ? "Teacher" : "Professor"} entry or review is required.`)}
                           </blockquote>
                         </article>
                       );
@@ -821,7 +827,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
                     <li key={item.key}>{item.sectionTitle}: {item.label}</li>
                   ))}
                 </ul>
-              ) : <p>All professor-managed required fields are present.</p>}
+              ) : <p>All {earlyPrep ? "teacher" : "professor"}-managed required fields are present.</p>}
             </article>
             <article>
               <h3>Conditional checks</h3>
@@ -874,7 +880,7 @@ export default function SyllabusToCourse({ onBack, onContinue }) {
             >
               {phase === "saving"
                 ? "Saving versioned syllabus…"
-                : "Save professor-reviewed structured syllabus draft"}
+                : `Save ${earlyPrep ? "teacher" : "professor"}-reviewed structured syllabus draft`}
             </button>
             {phase === "accepted" ? (
               <button type="button" onClick={onContinue}>

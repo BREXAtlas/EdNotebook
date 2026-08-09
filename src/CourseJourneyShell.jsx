@@ -14,10 +14,14 @@ function readCourseName() {
   try { return JSON.parse(window.localStorage.getItem("ednotebook-course-draft"))?.name || "Untitled course"; } catch { return "Untitled course"; }
 }
 
-export default function CourseJourneyShell({ children, onBack, onStudio, onCourseOutput }) {
+export default function CourseJourneyShell({ children, onBack, onStudio, onCourseOutput, educationDivision = "university" }) {
   const [currentStep, setCurrentStep] = useState(readStep);
   const [visible, setVisible] = useState(true);
   const courseName = useMemo(readCourseName, []);
+  const earlyPrep = educationDivision === "k12";
+  const steps = earlyPrep
+    ? STEPS.map((label) => label.replaceAll("course", "class").replaceAll("Course", "Class"))
+    : STEPS;
 
   const advance = (next) => {
     const safeStep = Math.min(6, Math.max(2, next));
@@ -47,17 +51,17 @@ export default function CourseJourneyShell({ children, onBack, onStudio, onCours
   };
 
   return <div className="course-builder-shell" onClickCapture={handleCapture} onFocusCapture={handleCapture}>
-    {visible && <section className="builder-journey-bar" aria-label="Course creation progress">
+    {visible && <section className="builder-journey-bar" aria-label={`${earlyPrep ? "Class" : "Course"} creation progress`}>
       <div className="builder-journey-summary">
         <BrandMark size={38} />
-        <div><div className="builder-journey-kicker">COURSE BUILD · STEP {currentStep} OF 6</div><strong>{courseName}</strong><span>{STEPS[currentStep - 1]}</span></div>
+        <div><div className="builder-journey-kicker">{earlyPrep ? "CLASS" : "COURSE"} BUILD · STEP {currentStep} OF 6</div><strong>{courseName}</strong><span>{steps[currentStep - 1]}</span></div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <button type="button" onClick={onStudio} data-motion="true">📎 Materials & tools</button>
-          <button type="button" onClick={() => { advance(6); onCourseOutput?.(); }} data-motion="true">🎓 Course output & publish</button>
-          <button type="button" onClick={onBack} data-motion="true">Course setup</button>
+          <button type="button" onClick={() => { advance(6); onCourseOutput?.(); }} data-motion="true">🎓 {earlyPrep ? "Class" : "Course"} output & publish</button>
+          <button type="button" onClick={onBack} data-motion="true">{earlyPrep ? "Class" : "Course"} setup</button>
         </div>
       </div>
-      <ol className="builder-step-track">{STEPS.map((label, index) => { const step = index + 1; const done = step < currentStep; const active = step === currentStep; return <li key={label} className={`${done ? "is-done" : ""}${active ? " is-active" : ""}`} aria-current={active ? "step" : undefined}><span>{done ? "✓" : step}</span><small>{label}</small></li>; })}</ol>
+      <ol className="builder-step-track">{steps.map((label, index) => { const step = index + 1; const done = step < currentStep; const active = step === currentStep; return <li key={label} className={`${done ? "is-done" : ""}${active ? " is-active" : ""}`} aria-current={active ? "step" : undefined}><span>{done ? "✓" : step}</span><small>{label}</small></li>; })}</ol>
     </section>}
     {children}
   </div>;

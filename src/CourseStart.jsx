@@ -58,11 +58,21 @@ export default function CourseStart({ onContinue, onHome }) {
   const [length, setLength] = useState(prior?.length || "16 weeks");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const earlyPrep = educationDivision === "k12";
+  const entity = earlyPrep ? "class" : "course";
+  const entityTitle = earlyPrep ? "Class" : "Course";
+  const journey = earlyPrep
+    ? JOURNEY.map((step) => ({
+        ...step,
+        title: step.title.replaceAll("course", "class"),
+        text: step.text.replaceAll("course", "class"),
+      }))
+    : JOURNEY;
 
   const begin = async (event) => {
     event.preventDefault();
     if (!name.trim()) {
-      setError("Give the course a working title before continuing.");
+      setError(`Give the ${entity} a working title before continuing.`);
       return;
     }
     if (educationDivision === "k12" && !isEarlyPrepSubject(subjectId)) {
@@ -75,7 +85,7 @@ export default function CourseStart({ onContinue, onHome }) {
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
-      if (!userData.user) throw new Error("Sign in before creating a course.");
+      if (!userData.user) throw new Error(`Sign in before creating a ${entity}.`);
 
       const payload = {
         owner_id: userData.user.id,
@@ -134,7 +144,7 @@ export default function CourseStart({ onContinue, onHome }) {
       window.localStorage.setItem("ednotebook-course-step", "2");
       onContinue?.();
     } catch (saveError) {
-      setError(saveError.message || "The secure course record could not be created.");
+      setError(saveError.message || `The secure ${entity} record could not be created.`);
     } finally {
       setBusy(false);
     }
@@ -143,16 +153,16 @@ export default function CourseStart({ onContinue, onHome }) {
   return (
     <main className="course-start-page">
       <header className="course-start-nav">
-        <button className="brand-button" type="button" onClick={onHome} aria-label="Return to the EdNotebook landing page">
-          <BrandLogo size={40} tagline="Course creation workspace" />
+        <button className="brand-button" type="button" onClick={onHome} aria-label={earlyPrep ? "Return to the Early Prep teacher workspace" : "Return to the EdNotebook landing page"}>
+          <BrandLogo size={40} tagline={earlyPrep ? "Early Prep class creation" : "Course creation workspace"} />
         </button>
-        <span className="course-start-status">Professor workspace</span>
+        <span className="course-start-status">{earlyPrep ? "Teacher workspace" : "Professor workspace"}</span>
       </header>
 
       <section className="course-start-hero" aria-labelledby="create-course-title">
         <div className="course-start-copy">
-          <div className="step-kicker">STEP 1 OF 6 · CREATE A COURSE</div>
-          <h1 id="create-course-title">Every EdNotebook course starts here.</h1>
+          <div className="step-kicker">STEP 1 OF 6 · CREATE A {entityTitle.toUpperCase()}</div>
+          <h1 id="create-course-title">Every EdNotebook {entity} starts here.</h1>
           <p>
             Create the class shell first. Then EdNotebook walks you through source content, learning design,
             generation, learner preview, and publication in a numbered path.
@@ -163,17 +173,17 @@ export default function CourseStart({ onContinue, onHome }) {
           </div>
         </div>
 
-        <form className="course-create-card" onSubmit={begin} aria-label="Create a course">
+        <form className="course-create-card" onSubmit={begin} aria-label={`Create a ${entity}`}>
           <div className="card-step-line">
             <span className="card-step-number">1</span>
             <div>
-              <strong>Create course</strong>
-              <small>Required before Course Forge and secure material storage</small>
+              <strong>Create {entity}</strong>
+              <small>Required before Course Forge and secure {entity} material storage</small>
             </div>
           </div>
 
           <label>
-            Course name <span aria-hidden="true">*</span>
+            {entityTitle} name <span aria-hidden="true">*</span>
             <input
               autoFocus
               value={name}
@@ -194,10 +204,10 @@ export default function CourseStart({ onContinue, onHome }) {
                 <option value="university">University / college</option>
                 <option value="k12">Early Prep · Grades 9–12</option>
               </select>
-              {prior?.id && <small>Division is locked after the course record is created.</small>}
+              {prior?.id && <small>Division is locked after the {entity} record is created.</small>}
             </label>
             <label>
-              Course code
+              {entityTitle} code
               <input
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
@@ -243,10 +253,10 @@ export default function CourseStart({ onContinue, onHome }) {
           {error && <div className="course-form-error" role="alert">{error}</div>}
 
           <button className="primary-course-button" type="submit" data-motion="true" disabled={busy}>
-            {busy ? "Creating secure course record…" : "Save course and continue to Step 2"}
+            {busy ? `Creating secure ${entity} record…` : `Save ${entity} and continue to Step 2`}
             <span aria-hidden="true">→</span>
           </button>
-          <p className="course-create-note">Saved to your authenticated Supabase course tenancy so materials, assignments, books, and messages have a secure owner.</p>
+          <p className="course-create-note">Saved to your authenticated Supabase {entity} tenancy so materials, assignments, books, and messages have a secure owner.</p>
         </form>
       </section>
 
@@ -260,7 +270,7 @@ export default function CourseStart({ onContinue, onHome }) {
         </div>
 
         <ol className="course-journey-list">
-          {JOURNEY.map((step) => (
+          {journey.map((step) => (
             <li key={step.number} className={step.number === 1 ? "is-current" : ""}>
               <div className="journey-number">{step.number}</div>
               <div>
