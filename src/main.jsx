@@ -35,6 +35,7 @@ const AdminControlCenter = lazy(() => import("./admin-control/AdminControlCenter
 const InstitutionAccessPage = lazy(() => import("./admin-control/InstitutionAccessPage.jsx"));
 const TosIntegrationPreview = lazy(() => import("./integrations/tos/TosIntegrationPreview.jsx"));
 const SyntheticInstitutionPilot = lazy(() => import("./integrations/tos/SyntheticInstitutionPilot.jsx"));
+const EarlyPrepPilotReadiness = lazy(() => import("./early-prep/EarlyPrepPilotReadiness.jsx"));
 const DigitalLiteracyCoursePage = lazy(() =>
   import("./digital-literacy/DigitalLiteracyPilotWorkspace.jsx").then((module) => ({ default: module.DigitalLiteracyCoursePage }))
 );
@@ -111,6 +112,7 @@ function Router() {
 
   if (route.startsWith("#/student/k12/app")) return studentDashboard("k12");
   if (route.startsWith("#/student/university/app") || route.startsWith("#/student/app")) return studentDashboard("university");
+  if (route.startsWith("#/admin/early-prep-pilot-readiness")) return <AuthGate accountType="institution" returnTo="#/admin/early-prep-pilot-readiness" allowSignup={false}>{() => <MotionFrame routeKey="early-prep-pilot-readiness"><EarlyPrepPilotReadiness onBack={() => navigate("#/admin/control-center")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/synthetic-pilot")) return <AuthGate accountType="institution" returnTo="#/admin/synthetic-pilot" allowSignup={false}>{() => <MotionFrame routeKey="synthetic-institution-pilot"><SyntheticInstitutionPilot onBack={() => navigate("#/admin/control-center")} onOpenTos={() => window.open("https://brexatlas.github.io/TOS-Platform/control-center/institutions/example-university/pilots/", "_blank", "noopener,noreferrer")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/tos-integration")) return <AuthGate accountType="institution" returnTo="#/admin/tos-integration" allowSignup={false}>{() => <MotionFrame routeKey="tos-integration-preview"><TosIntegrationPreview onBack={() => navigate("#/admin/control-center")} /></MotionFrame>}</AuthGate>;
   if (route.startsWith("#/admin/control-center") || route.startsWith("#/institution-admin/control-center")) return <AuthGate accountType="institution" returnTo="#/admin/control-center" allowSignup={false}>{() => <MotionFrame routeKey="admin-control-center"><AdminControlCenter onExit={() => navigate("#/admin")} /></MotionFrame>}</AuthGate>;
