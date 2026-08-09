@@ -52,7 +52,7 @@ test("professors control approval, open enrollment, universal assignment, and ba
 });
 
 test("public discovery explains the enrollment handoff before sign in", () => {
-  assert.match(classDirectory, /Professor approval required/u);
+  assert.match(classDirectory, /track === "k12" \? "Teacher" : "Professor"/u);
   assert.match(classDirectory, /Open · join immediately/u);
   assert.match(studentLanding, /Sign in and join this class/u);
   assert.match(studentLanding, /Sign in to request this class/u);

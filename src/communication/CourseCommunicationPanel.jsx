@@ -432,7 +432,7 @@ export default function CourseCommunicationPanel({
                 <div className="course-communication-section-heading">
                   <div>
                     <span>ANNOUNCEMENTS</span>
-                    <h2 id="course-announcements-title">Professor updates</h2>
+                    <h2 id="course-announcements-title">{activeCourse.education_division === "k12" ? "Teacher updates" : "Professor updates"}</h2>
                   </div>
                   <small>Audience: {audienceLabel(activeCourse)}</small>
                 </div>

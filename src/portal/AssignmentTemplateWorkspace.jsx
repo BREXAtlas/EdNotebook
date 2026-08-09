@@ -271,7 +271,7 @@ function FullPageEditor({ template, answers, setAnswers, content, setContent, on
   </div></div>;
 }
 
-function highlightReviewAnchors(root, feedback) {
+function highlightReviewAnchors(root, feedback, educatorLabel = "professor") {
   if (!root || typeof NodeFilter === "undefined") return;
   (feedback || []).filter((item) => item.is_highlight && item.selected_text).forEach((item) => {
     const target = String(item.selected_text).trim();
@@ -286,7 +286,8 @@ function highlightReviewAnchors(root, feedback) {
         range.setEnd(textNode, index + target.length);
         const mark = document.createElement("mark");
         mark.className = "professor-feedback-highlight";
-        mark.title = item.feedback_type === "question" ? "Professor question" : "Professor comment";
+        const titleLabel = educatorLabel[0].toUpperCase() + educatorLabel.slice(1);
+        mark.title = item.feedback_type === "question" ? `${titleLabel} question` : `${titleLabel} comment`;
         range.surroundContents(mark);
         break;
       }
@@ -295,7 +296,14 @@ function highlightReviewAnchors(root, feedback) {
   });
 }
 
-function ProfessorReviewWorkspace({ courseId, session }) {
+function ProfessorReviewWorkspace({ courseId, session, track = null }) {
+  const earlyPrepReview = track
+    ? track === "k12"
+    : typeof window !== "undefined" && (
+        window.location.hash.startsWith("#/early-prep/teacher")
+        || window.localStorage.getItem("ednotebook-course-division") === "k12"
+      );
+  const educatorLabel = earlyPrepReview ? "Teacher" : "Professor";
   const documentRef = useRef(null);
   const [submissions, setSubmissions] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -334,8 +342,8 @@ function ProfessorReviewWorkspace({ courseId, session }) {
   }, [selected?.id]);
 
   useEffect(() => {
-    highlightReviewAnchors(documentRef.current, feedback);
-  }, [feedback, selected?.id]);
+    highlightReviewAnchors(documentRef.current, feedback, educatorLabel.toLowerCase());
+  }, [educatorLabel, feedback, selected?.id]);
 
   function captureSelection() {
     const selection = window.getSelection();
@@ -438,7 +446,7 @@ function ProfessorReviewWorkspace({ courseId, session }) {
               <form onSubmit={addFeedback}>
                 <label>Feedback type<select value={draft.feedbackType} onChange={(event) => setDraft({ ...draft, feedbackType: event.target.value })}><option value="comment">Comment</option><option value="question">Question</option></select></label>
                 <label>Highlighted text<textarea rows={3} value={draft.selectedText} onChange={(event) => setDraft({ ...draft, selectedText: event.target.value })} placeholder="Select text in the document or paste a short excerpt" /></label>
-                <label>Professor note<textarea rows={5} value={draft.comment} onChange={(event) => setDraft({ ...draft, comment: event.target.value })} placeholder="Explain, encourage, or ask a revision question" required /></label>
+                <label>{educatorLabel} note<textarea rows={5} value={draft.comment} onChange={(event) => setDraft({ ...draft, comment: event.target.value })} placeholder="Explain, encourage, or ask a revision question" required /></label>
                 <button type="submit" disabled={busy}>Save private draft</button>
               </form>
               <div className="assignment-feedback-list">
@@ -458,7 +466,8 @@ function ProfessorReviewWorkspace({ courseId, session }) {
   );
 }
 
-function StudentAssignment({ template, session, onClose }) {
+function StudentAssignment({ template, session, onClose, track = "university" }) {
+  const educatorLabel = track === "k12" ? "teacher" : "professor";
   const storageKey = `ednotebook-assignment-${session?.user?.id || "sample"}-${template.id}`;
   const stored = loadJson(storageKey, {});
   const [answers, setAnswers] = useState(stored.answers || {});
@@ -531,7 +540,7 @@ function StudentAssignment({ template, session, onClose }) {
 
   const submitBlocked = missing.length > 0 || overLimitSections.length > 0 || fullResponseOverLimit;
   const submitLabel = missing.length ? `Complete ${missing.length} required section${missing.length === 1 ? "" : "s"}` : overLimitSections.length || fullResponseOverLimit ? "Shorten responses to submit" : "Submit assignment";
-  return <section className="student-assignment-workspace"><header><button type="button" onClick={onClose}>← All assignments</button><div><span>{status}</span><strong>{notice || "Changes save as you work"}</strong></div></header><div className="assignment-student-heading"><span className="portal-kicker">TEMPLATE ASSIGNMENT</span><h1>{template.title}</h1><p>{template.instructions}</p><div><span>✓ Browser spelling check {template.editor_config.spellcheck ? "on" : "off"}</span><span>✓ Draft saves to this page</span><span>✓ No document upload needed</span></div></div>{publishedFeedback.length > 0 && <section className="dashboard-card student-published-feedback"><div><span className="portal-kicker">{reviewState === "graded" ? "ASSIGNMENT GRADED" : "PROFESSOR FEEDBACK"}</span><h2>{reviewState === "graded" && gradeLabel ? gradeLabel : "Your professor finished this review."}</h2><p>Comments and questions are grouped here and remain available beside the same saved document.</p></div><div>{publishedFeedback.map((item) => <article key={item.id}><span>{item.feedback_type}</span>{item.selected_text && <mark>{item.selected_text}</mark>}<p>{item.comment}</p></article>)}</div></section>}<div className="assignment-response-layout"><main className="dashboard-card"><GuidedAnswerFields template={template} answers={answers} setAnswers={setAnswers} /></main><aside><section className="dashboard-card"><span className="portal-kicker">FULL RESPONSE</span><h2>Write without leaving EdNotebook.</h2><p>Open the academic writing studio for editable pages, college-paper designs, sources, Word import, and writing review. Your guided answers stay beside it.</p><button className="primary" type="button" disabled={!template.editor_config.full_page_editor} onClick={() => setFullEditor(true)}>Open academic writing studio</button><small className={fullResponseOverLimit ? "is-over-limit" : ""}>{countWords(documentContent)} words saved{template.editor_config.word_limit ? ` · maximum ${template.editor_config.word_limit}` : ""}</small></section><section className="dashboard-card assignment-export-card"><span className="portal-kicker">EXPORT</span><h2>Use your work anywhere.</h2><button type="button" disabled={!template.editor_config.allow_word_export} onClick={() => downloadWord(template, answers, documentContent)}>Export Word</button><button type="button" disabled={!template.editor_config.allow_pdf_export} onClick={() => { try { openPdfExport(template, answers, documentContent); } catch (error) { setNotice(error.message); } }}>Export PDF</button></section></aside></div><footer className="student-assignment-actions"><button type="button" disabled={saving} onClick={() => persist("draft")}>Save draft</button><button className="primary" type="button" disabled={saving || submitBlocked} onClick={() => persist("submitted")}>{submitLabel}</button></footer>{fullEditor && <AcademicWritingStudio title={template.title} content={documentContent} setContent={setDocumentContent} onClose={() => setFullEditor(false)} onSave={(safeContent) => persist("draft", safeContent)} status={status} saving={saving} spellCheck={template.editor_config.spellcheck} wordLimit={template.editor_config.word_limit || 0} feedback={publishedFeedback} secondaryLabel="Guided answers" secondaryContent={<><div className="assignment-student-heading"><span className="portal-kicker">GUIDED ANSWERS</span><h1>{template.title}</h1><p>Review or update each section without leaving the writing studio.</p></div><GuidedAnswerFields template={template} answers={answers} setAnswers={setAnswers} /></>} saveLabel="Save to assignment" />}</section>;
+  return <section className="student-assignment-workspace"><header><button type="button" onClick={onClose}>← All assignments</button><div><span>{status}</span><strong>{notice || "Changes save as you work"}</strong></div></header><div className="assignment-student-heading"><span className="portal-kicker">TEMPLATE ASSIGNMENT</span><h1>{template.title}</h1><p>{template.instructions}</p><div><span>✓ Browser spelling check {template.editor_config.spellcheck ? "on" : "off"}</span><span>✓ Draft saves to this page</span><span>✓ No document upload needed</span></div></div>{publishedFeedback.length > 0 && <section className="dashboard-card student-published-feedback"><div><span className="portal-kicker">{reviewState === "graded" ? "ASSIGNMENT GRADED" : `${educatorLabel.toUpperCase()} FEEDBACK`}</span><h2>{reviewState === "graded" && gradeLabel ? gradeLabel : `Your ${educatorLabel} finished this review.`}</h2><p>Comments and questions are grouped here and remain available beside the same saved document.</p></div><div>{publishedFeedback.map((item) => <article key={item.id}><span>{item.feedback_type}</span>{item.selected_text && <mark>{item.selected_text}</mark>}<p>{item.comment}</p></article>)}</div></section>}<div className="assignment-response-layout"><main className="dashboard-card"><GuidedAnswerFields template={template} answers={answers} setAnswers={setAnswers} /></main><aside><section className="dashboard-card"><span className="portal-kicker">FULL RESPONSE</span><h2>Write without leaving EdNotebook.</h2><p>Open the academic writing studio for editable pages, college-paper designs, sources, Word import, and writing review. Your guided answers stay beside it.</p><button className="primary" type="button" disabled={!template.editor_config.full_page_editor} onClick={() => setFullEditor(true)}>Open academic writing studio</button><small className={fullResponseOverLimit ? "is-over-limit" : ""}>{countWords(documentContent)} words saved{template.editor_config.word_limit ? ` · maximum ${template.editor_config.word_limit}` : ""}</small></section><section className="dashboard-card assignment-export-card"><span className="portal-kicker">EXPORT</span><h2>Use your work anywhere.</h2><button type="button" disabled={!template.editor_config.allow_word_export} onClick={() => downloadWord(template, answers, documentContent)}>Export Word</button><button type="button" disabled={!template.editor_config.allow_pdf_export} onClick={() => { try { openPdfExport(template, answers, documentContent); } catch (error) { setNotice(error.message); } }}>Export PDF</button></section></aside></div><footer className="student-assignment-actions"><button type="button" disabled={saving} onClick={() => persist("draft")}>Save draft</button><button className="primary" type="button" disabled={saving || submitBlocked} onClick={() => persist("submitted")}>{submitLabel}</button></footer>{fullEditor && <AcademicWritingStudio title={template.title} content={documentContent} setContent={setDocumentContent} onClose={() => setFullEditor(false)} onSave={(safeContent) => persist("draft", safeContent)} status={status} saving={saving} spellCheck={template.editor_config.spellcheck} wordLimit={template.editor_config.word_limit || 0} feedback={publishedFeedback} secondaryLabel="Guided answers" secondaryContent={<><div className="assignment-student-heading"><span className="portal-kicker">GUIDED ANSWERS</span><h1>{template.title}</h1><p>Review or update each section without leaving the writing studio.</p></div><GuidedAnswerFields template={template} answers={answers} setAnswers={setAnswers} /></>} saveLabel="Save to assignment" />}</section>;
 }
 
 export default function AssignmentTemplateWorkspace({ mode, session, track = "university", classes = [], initialTemplateId = null }) {
@@ -619,7 +628,7 @@ export default function AssignmentTemplateWorkspace({ mode, session, track = "un
     setBusy(false);
   }
 
-  if (mode === "student" && selectedTemplate) return <div className="assignment-template-workspace">{track === "k12" && <SubjectWorkspaceGuide subjectId={selectedSubjectId} mode="student" />}<StudentAssignment template={selectedTemplate} session={session} onClose={() => setSelectedTemplate(null)} /></div>;
+  if (mode === "student" && selectedTemplate) return <div className="assignment-template-workspace">{track === "k12" && <SubjectWorkspaceGuide subjectId={selectedSubjectId} mode="student" />}<StudentAssignment template={selectedTemplate} session={session} track={track} onClose={() => setSelectedTemplate(null)} /></div>;
 
   if (mode === "professor" && !availableClasses.length) return <div className="assignment-template-workspace"><section className="dashboard-card assignment-template-hero"><div><span className="portal-kicker">ASSIGNMENTS</span><h1>Create an original course before adding assignments.</h1><p>New professor accounts start empty. The Digital Literacy Course is already available to review and assign from its dedicated course area; no sample course or student data is inserted here.</p></div></section></div>;
   return <div className="assignment-template-workspace"><section className="dashboard-card assignment-template-hero"><div><span className="portal-kicker">{mode === "professor" ? "ASSIGNMENT STUDIO" : "ASSIGNMENTS"}</span><h1>{mode === "professor" ? "Build the work right into the course." : "Read, write, and submit in one place."}</h1><p>{mode === "professor" ? "Create reusable form-style assignments with custom sections and an optional full-page writing workspace. Students never need a blank Word document just to begin." : "Open a guided template, write in a full-size page, save your draft, and export when you need a copy."}</p></div><label>Course<select value={courseId} onChange={(event) => selectCourse(event.target.value)}>{availableClasses.map((course) => <option key={course.id} value={course.id}>{course.code} · {course.title}</option>)}</select></label></section>{track === "k12" && <SubjectWorkspaceGuide subjectId={selectedSubjectId} mode={mode} />}{notice && <div className="portal-form-notice" role="status">{notice}</div>}{mode === "professor" ? <><section className="template-library"><div className="dashboard-card-heading"><div><span className="portal-kicker">TEMPLATE LIBRARY</span><h2>Reuse or revise.</h2></div><button type="button" onClick={() => { const selectedCourse = availableClasses.find((course) => course.id === courseId); setDraft(createTemplate(selectedCourse?.division || track, courseId, "draft", selectedCourse?.subjectId)); }}>New template</button></div><div>{visibleTemplates.length ? visibleTemplates.map((template) => <button type="button" className={draft.id === template.id ? "is-active" : ""} key={template.id} onClick={() => setDraft(template)}><span>{template.status}</span><strong>{template.title}</strong><small>{template.sections.length} sections · {template.editor_config.full_page_editor ? "full-page editor" : "guided form"}</small></button>) : <p>No templates for this course yet.</p>}</div></section><TemplateBuilder template={draft} setTemplate={setDraft} onSave={persistTemplate} onPreview={() => setSelectedTemplate(draft)} busy={busy} /><ProfessorReviewWorkspace courseId={courseId} session={session} />{selectedTemplate && <TemplatePreview template={selectedTemplate} onClose={() => setSelectedTemplate(null)} />}</> : <section className="student-assignment-list"><div className="dashboard-card-heading"><div><span className="portal-kicker">READY TO WORK</span><h2>Your template assignments</h2></div><span>{visibleTemplates.length} available</span></div>{visibleTemplates.length ? visibleTemplates.map((template) => <article className="dashboard-card" key={template.id}><div><span>{availableClasses.find((course) => course.id === template.course_id)?.code || "COURSE"}</span><strong>{template.title}</strong><p>{template.instructions}</p></div><ul><li>{template.sections.length} guided sections</li><li>{template.editor_config.full_page_editor ? "Full-page editor included" : "Guided answers"}</li><li>Spelling check on</li></ul><button className="primary" type="button" onClick={() => setSelectedTemplate(template)}>Open assignment</button></article>) : <div className="dashboard-card"><h2>No published templates yet.</h2><p>Your educator's published assignments will appear here.</p></div>}</section>}</div>;

@@ -42,6 +42,15 @@ function readableDue(value) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+function earlyPrepEducatorCopy(value, earlyPrep) {
+  if (!earlyPrep) return value;
+  return String(value || "")
+    .replace(/\bProfessors\b/gu, "Teachers")
+    .replace(/\bprofessors\b/gu, "teachers")
+    .replace(/\bProfessor\b/gu, "Teacher")
+    .replace(/\bprofessor\b/gu, "teacher");
+}
+
 function UnitGroup({ group, selected, toggle }) {
   return <fieldset className="dl-unit-group"><legend><span>{group.path === "foundations" ? "Foundations" : "AI Quest"} · {group.groupNumber}</span>{group.title}</legend>{group.units.map((unit) => <label key={unit.unit_id}><input type="checkbox" checked={selected.has(unit.unit_id)} onChange={() => toggle(unit.unit_id)} /><span><strong>{unit.unit_id.toUpperCase()}</strong>{unit.title}</span></label>)}</fieldset>;
 }
@@ -218,7 +227,10 @@ export function StudentDigitalLiteracyAssignments({ track = "university", sessio
     const result = await loadMyDigitalLiteracyAssignments();
     if (result.error) setError(result.error.message);
     else {
-      setAssignments(result.data?.assignments || []);
+      setAssignments((result.data?.assignments || []).map((assignment) => ({
+        ...assignment,
+        instructions: earlyPrepEducatorCopy(assignment.instructions, earlyPrep),
+      })));
       setFeedback(result.data?.feedback || []);
       setBadges(result.data?.badges || []);
     }
@@ -229,7 +241,10 @@ export function StudentDigitalLiteracyAssignments({ track = "university", sessio
       if (!active) return;
       if (result.error) setError(result.error.message);
       else {
-        setAssignments(result.data?.assignments || []);
+        setAssignments((result.data?.assignments || []).map((assignment) => ({
+          ...assignment,
+          instructions: earlyPrepEducatorCopy(assignment.instructions, earlyPrep),
+        })));
         setFeedback(result.data?.feedback || []);
         setBadges(result.data?.badges || []);
       }
