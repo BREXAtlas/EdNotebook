@@ -19,26 +19,30 @@ const TABS = [
   ["slides", "Slides & plug-ins", "▤", "Presentations and connectors"],
   ["room", "Private room", "◌", "Course chat or device notes"],
 ];
+const EARLY_PREP_TABS = TABS.filter(([value]) => value !== "reader");
 
-function tabFromHash() {
+function tabFromHash(tabs = TABS) {
   const query = window.location.hash.split("?")[1] || "";
   const requested = new URLSearchParams(query).get("tab");
-  return TABS.some(([value]) => value === requested) ? requested : "materials";
+  return tabs.some(([value]) => value === requested) ? requested : "materials";
 }
 
 function StudioFeatureLoading() {
   return <section className="studio-feature-loading" aria-live="polite"><strong>Opening this workspace…</strong><span>Only the selected tool is being loaded.</span></section>;
 }
 
-export default function LearningStudio({ onBack, onCourseSetup }) {
+export default function LearningStudio({ educationTrack = "university", onBack, onCourseSetup }) {
   const course = useMemo(readCourseDraft, []);
-  const [tab, setTab] = useState(tabFromHash);
+  const earlyPrep = educationTrack === "k12" || course.educationDivision === "k12";
+  const tabs = earlyPrep ? EARLY_PREP_TABS : TABS;
+  const [tab, setTab] = useState(() => tabFromHash(tabs));
 
   useEffect(() => {
-    const onHash = () => setTab(tabFromHash());
+    const onHash = () => setTab(tabFromHash(tabs));
+    onHash();
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+  }, [tabs]);
 
   function chooseTab(value) {
     setTab(value);
@@ -71,7 +75,7 @@ export default function LearningStudio({ onBack, onCourseSetup }) {
             <p>Every file, link, tool, assignment, reading, and message has a named location and access rule.</p>
           </div>
           <nav>
-            {TABS.map(([value, label, icon, description]) => (
+            {tabs.map(([value, label, icon, description]) => (
               <button
                 type="button"
                 className={tab === value ? "is-active" : ""}
