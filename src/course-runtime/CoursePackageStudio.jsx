@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import AssignmentTemplateWorkspace from "../portal/AssignmentTemplateWorkspace.jsx";
 import { environmentStorage, STORAGE_KEYS } from "../storage/environmentStorage.js";
-import { addLessonToManifest, cloneManifest, COURSE_PRESETS, createStarterManifest, flattenLessons, removeLessonFromManifest, validateCourseManifest } from "./courseManifest.js";
+import { addLessonToManifest, applyEducationDivisionLanguage, cloneManifest, COURSE_PRESETS, createStarterManifest, flattenLessons, removeLessonFromManifest, validateCourseManifest } from "./courseManifest.js";
 import { adaptBuilderCourseToManifest, readBuilderCourseDraft } from "./builderCourseAdapter.js";
 import { gradeCourseProgress, listManageableCourses, listProgressOverview, loadPublicationForCourse, publishCoursePackage, saveCoursePackageDraft, setPublicationState } from "./courseService.js";
 import "./course-runtime.css";
@@ -82,7 +82,9 @@ export default function CoursePackageStudio({ session, onBack, onOpenStudentCour
       const course = courses.find((item) => item.id === courseId);
       if (!course) return;
       const result = await loadPublicationForCourse(courseId);
-      const cloudManifest = result.data?.draft_manifest?.format ? result.data.draft_manifest : null;
+      const cloudManifest = result.data?.draft_manifest?.format
+        ? applyEducationDivisionLanguage(result.data.draft_manifest, course.education_division || "university")
+        : null;
       const localBuilderDraft = readBuilderCourseDraft();
       const localUpdatedAt = Date.parse(localBuilderDraft?.updatedAt || "") || 0;
       const cloudBuilderUpdatedAt = Date.parse(cloudManifest?.builderSource?.updatedAt || "") || 0;
@@ -104,7 +106,7 @@ export default function CoursePackageStudio({ session, onBack, onOpenStudentCour
     })();
   }, [courseId, courses]);
 
-  function updateCourse(key, value) { setManifest({ ...manifest, course: { ...manifest.course, [key]: value }, grading: key === "title" ? { ...manifest.grading, title: `Course completion · ${value}` } : manifest.grading }); }
+  function updateCourse(key, value) { setManifest({ ...manifest, course: { ...manifest.course, [key]: value }, grading: key === "title" ? { ...manifest.grading, title: `${entityTitle} completion · ${value}` } : manifest.grading }); }
   function updateGrading(key, value) { setManifest({ ...manifest, grading: { ...manifest.grading, [key]: value } }); }
 
   async function saveDraft() {

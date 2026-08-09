@@ -34,7 +34,10 @@ function mapCheck(check, fallbackId) {
   };
 }
 
-function genericChoices(title) {
+function genericChoices(title, educationDivision = "university") {
+  const educatorLabel = educationDivision === "k12" ? "teacher" : "professor";
+  const educatorTitle = educationDivision === "k12" ? "Teacher" : "Professor";
+  const learningContainer = educationDivision === "k12" ? "class" : "course";
   return [
     {
       id: "apply",
@@ -43,7 +46,7 @@ function genericChoices(title) {
       possibleBenefit: "The learner can show understanding and identify remaining gaps.",
       possibleCost: "It takes more time than simply continuing.",
       possibleRisk: "The first explanation may still need revision.",
-      whatCouldChangeThisOutcome: "Professor feedback or a stronger source may improve the explanation.",
+      whatCouldChangeThisOutcome: `${educatorTitle} feedback or a stronger source may improve the explanation.`,
       sourceIds: [],
     },
     {
@@ -53,7 +56,7 @@ function genericChoices(title) {
       possibleBenefit: "A focused question makes support more useful.",
       possibleCost: "The learner pauses before finishing.",
       possibleRisk: "The question may remain unresolved until someone responds.",
-      whatCouldChangeThisOutcome: "A course source, discussion, or professor response may resolve it.",
+      whatCouldChangeThisOutcome: `A ${learningContainer} source, discussion, or ${educatorLabel} response may resolve it.`,
       sourceIds: [],
     },
     {
@@ -69,8 +72,10 @@ function genericChoices(title) {
   ];
 }
 
-function mapBuilderLesson(episode, builderLesson, groupId, index) {
-  const starter = createStarterLesson(clean(episode?.title, `Lesson ${index + 1}`), index + 1);
+function mapBuilderLesson(episode, builderLesson, groupId, index, educationDivision = "university") {
+  const educatorLabel = educationDivision === "k12" ? "teacher" : "professor";
+  const learningContainer = educationDivision === "k12" ? "class" : "course";
+  const starter = createStarterLesson(clean(episode?.title, `Lesson ${index + 1}`), index + 1, educationDivision);
   starter.id = clean(episode?.id, `lesson-${index + 1}`);
   starter.groupId = groupId;
   starter.title = clean(episode?.title, starter.title);
@@ -79,7 +84,7 @@ function mapBuilderLesson(episode, builderLesson, groupId, index) {
 
   if (!builderLesson) {
     starter.openingNarrative = `This lesson has a generated pathway and title. Open it in Course Forge and generate the full lesson before final publication.`;
-    starter.realWorldExample = `The connected course package is holding this position so the pathway, order, due dates, and enrollment links remain stable.`;
+    starter.realWorldExample = `The connected ${learningContainer} package is holding this position so the pathway, order, due dates, and enrollment links remain stable.`;
     starter.builderStatus = "title_only";
     return starter;
   }
@@ -106,7 +111,7 @@ function mapBuilderLesson(episode, builderLesson, groupId, index) {
     type: "flow",
     items: sections.map((section) => clean(section.heading)).filter(Boolean).slice(0, 6),
     textAlternative: `A sequence of the lesson sections for ${starter.title}: ${sections.map((section) => clean(section.heading)).filter(Boolean).join(", ")}.`,
-    credit: "Original EdNotebook course figure generated from the professor-approved lesson structure",
+    credit: `Original EdNotebook ${learningContainer} figure generated from the ${educatorLabel}-approved lesson structure`,
   };
   starter.concept = {
     what,
@@ -123,7 +128,7 @@ function mapBuilderLesson(episode, builderLesson, groupId, index) {
     prompt: `After studying ${starter.title}, what is the strongest next learning move?`,
     type: "multiple_choice",
   };
-  starter.choices = genericChoices(starter.title);
+  starter.choices = genericChoices(starter.title, educationDivision);
   starter.consequences = {
     immediate: {
       apply: "The learner produces an explanation that can be checked and improved.",
@@ -141,7 +146,7 @@ function mapBuilderLesson(episode, builderLesson, groupId, index) {
       skip: "Repeatedly skipping review can create avoidable knowledge gaps.",
     },
   };
-  starter.recoveryPath = "Return to the professor-approved lesson sections, compare the explanation with the verification section, and ask one specific question. A missed idea remains recoverable.";
+  starter.recoveryPath = `Return to the ${educatorLabel}-approved lesson sections, compare the explanation with the verification section, and ask one specific question. A missed idea remains recoverable.`;
   starter.knowledgeChecks = (builderLesson.knowledgeChecks || []).map((check, checkIndex) => mapCheck(check, `${starter.id}-check-${checkIndex + 1}`));
   starter.endQuiz = (builderLesson.quiz || []).map((check, checkIndex) => mapCheck(check, `${starter.id}-quiz-${checkIndex + 1}`));
   starter.builderSections = clone(sections);
@@ -163,6 +168,10 @@ export function adaptBuilderCourseToManifest({ builderCourse, builderLessons = {
   if (!builderCourse?.acts?.length) return existingManifest;
 
   const existing = existingManifest ? clone(existingManifest) : null;
+  const educationDivision = clean(platformCourse.education_division || existing?.course?.educationDivision, "university");
+  const educatorLabel = educationDivision === "k12" ? "teacher" : "professor";
+  const learningContainer = educationDivision === "k12" ? "class" : "course";
+  const learningContainerTitle = educationDivision === "k12" ? "Class" : "Course";
   const templateKey = clean(builderCourse.templateKey, "ramready");
   const groups = [];
   const nodes = [];
@@ -171,7 +180,7 @@ export function adaptBuilderCourseToManifest({ builderCourse, builderLessons = {
     const groupId = slug(act.title, `group-${actIndex + 1}`);
     const nodeIds = [];
     (act.episodes || []).forEach((episode) => {
-      const node = mapBuilderLesson(episode, builderLessons[episode.id], groupId, nodes.length);
+      const node = mapBuilderLesson(episode, builderLessons[episode.id], groupId, nodes.length, educationDivision);
       nodes.push(node);
       nodeIds.push(node.id);
     });
@@ -184,7 +193,7 @@ export function adaptBuilderCourseToManifest({ builderCourse, builderLessons = {
 
   const title = clean(builderCourse.courseTitle, platformCourse.title || existing?.course?.title || "Untitled course");
   const courseId = clean(platformCourse.id, existing?.course?.sourceEdNotebookCourseId || existing?.course?.id || crypto.randomUUID());
-  const grading = existing?.grading || { mode: "auto", maxPoints: 100, title: `Course completion · ${title}`, dueAt: "" };
+  const grading = existing?.grading || { mode: "auto", maxPoints: 100, title: `${learningContainerTitle} completion · ${title}`, dueAt: "" };
 
   return {
     ...(existing || {}),
@@ -195,11 +204,12 @@ export function adaptBuilderCourseToManifest({ builderCourse, builderLessons = {
       sourceEdNotebookCourseId: clean(platformCourse.id) || existing?.course?.sourceEdNotebookCourseId || null,
       courseCode: clean(platformCourse.course_code || platformCourse.code, existing?.course?.courseCode || "COURSE"),
       title,
-      subtitle: clean(builderCourse.subtitle, existing?.course?.subtitle || "A guided EdNotebook course"),
-      description: clean(existing?.course?.description || platformCourse.audience, "Generated in Course Forge and synchronized to the connected course package."),
+      subtitle: clean(builderCourse.subtitle, existing?.course?.subtitle || `A guided EdNotebook ${learningContainer}`),
+      description: clean(existing?.course?.description || platformCourse.audience, `Generated in Course Forge and synchronized to the connected ${learningContainer} package.`),
       subject: clean(platformCourse.subject, existing?.course?.subject || "Interdisciplinary"),
       audience: clean(platformCourse.audience, existing?.course?.audience || "Learners"),
       teachingWindow: clean(platformCourse.teaching_window, existing?.course?.teachingWindow || "Self-paced"),
+      educationDivision,
       language: existing?.course?.language || "en",
       contentVersion: existing?.course?.contentVersion || "1.0.0",
     },
@@ -216,7 +226,7 @@ export function adaptBuilderCourseToManifest({ builderCourse, builderLessons = {
     paths: [{
       id: templateKey === "ramready" ? "foundations" : slug(templateKey, "course-path"),
       label: pathwayLabel(templateKey),
-      description: clean(builderCourse.subtitle, "The professor-approved learning pathway generated in Course Forge."),
+      description: clean(builderCourse.subtitle, `The ${educatorLabel}-approved learning pathway generated in Course Forge.`),
       unitLabel: templateKey === "ramready" ? "Episode" : "Lesson",
       groupLabel: templateKey === "ramready" ? "Act" : "Module",
       required: true,

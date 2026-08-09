@@ -19,6 +19,8 @@ const courseRuntime = await readFile(new URL("../course-runtime/CourseRuntimePag
 const lessonPlayer = await readFile(new URL("../course-runtime/StudentLessonPlayer.jsx", import.meta.url), "utf8");
 const digitalLiteracy = await readFile(new URL("../digital-literacy/DigitalLiteracyPilotWorkspace.jsx", import.meta.url), "utf8");
 const learningStudio = await readFile(new URL("../studio/LearningStudio.jsx", import.meta.url), "utf8");
+const courseManifest = await readFile(new URL("../course-runtime/courseManifest.js", import.meta.url), "utf8");
+const builderCourseAdapter = await readFile(new URL("../course-runtime/builderCourseAdapter.js", import.meta.url), "utf8");
 
 test("Early Prep educator language stays teacher-specific while University professor language remains intact", () => {
   assert.match(authGate, /earlyPrepEducator/u);
@@ -73,4 +75,16 @@ test("Early Prep class materials cannot enter University publisher or marketplac
   assert.match(learningStudio, /const EARLY_PREP_TABS = TABS\.filter\(\(\[value\]\) => value !== "reader"\)/u);
   assert.match(learningStudio, /const tabs = earlyPrep \? EARLY_PREP_TABS : TABS/u);
   assert.match(learningStudio, /tabFromHash\(tabs\)/u);
+});
+
+test("Early Prep starter and generated lessons keep teacher language while University keeps professor language", () => {
+  assert.match(courseManifest, /const educatorLabel = earlyPrep \? "teacher" : "professor"/u);
+  assert.match(courseManifest, /Compare the lesson with \$\{educatorLabel\}-approved \$\{learningContainer\} material/u);
+  assert.match(courseManifest, /ask the \$\{educatorLabel\} one specific question/u);
+  assert.match(courseManifest, /educationDivision, language: "en"/u);
+  assert.match(builderCourseAdapter, /educationDivision === "k12" \? "teacher" : "professor"/u);
+  assert.match(builderCourseAdapter, /generated from the \$\{educatorLabel\}-approved lesson structure/u);
+  assert.match(builderCourseAdapter, /The \$\{educatorLabel\}-approved learning pathway generated in Course Forge/u);
+  assert.match(builderCourseAdapter, /\$\{learningContainerTitle\} completion · \$\{title\}/u);
+  assert.match(coursePackage, /\$\{entityTitle\} completion · \$\{value\}/u);
 });
