@@ -18,12 +18,17 @@ test("Early Prep educator language stays teacher-specific while University profe
   assert.match(authGate, /earlyPrepEducator/u);
   assert.match(authGate, /Your teacher workspace is active/u);
   assert.match(authGate, /#\/early-prep\/teacher/u);
+  assert.match(authGate, /accountType === "professor" && educationTrack === "k12"\s*\? "teacher"/u);
+  assert.match(authGate, /\{displayRole\} ·/u);
+  assert.match(authGate, /educationTrack === "k12" \? "teacher" : "professor"\} enrollment/u);
   assert.match(authGate, /Your professor workspace is active/u);
 
   assert.match(communication, /"Teacher updates" : "Professor updates"/u);
   assert.match(directory, /track === "k12" \? "Teacher" : "Professor"/u);
   assert.match(studentDashboard, /track === "k12" \? "teacher" : "professor"/u);
   assert.match(socialFeed, /Students and teachers share the same school community/u);
+  assert.match(socialFeed, /!university && value === "professor" \? "teacher" : value/u);
+  assert.match(socialFeed, /socialRoleLabel\(feed\.profile\?\.account_type \|\| role, university\)/u);
   assert.match(socialLearning, /earlyPrep \? "TEACHER RECOGNITION" : "PROFESSOR RECOGNITION"/u);
 });
 
@@ -34,6 +39,7 @@ test("Early Prep course creation and student workspaces default to Grades 9–12
   assert.match(assignment, /const educatorLabel = earlyPrepReview \? "Teacher" : "Professor"/u);
   assert.match(assignment, /track=\{track\}/u);
   assert.match(courseRuntime, /const educatorLabel = track === "k12" \? "teacher" : "professor"/u);
+  assert.match(courseRuntime, /track === "k12" \? state\.packageIdentity\.label\.replace\(\/\^Professor-\/u, "Teacher-"\)/u);
   assert.match(lessonPlayer, /educationDivision === "k12" \? "teacher" : "professor"/u);
   assert.match(digitalLiteracy, /earlyPrepEducatorCopy\(assignment\.instructions, earlyPrep\)/u);
 });

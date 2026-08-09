@@ -520,7 +520,7 @@ export default function CourseRuntimePage({
           <div>
             <small>{course.course_code || "COURSE"}</small>
             <strong>{state.manifest.course.title}</strong>
-            <span>{state.packageIdentity.label}</span>
+            <span>{track === "k12" ? state.packageIdentity.label.replace(/^Professor-/u, "Teacher-") : state.packageIdentity.label}</span>
           </div>
           <nav aria-label="Course">
             <button

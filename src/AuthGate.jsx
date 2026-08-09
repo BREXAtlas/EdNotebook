@@ -268,7 +268,7 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
                   ? earlyPrepTeacher
                     ? "Choose the exact high school or district you work for. An unlisted school can be submitted for review. Your teacher workspace remains available while the affiliation is unverified."
                     : "Choose the exact institution you work for. An unlisted institution can be submitted for review. Your professor workspace remains available while the affiliation is unverified."
-                  : "Choose the exact school you attend. Select Independent only for free public use without professor enrollment, assignment, roster, or institutional grade access."}
+                  : `Choose the exact school you attend. Select Independent only for free public use without ${educationTrack === "k12" ? "teacher" : "professor"} enrollment, assignment, roster, or institutional grade access.`}
               />
               {accountType === "student" && institutionChoice?.choice !== "independent" ? (
                 <label style={{ display: "block", marginBottom: 14, fontWeight: 700 }}>
@@ -351,8 +351,11 @@ function AuthForm({ accountType = "student", educationTrack = "university", retu
   );
 }
 
-function AccountBar({ profile, user, institutionReview }) {
+function AccountBar({ profile, user, institutionReview, accountType = "student", educationTrack = "university" }) {
   const reviewStatus = institutionReview?.verification_status || "unverified";
+  const displayRole = accountType === "professor" && educationTrack === "k12"
+    ? "teacher"
+    : profile?.role || "learner";
   return (
     <div className="account-bubble">
       <div className="account-bubble-details">
@@ -360,7 +363,7 @@ function AccountBar({ profile, user, institutionReview }) {
           {profile?.full_name || user.email}
         </div>
         <div style={{ fontSize: 11, opacity: .72, textTransform: "capitalize" }}>
-          {profile?.role || "learner"} · {profile?.subscription_status || "free"}
+          {displayRole} · {profile?.subscription_status || "free"}
         </div>
         {institutionReview && (
           <div style={{ fontSize: 10, opacity: .8 }}>
@@ -647,7 +650,7 @@ export default function AuthGate({ children, accountType = "student", educationT
         </aside>
       )}
       {content}
-      <AccountBar profile={effectiveProfile} user={session.user} institutionReview={institutionReview} />
+      <AccountBar profile={effectiveProfile} user={session.user} institutionReview={institutionReview} accountType={accountType} educationTrack={educationTrack} />
     </>
   );
 }
