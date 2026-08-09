@@ -1,12 +1,12 @@
 # Early Prep high-school pilot readiness
 
-This final controlled Early Prep unit prepares a synthetic technical-readiness packet for authorized institution review. It does not approve or activate a high-school pilot.
+This controlled Early Prep closeout prepares a synthetic technical-readiness and Beta-promotion packet for owner and authorized institution review. It does not approve a staging-to-main promotion or activate a high-school pilot.
 
-Before any proposal to promote Early Prep toward `main`, EdNotebook must complete a full end-to-end walkthrough in staging with separate synthetic high-school teacher and student accounts. This is a required next gate, not evidence already completed by this unit.
+EdNotebook completed the full end-to-end walkthrough in staging with separate synthetic high-school teacher and student accounts. All 16 checks passed, and the targeted post-merge replay passed against deployed PR #137 commit `135ad94f4bc1d3ad4e74a76769769cdfbaf6495d` while production remained unchanged.
 
 ## Outcome
 
-The institution-gated review surface reports eight repository evidence areas and seven decisions that remain with authorized humans. Even after every local acknowledgement is checked, the packet status is only `ready_for_authorized_institution_review` and the institution decision remains `not_recorded`.
+The institution-gated review surface reports eight repository evidence areas, 16 completed staging checks, and seven decisions that remain with authorized humans. Even after every local acknowledgement is checked, the packet status is only `ready_for_beta_promotion_review`; both the owner Beta-promotion decision and the institution decision remain `not_recorded`.
 
 The surface cannot:
 
@@ -18,7 +18,7 @@ The surface cannot:
 - activate research collection or production student intake;
 - process payments or change marketplace behavior;
 - modify University, professor, or publisher records or routes.
-- claim the end-to-end staging walkthrough is complete or authorize promotion toward `main`.
+- turn completed technical evidence into owner promotion authority or institution approval.
 
 ## Technical evidence ready for review
 
@@ -33,9 +33,9 @@ The surface cannot:
 
 Technical evidence is not an institution approval.
 
-## Required staging walkthrough
+## Completed staging walkthrough
 
-The next controlled gate must use synthetic teacher and student accounts to exercise every Early Prep roadmap surface end to end:
+Separate synthetic teacher and student accounts exercised every Early Prep roadmap surface end to end:
 
 - public routes, account creation, sign-in, recovery, and logout;
 - teacher class creation, publication, reopening, and all 11 subject adapters;
@@ -50,7 +50,11 @@ The next controlled gate must use synthetic teacher and student accounts to exer
 - the item-by-item portfolio-transition preview;
 - responsive and keyboard behavior, institution isolation, payment denial, and no University crossover.
 
-The walkthrough begins at 0 of 16 checks complete. Evidence must come from the deployed staging candidate after this work is merged. Until then, `stagingWalkthroughCompleted` and `mainPromotionAuthorized` remain `false`.
+The walkthrough is complete at 16 of 16 checks passed. `stagingWalkthroughCompleted` is `true`; `betaPromotionAuthorized` and `mainPromotionAuthorized` remain `false`. The complete sanitized evidence is recorded in [`EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.md`](./EARLY_PREP_STAGING_WALKTHROUGH_EVIDENCE.md).
+
+## Beta promotion boundary
+
+The exact controlled release process is recorded in [`EARLY_PREP_BETA_PROMOTION_PACKET.md`](./EARLY_PREP_BETA_PROMOTION_PACKET.md). The technical candidate is ready for the accountable owner's separate protected `staging` to `main` decision. Until that decision is recorded, this packet authorizes no live-root change. A synthetic/adult-controlled Beta promotion would still authorize no real minor data, live SIS/LMS write, research collection, or Early Prep payment.
 
 ## Human decisions still required
 
@@ -64,7 +68,7 @@ An authorized school or district team must independently record all of the follo
 6. Support, incident, stop-condition, recovery, and rollback ownership.
 7. Exact institution, course, or account Pilot-lane assignment by an authorized human.
 
-No repository test, CI run, developer, or synthetic packet can substitute for those decisions.
+No repository test, CI run, developer, or synthetic packet can substitute for those decisions. They are required before a real-student institutional pilot, even if the owner separately promotes the synthetic technical candidate into the live Beta lane.
 
 ## Supabase boundary
 

@@ -56,18 +56,18 @@ export default function EarlyPrepPilotReadiness({ onBack }) {
   return (
     <main className="early-prep-pilot-readiness" aria-labelledby="early-prep-pilot-title">
       <header className="early-prep-pilot-hero">
-        <div><span>EARLY PREP · GRADES 9–12 · SYNTHETIC TECHNICAL READINESS</span><h1 id="early-prep-pilot-title">High-school pilot institution review</h1><p>Review the technical evidence and the decisions an authorized school or district team must make before any real pilot can be considered.</p></div>
+        <div><span>EARLY PREP · GRADES 9–12 · BETA READINESS CLOSEOUT</span><h1 id="early-prep-pilot-title">High-school Beta readiness and institution review</h1><p>The synthetic staging walkthrough is complete. Review the protected Beta-promotion boundary and the decisions a school or district must still make before any real-minor-data pilot.</p></div>
         <button type="button" onClick={onBack}>Back to Control Center</button>
       </header>
 
       <section className="early-prep-pilot-stop" role="status">
-        <strong>AWAITING INSTITUTION DECISION · NOT APPROVED</strong>
-        <p>This page cannot approve or activate a pilot. It records no institution decision, assigns no live data lane, and authorizes no real minor data.</p>
+        <strong>TECHNICAL CLOSEOUT COMPLETE · BETA PROMOTION NOT AUTHORIZED</strong>
+        <p>This page confirms synthetic technical readiness. It cannot approve a staging-to-main promotion or a real pilot, record an institution decision, assign a live data lane, or authorize real minor data.</p>
       </section>
 
       <section className="early-prep-pilot-summary" aria-label="Readiness summary">
         <article><span>Technical evidence</span><strong>{PREVIEW.counts.technicalEvidenceReady}</strong><small>repository items ready for review</small></article>
-        <article><span>Staging walkthrough</span><strong>0/{PREVIEW.counts.stagingWalkthroughChecksPending}</strong><small>synthetic teacher/student checks pending</small></article>
+        <article><span>Staging walkthrough</span><strong>{PREVIEW.counts.stagingWalkthroughChecksCompleted}/16</strong><small>synthetic teacher/student checks passed</small></article>
         <article><span>Human decisions</span><strong>{PREVIEW.counts.humanDecisionsRequired}</strong><small>still required</small></article>
         <article><span>Approvals recorded</span><strong>0</strong><small>this surface cannot record them</small></article>
         <article><span>Real student records</span><strong>0</strong><small>synthetic categories only</small></article>
@@ -79,13 +79,13 @@ export default function EarlyPrepPilotReadiness({ onBack }) {
       </section>
 
       <section className="early-prep-pilot-section" aria-labelledby="staging-walkthrough-heading">
-        <div className="early-prep-pilot-heading"><div><span>2 · STAGING WALKTHROUGH</span><h2 id="staging-walkthrough-heading">Full synthetic teacher-and-student verification is still required.</h2></div><strong>{PREVIEW.counts.stagingWalkthroughChecksPending} pending</strong></div>
-        <p>The walkthrough must exercise every Early Prep roadmap surface in staging before any proposal to promote toward main.</p>
-        <ol className="early-prep-pilot-walkthrough">{EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.map((check, index) => <li key={check.id}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{check.label}</strong><small>Synthetic {check.persona} check</small></div><em>Pending staging walkthrough</em></li>)}</ol>
+        <div className="early-prep-pilot-heading"><div><span>2 · STAGING WALKTHROUGH</span><h2 id="staging-walkthrough-heading">Full synthetic teacher-and-student verification is complete.</h2></div><strong>{PREVIEW.counts.stagingWalkthroughChecksCompleted} passed</strong></div>
+        <p>All 16 checks passed against the deployed PR #137 staging candidate. This closes the technical walkthrough gate without authorizing main promotion or real-minor-data use.</p>
+        <ol className="early-prep-pilot-walkthrough">{EARLY_PREP_STAGING_WALKTHROUGH_CHECKS.map((check, index) => <li key={check.id}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{check.label}</strong><small>Synthetic {check.persona} check</small></div><em>Passed in deployed staging</em></li>)}</ol>
       </section>
 
       <section className="early-prep-pilot-section" aria-labelledby="human-gates-heading">
-        <div className="early-prep-pilot-heading"><div><span>3 · HUMAN AUTHORIZATION</span><h2 id="human-gates-heading">Every gate remains undecided here.</h2></div><strong>{PREVIEW.counts.humanDecisionsRequired} pending</strong></div>
+        <div className="early-prep-pilot-heading"><div><span>3 · HUMAN AUTHORIZATION</span><h2 id="human-gates-heading">Every real-student pilot gate remains undecided here.</h2></div><strong>{PREVIEW.counts.humanDecisionsRequired} pending</strong></div>
         <ol className="early-prep-pilot-gates">{EARLY_PREP_HUMAN_APPROVAL_GATES.map((gate, index) => <ApprovalGate key={gate.id} gate={gate} index={index} />)}</ol>
       </section>
 
@@ -101,8 +101,8 @@ export default function EarlyPrepPilotReadiness({ onBack }) {
       {packet ? (
         <section className="early-prep-pilot-section early-prep-pilot-result" aria-live="polite">
           <span>PACKET READY FOR AUTHORIZED HUMAN REVIEW</span>
-          <h2>Technical handoff complete. Institution decision: not recorded.</h2>
-          <dl><div><dt>Pilot approved</dt><dd>No</dd></div><div><dt>Staging walkthrough complete</dt><dd>No</dd></div><div><dt>Main promotion authorized</dt><dd>No</dd></div><div><dt>Live data lane assigned</dt><dd>No</dd></div><div><dt>Real minor data authorized</dt><dd>No</dd></div><div><dt>Live SIS/LMS authorized</dt><dd>No</dd></div><div><dt>Production or research activated</dt><dd>No</dd></div></dl>
+          <h2>Technical handoff complete. Beta-promotion and institution decisions: not recorded.</h2>
+          <dl><div><dt>Staging walkthrough complete</dt><dd>Yes</dd></div><div><dt>Beta promotion authorized</dt><dd>No</dd></div><div><dt>Pilot approved</dt><dd>No</dd></div><div><dt>Main promotion authorized</dt><dd>No</dd></div><div><dt>Live data lane assigned</dt><dd>No</dd></div><div><dt>Real minor data authorized</dt><dd>No</dd></div><div><dt>Live SIS/LMS authorized</dt><dd>No</dd></div><div><dt>Production or research activated</dt><dd>No</dd></div></dl>
           <p><strong>Packet hash:</strong> <code>{packet.packetHash}</code></p>
           <p>{packet.nextRequiredAction}</p>
         </section>
