@@ -12,6 +12,13 @@ const configuredLiveLane = ["beta", "pilot", "production"].includes(
 
 export default function EnvironmentBanner() {
   const [liveLane, setLiveLane] = useState(configuredLiveLane);
+  const [route, setRoute] = useState(window.location.hash || "#/");
+
+  useEffect(() => {
+    const onHashChange = () => setRoute(window.location.hash || "#/");
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.environment = isStagingSandbox ? "staging" : "live";
@@ -71,7 +78,7 @@ export default function EnvironmentBanner() {
         role="status"
         aria-label="Staging upgrade sandbox"
       >
-        EDNOTEBOOK STAGING SANDBOX · TEST DATA ONLY
+        <strong>EDNOTEBOOK STAGING SANDBOX · TEST DATA ONLY</strong>
       </div>
     );
   }
@@ -79,6 +86,7 @@ export default function EnvironmentBanner() {
   if (liveLane === "production") return null;
 
   const isPilot = liveLane === "pilot";
+  const isInsideApp = /^(#\/(?:app|student\/|professor\/dashboard|admin(?:\/|$)|institution-admin\/|library\/book\/|lti\/))/u.test(route);
 
   return (
     <div
@@ -86,9 +94,18 @@ export default function EnvironmentBanner() {
       role="status"
       aria-label={`${isPilot ? "Pilot" : "Beta"} live operating lane`}
     >
-      {isPilot
-        ? "EDNOTEBOOK PILOT · LIVE SERVICE · AUTHORIZED PILOT DATA"
-        : "EDNOTEBOOK BETA · LIVE SERVICE · AUTHORIZED BETA DATA"}
+      <strong>
+        {isPilot
+          ? "EDNOTEBOOK PILOT · LIVE SERVICE · AUTHORIZED PILOT DATA"
+          : "EDNOTEBOOK BETA · LIVE SERVICE · AUTHORIZED BETA DATA"}
+      </strong>
+      <span>
+        {isPilot
+          ? "You’re participating in an authorized EdNotebook pilot. Your feedback helps us prepare the official experience."
+          : isInsideApp
+            ? "Beta Version — You’re helping test EdNotebook before its official release. You may encounter bugs or incomplete features. Thank you for your feedback!"
+            : "Early Access Beta — You’re using a pre-release version of EdNotebook. Some features may change as we improve the experience based on your feedback."}
+      </span>
     </div>
   );
 }
